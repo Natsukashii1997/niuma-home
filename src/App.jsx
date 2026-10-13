@@ -10,11 +10,11 @@ import ReportsPage from "./modules/reports/ReportsPage.jsx";
 // 新增模块：在这里登记一项，并在 src/modules/<key>/ 下建页面。
 const MODULES = [
   { key: "home", label: "首页", icon: Home, Page: HomePage },
-  { key: "marketing", label: "营销策略", icon: Megaphone, Page: MarketingPage },
-  { key: "brand", label: "品牌策略", icon: Sparkles, Page: BrandPage },
-  { key: "business", label: "经营策略", icon: BarChart3, Page: BusinessPage },
-  { key: "assistants", label: "助手", icon: Bot, Page: AssistantsPage },
-  { key: "reports", label: "日报周报", icon: FileText, Page: ReportsPage },
+  { key: "marketing", label: "营销", icon: Megaphone, Page: MarketingPage },
+  { key: "brand", label: "品牌", icon: Sparkles, Page: BrandPage },
+  { key: "business", label: "业务", icon: BarChart3, Page: BusinessPage },
+  { key: "assistants", label: "Agent", icon: Bot, Page: AssistantsPage },
+  { key: "reports", label: "日/周报", icon: FileText, Page: ReportsPage },
 ];
 
 export default function App() {
