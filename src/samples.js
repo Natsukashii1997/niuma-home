@@ -43,17 +43,3 @@ export const sampleMessages = [
   { role: "user", text: "帮我写一版开学季海报主标题，突出安心学Max 两门8折。" },
   { role: "assistant", text: "给你三个方向：\n1. 开学不慌，两门8折稳稳拿下\n2. 新学期，安心学：2门及以上享8折\n3. 选课季专享｜安心学Max 两门8折" },
 ];
-
-// 解析预览示例：基于 fixtures/2026-09-大学辅导.txt
-export const samplePlanPreview = {
-  line: "大学辅导",
-  rows: [
-    { sku: "灵活学Lite", trial: "¥199", price: "¥4300（赠课版）", newDeal: "无", renewal: "无", status: "same" },
-    { sku: "安心学Max", trial: "¥599", price: "1门85折，2门及以上8折", newDeal: "无", renewal: "无", status: "same" },
-    { sku: "学考无忧Pass", trial: "¥599", price: "1门85折，2门及以上8折", newDeal: "无", renewal: "无", status: "changed", changed: ["price"] },
-    { sku: "补考护航Pass", trial: "¥599", price: "单门8折", newDeal: "无", renewal: "无", status: "same" },
-    { sku: "选课指导", trial: "无", price: "¥599", newDeal: "无", renewal: "无", status: "same" },
-    { sku: "论文稳Pass", trial: "无", price: "全款立减¥1000", newDeal: "无", renewal: "无", status: "same" },
-  ],
-  unrecognized: [],
-};

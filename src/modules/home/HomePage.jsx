@@ -87,7 +87,7 @@ function PlanStatusCard() {
                   return (
                     <li key={line}>
                       <a href={href("marketing", "plans", month, line)}>{line}</a>
-                      {hasPlan ? <Tag tone="green">已录入</Tag> : count ? <Tag tone="blue">有数据 · 无原文</Tag> : <Tag tone="orange">未录入</Tag>}
+                      {hasPlan ? <Tag tone="green">已录入原文</Tag> : count ? <Tag tone="blue">有数据 · 无原文</Tag> : <Tag tone="orange">未录入</Tag>}
                     </li>
                   );
                 })}

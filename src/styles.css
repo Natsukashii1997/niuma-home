@@ -162,6 +162,12 @@ h1, h2, h3 { margin: 0; }
 .paste-box { min-height: 420px; padding: 12px; border: 1px dashed var(--line); border-radius: 6px; background: var(--panel-soft); outline: none; white-space: pre-wrap; }
 .paste-box:focus { border-color: var(--accent); background: var(--panel); }
 .paste-box:empty::before { content: attr(data-placeholder); color: var(--muted); }
+textarea.paste-box { display: block; width: 100%; resize: vertical; font: inherit; color: var(--text); }
+textarea.paste-box::placeholder { color: var(--muted); }
+.plan-editor .warn { align-items: flex-start; overflow-wrap: anywhere; }
+.plan-editor .warn svg { flex-shrink: 0; margin-top: 3px; }
+.plan-editor .warn ul { margin: 6px 0 0; padding-left: 20px; }
+.plan-editor .page-header { flex-wrap: wrap; }
 .warn { display: flex; align-items: center; gap: 6px; margin-top: 12px; padding: 8px 12px; border-radius: 6px; background: var(--orange-soft); color: var(--orange); }
 
 /* 物料 */

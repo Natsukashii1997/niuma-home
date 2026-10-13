@@ -124,6 +124,47 @@ export function getPlan(db, month, line) {
     .get(month, line);
 }
 
+export function listPlanAliases(db) {
+  return db.prepare("SELECT line, alias, sku FROM sku_aliases").all();
+}
+
+export function comparePlan(db, month, line, parsed) {
+  const all = listPromos(db).filter((row) => row.line === line);
+  const current = all.filter((row) => row.month === month);
+  const previousMonth = all.find((row) => row.month < month)?.month;
+  const baseline = current.length ? current : all.filter((row) => row.month === previousMonth);
+  const fields = ["trial", "price", "newDeal", "renewal"];
+  const rows = parsed.rows.map((row) => {
+    const previous = baseline.find((old) => old.sku === row.sku);
+    const changed = previous ? fields.filter((key) => row[key] !== previous[key]) : [];
+    return { ...row, status: !previous ? "new" : changed.length ? "changed" : "same", changed, ...(previous && { previous }) };
+  });
+  return { ...parsed, rows, removed: current.filter((old) => !rows.some((row) => row.sku === old.sku)).map((row) => row.sku) };
+}
+
+export function savePlan(db, month, line, { rawText, rawHtml = "", rows }) {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const existing = db.prepare("SELECT sku FROM promos WHERE month = ? AND line = ?").all(month, line);
+    const oldSkus = new Set(existing.map((row) => row.sku));
+    const newSkus = new Set(rows.map((row) => row.sku));
+    const updated = rows.filter((row) => oldSkus.has(row.sku)).length;
+    const removed = existing.filter((row) => !newSkus.has(row.sku)).length;
+    db.prepare(`
+      INSERT INTO plans (month, line, raw_text, raw_html, saved_at) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT (month, line) DO UPDATE SET raw_text = excluded.raw_text,
+        raw_html = excluded.raw_html, saved_at = excluded.saved_at
+    `).run(month, line, rawText, rawHtml, new Date().toISOString());
+    db.prepare("DELETE FROM promos WHERE month = ? AND line = ?").run(month, line);
+    for (const row of rows) savePromo(db, { ...row, month, line });
+    db.exec("COMMIT");
+    return { inserted: rows.length - updated, updated, removed };
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
 export function listAssistants(db) {
   return db
     .prepare("SELECT id, name, kind, instructions, codex_thread_id AS codexThreadId, created_at AS createdAt FROM assistants ORDER BY id")
