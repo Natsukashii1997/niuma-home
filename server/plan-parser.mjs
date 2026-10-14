@@ -36,7 +36,8 @@ export function parsePlan(rawText, { aliases = [] } = {}) {
       row[FIELDS[field[1]]] = field[2].trim() || "无";
       collecting = field[2].trim() ? null : FIELDS[field[1]];
       values = [];
-    } else if (!field && numbered) {
+    } else if (!field && numbered && !/^[^：:]{1,12}[：:]/.test(content)) {
+      // 「未知标签：…」形式的编号行不当成 SKU，落到下方未识别
       const alias = aliases.find((item) => item.line === result.line && item.alias === content);
       row = { sku: alias?.sku || content, trial: "无", price: "无", newDeal: "无", renewal: "无" };
       if (alias && alias.sku !== content) row.alias = content;

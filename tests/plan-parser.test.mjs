@@ -86,3 +86,9 @@ test("国际课程样例忽略空项与重复编号，同业务线别名归一�
   });
   assert.equal(aliases[1].sku, "灵活学Lite");
 });
+
+test("编号行带「未知标签：」时记为未识别，不当成新 SKU", () => {
+  const result = parsePlan("🟥【大学辅导板块】\n1. 论文稳Pass\n   1. 正价：全款立减¥1000\n   2. 赠品：电子书\n2. 选课指导");
+  assert.deepEqual(result.rows.map((row) => row.sku), ["论文稳Pass", "选课指导"]);
+  assert.deepEqual(result.unrecognized, [{ lineNo: 4, text: "   2. 赠品：电子书" }]);
+});

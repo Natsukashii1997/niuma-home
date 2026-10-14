@@ -15,7 +15,7 @@
 npm install
 npm run build && npm start      # http://127.0.0.1:5280
 npm run dev                     # 开发页 http://127.0.0.1:5281，/api 转给 5280
-npm test                        # node --test tests/*.test.mjs
+npm test                        # 自动使用临时数据目录，不碰 data/
 npm run import:feishu           # 一次性迁移旧飞书表（已执行过，可重复执行）
 ```
 
