@@ -175,6 +175,11 @@ export function getSettings(db) {
   return Object.fromEntries(db.prepare("SELECT key, value FROM settings").all().map((r) => [r.key, r.value]));
 }
 
+export function saveSetting(db, key, value) {
+  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").run(key, value);
+  return { key, value };
+}
+
 export function materialImageDir(db) {
   const file = db.prepare("PRAGMA database_list").all().find((row) => row.name === "main").file;
   return path.join(path.dirname(file), "images");

@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { useApi } from "../../api.js";
-import { Card, Loadable, PageHeader, PendingButton } from "../../ui/components.jsx";
+import { Card, Loadable, PageHeader } from "../../ui/components.jsx";
+import { href } from "../../router.js";
 
 // 第一版只放跳转入口；链接存在 settings.brand_base_url（T07 提供配置界面）。
 export default function BrandPage() {
@@ -18,7 +19,7 @@ export default function BrandPage() {
             ) : (
               <div className="row">
                 <p className="muted">还没有配置链接。</p>
-                <PendingButton task="T07">配置链接</PendingButton>
+                <a className="btn" href={href("settings")}>配置链接</a>
               </div>
             )}
           </Card>

@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-14",
+  "base": "http://127.0.0.1:5290",
+  "dataDir": "/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/tmp.bgsUCApYGY",
+  "results": [
+    {
+      "check": "品牌页配置链接直达设置，侧栏底部齿轮入口单独高亮，三个独立表单",
+      "result": "通过"
+    },
+    {
+      "check": "非法链接拦截、取消不写入、编辑使旧预览失效；规范值预览、重复确认仅发一次；保存一项不影响其他草稿和预览",
+      "result": "通过"
+    },
+    {
+      "check": "刷新保留三个配置；品牌页出现精确链接；新物料采用自定义类型，旧物料类型仍可显示编辑",
+      "result": "通过"
+    },
+    {
+      "check": "空类型清单拒绝；写入完成但回读失败时锁定、不重发；再次读取失败继续锁定，恢复读取后显示实际已存值",
+      "result": "通过"
+    },
+    {
+      "check": "保存请求失败不显示已保存，不覆盖原配置；重新读取恢复编辑",
+      "result": "通过"
+    },
+    {
+      "check": "390px窄屏无页面横向溢出，底部设置入口可聚焦；无未捕获脚本异常",
+      "result": "通过"
+    }
+  ],
+  "errors": [],
+  "writes": [
+    "http://127.0.0.1:5290/api/settings/brand_base_url",
+    "http://127.0.0.1:5290/api/settings/report_doc_url",
+    "http://127.0.0.1:5290/api/settings/material_types",
+    "http://127.0.0.1:5290/api/settings/report_doc_url",
+    "http://127.0.0.1:5290/api/settings/brand_base_url"
+  ],
+  "notes": "链接均为隔离验收占位地址；未请求飞书资源。"
+}
