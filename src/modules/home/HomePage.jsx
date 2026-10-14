@@ -3,7 +3,7 @@ import { useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Card, Loadable, PageHeader, SampleBadge, Tag } from "../../ui/components.jsx";
 import { LINES, currentMonth, monthLabel } from "../../constants.js";
-import { sampleCalendar, sampleReports } from "../../samples.js";
+import { sampleCalendar } from "../../samples.js";
 
 export default function HomePage() {
   const today = new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" });
@@ -46,18 +46,18 @@ function TodayCard() {
 }
 
 function ReportCard() {
-  const state = useApi("/api/reports", sampleReports);
+  const state = useApi("/api/reports");
   return (
     <Card
       title={<><FileText size={16} /> 最新日报</>}
-      extra={<>{state.isSample && <SampleBadge task={state.task} />}<a className="link" href={href("reports")}>全部</a></>}
+      extra={<a className="link" href={href("reports")}>全部</a>}
     >
       <Loadable state={state}>
         {(reports) => {
           const latest = reports.find((r) => r.kind === "日报");
           return latest ? (
             <>
-              <p className="muted small">{latest.date}</p>
+              <p className="muted small"><a className="link" href={href("reports", latest.id)}>{latest.title}</a></p>
               <p className="pre clamp">{latest.body}</p>
             </>
           ) : (

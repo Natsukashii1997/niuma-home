@@ -278,3 +278,12 @@ textarea.paste-box::placeholder { color: var(--muted); }
 .assistant-session small { display: block; color: var(--muted); margin-top: 4px; }
 .assistant-session:has(input:disabled) { color: var(--muted); background: var(--panel-soft); }
 @media (max-width: 600px) { .assistant-page .page-header { flex-direction: column; } .assistant-page .page-actions { flex-wrap: wrap; } .assistant-page .chat-head { flex-wrap: wrap; } .assistant-page .chat-input { flex-wrap: wrap; } .assistant-page .chat-input textarea { flex-basis: 100%; } }
+
+/* 日报周报：长文与长列表独立滚动，保持原文层级。 */
+.reports-page .chat-list { max-height: 65vh; overflow-y: auto; }
+.reports-page .chat-list a { align-items: flex-start; flex-direction: column; gap: 4px; overflow-wrap: anywhere; }
+.reports-page .chat-head { flex-wrap: wrap; overflow-wrap: anywhere; }
+.reports-page .report-body { max-height: 65vh; overflow-y: auto; overflow-wrap: anywhere; }
+.reports-page .report-copy { margin: 8px 16px 0; }
+@media (max-width: 900px) { .reports-page .chat-list { max-height: 220px; } }
+@media (max-width: 600px) { .reports-page .page-header { flex-direction: column; } .reports-page .page-actions { flex-wrap: wrap; } }

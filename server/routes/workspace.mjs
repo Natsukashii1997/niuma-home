@@ -1,5 +1,6 @@
 import { json, readJson, route, pending } from "../http.mjs";
 import { getSettings, saveSetting } from "../db.mjs";
+import { createReportReader } from "../reports.mjs";
 
 const invalid = (message) => { throw Object.assign(new Error(message), { status: 400 }); };
 
@@ -25,11 +26,22 @@ function settingValue(key, value) {
 }
 
 // 首页、日报周报、日历、配置
-export function routes(db) {
+export function routes(db, reportOptions) {
+  const reports = createReportReader(() => getSettings(db).report_doc_url, reportOptions);
+  const reportHandler = (detail) => async (req, res, { params, url }) => {
+    try {
+      const rows = await reports({ refresh: url.searchParams.get("refresh") === "1" });
+      if (!detail) return json(res, 200, rows);
+      const row = rows.find(item => item.id === params.id);
+      return row ? json(res, 200, row) : json(res, 404, { error: "这篇日报或周报不存在，请刷新列表后重新选择" });
+    } catch (error) {
+      return json(res, error.status || 502, { error: error.status ? error.message : "日报文档读取失败，请稍后刷新重试" });
+    }
+  };
   return [
     route("GET", "/api/calendar/today", pending("T06")),
-    route("GET", "/api/reports", pending("T05")),
-    route("GET", "/api/reports/:id", pending("T05")),
+    route("GET", "/api/reports", reportHandler(false)),
+    route("GET", "/api/reports/:id", reportHandler(true)),
     route("GET", "/api/settings", (req, res) => json(res, 200, getSettings(db))),
     route("PUT", "/api/settings/:key", async (req, res, { params: { key } }) => {
       try {

@@ -1,0 +1,14 @@
+{
+  "calls": 5,
+  "modes": [
+    "good",
+    "login",
+    "permission",
+    "good",
+    "good"
+  ],
+  "continuousRefresh": true,
+  "commandIdentityUser": true,
+  "profileCodex": true,
+  "fixtureService": "假 CLI，不访问飞书"
+}
