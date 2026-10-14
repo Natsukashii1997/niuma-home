@@ -1,6 +1,7 @@
-import { json, readJson, route, pending } from "../http.mjs";
+import { json, readJson, route } from "../http.mjs";
 import { getSettings, saveSetting } from "../db.mjs";
 import { createReportReader } from "../reports.mjs";
+import { createCalendarReader } from "../calendar.mjs";
 
 const invalid = (message) => { throw Object.assign(new Error(message), { status: 400 }); };
 
@@ -26,7 +27,8 @@ function settingValue(key, value) {
 }
 
 // 首页、日报周报、日历、配置
-export function routes(db, reportOptions) {
+export function routes(db, reportOptions, calendarOptions) {
+  const calendar = createCalendarReader(calendarOptions);
   const reports = createReportReader(() => getSettings(db).report_doc_url, reportOptions);
   const reportHandler = (detail) => async (req, res, { params, url }) => {
     try {
@@ -39,7 +41,10 @@ export function routes(db, reportOptions) {
     }
   };
   return [
-    route("GET", "/api/calendar/today", pending("T06")),
+    route("GET", "/api/calendar/today", async (req, res) => {
+      try { return json(res, 200, await calendar()); }
+      catch (error) { return json(res, error.status || 502, { error: error.status ? error.message : "飞书日历读取失败，请稍后重新打开首页" }); }
+    }),
     route("GET", "/api/reports", reportHandler(false)),
     route("GET", "/api/reports/:id", reportHandler(true)),
     route("GET", "/api/settings", (req, res) => json(res, 200, getSettings(db))),

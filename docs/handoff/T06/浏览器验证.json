@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-14",
+  "base_url": "http://127.0.0.1:5290",
+  "isolated_databases": [
+    "/private/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/tmp.89clnUoBsG/work-desk.db"
+  ],
+  "actual_calendar": {
+    "rows": 4,
+    "times": [
+      "09:45–10:30",
+      "11:00–12:30",
+      "15:00–16:00",
+      "15:00–16:00"
+    ],
+    "two_events_at_same_time_preserved": true,
+    "sample_badge": false,
+    "console_errors": []
+  },
+  "narrow_screen": {
+    "width": 390,
+    "document_scroll_width": 375,
+    "calendar_rows": 4,
+    "horizontal_overflow": false
+  },
+  "link": {
+    "href": "https://www.feishu.cn/calendar/",
+    "click_observed": true,
+    "destination_host": "vm94j8bzy7.feishu.cn",
+    "destination_path": "/calendar/",
+    "target": "_blank"
+  },
+  "previous_manual_checks": [
+    "真实 missing_scope 明确提示",
+    "人工全天、时间排序和地点",
+    "人工空日历",
+    "移除临时 PATH 中 CLI 后明确提示未找到命令"
+  ]
+}

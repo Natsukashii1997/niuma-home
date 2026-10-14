@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-14",
+  "status": 200,
+  "count": 4,
+  "times": [
+    "09:45–10:30",
+    "11:00–12:30",
+    "15:00–16:00",
+    "15:00–16:00"
+  ],
+  "exactSourceMatch": true,
+  "repeatedResponseMatch": true
+}

@@ -1,0 +1,13 @@
+{
+  "ok": false,
+  "identity": "user",
+  "error": {
+    "type": "authorization",
+    "subtype": "missing_scope",
+    "message": "missing required scope(s): calendar:calendar.event:read",
+    "missing_scopes": [
+      "calendar:calendar.event:read"
+    ],
+    "identity": "user"
+  }
+}

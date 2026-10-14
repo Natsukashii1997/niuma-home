@@ -1,12 +1,11 @@
 import { CalendarDays, FileText, Megaphone, Bot } from "lucide-react";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Card, Loadable, PageHeader, SampleBadge, Tag } from "../../ui/components.jsx";
+import { Card, Loadable, PageHeader, Tag } from "../../ui/components.jsx";
 import { LINES, currentMonth, monthLabel } from "../../constants.js";
-import { sampleCalendar } from "../../samples.js";
 
 export default function HomePage() {
-  const today = new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" });
+  const today = new Date().toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai", month: "long", day: "numeric", weekday: "long" });
   return (
     <>
       <PageHeader title="首页" subtitle={today} />
@@ -21,15 +20,15 @@ export default function HomePage() {
 }
 
 function TodayCard() {
-  const state = useApi("/api/calendar/today", sampleCalendar);
+  const state = useApi("/api/calendar/today");
   return (
-    <Card title={<><CalendarDays size={16} /> 今日日程</>} extra={state.isSample && <SampleBadge task={state.task} />}>
+    <Card title={<><CalendarDays size={16} /> 今日日程</>} extra={<a className="link" href="https://www.feishu.cn/calendar/" target="_blank" rel="noreferrer">在飞书打开</a>}>
       <Loadable state={state}>
         {(events) =>
           events.length ? (
-            <ul className="list">
-              {events.map((e) => (
-                <li key={e.time + e.title}>
+            <ul className="list calendar-list">
+              {events.map((e, index) => (
+                <li key={index}>
                   <span className="list-time">{e.time}</span>
                   <span>{e.title}</span>
                   {e.place && <span className="muted small">{e.place}</span>}

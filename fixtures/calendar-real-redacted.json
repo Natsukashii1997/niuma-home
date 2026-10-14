@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "identity": "user",
+  "data": [
+    {
+      "summary": "脱敏日程 1",
+      "start_time": {
+        "datetime": "2026-10-14T09:45:00+08:00",
+        "timezone": "Asia/Shanghai"
+      },
+      "end_time": {
+        "datetime": "2026-10-14T10:30:00+08:00",
+        "timezone": "Asia/Shanghai"
+      }
+    },
+    {
+      "summary": "脱敏日程 2",
+      "start_time": {
+        "datetime": "2026-10-14T11:00:00+08:00",
+        "timezone": "Asia/Shanghai"
+      },
+      "end_time": {
+        "datetime": "2026-10-14T12:30:00+08:00",
+        "timezone": "Asia/Shanghai"
+      }
+    },
+    {
+      "summary": "脱敏日程 3",
+      "start_time": {
+        "datetime": "2026-10-14T15:00:00+08:00",
+        "timezone": "Asia/Shanghai"
+      },
+      "end_time": {
+        "datetime": "2026-10-14T16:00:00+08:00",
+        "timezone": "Asia/Shanghai"
+      }
+    },
+    {
+      "summary": "脱敏日程 4",
+      "start_time": {
+        "datetime": "2026-10-14T15:00:00+08:00",
+        "timezone": "Asia/Shanghai"
+      },
+      "end_time": {
+        "datetime": "2026-10-14T16:00:00+08:00",
+        "timezone": "Asia/Shanghai"
+      }
+    }
+  ],
+  "meta": {
+    "count": 4
+  }
+}

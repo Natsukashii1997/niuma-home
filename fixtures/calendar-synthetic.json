@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "identity": "user",
+  "data": [
+    {"event_id":"test-afternoon","summary":"人工样例：下午评审","start_time":{"datetime":"2026-10-14T06:00:00Z"},"end_time":{"datetime":"2026-10-14T07:00:00Z"},"location":{"name":"测试会议室"}},
+    {"event_id":"test-all-day","summary":"人工样例：全天事项","start_time":{"date":"2026-10-14"},"end_time":{"date":"2026-10-14"}},
+    {"event_id":"test-morning","summary":"人工样例：上午沟通","start_time":{"datetime":"2026-10-14T09:00:00+08:00"},"end_time":{"datetime":"2026-10-14T09:30:00+08:00"}}
+  ],
+  "meta":{"count":3}
+}

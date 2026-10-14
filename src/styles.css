@@ -129,6 +129,9 @@ h1, h2, h3 { margin: 0; }
 .list li > a:first-child { flex: 1; }
 .list li > a:first-child:hover { color: var(--accent); }
 .list-time { width: 92px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.calendar-list li { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 4px 12px; overflow-wrap: anywhere; }
+.calendar-list .list-time { width: auto; }
+.calendar-list .small { grid-column: 2; }
 
 /* 筛选栏、分段切换 */
 .filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; }
