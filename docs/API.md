@@ -53,17 +53,23 @@ type Material = { id: number; month: string; line: string; name: string; type: s
 ## 助手（T04）
 
 ```ts
-type Assistant = { id: number; name: string; kind: "copywriter" | "imported" | "custom"; instructions: string; codexThreadId: string | null; createdAt: string };
+type Assistant = { id: number; name: string; kind: "copywriter" | "imported" | "custom"; instructions: string; codexThreadId: string | null; createdAt: string;
+  model: string | null; effort: string | null };   // T08 新增；null = 跟随 Codex 默认配置
+type CodexModel = { id: string; model: string; displayName: string; description: string; isDefault: boolean;
+  defaultEffort: string; efforts: Array<{ value: string; description: string }> };   // T08，来自 app-server model/list，不含隐藏模型
 type Message = { role: "user" | "assistant"; text: string; at?: string };
 ```
 
 - `GET /api/assistants` → `Assistant[]`（已实现）
 - `POST /api/assistants` 请求 `{ name, instructions }` → `Assistant`（kind = custom）
-- `PATCH /api/assistants/:id` 请求 `{ name?, instructions? }` → `Assistant`
+- `PATCH /api/assistants/:id` 请求 `{ name?, instructions?, model?, effort? }` → `Assistant`
+  - T08：`model` / `effort` 可传 `null` 恢复默认；`model` 须在模型列表中，`effort` 须为该模型支持的强度；`model` 为 `null` 时 `effort` 也须为 `null`；助手回复中返回 409。
 - `GET /api/assistants/:id/messages` → `Message[]`（从 Codex 会话读取历史）
 - `POST /api/assistants/:id/messages` 请求 `{ text }` → 流式返回（`text/event-stream`，事件 `delta` / `done` / `error`）
 - `GET /api/codex/sessions` → `{ threadId, name, updatedAt, cwd }[]`（本机 Codex 会话，已导入的标 `imported: true`）
 - `POST /api/assistants/import` 请求 `{ threadIds: string[] }` → `Assistant[]`
+- `GET /api/codex/models` → `CodexModel[]`（T08，缓存 10 分钟；读取失败返回错误，不返回空数组）
+- `GET /api/assistants/:id/runtime` → `{ model: string, effort: string | null } | null`（T08，当前会话实际生效值，取自 `thread/resume`；无会话时为 `null`）
 
 ## 首页 · 日报周报 · 日历 · 配置
 

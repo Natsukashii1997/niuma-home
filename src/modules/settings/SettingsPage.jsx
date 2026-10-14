@@ -4,7 +4,7 @@ import { Button, Card, Loadable, PageHeader, Tag } from "../../ui/components.jsx
 
 const fields = [
   { key: "brand_base_url", label: "品牌多维表格链接", hint: "用于品牌页的「在飞书打开」入口。", placeholder: "https://你的团队.feishu.cn/base/…" },
-  { key: "report_doc_url", label: "日报文档链接", hint: "保存日报来源链接，文档读取将在日报功能中接入。", placeholder: "https://你的团队.feishu.cn/docx/…" },
+  { key: "report_doc_url", label: "日报文档链接", hint: "日/周报页与首页从这份文档读取日报；未配置周报文档时，也从这里识别周报。", placeholder: "https://你的团队.feishu.cn/docx/…" },
   { key: "weekly_doc_url", label: "周报文档链接（可选）", hint: "不填时，从日报文档中识别周报。", placeholder: "https://你的团队.feishu.cn/docx/…" },
   { key: "material_types", label: "物料类型清单", hint: "每行一个类型；预览时自动去掉空行、首尾空白和重复项。", placeholder: "海报\n朋友圈图\n社群海报\n落地页\n其他" },
 ];
