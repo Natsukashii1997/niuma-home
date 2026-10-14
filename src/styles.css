@@ -182,8 +182,8 @@ textarea.paste-box::placeholder { color: var(--muted); }
 
 /* 物料 */
 .material-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--gap); }
-.material-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-.material-thumb { height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: linear-gradient(135deg, #eef2fb, #f7f8fa); color: var(--muted); font-size: 12px; }
+.material-card { font: inherit; color: var(--text); text-align: left; padding: 0; cursor: pointer; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.material-thumb { height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; position: relative; background: var(--panel-soft); color: var(--muted); font-size: 12px; }
 .material-info { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
 .material-info p { margin: 0; }
 
@@ -216,3 +216,37 @@ textarea.paste-box::placeholder { color: var(--muted); }
   .brand { font-size: 0; padding: 0; }
   .main { padding: 16px; }
 }
+
+/* 物料录入、图片预览与跨月对比 */
+.material-card:hover { border-color: var(--accent); }
+.material-card strong, .material-card p { overflow-wrap: anywhere; }
+.material-thumb { height: 210px; }
+.material-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.material-count { position: absolute; bottom: 8px; right: 8px; padding: 2px 8px; border-radius: 4px; background: var(--panel); color: var(--text-2); border: 1px solid var(--line); }
+.material-compare { display: flex; align-items: flex-start; gap: var(--gap); overflow-x: auto; padding-bottom: 12px; }
+.material-month { flex: 0 0 300px; min-width: 0; }
+.material-month .material-card { width: 100%; }
+.material-dialog { width: min(920px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 1px solid var(--line); border-radius: var(--radius); color: var(--text); background: var(--panel); }
+.material-dialog::backdrop { background: var(--text); opacity: 0.3; }
+.material-dialog > .card-head { position: sticky; top: 0; z-index: 1; background: var(--panel); }
+.material-dialog > .card-head h2 { overflow-wrap: anywhere; }
+.material-dialog .warn { flex-wrap: wrap; margin: 0 0 16px; }
+.material-dialog .row { flex-wrap: wrap; }
+.material-fields { display: flex; flex-direction: column; gap: var(--gap); border: 0; padding: 0; margin: 0; min-width: 0; }
+.material-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.material-field input, .material-field select, .material-field textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); font: inherit; }
+.material-field textarea { resize: vertical; }
+.material-skus { border: 1px solid var(--line); border-radius: 6px; padding: 12px; margin: 0; }
+.material-skus label { display: inline-flex; align-items: center; gap: 6px; margin-right: 16px; }
+.material-summary { display: flex; flex-direction: column; gap: 8px; overflow-wrap: anywhere; }
+.material-summary p { margin: 0; }
+.material-viewer { display: flex; flex-direction: column; gap: 12px; }
+.material-viewer > img { width: 100%; height: min(48vh, 460px); object-fit: contain; background: var(--panel-soft); border: 1px solid var(--line); border-radius: 6px; }
+.material-drop { padding: 20px; text-align: center; border: 1px dashed var(--line); border-radius: var(--radius); background: var(--panel-soft); }
+.material-drop p { margin: 6px 0 12px; }
+.material-confirm { padding: 16px; border: 1px solid var(--orange); border-radius: var(--radius); background: var(--orange-soft); }
+.material-upload-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--gap); margin-bottom: 16px; }
+.material-upload-grid figure { margin: 0; min-width: 0; }
+.material-upload-grid img { width: 100%; height: 140px; object-fit: contain; background: var(--panel-soft); }
+.material-upload-grid figcaption { overflow-wrap: anywhere; font-size: 12px; }
+@media (max-width: 900px) { .material-fields .grid-2 { grid-template-columns: 1fr; } }

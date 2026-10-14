@@ -174,3 +174,58 @@ export function listAssistants(db) {
 export function getSettings(db) {
   return Object.fromEntries(db.prepare("SELECT key, value FROM settings").all().map((r) => [r.key, r.value]));
 }
+
+export function materialImageDir(db) {
+  const file = db.prepare("PRAGMA database_list").all().find((row) => row.name === "main").file;
+  return path.join(path.dirname(file), "images");
+}
+
+export function listMaterialImages(db, materialId) {
+  return db.prepare("SELECT id, file FROM material_images WHERE material_id = ? ORDER BY sort, id").all(materialId);
+}
+
+export function materialImageUrl(file) { return `/api/images/${encodeURIComponent(file)}`; }
+
+function materialRow(db, row) {
+  return row && { ...row, skus: JSON.parse(row.skus), images: listMaterialImages(db, row.id).map(({ id, file }) => ({ id, url: materialImageUrl(file) })) };
+}
+
+const materialColumns = "id, month, line, name, type, skus, note, created_at AS createdAt";
+
+export function listMaterials(db, { month = "", line = "", type = "" } = {}) {
+  return db.prepare(`SELECT ${materialColumns} FROM materials
+    WHERE (? = '' OR month = ?) AND (? = '' OR line = ?) AND (? = '' OR type = ?)
+    ORDER BY month DESC, id DESC`).all(month, month, line, line, type, type).map((row) => materialRow(db, row));
+}
+
+export function getMaterial(db, id) {
+  return materialRow(db, db.prepare(`SELECT ${materialColumns} FROM materials WHERE id = ?`).get(id));
+}
+
+export function saveMaterial(db, value, id) {
+  const args = [value.month, value.line, value.name, value.type, JSON.stringify(value.skus), value.note];
+  if (id) db.prepare("UPDATE materials SET month = ?, line = ?, name = ?, type = ?, skus = ?, note = ? WHERE id = ?").run(...args, id);
+  else id = Number(db.prepare("INSERT INTO materials (month, line, name, type, skus, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(...args, new Date().toISOString()).lastInsertRowid);
+  return getMaterial(db, id);
+}
+
+export function addMaterialImage(db, materialId, file) {
+  const id = Number(db.prepare(`INSERT INTO material_images (material_id, file, sort, created_at)
+    VALUES (?, ?, (SELECT COALESCE(MAX(sort), -1) + 1 FROM material_images WHERE material_id = ?), ?)`)
+    .run(materialId, file, materialId, new Date().toISOString()).lastInsertRowid);
+  return { id, url: materialImageUrl(file) };
+}
+
+export function hasMaterialImageFile(db, file) {
+  return !!db.prepare("SELECT 1 FROM material_images WHERE file = ?").get(file);
+}
+
+export function deleteMaterial(db, id, imageId, removeFiles) {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    if (imageId) db.prepare("DELETE FROM material_images WHERE material_id = ? AND id = ?").run(id, imageId);
+    else db.prepare("DELETE FROM materials WHERE id = ?").run(id);
+    removeFiles();
+    db.exec("COMMIT");
+  } catch (error) { db.exec("ROLLBACK"); throw error; }
+}

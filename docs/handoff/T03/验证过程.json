@@ -1,0 +1,85 @@
+{
+  "description": "保留验证脚本首败与修正依据；应用页面未出现未捕获异常。最终浏览器验证另见浏览器验证.json。",
+  "attempts": [
+    {
+      "reason": "下拉框隐式标签定位超时，改用 combobox 角色",
+      "data": {
+        "date": "2026-10-14",
+        "base": "http://127.0.0.1:5290",
+        "dataDir": "/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/tmp.sd6blUfimA",
+        "results": [
+          {
+            "check": "浏览器流程",
+            "result": "失败",
+            "error": "locator.selectOption: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog').getByLabel('业务线', { exact: true })\u001b[22m\n\n    at /private/tmp/workdesk-t03-01a1346b-browser.mjs:51:24"
+          }
+        ],
+        "errors": []
+      }
+    },
+    {
+      "reason": "有初始内容的备注框标签定位超时，统一改用 textbox 角色",
+      "data": {
+        "date": "2026-10-14",
+        "base": "http://127.0.0.1:5290",
+        "dataDir": "/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/tmp.sd6blUfimA",
+        "results": [
+          {
+            "check": "新建8月和9月海报；默认本月、默认类型、同月同业务线SKU多选；新建/多图上传预览不写库；选择和拖拽上传PNG/JPG",
+            "result": "通过"
+          },
+          {
+            "check": "浏览器流程",
+            "result": "失败",
+            "error": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog').getByLabel('备注', { exact: true })\u001b[22m\n\n    at /private/tmp/workdesk-t03-01a1346b-browser.mjs:97:21"
+          }
+        ],
+        "errors": []
+      }
+    },
+    {
+      "reason": "清理脚本假设一直可以下一张，在末张超时；改为检查按钮状态后删除当前末张",
+      "data": {
+        "date": "2026-10-14",
+        "base": "http://127.0.0.1:5290",
+        "dataDir": "/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/tmp.5uRZQ6CbNG",
+        "results": [
+          {
+            "check": "新建8月和9月海报；默认本月、默认类型、同月同业务线SKU多选；新建/多图上传预览不写库；选择和拖拽上传PNG/JPG",
+            "result": "通过"
+          },
+          {
+            "check": "详情左右切换、删除图片确认/取消、删除末张后索引有效；编辑预览与回读、切换业务线清除SKU关联",
+            "result": "通过"
+          },
+          {
+            "check": "同类跨月每月一列、忽略列表月份筛选、类型必选和业务线筛选；窄屏内部横向滚动",
+            "result": "通过"
+          },
+          {
+            "check": "前端拒绝SVG/超限、取消上传不写库、WEBP/GIF上传回读；物料删除二次确认取消不写库",
+            "result": "通过"
+          },
+          {
+            "check": "第二张上传网络中断时首张保留、后续停止、确认按钮锁定；刷新后可核对、不自动重发",
+            "result": "通过"
+          },
+          {
+            "check": "编辑已写入但GET回读失败时显示未知结果、禁止重复确认；刷新后读到写入结果",
+            "result": "通过"
+          },
+          {
+            "check": "settings.material_types自定义选项去重；损坏JSON和空数组退回默认",
+            "result": "通过"
+          },
+          {
+            "check": "浏览器流程",
+            "result": "失败",
+            "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: '下一张图片', exact: true })\u001b[22m\n\u001b[2m    - locator resolved to <button disabled aria-label=\"下一张图片\" class=\"btn btn-default\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n    at /private/tmp/workdesk-t03-01a1346b-browser.mjs:169:27"
+          }
+        ],
+        "errors": []
+      }
+    }
+  ]
+}

@@ -1,6 +1,7 @@
-import { json, readJson, route, pending } from "../http.mjs";
+import { json, readJson, route } from "../http.mjs";
 import { listPromos, listPlans, getPlan, listPlanAliases, comparePlan, savePlan } from "../db.mjs";
 import { parsePlan } from "../plan-parser.mjs";
+import { routes as materialRoutes } from "./materials.mjs";
 
 const fail = (message) => { throw Object.assign(new Error(message), { status: 400 }); };
 const planHandler = (handler) => async (req, res, context) => {
@@ -54,12 +55,6 @@ export function routes(db) {
     })),
 
     // 物料
-    route("GET", "/api/materials", pending("T03")),
-    route("POST", "/api/materials", pending("T03")),
-    route("PATCH", "/api/materials/:id", pending("T03")),
-    route("DELETE", "/api/materials/:id", pending("T03")),
-    route("POST", "/api/materials/:id/images", pending("T03")),
-    route("DELETE", "/api/materials/:id/images/:imageId", pending("T03")),
-    route("GET", "/api/images/:file", pending("T03")),
+    ...materialRoutes(db),
   ];
 }

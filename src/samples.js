@@ -31,14 +31,6 @@ export const sampleReports = [
   },
 ];
 
-export const sampleMaterials = [
-  { id: 1, month: "2026-09", line: "大学辅导", name: "开学季主海报", type: "海报", skus: ["安心学Max", "学考无忧Pass"], images: 2, note: "" },
-  { id: 2, month: "2026-09", line: "大学辅导", name: "朋友圈九宫格", type: "朋友圈图", skus: [], images: 9, note: "" },
-  { id: 3, month: "2026-09", line: "国际课程", name: "课时卡续费海报", type: "海报", skus: ["灵活学Lite"], images: 1, note: "新老价格分两版" },
-  { id: 4, month: "2026-08", line: "大学辅导", name: "定金膨胀主海报", type: "海报", skus: ["安心学Max"], images: 1, note: "" },
-  { id: 5, month: "2026-08", line: "国际课程", name: "首课试听社群海报", type: "社群海报", skus: ["灵活学Lite"], images: 1, note: "" },
-];
-
 export const sampleMessages = [
   { role: "user", text: "帮我写一版开学季海报主标题，突出安心学Max 两门8折。" },
   { role: "assistant", text: "给你三个方向：\n1. 开学不慌，两门8折稳稳拿下\n2. 新学期，安心学：2门及以上享8折\n3. 选课季专享｜安心学Max 两门8折" },
