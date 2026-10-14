@@ -20,6 +20,7 @@ function PlanForm({ month, line }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [needsReload, setNeedsReload] = useState(false);
+  const [saved, setSaved] = useState(false);
   const operation = useRef(false);
 
   useEffect(() => {
@@ -45,6 +46,7 @@ function PlanForm({ month, line }) {
   }, [path]);
 
   function edit(text, html = "") {
+    setSaved(false);
     setRawText(text);
     setRawHtml(html);
     setPreview(null);
@@ -66,10 +68,11 @@ function PlanForm({ month, line }) {
 
   const locked = loading || Boolean(loadError) || Boolean(busy) || needsReload;
   const mismatch = preview && preview.line !== line;
-  const canSave = !locked && preview?.rows.length > 0 && !preview.unrecognized.length && !mismatch;
+  const canSave = !locked && !saved && preview?.rows.length > 0 && !preview.unrecognized.length && !mismatch;
 
   async function parse() {
     if (locked || operation.current || !rawText.trim()) return;
+    setSaved(false);
     operation.current = true;
     setBusy("parse"); setError(""); setMessage(""); setPreview(null);
     try {
@@ -93,6 +96,7 @@ function PlanForm({ month, line }) {
         throw new Error("写后回读与确认内容不一致");
       }
       setPreview(verified);
+      setSaved(true);
       setMessage("已写入 " + counts.inserted + " 行，更新 " + counts.updated + " 行，删除 " + counts.removed + " 行");
     } catch (e) {
       setPreview(null);

@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-14",
+  "base": "http://127.0.0.1:5290",
+  "isolatedDirectory": "/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/tmp.hvb3aQ2Gt3",
+  "data": {
+    "baseline": 15,
+    "synthetic": 3
+  },
+  "results": [
+    {
+      "check": "三种分组的单组折叠、键盘展开、全部折叠/展开；SKU组内倒序和最近变化标签",
+      "result": "通过"
+    },
+    {
+      "check": "正价浮层精确显示 2026-08：¥7900版；悬停可进入浮层、键盘可访问、Escape关闭、长文本保留换行",
+      "result": "通过"
+    },
+    {
+      "check": "分组和三个筛选刷新保留；SKU选项随业务线联动、同名保留、失效项清空",
+      "result": "通过"
+    },
+    {
+      "check": "真实纵向滚动后表头仍在容器顶部；820px纵横滚动列对齐且页面无整体横向溢出",
+      "result": "通过",
+      "sticky": {
+        "scrollTop": 350,
+        "top": 197,
+        "header": 198
+      },
+      "narrow": {
+        "scrollTop": 300,
+        "scrollLeft": 220,
+        "top": 219,
+        "header": 220,
+        "headX": -139,
+        "cellX": -139
+      }
+    },
+    {
+      "check": "损坏JSON、localStorage访问抛错、写入抛错、失效SKU均不阻塞查看与筛选",
+      "result": "通过"
+    },
+    {
+      "check": "同值原文首次可确认；写后回读通过后置灰，复制不恢复；重新解析恢复，编辑仍需先预览",
+      "result": "通过",
+      "putRequests": 1
+    }
+  ],
+  "errors": []
+}

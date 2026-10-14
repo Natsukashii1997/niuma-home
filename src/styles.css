@@ -152,6 +152,16 @@ h1, h2, h3 { margin: 0; }
 .grid .group-row td { background: var(--panel-soft); font-weight: 600; }
 .grid td.changed { background: var(--changed); }
 
+/* 促销表：容器内滚动，表头与列保持对齐 */
+.promo-table-wrap { max-height: min(70vh, 760px); overflow: auto; }
+.promo-table th { z-index: 1; }
+.promo-group { display: flex; align-items: center; justify-content: space-between; gap: var(--gap); }
+.promo-group-toggle { display: flex; flex: 1; align-items: center; flex-wrap: wrap; gap: 8px; padding: 4px 0; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.promo-group-toggle svg { flex-shrink: 0; }
+.promo-group .row { flex-shrink: 0; gap: 8px; }
+.promo-changed { cursor: help; }
+.promo-tooltip { position: fixed; z-index: 10; width: max-content; max-width: min(360px, calc(100vw - 24px)); max-height: min(320px, calc(100vh - 24px)); overflow: auto; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--text); box-shadow: 0 4px 16px var(--line); white-space: pre-wrap; overflow-wrap: anywhere; }
+
 /* 方案卡片 */
 .plan-card { display: block; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
 .plan-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(51, 112, 255, 0.08); }
