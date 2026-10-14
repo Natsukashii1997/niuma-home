@@ -288,5 +288,9 @@ textarea.paste-box::placeholder { color: var(--muted); }
 .reports-page .chat-head { flex-wrap: wrap; overflow-wrap: anywhere; }
 .reports-page .report-body { max-height: 65vh; overflow-y: auto; overflow-wrap: anywhere; }
 .reports-page .report-copy { margin: 8px 16px 0; }
+.report-sources { margin-bottom: var(--gap); padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); overflow-wrap: anywhere; }
+.report-sources .row { flex-wrap: wrap; }
+.report-sources details { margin-top: 8px; color: var(--text-2); }
+.report-sources summary { cursor: pointer; }
 @media (max-width: 900px) { .reports-page .chat-list { max-height: 220px; } }
 @media (max-width: 600px) { .reports-page .page-header { flex-direction: column; } .reports-page .page-actions { flex-wrap: wrap; } }

@@ -1,13 +1,17 @@
 import { json, readJson, route } from "../http.mjs";
 import { getSettings, saveSetting } from "../db.mjs";
-import { createReportReader } from "../reports.mjs";
+import { createReportReader, reportDocumentUrl } from "../reports.mjs";
 import { createCalendarReader } from "../calendar.mjs";
 
 const invalid = (message) => { throw Object.assign(new Error(message), { status: 400 }); };
 
 function settingValue(key, value) {
-  if (!["brand_base_url", "report_doc_url", "material_types"].includes(key)) invalid("不支持此配置项");
+  if (!["brand_base_url", "report_doc_url", "material_types", "weekly_doc_url"].includes(key)) invalid("不支持此配置项");
   if (typeof value !== "string") invalid("配置值须为字符串");
+  if (key === "weekly_doc_url") {
+    if (value !== "") reportDocumentUrl(value);
+    return value;
+  }
   if (key === "material_types") {
     let types;
     try { types = JSON.parse(value); } catch { invalid("物料类型须为 JSON 字符串数组"); }
@@ -29,15 +33,12 @@ function settingValue(key, value) {
 // 首页、日报周报、日历、配置
 export function routes(db, reportOptions, calendarOptions) {
   const calendar = createCalendarReader(calendarOptions);
-  const reports = createReportReader(() => getSettings(db).report_doc_url, reportOptions);
+  const reports = createReportReader(() => getSettings(db), reportOptions);
   const reportHandler = (detail) => async (req, res, { params, url }) => {
     try {
-      const rows = await reports({ refresh: url.searchParams.get("refresh") === "1" });
-      if (!detail) return json(res, 200, rows);
-      const row = rows.find(item => item.id === params.id);
-      return row ? json(res, 200, row) : json(res, 404, { error: "这篇日报或周报不存在，请刷新列表后重新选择" });
+      return json(res, 200, await reports({ refresh: url.searchParams.get("refresh") === "1", withSources: url.searchParams.get("withSources") === "1", ...(detail ? { id: params.id } : {}) }));
     } catch (error) {
-      return json(res, error.status || 502, { error: error.status ? error.message : "日报文档读取失败，请稍后刷新重试" });
+      return json(res, error.status || 502, { error: error.status ? error.message : "日报文档读取失败，请稍后刷新重试", ...(error.sources ? { sources: error.sources } : {}) });
     }
   };
   return [
@@ -47,6 +48,15 @@ export function routes(db, reportOptions, calendarOptions) {
     }),
     route("GET", "/api/reports", reportHandler(false)),
     route("GET", "/api/reports/:id", reportHandler(true)),
+    route("POST", "/api/reports/source-preview", async (req, res) => {
+      try {
+        let body;
+        try { body = await readJson(req); } catch { invalid("请求内容不是有效的 JSON"); }
+        return json(res, 200, await reports.preview(body || {}));
+      } catch (error) {
+        return json(res, error.status || 502, { error: error.status ? error.message : "飞书文档试读失败，请稍后重试" });
+      }
+    }),
     route("GET", "/api/settings", (req, res) => json(res, 200, getSettings(db))),
     route("PUT", "/api/settings/:key", async (req, res, { params: { key } }) => {
       try {

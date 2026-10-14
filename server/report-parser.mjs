@@ -36,10 +36,35 @@ function headingInfo(title) {
   return { kind: /周报/.test(cleaned) ? "周报" : "日报", date: `${match[2]}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` };
 }
 
-export function parseReports(markdown) {
-  if (typeof markdown !== "string") return [];
+function weeklyHeadingMatch(title) {
+  const cleaned = title.replace(/^[^\p{L}\p{N}]+/u, "");
+  return cleaned.match(/^第\s*(\d+)\s*周\s*(\d{4})\s*\.\s*(\d+)\s*[（(]\s*(\d{4})\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})\s*[-–—~至]\s*(?:(\d{4})\s*\.\s*)?(\d{1,2})\s*\.\s*(\d{1,2})\s*[）)]\s*$/);
+}
+
+function weeklyHeadingInfo(title) {
+  const match = weeklyHeadingMatch(title);
+  if (!match) return null;
+  const [, week, weekYear, writtenWeek, y1, m1, d1, y2, m2, d2] = match.map(Number);
+  const endYear = y2 || y1 + (m2 < m1 ? 1 : 0);
+  const start = new Date(Date.UTC(y1, m1 - 1, d1)), end = new Date(Date.UTC(endYear, m2 - 1, d2));
+  const valid = (date, y, m, d) => date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+  if (!valid(start, y1, m1, d1) || !valid(end, endYear, m2, d2) || end < start || end - start > 6 * 86400000) return null;
+  // ISO 周以星期四所属年份计周年，1 月 4 日所在周为第一周。
+  const thursday = new Date(start);
+  thursday.setUTCDate(thursday.getUTCDate() + 4 - (thursday.getUTCDay() || 7));
+  const isoYear = thursday.getUTCFullYear();
+  const isoWeek = Math.ceil(((thursday - Date.UTC(isoYear, 0, 1)) / 86400000 + 1) / 7);
+  const warnings = [];
+  if (week !== writtenWeek) warnings.push(`标题第${week}周与 ${weekYear}.${writtenWeek} 的周次不一致，以日期范围为准`);
+  if (weekYear !== isoYear || writtenWeek !== isoWeek) warnings.push(`标题周年或周次与起日所在的 ISO ${isoYear} 年第 ${isoWeek} 周不一致，以日期范围为准`);
+  const startDate = start.toISOString().slice(0, 10), endDate = end.toISOString().slice(0, 10);
+  return { kind: "周报", date: startDate, startDate, endDate, week, weekYear, ...(warnings.length ? { warnings } : {}) };
+}
+
+export function parseReportDocument(markdown) {
+  if (typeof markdown !== "string") return { reports: [], unrecognized: [] };
   let fence = null;
-  const lines = markdown.replace(/\r\n?/g, "\n").split("\n").map(text => {
+  const lines = markdown.replace(/\r\n?/g, "\n").split("\n").map((text, index) => {
     const marker = text.match(/^ {0,3}(`{3,}|~{3,})/);
     if (marker) {
       if (!fence) fence = marker[1];
@@ -47,9 +72,12 @@ export function parseReports(markdown) {
       return { text };
     }
     const heading = !fence && text.match(/^ {0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
-    return heading ? { text, level: heading[1].length, title: heading[2], info: headingInfo(heading[2]) } : { text };
+    return heading ? { text, lineNo: index + 1, level: heading[1].length, title: heading[2], info: weeklyHeadingInfo(heading[2]) || headingInfo(heading[2]) } : { text };
   });
-  const level = Math.min(...lines.filter(line => line.info).map(line => line.level));
+  // 新周报候选即使日期无效也界定层级，防止把其日期子章节另起为日报。
+  const level = Math.min(...lines.filter(line => line.info || (line.title && weeklyHeadingMatch(line.title))).map(line => line.level));
+  const unrecognized = lines.filter(line => line.title && !line.info && (Number.isFinite(level) ? line.level === level : true))
+    .map(({ lineNo, title }) => ({ lineNo, title }));
   const reports = [], counts = new Map();
   let current = null;
   const finish = () => {
@@ -58,7 +86,8 @@ export function parseReports(markdown) {
     const occurrence = (counts.get(key) || 0) + 1;
     counts.set(key, occurrence);
     const id = createHash("sha256").update(key).digest("hex").slice(0, 20) + `-${occurrence}`;
-    reports.push({ id, kind: current.kind, date: current.date, title: current.title, body: plainBody(current.body.join("\n")) });
+    const { body, ...info } = current;
+    reports.push({ id, ...info, body: plainBody(body.join("\n")) });
     current = null;
   };
   for (const line of lines) {
@@ -68,5 +97,7 @@ export function parseReports(markdown) {
     } else if (current) current.body.push(line.text);
   }
   finish();
-  return reports.sort((a, b) => b.date.localeCompare(a.date));
+  return { reports: reports.sort((a, b) => b.date.localeCompare(a.date)), unrecognized };
 }
+
+export function parseReports(markdown) { return parseReportDocument(markdown).reports; }

@@ -45,15 +45,17 @@ function TodayCard() {
 }
 
 function ReportCard() {
-  const state = useApi("/api/reports");
+  const state = useApi("/api/reports?withSources=1");
   return (
     <Card
       title={<><FileText size={16} /> 最新日报</>}
       extra={<a className="link" href={href("reports")}>全部</a>}
     >
       <Loadable state={state}>
-        {(reports) => {
-          const latest = reports.find((r) => r.kind === "日报");
+        {({ reports, sources }) => {
+          const daily = sources.find(source => source.role === "daily");
+          if (daily && !daily.ok) return <p className="error">{daily.error}</p>;
+          const latest = reports.find((r) => r.kind === "日报" && r.source === "daily");
           return latest ? (
             <>
               <p className="muted small"><a className="link" href={href("reports", latest.id)}>{latest.title}</a></p>

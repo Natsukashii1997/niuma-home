@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-14",
+  "isolatedDataDir": "/tmp/workdesk-t05b-pmkF7P",
+  "manualOrigin": "http://127.0.0.1:5290",
+  "fixtureMode": "脱敏真实样例与明确标注的人工故障；未用真实库做测试",
+  "testResult": {
+    "passed": 73,
+    "failed": 0
+  },
+  "firstFailure": {
+    "passed": 1,
+    "failed": 9,
+    "log": "/tmp/workdesk-t05b-pmkF7P/red-localhost.log",
+    "sandboxNetworkFailure": "首次飞书读取 DNS 被沙箱阻止；允许既定只读请求后成功",
+    "sandboxListenFailure": "首次 HTTP 测试监听被沙箱阻止；允许 localhost 后得到实际功能首败"
+  },
+  "build": {
+    "command": "WORKDESK_DATA_DIR=$(mktemp -d) npm run build -- --outDir /tmp/workdesk-t05b-pmkF7P/dist",
+    "passed": true,
+    "productionDistUnchanged": true
+  },
+  "realData": {
+    "before": "e9512c92e989bdc498414581a64ca226095fc2ca466cfa3a96032e8a416adf12",
+    "after": "e9512c92e989bdc498414581a64ca226095fc2ca466cfa3a96032e8a416adf12",
+    "dailySettingUnchanged": true,
+    "weeklySettingAbsent": true
+  },
+  "realWeekly": {
+    "revision": 497,
+    "headingCount": 21,
+    "parsedCount": 21,
+    "warningsCount": 2,
+    "fixtureWeeks": [
+      41,
+      40,
+      36
+    ]
+  },
+  "browserChecks": [
+    "预览不写库；确认保存后回读",
+    "预览失败无确认按钮",
+    "清空预览、确认、回读键不存在",
+    "同日报链接零篇周报仍允许单文档保存预览",
+    "日报改值使周报旧预览失效，保留草稿",
+    "日报写入成功但回读502时周报确认消失且预览禁用；恢复回读后解除",
+    "日报2篇、周报3篇脱敏样例列表与标题",
+    "周报深链重载与正文复制",
+    "周报失败时日报列表及首页最新日报正常",
+    "两源全部失败保留两项错误和两个重试入口，不显示共0篇",
+    "恢复后重读成功",
+    "未识别标题展开行号；橙色周次标签含具体说明"
+  ],
+  "screenshots": [
+    "全部来源失败-保留两项错误.jpg",
+    "单源失败-日报仍可读.jpg",
+    "周报-未识别标题与周次提示.jpg",
+    "周报列表.jpg",
+    "日报列表.jpg",
+    "设置-周报预览失败.jpg",
+    "设置-周报预览成功.jpg",
+    "设置-日报回读失败锁定周报预览.jpg",
+    "设置-日报更新使周报预览失效.jpg",
+    "设置-清空预览.jpg",
+    "首页-周报失败不影响最新日报.jpg"
+  ],
+  "review": "两名独立只读复核；解析层级及前端失败/预览依赖问题均已修复并复核关闭",
+  "productionRestarted": false,
+  "pushed": false
+}

@@ -208,6 +208,10 @@ export function getSettings(db) {
 }
 
 export function saveSetting(db, key, value) {
+  if (key === "weekly_doc_url" && value === "") {
+    db.prepare("DELETE FROM settings WHERE key = ?").run(key);
+    return { key, value };
+  }
   db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").run(key, value);
   return { key, value };
 }

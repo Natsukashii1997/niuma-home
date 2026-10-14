@@ -1,0 +1,63 @@
+{
+  "before": {
+    "reports-real-redacted.md": [
+      {
+        "id": "686da59ae2ba50efa898-1",
+        "kind": "日报",
+        "date": "2026-10-13",
+        "title": "📅 2026-10-13（周二）"
+      },
+      {
+        "id": "b7fc823babbbf5c5371c-1",
+        "kind": "日报",
+        "date": "2026-10-12",
+        "title": "📅 2026-10-12（周一）"
+      }
+    ],
+    "reports-boundaries.md": [
+      {
+        "id": "b7fc823babbbf5c5371c-1",
+        "kind": "日报",
+        "date": "2026-10-12",
+        "title": "📅 2026-10-12（周一）"
+      },
+      {
+        "id": "7f6bc0ae04cf9c858aad-1",
+        "kind": "周报",
+        "date": "2026-10-05",
+        "title": "周报｜2026-10-05—2026-10-11"
+      }
+    ]
+  },
+  "after": {
+    "reports-real-redacted.md": [
+      {
+        "id": "686da59ae2ba50efa898-1",
+        "kind": "日报",
+        "date": "2026-10-13",
+        "title": "📅 2026-10-13（周二）"
+      },
+      {
+        "id": "b7fc823babbbf5c5371c-1",
+        "kind": "日报",
+        "date": "2026-10-12",
+        "title": "📅 2026-10-12（周一）"
+      }
+    ],
+    "reports-boundaries.md": [
+      {
+        "id": "b7fc823babbbf5c5371c-1",
+        "kind": "日报",
+        "date": "2026-10-12",
+        "title": "📅 2026-10-12（周一）"
+      },
+      {
+        "id": "7f6bc0ae04cf9c858aad-1",
+        "kind": "周报",
+        "date": "2026-10-05",
+        "title": "周报｜2026-10-05—2026-10-11"
+      }
+    ]
+  },
+  "unchanged": true
+}

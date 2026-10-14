@@ -68,9 +68,44 @@ type Message = { role: "user" | "assistant"; text: string; at?: string };
 ## 首页 · 日报周报 · 日历 · 配置
 
 - `GET /api/calendar/today` → `{ time, title, place }[]`（T06）
-- `GET /api/reports` → `{ id, kind: "日报" | "周报", date, title, body }[]`，按日期倒序（T05）
-- `GET /api/reports/:id` → 单篇（T05）
-- `GET /api/settings` → `Record<string, string>`（已实现）
+- `GET /api/settings` → `Record<string, string>`（已实现；未配置或已清空的键不出现）
 - `PUT /api/settings/:key` 请求 `{ value }` → `{ key, value }`（T07）
 
-配置键：`brand_base_url`、`report_doc_url`、`material_types`（JSON 字符串数组）。
+配置键：`brand_base_url`、`report_doc_url`、`material_types`（JSON 字符串数组）、`weekly_doc_url`（T05B，可选）。
+`weekly_doc_url` 是唯一允许空值的键：`value` 为空字符串表示清空，删除该行，返回 `{ key, value: "" }`。其余键空值仍返回 400。
+链接校验：`report_doc_url` 保存时沿用 T07 原规则（HTTPS 飞书域名，不限路径），读取时才要求是 `/docx/<token>` 或 `/wiki/<token>`；`weekly_doc_url` 保存和读取都要求 HTTPS 飞书 `/docx/<token>` 或 `/wiki/<token>`，不含账号、端口、空白（2026-10-14 校准，见 docs/handoff/T05B/合同冲突核查.md）。
+
+### 日报周报（T05，T05B 补充）
+
+```ts
+type Report = {
+  id: string; kind: "日报" | "周报"; date: string; title: string; body: string;
+  // T05B 新增，均为可选，旧调用方可忽略：
+  source?: "daily" | "weekly";       // 来自哪个来源角色；单文档模式均为 "daily"
+  startDate?: string; endDate?: string; // 日期范围（周报）；date = startDate
+  week?: number; weekYear?: number;  // 「第N周 YYYY.W」中的 N 与 YYYY
+  warnings?: string[];               // 周次与日期不一致等提示，仍收录
+};
+type ReportSource = {
+  role: "daily" | "weekly"; url: string; ok: boolean;
+  count: number;                     // 本来源收录篇数
+  ignored: number;                   // 双来源模式下不属于本角色而未收录的篇数
+  unrecognized: Array<{ lineNo: number; title: string }>;
+  fetchedAt?: string; status?: number; error?: string; // 失败时给出 status 与 error
+};
+```
+
+- `GET /api/reports` → `Report[]`，按 `date` 倒序，同日先日报后周报。**兼容旧调用**：任一已配置来源失败时整体返回错误，不返回部分结果。
+- `GET /api/reports?withSources=1` → `{ reports: Report[], sources: ReportSource[] }`（T05B）。
+  - 部分来源失败：200，`reports` 只含成功来源，失败来源在 `sources` 中 `ok: false`。
+  - 全部失败：返回日报来源的错误状态码，body 为 `{ error, sources }`。
+  - 理由：双来源后需要表达「部分成功」，数组形状无法表达；用查询参数新增形状，旧路径与旧形状不变。
+- `refresh=1` 可与上述两种调用组合：重读全部已配置来源（同一链接只读一次）。
+- `GET /api/reports/:id` → 单篇。ID 以 `w-` 开头时属于周报来源，否则属于日报来源（单文档模式下全部属于日报来源）。所属来源读取失败时返回该来源的错误，不返回 404。
+- `POST /api/reports/source-preview` 请求 `{ role: "daily" | "weekly", url }` → `{ url, sameAsDaily: boolean, count, latest?: { title, date }, unrecognized }`。只读试读，不写库、不影响缓存。读取失败时返回相应错误状态码与 `{ error }`。
+
+读取模式与链接比较：两条链接规范化后（`URL` 解析，主机名小写，去掉查询参数、`#` 及末尾 `/`）相同，或未配置 `weekly_doc_url`，为**单文档模式**：只读日报文档，日报周报都从中识别。否则为**双来源模式**：每个来源只收录本角色的篇目。
+
+ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来源为 `w-` + `sha256("周报|" + date + "|" + title)` 前 20 位 + `-` + 同键序号。合并后有重复 ID 时返回 500。
+
+缓存：按规范化链接分别缓存 10 分钟；链接变更或清空只作废该来源的缓存；读取失败作废该来源的缓存，下次请求重试，不返回旧内容。
