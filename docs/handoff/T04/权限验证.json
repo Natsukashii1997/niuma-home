@@ -1,0 +1,153 @@
+{
+  "cliVersion": "0.160.1",
+  "records": [
+    {
+      "id": 1,
+      "threadId": "01a138ff-e6bb-7923-9384-577f5500a0ae",
+      "approvalPolicy": "never",
+      "sandbox": {
+        "type": "readOnly",
+        "networkAccess": false
+      },
+      "environments": [
+        {
+          "environmentId": "local",
+          "cwd": "/private/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/workdesk-t04-browser-nDIQTQ/assistants/1",
+          "runtimeWorkspaceRoots": [
+            "/private/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/workdesk-t04-browser-nDIQTQ/assistants/1"
+          ]
+        }
+      ],
+      "cwd": "/private/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/workdesk-t04-browser-nDIQTQ/assistants/1",
+      "mcp": [
+        {
+          "name": "computer-use",
+          "toolCount": 0
+        },
+        {
+          "name": "node_repl",
+          "toolCount": 0
+        },
+        {
+          "name": "openaiDeveloperDocs",
+          "toolCount": 0
+        },
+        {
+          "name": "rea",
+          "toolCount": 0
+        },
+        {
+          "name": "workbench-profile",
+          "toolCount": 0
+        }
+      ],
+      "itemTypes": [
+        "userMessage",
+        "reasoning",
+        "agentMessage"
+      ]
+    },
+    {
+      "id": 2,
+      "threadId": "01a138fe-1d03-7063-bc1d-ae6164896e1f",
+      "approvalPolicy": "never",
+      "sandbox": {
+        "type": "readOnly",
+        "networkAccess": false
+      },
+      "environments": [
+        {
+          "environmentId": "local",
+          "cwd": "/private/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/workdesk-t04-browser-nDIQTQ/import-source",
+          "runtimeWorkspaceRoots": [
+            "/private/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/workdesk-t04-browser-nDIQTQ/import-source"
+          ]
+        }
+      ],
+      "cwd": "/private/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/workdesk-t04-browser-nDIQTQ/import-source",
+      "mcp": [
+        {
+          "name": "computer-use",
+          "toolCount": 0
+        },
+        {
+          "name": "node_repl",
+          "toolCount": 0
+        },
+        {
+          "name": "openaiDeveloperDocs",
+          "toolCount": 0
+        },
+        {
+          "name": "rea",
+          "toolCount": 0
+        },
+        {
+          "name": "workbench-profile",
+          "toolCount": 0
+        }
+      ],
+      "itemTypes": [
+        "userMessage",
+        "reasoning",
+        "agentMessage"
+      ]
+    },
+    {
+      "id": 3,
+      "threadId": "01a13900-6076-76e0-947c-74b260ebb958",
+      "approvalPolicy": "never",
+      "sandbox": {
+        "type": "readOnly",
+        "networkAccess": false
+      },
+      "environments": [
+        {
+          "environmentId": "local",
+          "cwd": "/private/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/workdesk-t04-browser-nDIQTQ/assistants/3",
+          "runtimeWorkspaceRoots": [
+            "/private/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/workdesk-t04-browser-nDIQTQ/assistants/3"
+          ]
+        }
+      ],
+      "cwd": "/private/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/workdesk-t04-browser-nDIQTQ/assistants/3",
+      "mcp": [
+        {
+          "name": "computer-use",
+          "toolCount": 0
+        },
+        {
+          "name": "node_repl",
+          "toolCount": 0
+        },
+        {
+          "name": "openaiDeveloperDocs",
+          "toolCount": 0
+        },
+        {
+          "name": "rea",
+          "toolCount": 0
+        },
+        {
+          "name": "workbench-profile",
+          "toolCount": 0
+        }
+      ],
+      "itemTypes": [
+        "userMessage",
+        "reasoning",
+        "agentMessage"
+      ]
+    }
+  ],
+  "stage": "thread/resume 后、尚未发送新轮次",
+  "turnReadback": {
+    "threadId": "01a138ff-e6bb-7923-9384-577f5500a0ae",
+    "environments": [],
+    "requestSandbox": {
+      "type": "readOnly",
+      "networkAccess": false
+    },
+    "requestApproval": "never"
+  }
+}

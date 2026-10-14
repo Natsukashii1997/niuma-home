@@ -30,8 +30,3 @@ export const sampleReports = [
     body: "本周进展\n1. 三条业务线 10 月方案全部录入\n2. 品牌内容发布 4 篇\n\n下周重点\n1. 11 月促销预案",
   },
 ];
-
-export const sampleMessages = [
-  { role: "user", text: "帮我写一版开学季海报主标题，突出安心学Max 两门8折。" },
-  { role: "assistant", text: "给你三个方向：\n1. 开学不慌，两门8折稳稳拿下\n2. 新学期，安心学：2门及以上享8折\n3. 选课季专享｜安心学Max 两门8折" },
-];

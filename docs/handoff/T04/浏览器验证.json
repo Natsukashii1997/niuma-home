@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-14",
+  "dataDir": "/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/workdesk-t04-browser-nDIQTQ",
+  "importThreadId": "01a138fe-1d03-7063-bc1d-ae6164896e1f",
+  "importCwd": "/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/workdesk-t04-browser-nDIQTQ/import-source",
+  "firstPass": {
+    "checks": [
+      "文案助手真实流式回复且初始说明为空",
+      "写文件请求被拒绝，工作目录为空",
+      "导入预览不写库、历史可读并可继续对话、已导入置灰",
+      "新建预览不写库，自建助手真实聊天且预设说明生效",
+      "编辑名称及说明保存，已有会话继续采用初始说明",
+      "Shift+Enter换行，Enter发送，失败保留输入、锁定重发并可回读"
+    ],
+    "failure": "390px 页头按钮使页面宽度412px；已在助手页面范围内修复并复测"
+  },
+  "checks": [
+    "真实关闭并重开工作台服务，3个助手各4条历史逐字段一致",
+    "真实流式事件 16 次，明确拒绝命令，工作目录仍为空",
+    "390px 手机视口页头与聊天无横向溢出",
+    "取消新建预览不增加助手",
+    "失败保留输入、保留部分回复、锁定发送，重新读取真实历史后恢复",
+    "Shift+Enter换行及输入法组合Enter不误发"
+  ],
+  "stream": {
+    "deltaCount": 16,
+    "done": true,
+    "reply": "工作台流式验收完成，所有对话继续保持只读。"
+  },
+  "historyBeforeRestart": [
+    {
+      "id": 1,
+      "name": "文案助手",
+      "codexThreadId": "01a138ff-e6bb-7923-9384-577f5500a0ae",
+      "messageCount": 4
+    },
+    {
+      "id": 2,
+      "name": "T04 验收导入会话 2026-10-14",
+      "codexThreadId": "01a138fe-1d03-7063-bc1d-ae6164896e1f",
+      "messageCount": 4
+    },
+    {
+      "id": 3,
+      "name": "T04 自建助手已编辑",
+      "codexThreadId": "01a13900-6076-76e0-947c-74b260ebb958",
+      "messageCount": 4
+    }
+  ],
+  "pageErrors": [],
+  "commandRefusal": "未执行 `pwd`。当前工作台禁止执行命令，因此没有命令输出。",
+  "assistantWorkdirFiles": [],
+  "harnessCorrections": [
+    "首轮接口测试将 /var 与 SQLite 规范化后的 /private/var 作为不同路径比较；改为 realpath 比较后通过。",
+    "浏览器调试协议无法读取已结束 SSE 响应体；改用 fetch 响应副本收集流式证据。",
+    "拒绝命令的自动断言遗漏“未执行”“禁止执行”两种正确表述；回读原答复确认拒绝，未修改产品代码。"
+  ]
+}

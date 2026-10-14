@@ -171,6 +171,38 @@ export function listAssistants(db) {
     .all();
 }
 
+export function getAssistant(db, id) { return listAssistants(db).find((row) => row.id === Number(id)); }
+
+export function saveAssistant(db, { name, instructions = "" }, id) {
+  if (id) db.prepare("UPDATE assistants SET name = ?, instructions = ? WHERE id = ?").run(name, instructions, id);
+  else id = Number(db.prepare("INSERT INTO assistants (name, kind, instructions, created_at) VALUES (?, 'custom', ?, ?)").run(name, instructions, new Date().toISOString()).lastInsertRowid);
+  return getAssistant(db, id);
+}
+
+export function bindAssistantThread(db, id, threadId) {
+  db.prepare("UPDATE assistants SET codex_thread_id = ? WHERE id = ? AND codex_thread_id IS NULL").run(threadId, id);
+  return getAssistant(db, id);
+}
+
+export function assistantDirectory(db, id) {
+  const file = db.prepare("PRAGMA database_list").all().find((row) => row.name === "main").file;
+  return path.join(path.dirname(file), "assistants", String(id));
+}
+
+export function importAssistants(db, sessions) {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const result = sessions.map((session) => {
+      const existing = listAssistants(db).find((row) => row.codexThreadId === session.threadId);
+      if (existing) return existing;
+      const id = Number(db.prepare("INSERT INTO assistants (name, kind, codex_thread_id, created_at) VALUES (?, 'imported', ?, ?)")
+        .run(session.name, session.threadId, new Date().toISOString()).lastInsertRowid);
+      return getAssistant(db, id);
+    });
+    db.exec("COMMIT"); return result;
+  } catch (error) { db.exec("ROLLBACK"); throw error; }
+}
+
 export function getSettings(db) {
   return Object.fromEntries(db.prepare("SELECT key, value FROM settings").all().map((r) => [r.key, r.value]));
 }

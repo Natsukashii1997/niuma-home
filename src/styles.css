@@ -262,3 +262,19 @@ textarea.paste-box::placeholder { color: var(--muted); }
 .settings-preview, .settings-saved { width: 100%; padding: 12px; border-radius: 6px; border: 1px solid var(--line); }
 .settings-preview { background: var(--accent-soft); border-color: var(--accent); }
 .settings-saved { background: var(--panel-soft); }
+
+/* T04：助手对话与导入；沿用工作台现有间距、颜色和弹窗。 */
+.assistant-page .chat-list strong { overflow-wrap: anywhere; min-width: 0; }
+.assistant-page .chat-messages { max-height: 60vh; overflow-y: auto; }
+.assistant-page .chat-panel .bubble { white-space: pre-wrap; overflow-wrap: anywhere; }
+.assistant-page .chat-input textarea { min-width: 0; color: var(--text); background: var(--panel); }
+.assistant-status { padding: 6px 16px; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.assistant-form { padding: 16px; display: flex; flex-direction: column; gap: var(--gap); }
+.assistant-form p { margin: 0; }
+.assistant-form .pre, .assistant-form .error, .assistant-form .settings-preview { overflow-wrap: anywhere; }
+.assistant-sessions { max-height: 40vh; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+.assistant-session { display: flex; align-items: flex-start; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; }
+.assistant-session span { min-width: 0; overflow-wrap: anywhere; }
+.assistant-session small { display: block; color: var(--muted); margin-top: 4px; }
+.assistant-session:has(input:disabled) { color: var(--muted); background: var(--panel-soft); }
+@media (max-width: 600px) { .assistant-page .page-header { flex-direction: column; } .assistant-page .page-actions { flex-wrap: wrap; } .assistant-page .chat-head { flex-wrap: wrap; } .assistant-page .chat-input { flex-wrap: wrap; } .assistant-page .chat-input textarea { flex-basis: 100%; } }
