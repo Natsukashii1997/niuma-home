@@ -54,7 +54,7 @@ type Material = { id: number; month: string; line: string; name: string; type: s
 
 ```ts
 type Assistant = { id: number; name: string; kind: "copywriter" | "imported" | "custom"; instructions: string; codexThreadId: string | null; createdAt: string;
-  model: string | null; effort: string | null };   // T08 新增；null = 跟随 Codex 默认配置
+  model: string | null; effort: string | null };   // T08 新增；null = 跟随 Codex 默认配置（不把解析出的默认值写进数据库）
 type CodexModel = { id: string; model: string; displayName: string; description: string; isDefault: boolean;
   defaultEffort: string; efforts: Array<{ value: string; description: string }> };   // T08，来自 app-server model/list，不含隐藏模型
 type Message = { role: "user" | "assistant"; text: string; at?: string };
@@ -70,6 +70,8 @@ type Message = { role: "user" | "assistant"; text: string; at?: string };
 - `POST /api/assistants/import` 请求 `{ threadIds: string[] }` → `Assistant[]`
 - `GET /api/codex/models` → `CodexModel[]`（T08，缓存 10 分钟；读取失败返回错误，不返回空数组）
 - `GET /api/assistants/:id/runtime` → `{ model: string, effort: string | null } | null`（T08，当前会话实际生效值，取自 `thread/resume`；无会话时为 `null`）
+- 发送消息（T08 规则，2026-10-15 校准）：每轮向 `turn/start` 显式传入解析后的 `model` 与 `effort`。`model` 为 `null` 时，用 `config/read`（`includeLayers: false`，不传 `cwd`，排除项目配置层）只读解析非项目有效配置；配置未指定模型时取 `CodexModel.isDefault`；强度为空时取对应模型的 `defaultEffort`（显式选了模型、强度为空时同样如此）。默认值读取失败、模型不可用或强度不受支持时，以 SSE `error` 事件返回原因，且不发起 `turn/start`。
+- 页面上保存值（`Assistant.model / effort`）与生效值（runtime）分开显示；保存后不提前宣称已生效。
 
 ## 首页 · 日报周报 · 日历 · 配置
 
