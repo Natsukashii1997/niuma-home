@@ -12,9 +12,10 @@ export function PageHeader({ title, subtitle, actions }) {
   );
 }
 
-export function Card({ title, extra, children, className = "" }) {
+// dither：悬停时用抖动网点逐档加深（④）
+export function Card({ title, extra, children, className = "", dither = false }) {
   return (
-    <section className={`card ${className}`}>
+    <section className={`card ${className}`} data-dither={dither ? "" : undefined}>
       {(title || extra) && (
         <div className="card-head">
           <h2>{title}</h2>

@@ -1,5 +1,6 @@
-import { Home, Megaphone, Sparkles, BarChart3, Bot, FileText, Settings } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useRoute, href } from "./router.js";
+import { PixelIcon, dissolve, prefersReducedMotion } from "./ui/bitmap.jsx";
 import HomePage from "./modules/home/HomePage.jsx";
 import MarketingPage from "./modules/marketing/MarketingPage.jsx";
 import BrandPage from "./modules/brand/BrandPage.jsx";
@@ -8,39 +9,85 @@ import AssistantsPage from "./modules/assistants/AssistantsPage.jsx";
 import ReportsPage from "./modules/reports/ReportsPage.jsx";
 import SettingsPage from "./modules/settings/SettingsPage.jsx";
 
-// 新增模块：在这里登记一项，并在 src/modules/<key>/ 下建页面。
+// 新增模块：在这里登记一项（icon 为 src/ui/bitmap.jsx 中的像素图标名），并在 src/modules/<key>/ 下建页面。
 const MODULES = [
-  { key: "home", label: "首页", icon: Home, Page: HomePage },
-  { key: "marketing", label: "营销", icon: Megaphone, Page: MarketingPage },
-  { key: "brand", label: "品牌", icon: Sparkles, Page: BrandPage },
-  { key: "business", label: "业务", icon: BarChart3, Page: BusinessPage },
-  { key: "assistants", label: "Agent", icon: Bot, Page: AssistantsPage },
-  { key: "reports", label: "日/周报", icon: FileText, Page: ReportsPage },
+  { key: "home", label: "首页", icon: "home", Page: HomePage },
+  { key: "marketing", label: "营销", icon: "marketing", Page: MarketingPage },
+  { key: "brand", label: "品牌", icon: "brand", Page: BrandPage },
+  { key: "business", label: "业务", icon: "business", Page: BusinessPage },
+  { key: "assistants", label: "Agent", icon: "agent", Page: AssistantsPage },
+  { key: "reports", label: "日/周报", icon: "reports", Page: ReportsPage },
 ];
+const SETTINGS = { key: "settings", label: "设置", icon: "settings", Page: SettingsPage };
+
+const moduleOf = (key) => (key === "settings" ? SETTINGS : MODULES.find((m) => m.key === key) || MODULES[0]);
+
+// 同一模块内换子页直接切换；换模块时用像素溶解（③）。
+function useDisplayedRoute(route) {
+  const routeKey = route.join("/");
+  const [shown, setShown] = useState(route);
+  const latest = useRef(route);
+  latest.current = route;
+  const canvas = useRef(null), area = useRef(null);
+  useEffect(() => {
+    if (moduleOf(route[0]).key === moduleOf(shown[0]).key || prefersReducedMotion() || !canvas.current || !area.current) {
+      setShown(route);
+      return undefined;
+    }
+    return dissolve(canvas.current, area.current, () => {
+      setShown(latest.current);
+      scrollTo(0, 0);
+    });
+  }, [routeKey]); // routeKey 概括了 route 的变化
+  return { shown, canvas, area };
+}
+
+function useClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
 
 export default function App() {
-  const [moduleKey = "home", ...rest] = useRoute();
-  const current = MODULES.find((m) => m.key === moduleKey) || MODULES[0];
-  const isSettings = moduleKey === "settings";
-  const { Page } = current;
+  const route = useRoute();
+  const { shown, canvas, area } = useDisplayedRoute(route);
+  const current = moduleOf(route[0]);
+  const displayed = moduleOf(shown[0]);
+  const now = useClock();
+  const { Page } = displayed;
   return (
-    <div className="layout">
-      <nav className="sidebar">
-        <div className="brand">工作台</div>
-        {MODULES.map(({ key, label, icon: Icon }) => (
-          <a key={key} href={href(key)} className={!isSettings && key === current.key ? "active" : ""}>
-            <Icon size={16} strokeWidth={1.8} />
-            {label}
+    <div className="app">
+      <header className="chrome">
+        <span className="chrome-dots" aria-hidden="true"><i /><i /><i /></span>
+        <span className="chrome-path">work-desk / <b>{current.key}</b>{route.slice(1, 2).map((p) => ` / ${p}`)}</span>
+        <span>{now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
+      </header>
+      <div className="layout">
+        <nav className="sidebar" aria-label="模块">
+          <div className="brand">
+            <span className="brand-mark" aria-hidden="true">W</span>
+            <span className="brand-name"><strong>工作台</strong><span className="label">work desk</span></span>
+          </div>
+          {MODULES.map(({ key, label, icon }) => (
+            <a key={key} href={href(key)} className={key === current.key ? "active" : ""} aria-current={key === current.key ? "page" : undefined} title={label}>
+              <PixelIcon name={icon} />
+              {label}
+            </a>
+          ))}
+          <div className="spacer" />
+          <a href={href("settings")} className={current.key === "settings" ? "active" : ""} aria-label="设置" title="设置" aria-current={current.key === "settings" ? "page" : undefined}>
+            <PixelIcon name="settings" />设置
           </a>
-        ))}
-        <div className="spacer" />
-        <a href={href("settings")} className={isSettings ? "active" : ""} aria-label="设置" title="设置" aria-current={isSettings ? "page" : undefined}>
-          <Settings size={16} strokeWidth={1.8} />设置
-        </a>
-      </nav>
-      <main className="main">
-        {isSettings ? <SettingsPage /> : <Page route={rest} />}
-      </main>
+          <div className="sidebar-foot label">local · 127.0.0.1</div>
+        </nav>
+        <main className="main" ref={area}>
+          {displayed.key === "settings" ? <SettingsPage /> : <Page route={shown.slice(1)} />}
+        </main>
+      </div>
+      <canvas ref={canvas} className="dissolve-canvas" aria-hidden="true" />
     </div>
   );
 }

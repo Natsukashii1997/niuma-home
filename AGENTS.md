@@ -36,6 +36,8 @@ src/
   constants.js       业务线、促销字段、月份工具
   samples.js         示例数据（接口 501 时显示）
   ui/components.jsx  公共组件
+  ui/bitmap.jsx      位图风基础件：FlipNumber / DotMatrix / DitherBar / TypeText / StepProgress / PixelIcon / BitAvatar / dissolve
+  assets/fonts/      Geist / Geist Mono / Geist Pixel（OFL）
   styles.css         设计变量 + 全部样式
   modules/<模块>/     各模块页面
 docs/
@@ -51,7 +53,7 @@ fixtures/            验收样例（飞书复制的方案原文）
 - 未实现的按钮用 `<PendingButton task="T0x">`；实现时换成 `<Button>`。
 - 接口路径与数据形状以 [docs/API.md](docs/API.md) 为准；需要改，先在交接里说明理由，由 Claude 更新文档。
 - 表结构只在 `server/db.mjs` 的 SCHEMA 里改；已有列不改名、不删。
-- 新样式先用 `styles.css` 里的变量和已有类；不引入 UI 框架、CSS-in-JS 或新的图标库。新增依赖须在交接里说明理由。
+- 视觉以 [docs/STYLE-GUIDE.md](docs/STYLE-GUIDE.md)（v2 位图风）为准：新样式先用 `styles.css` 里的变量和已有类；图标只用 `PixelIcon`；动效只用 `src/ui/bitmap.jsx` 的按帧组件，不写 CSS transition。不引入 UI 框架、CSS-in-JS 或图标库。新增依赖须在交接里说明理由。
 - 所有写入真实数据的操作必须「先预览、后确认」。
 - 访问飞书一律用本机 `lark-cli`（`--as user`），不在代码里写 token。
 - 只监听 127.0.0.1。
