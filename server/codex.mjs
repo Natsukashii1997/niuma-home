@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { mkdir } from "node:fs/promises";
 
-// 与本机 codex-cli 0.160.1 生成协议保持一致。不覆盖模型、推理强度或账号。
+// 与本机 codex-cli 0.160.1 生成协议保持一致。不修改全局配置或账号。
 const disabledFeatures = ["shell_tool", "shell_snapshot", "hooks", "plugins", "apps", "multi_agent", "multi_agent_v2", "memories", "skill_mcp_dependency_install", "browser_use", "computer_use", "image_generation", "workspace_dependencies", "tool_suggest"];
 export const launchArgs = ["app-server", ...disabledFeatures.flatMap((key) => ["-c", `features.${key}=false`]), "-c", "notify=[]", "-c", "memories.use_memories=false", "-c", "memories.generate_memories=false"];
 const readonly = { approvalPolicy: "never", sandbox: "read-only" };
@@ -11,8 +11,8 @@ const policy = "这是个人工作台的只读文本助手。仅回答用户，�
 export function startParams({ cwd, instructions = "" }, config) {
   return { cwd, ...readonly, config, environments: [], dynamicTools: [], selectedCapabilityRoots: [], developerInstructions: `${policy}\n\n${instructions}`, historyMode: "paginated" };
 }
-export function turnParams(threadId, text) {
-  return { threadId, input: [{ type: "text", text, text_elements: [] }], approvalPolicy: "never", sandboxPolicy: { type: "readOnly", networkAccess: false }, environments: [] };
+export function turnParams(threadId, text, selection) {
+  return { threadId, input: [{ type: "text", text, text_elements: [] }], ...selection, approvalPolicy: "never", sandboxPolicy: { type: "readOnly", networkAccess: false }, environments: [] };
 }
 export function historyMessage({ item, startedAtMs }) {
   const text = item.type === "userMessage" ? item.content.filter((part) => part.type === "text").map((part) => part.text).join("\n") : item.type === "agentMessage" ? item.text : null;
@@ -29,11 +29,12 @@ export function deniedResponse(method) {
 }
 
 export class CodexClient {
-  constructor({ spawnProcess = () => spawn("codex", launchArgs, { stdio: ["pipe", "pipe", "ignore"], shell: false }), requestTimeout = 60000, turnTimeout = 600000 } = {}) {
+  constructor({ spawnProcess = () => spawn("codex", launchArgs, { stdio: ["pipe", "pipe", "ignore"], shell: false }), requestTimeout = 60000, turnTimeout = 600000, now = Date.now } = {}) {
     this.spawnProcess = spawnProcess;
     this.requestTimeout = requestTimeout;
     this.turnTimeout = turnTimeout;
-    this.pending = new Map(); this.loaded = new Set(); this.active = new Set();
+    this.now = now;
+    this.pending = new Map(); this.loaded = new Set(); this.active = new Set(); this.runtimeReads = new Map();
     this.events = new EventEmitter(); this.events.setMaxListeners(0); this.sequence = 0;
   }
   async ready() {
@@ -78,7 +79,7 @@ export class CodexClient {
   }
   fail(child, error) {
     if (!child || child !== this.child) return;
-    this.child = null; this.starting = null; this.loaded.clear();
+    this.child = null; this.starting = null; this.loaded.clear(); this.modelCache = null;
     for (const request of this.pending.values()) { clearTimeout(request.timer); request.reject(error); }
     this.pending.clear(); this.events.emit("failure", error); child.kill();
   }
@@ -97,6 +98,34 @@ export class CodexClient {
   async listSessions() {
     const threads = await this.pages("thread/list", { modelProviders: [], sourceKinds: ["cli", "vscode", "exec", "appServer"], sortKey: "updated_at", sortDirection: "desc", archived: false, useStateDbOnly: true });
     return threads.filter((t) => t.name?.trim()).map((t) => ({ threadId: t.id, name: t.name, updatedAt: new Date(t.updatedAt * 1000).toISOString(), cwd: t.cwd }));
+  }
+  async models() {
+    if (this.modelCache && this.now() - this.modelCache.at < 600000) return this.modelCache.rows;
+    if (this.modelLoading) return this.modelLoading;
+    this.modelLoading = this.pages("model/list", { includeHidden: false }).then((models) => {
+      const rows = models.filter((model) => !model.hidden).map((model) => ({
+        id: model.id, model: model.model, displayName: model.displayName, description: model.description,
+        isDefault: model.isDefault, defaultEffort: model.defaultReasoningEffort,
+        efforts: model.supportedReasoningEfforts.map(({ reasoningEffort, description }) => ({ value: reasoningEffort, description })),
+      }));
+      this.modelCache = { rows, at: this.now() }; return rows;
+    });
+    try { return await this.modelLoading; } finally { this.modelLoading = null; }
+  }
+  async selection({ model = null, effort = null } = {}) {
+    const models = await this.models();
+    if (model === null) {
+      // 不传 cwd：只读全局有效配置，排除导入会话原目录的项目配置层。
+      const { config } = await this.request("config/read", { includeLayers: false });
+      model = config.model ?? models.find((m) => m.isDefault)?.model;
+      effort = config.model_reasoning_effort ?? null;
+      if (!model) throw new Error("无法确定 Codex 默认模型，请检查 Codex 配置");
+    }
+    const selected = models.find((m) => m.model === model);
+    if (!selected) throw new Error(`模型 ${model} 当前不可用，请重新选择或恢复默认`);
+    effort ??= selected.defaultEffort;
+    if (!selected.efforts.some((e) => e.value === effort)) throw new Error(`模型 ${model} 不支持强度 ${effort}，请重新选择或检查 Codex 默认配置`);
+    return { model, effort };
   }
   async readThread(threadId) { return (await this.request("thread/read", { threadId, includeTurns: false })).thread; }
   async messages(threadId) {
@@ -125,20 +154,30 @@ export class CodexClient {
     await this.request("thread/name/set", { threadId: result.thread.id, name });
     return result.thread.id;
   }
-  async resume(threadId) {
+  async resume(threadId, refresh = false) {
     await this.ready();
-    if (this.loaded.has(threadId)) return;
+    if (this.loaded.has(threadId) && !refresh) return;
     const thread = await this.readThread(threadId);
     const config = await this.safeConfig(thread.cwd);
     const result = await this.request("thread/resume", { threadId, cwd: thread.cwd, ...readonly, config, excludeTurns: true });
     this.checkPermissions(result);
     if (result.thread?.status?.type === "active") throw new Error("该 Codex 会话仍有进行中的回复，请稍后重试");
     this.loaded.add(threadId);
+    return { model: result.model, effort: result.reasoningEffort ?? null };
   }
-  async send(threadId, text, emit, signal) {
+  async runtime(threadId) {
+    if (this.active.has(threadId)) throw new Error("该会话正在回复，请稍后读取生效值");
+    if (this.runtimeReads.has(threadId)) return this.runtimeReads.get(threadId);
+    const reading = this.resume(threadId, true);
+    this.runtimeReads.set(threadId, reading);
+    try { return await reading; } finally { this.runtimeReads.delete(threadId); }
+  }
+  async send(threadId, text, emit, signal, settings) {
     if (this.active.has(threadId)) throw new Error("该会话正在回复，请稍后重新读取历史");
     this.active.add(threadId);
     try {
+      await this.runtimeReads.get(threadId);
+      const selection = await this.selection(settings);
       await this.resume(threadId);
       if (signal?.aborted) throw new Error("发送已取消");
       await new Promise((resolve, reject) => {
@@ -175,7 +214,7 @@ export class CodexClient {
           } else if (method === "error" && !params.willRetry) this.fail(this.child, new Error(params.error?.message || "Codex 回复失败"));
         };
         this.events.on("notification", notification); this.events.on("failure", finish); signal?.addEventListener("abort", abort, { once: true });
-        this.rpc("turn/start", turnParams(threadId, text)).then((result) => {
+        this.rpc("turn/start", turnParams(threadId, text, selection)).then((result) => {
           turnId = result.turn.id;
           if (signal?.aborted) abort();
           const buffered = queued; queued = []; buffered.forEach(notification);

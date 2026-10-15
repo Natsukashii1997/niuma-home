@@ -1,0 +1,135 @@
+{
+  "日期": "2026-10-15",
+  "基线提交": "822dd53",
+  "CLI": "0.160.1",
+  "隔离地址": "http://127.0.0.1:5290",
+  "临时构建与协议目录": "/tmp/workdesk-t08-oWG6CY",
+  "隔离数据目录": "/tmp/workdesk-t08-data-PxtwZS",
+  "真实数据库前后SHA256": "e9512c92e989bdc498414581a64ca226095fc2ca466cfa3a96032e8a416adf12",
+  "真实数据和正式dist逐文件指纹比较": "一致",
+  "自动化测试": {
+    "通过": 83,
+    "失败": 0,
+    "模型调用": "假的 app-server"
+  },
+  "构建": "通过，输出到临时目录",
+  "真实对话": [
+    "gpt-6-luna / high 回复正常，runtime一致",
+    "恢复全局默认 gpt-6-astra / ultra 回复正常，runtime一致"
+  ],
+  "协议回读": [
+    {
+      "method": "thread/start",
+      "threadId": "01a13d4d-4141-7d50-8a04-426622898ca3",
+      "model": "gpt-6-astra",
+      "effort": "ultra",
+      "approvalPolicy": "never",
+      "sandbox": {
+        "type": "readOnly",
+        "networkAccess": false
+      }
+    },
+    {
+      "method": "turn/start",
+      "model": "gpt-6-luna",
+      "effort": "high",
+      "approvalPolicy": "never",
+      "sandboxPolicy": {
+        "type": "readOnly",
+        "networkAccess": false
+      },
+      "environments": []
+    },
+    {
+      "method": "thread/resume",
+      "threadId": "01a13d4d-4141-7d50-8a04-426622898ca3",
+      "model": "gpt-6-luna",
+      "effort": "high",
+      "approvalPolicy": "never",
+      "sandbox": {
+        "type": "readOnly",
+        "networkAccess": false
+      }
+    },
+    {
+      "method": "turn/start",
+      "model": "gpt-6-astra",
+      "effort": "ultra",
+      "approvalPolicy": "never",
+      "sandboxPolicy": {
+        "type": "readOnly",
+        "networkAccess": false
+      },
+      "environments": []
+    },
+    {
+      "method": "thread/resume",
+      "threadId": "01a13d4d-4141-7d50-8a04-426622898ca3",
+      "model": "gpt-6-astra",
+      "effort": "ultra",
+      "approvalPolicy": "never",
+      "sandbox": {
+        "type": "readOnly",
+        "networkAccess": false
+      }
+    },
+    {
+      "method": "thread/resume",
+      "threadId": "01a13d4d-4141-7d50-8a04-426622898ca3",
+      "model": "gpt-6-astra",
+      "effort": "ultra",
+      "approvalPolicy": "never",
+      "sandbox": {
+        "type": "readOnly",
+        "networkAccess": false
+      }
+    },
+    {
+      "method": "thread/resume",
+      "threadId": "01a13d4d-4141-7d50-8a04-426622898ca3",
+      "model": "gpt-6-astra",
+      "effort": "ultra",
+      "approvalPolicy": "never",
+      "sandbox": {
+        "type": "readOnly",
+        "networkAccess": false
+      }
+    },
+    {
+      "method": "thread/resume",
+      "threadId": "01a13d4d-4141-7d50-8a04-426622898ca3",
+      "model": "gpt-6-astra",
+      "effort": "ultra",
+      "approvalPolicy": "never",
+      "sandbox": {
+        "type": "readOnly",
+        "networkAccess": false
+      }
+    },
+    {
+      "method": "thread/resume",
+      "threadId": "01a13d4d-4141-7d50-8a04-426622898ca3",
+      "model": "gpt-6-astra",
+      "effort": "ultra",
+      "approvalPolicy": "never",
+      "sandbox": {
+        "type": "readOnly",
+        "networkAccess": false
+      }
+    }
+  ],
+  "浏览器验证": [
+    "换模型自动选择默认强度",
+    "单独更换强度保存并回读",
+    "回复中模型/强度禁用",
+    "恢复默认后强度禁用",
+    "模拟保存失败恢复原显示并阻止发送",
+    "回读设置后解除失败门禁",
+    "模型不可用保留值并阻止发送，恢复默认可继续",
+    "模型列表模拟503保留已保存模型与强度，重试恢复",
+    "A旧列表响应迟到，B新选择gpt-6-sol未被覆盖"
+  ],
+  "截图限制": "原生菜单弹层不在页面截图像素内；下拉框展开-辅助功能证据.txt 记录真实 expanded 状态及选项，未伪造展开截图",
+  "禁止项": "未写真实data、未覆盖正式dist、未修改全局配置、未操作5280、未push",
+  "临时服务收尾": "5290 验收服务已停止，专用验收标签页已关闭"
+}

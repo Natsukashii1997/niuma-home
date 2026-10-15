@@ -272,6 +272,12 @@ textarea.paste-box::placeholder { color: var(--muted); }
 .assistant-page .chat-panel .bubble { white-space: pre-wrap; overflow-wrap: anywhere; }
 .assistant-page .chat-input textarea { min-width: 0; color: var(--text); background: var(--panel); }
 .assistant-status { padding: 6px 16px; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.assistant-models { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.assistant-models p { margin: 8px 0 0; overflow-wrap: anywhere; }
+.assistant-model-row { flex-wrap: wrap; align-items: flex-end; }
+.assistant-model-row .material-field { min-width: 0; max-width: 100%; }
+.assistant-model-row select { max-width: 100%; }
+.assistant-model-warning { padding: 8px; background: var(--orange-soft); color: var(--orange); border-radius: var(--radius); }
 .assistant-form { padding: 16px; display: flex; flex-direction: column; gap: var(--gap); }
 .assistant-form p { margin: 0; }
 .assistant-form .pre, .assistant-form .error, .assistant-form .settings-preview { overflow-wrap: anywhere; }

@@ -1,0 +1,58 @@
+Browser tab: 1, Title: "工作台", URL: "http://127.0.0.1:5290/#/assistants/1".
+1 AXWebArea 工作台, URL: 127.0.0.1:5290/#/assistants/1
+	2 container root
+		3 container
+			4 text 工作台
+			5 link Description: 首页, Value: 127.0.0.1:5290/#/home
+			6 link Description: 营销, Value: 127.0.0.1:5290/#/marketing
+			7 link Description: 品牌, Value: 127.0.0.1:5290/#/brand
+			8 link Description: 业务, Value: 127.0.0.1:5290/#/business
+			9 link Description: Agent, Value: 127.0.0.1:5290/#/assistants
+			10 link Description: 日/周报, Value: 127.0.0.1:5290/#/reports
+			11 link Description: 设置, Value: 127.0.0.1:5290/#/settings
+		12 container
+			13 heading 助手, Value: 1
+				14 text 助手
+			15 text 背后接本机 Codex，使用你的 Codex 额度；所有助手只读，不改文件、不执行命令
+			16 button 导入 Codex 会话
+				17 image
+				18 text 导入 Codex 会话
+			19 button 新建助手
+				20 image
+				21 text 新建助手
+			22 container 助手列表
+				23 link Description: 文案助手 文案, Value: 127.0.0.1:5290/#/assistants/1
+				24 link Description: 模型不可用验收 自建, Value: 127.0.0.1:5290/#/assistants/2
+			25 container 文案助手对话
+				26 container
+					27 text 文案助手 只读
+					28 button 编辑助手
+				29 container
+					30 text 模型
+					31 pop up button (expanded, settable) Description: 模型, Value: 跟随默认, Secondary Actions: Collapse
+						32 menu
+							33 (selected) 跟随默认
+							34 Help: Latest workhorse model for coding and everyday work., Value: GPT-6.1-Sol
+							35 Help: Frontier intelligence for the most demanding work., Value: GPT-6-Astra
+							36 Help: Previous generation workhorse model., Value: GPT-6-Sol
+							37 Help: Fast and affordable model for easier tasks., Value: GPT-6-Luna
+							38 Help: Older generation workhorse model., Value: GPT-5.6-Sol
+							39 Help: Older balanced model for straightforward work., Value: GPT-5.6-Terra
+							40 Help: Older fast and efficient model., Value: GPT-5.6-Luna
+				41 container
+					42 text 强度
+					43 pop up button (disabled, collapsed, settable) Description: 强度, Value: 跟随默认, Secondary Actions: Expand
+						44 menu
+							45 (selected) 跟随默认
+				46 text 当前生效：gpt-6-astra · ultra
+				47 text 已保存并回读。下一条消息将恢复 Codex 全局默认模型与强度。
+				48 container
+					49 text 这是隔离验收对话。请只回复：T08 模型切换验证通过。不要调用工具。 T08 模型切换验证通过。 这是恢复默认后的隔离验收。请只回复：T08 默认恢复验证通过。不要调用工具。 T08 默认恢复验证通过。
+				50 text Enter 发送 · Shift+Enter 换行
+				51 container
+					52 text entry area (settable) 消息
+					53 button (disabled) 发送
+						54 image
+						55 text 发送
+
+The focused UI element is 31 pop up button (expanded, settable) Description: 模型, Value: 跟随默认, Secondary Actions: Collapse

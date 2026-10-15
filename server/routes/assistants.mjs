@@ -12,8 +12,32 @@ export function routes(db, client = codex) {
     return { name: value.name.trim(), instructions: value.instructions };
   };
   const edit = async (req, res, previous) => {
-    let value;
-    try { value = fields(await readJson(req), previous); } catch (e) { return json(res, 400, { error: e.message }); }
+    let body, value;
+    try {
+      body = await readJson(req);
+      if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("请输入有效的助手设置");
+      value = fields(body, previous);
+    } catch (e) { return json(res, 400, { error: e.message }); }
+    if (previous) {
+      if (sending.has(previous.id)) return json(res, 409, { error: "该助手正在回复，请结束后修改设置" });
+      const changesModel = Object.hasOwn(body, "model") || Object.hasOwn(body, "effort");
+      const clearing = body.model === null && body.effort === null;
+      const models = changesModel && !clearing ? await client.models() : null;
+      // 请求体和模型列表都可能等待；写入前重新读取，避免覆盖并发编辑或回复中的设置。
+      if (sending.has(previous.id)) return json(res, 409, { error: "该助手正在回复，请结束后修改设置" });
+      previous = getAssistant(db, previous.id);
+      try {
+        value = { ...fields(body, previous), model: Object.hasOwn(body,"model") ? body.model : previous.model, effort: Object.hasOwn(body,"effort") ? body.effort : previous.effort };
+        if (changesModel) {
+          if (value.model === null) { if (value.effort !== null) throw new Error("跟随默认时强度也必须为空"); }
+          else {
+            const selected = models?.find((m) => m.model === value.model);
+            if (!selected) throw new Error("模型不存在或当前不可用，请重新选择");
+            if (value.effort !== null && !selected.efforts.some((e) => e.value === value.effort)) throw new Error("该模型不支持所选强度");
+          }
+        }
+      } catch (e) { return json(res, 400, { error: e.message }); }
+    }
     json(res, previous ? 200 : 201, saveAssistant(db, value, previous?.id));
   };
   return [
@@ -22,6 +46,13 @@ export function routes(db, client = codex) {
     route("PATCH", "/api/assistants/:id", (req, res, { params }) => {
       const value = assistant(params.id);
       return value ? edit(req, res, value) : json(res, 404, { error: "助手不存在" });
+    }),
+    route("GET", "/api/codex/models", async (req, res) => json(res, 200, await client.models())),
+    route("GET", "/api/assistants/:id/runtime", async (req, res, { params }) => {
+      const value = assistant(params.id);
+      if (!value) return json(res, 404, { error: "助手不存在" });
+      if (sending.has(value.id)) return json(res, 409, { error: "该助手正在回复，请稍后读取生效值" });
+      json(res, 200, value.codexThreadId ? await client.runtime(value.codexThreadId) : null);
     }),
     route("GET", "/api/assistants/:id/messages", async (req, res, { params }) => {
       const value = assistant(params.id);
@@ -50,7 +81,7 @@ export function routes(db, client = codex) {
           threadId = await client.create({ cwd: assistantDirectory(db, current.id), name: current.name, instructions: current.instructions });
           threadId = bindAssistantThread(db, current.id, threadId).codexThreadId;
         }
-        await client.send(threadId, text.trim(), emit, controller.signal);
+        await client.send(threadId, text.trim(), emit, controller.signal, { model: current.model, effort: current.effort });
       } catch (error) { emit("error", { error: error.message }); }
       finally { clearInterval(heartbeat); sending.delete(value.id); res.off("close", disconnected); res.end(); }
     }),

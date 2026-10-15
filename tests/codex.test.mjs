@@ -7,7 +7,7 @@ import path from "node:path";
 import { CodexClient, launchArgs, deniedResponse } from "../server/codex.mjs";
 import { consumeMessageStream } from "../src/modules/assistants/message-stream.js";
 
-function fake(t, handle = () => undefined) {
+function fake(t, handle = () => undefined, options = {}) {
   const requests = [], children = [];
   const spawnProcess = () => {
     const child = new EventEmitter(); child.stdin = new PassThrough(); child.stdout = new PassThrough();
@@ -19,15 +19,92 @@ function fake(t, handle = () => undefined) {
       if (!message.method || message.id === undefined) continue;
       const output = handle(message, child);
       if (output === false) continue;
-      const defaults = { "initialize": {}, "config/read": { config: { mcp_servers: { 'server.with.dot': { enabled: true } } } }, "thread/start": { thread: { id: "thread-1", environments: [] }, approvalPolicy: "never", sandbox: { type: "readOnly", networkAccess: false } }, "thread/name/set": {}, "thread/read": { thread: { id: "imported", cwd: "/original-directory" } }, "thread/resume": { approvalPolicy: "never", sandbox: { type: "readOnly", networkAccess: false } }, "turn/interrupt": {} };
+      const defaults = { "initialize": {}, "config/read": { config: { mcp_servers: { 'server.with.dot': { enabled: true } } } }, "model/list": { data: [model("model-a"), model("model-b")], nextCursor: null }, "thread/start": { thread: { id: "thread-1", environments: [] }, approvalPolicy: "never", sandbox: { type: "readOnly", networkAccess: false } }, "thread/name/set": {}, "thread/read": { thread: { id: "imported", cwd: "/original-directory" } }, "thread/resume": { model: "model-a", reasoningEffort: "medium", approvalPolicy: "never", sandbox: { type: "readOnly", networkAccess: false } }, "turn/interrupt": {} };
       queueMicrotask(() => child.output({ id: message.id, result: output ?? defaults[message.method] ?? {} }));
     } });
     children.push(child); return child;
   };
-  const client = new CodexClient({ spawnProcess, requestTimeout: 1000, turnTimeout: 2000 });
+  const client = new CodexClient({ spawnProcess, requestTimeout: 1000, turnTimeout: 2000, ...options });
   t.after(() => client.close()); return { client, requests, children };
 }
 function note(child, method, extra = {}) { child.output({ method, params: { threadId: "thread-1", turnId: "turn-1", ...extra } }); }
+
+const model = (value, hidden = false) => ({ id: `id-${value}`, model: value, displayName: value, description: `${value}说明`, hidden, isDefault: value === "model-a", defaultReasoningEffort: "medium", supportedReasoningEfforts: [{ reasoningEffort: "medium", description: "标准" }, { reasoningEffort: "high", description: "深入" }] });
+
+test("模型列表完整分页并过滤隐藏项，缓存十分钟；失败不伪造空列表且可重试", async (t) => {
+  let now = 0, failed = false;
+  const { client, requests } = fake(t, (r, child) => {
+    if (r.method !== "model/list") return;
+    if (failed) { queueMicrotask(() => child.output({ id: r.id, error: { message: "账号暂不可用" } })); return false; }
+    return r.params.cursor ? { data: [model("model-b")], nextCursor: null } : { data: [model("model-a"), model("hidden", true)], nextCursor: "page2" };
+  }, { now: () => now });
+  const expected = ["model-a", "model-b"].map((value) => ({ id: `id-${value}`, model: value, displayName: value, description: `${value}说明`, isDefault: value === "model-a", defaultEffort: "medium", efforts: [{ value: "medium", description: "标准" }, { value: "high", description: "深入" }] }));
+  assert.deepEqual(await client.models(), expected);
+  now = 599999; assert.deepEqual(await client.models(), expected);
+  assert.equal(requests.filter((r) => r.method === "model/list").length, 2);
+  assert.ok(requests.filter((r) => r.method === "model/list").every((r) => r.params.includeHidden === false));
+  now = 600000; failed = true; await assert.rejects(client.models(), /账号暂不可用/);
+  failed = false; assert.deepEqual(await client.models(), expected);
+  assert.equal(requests.filter((r) => r.method === "model/list").length, 5);
+});
+
+test("选择模型和强度后真实透传；清空设置下一轮恢复全局默认，runtime 回读而非使用期望值", async (t) => {
+  let effective = { model: "model-a", reasoningEffort: "medium" }, globalEffort = "medium";
+  const { client, requests } = fake(t, (r, child) => {
+    if (r.method === "config/read" && !r.params.cwd) return { config: { model: "model-a", model_reasoning_effort: globalEffort } };
+    if (r.method === "thread/resume") return { ...effective, approvalPolicy: "never", sandbox: { type: "readOnly", networkAccess: false } };
+    if (r.method === "turn/start") {
+      effective = { model: r.params.model ?? effective.model, reasoningEffort: r.params.effort ?? effective.reasoningEffort };
+      note(child, "turn/completed", { turn: { id: "turn-1", status: "completed" } });
+      return { turn: { id: "turn-1" } };
+    }
+  });
+  await client.send("thread-1", "选 B", () => {}, undefined, { model: "model-b", effort: "high" });
+  assert.deepEqual(await client.runtime("thread-1"), { model: "model-b", effort: "high" });
+  await client.send("thread-1", "恢复默认", () => {}, undefined, { model: null, effort: null });
+  assert.deepEqual(await client.runtime("thread-1"), { model: "model-a", effort: "medium" });
+  globalEffort = "high";
+  await client.send("thread-1", "跟随配置更新", () => {});
+  assert.deepEqual(await client.runtime("thread-1"), { model: "model-a", effort: "high" });
+  const turns = requests.filter((r) => r.method === "turn/start");
+  assert.deepEqual(turns.map(({params}) => [params.model,params.effort]), [["model-b","high"],["model-a","medium"],["model-a","high"]]);
+  for (const {params} of turns) {
+    assert.equal(params.approvalPolicy,"never"); assert.deepEqual(params.sandboxPolicy,{ type: "readOnly", networkAccess: false }); assert.deepEqual(params.environments,[]);
+  }
+  assert.ok(requests.filter((r) => r.method === "thread/resume").length >= 3);
+});
+
+test("无显式全局配置时使用目录默认；无可用默认、强度非法或配置读取失败均阻止发送", async (t) => {
+  let config = {}, models = [model("model-a")], fail = false;
+  const {client,requests} = fake(t,(r,child)=>{
+    if (r.method === "config/read") {
+      if (fail) { queueMicrotask(()=>child.output({id:r.id,error:{message:"无法读取默认配置"}})); return false; }
+      return {config};
+    }
+    if (r.method === "model/list") return {data:models,nextCursor:null};
+  });
+  assert.deepEqual(await client.selection({model:null,effort:null}),{model:"model-a",effort:"medium"});
+  config = {model:"missing"}; await assert.rejects(client.send("thread-1","不能发送",()=>{}),/不可用/);
+  config = {model:"model-a",model_reasoning_effort:"ultra"}; await assert.rejects(client.send("thread-1","不能发送",()=>{}),/强度/);
+  fail = true; await assert.rejects(client.send("thread-1","不能发送",()=>{}),/读取默认配置/);
+  assert.ok(!requests.some((r)=>r.method==="turn/start"));
+  const none=fake(t,r=>r.method==="model/list"?{data:[],nextCursor:null}:undefined);
+  await assert.rejects(none.client.selection({model:null,effort:null}),/默认模型/);
+});
+
+test("runtime 读取与发送交错时，先完成恢复读取再启动新轮，避免迟到的 resume 干扰回复",async(t)=>{
+  let release, held=false;
+  const {client,requests}=fake(t,(r,child)=>{
+    if(r.method==="thread/read"&&!held){held=true;release=()=>child.output({id:r.id,result:{thread:{id:"thread-1",cwd:"/temporary"}}});return false;}
+    if(r.method==="turn/start"){note(child,"turn/completed",{turn:{id:"turn-1",status:"completed"}});return {turn:{id:"turn-1"}};}
+  });
+  const reading=client.runtime("thread-1");
+  while(!release)await new Promise(resolve=>setImmediate(resolve));
+  const sending=client.send("thread-1","等待读取结束",()=>{});
+  await new Promise(resolve=>setImmediate(resolve));
+  try { assert.ok(!requests.some(r=>r.method==="turn/start")); }
+  finally { release(); await Promise.all([reading,sending]); }
+});
 
 test("进程按需复用；新会话组装说明与硬权限，不覆盖默认模型", async (t) => {
   assert.ok(process.env.WORKDESK_DATA_DIR);

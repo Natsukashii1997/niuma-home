@@ -67,7 +67,9 @@ const SCHEMA = `
     kind TEXT NOT NULL CHECK (kind IN ('copywriter', 'imported', 'custom')),
     instructions TEXT NOT NULL DEFAULT '',
     codex_thread_id TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    model TEXT,
+    effort TEXT
   );
 
   -- 简单配置：品牌表链接、日报文档链接、物料类型清单等
@@ -82,6 +84,14 @@ export function openDb(dir = dataDir) {
   const db = new DatabaseSync(path.join(dir, "work-desk.db"));
   db.exec("PRAGMA foreign_keys = ON;");
   db.exec(SCHEMA);
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const columns = new Set(db.prepare("PRAGMA table_info(assistants)").all().map((column) => column.name));
+    for (const column of ["model", "effort"]) {
+      if (!columns.has(column)) db.exec(`ALTER TABLE assistants ADD COLUMN ${column} TEXT`);
+    }
+    db.exec("COMMIT");
+  } catch (error) { db.exec("ROLLBACK"); db.close(); throw error; }
   seed(db);
   return db;
 }
@@ -167,14 +177,14 @@ export function savePlan(db, month, line, { rawText, rawHtml = "", rows }) {
 
 export function listAssistants(db) {
   return db
-    .prepare("SELECT id, name, kind, instructions, codex_thread_id AS codexThreadId, created_at AS createdAt FROM assistants ORDER BY id")
+    .prepare("SELECT id, name, kind, instructions, codex_thread_id AS codexThreadId, created_at AS createdAt, model, effort FROM assistants ORDER BY id")
     .all();
 }
 
 export function getAssistant(db, id) { return listAssistants(db).find((row) => row.id === Number(id)); }
 
-export function saveAssistant(db, { name, instructions = "" }, id) {
-  if (id) db.prepare("UPDATE assistants SET name = ?, instructions = ? WHERE id = ?").run(name, instructions, id);
+export function saveAssistant(db, { name, instructions = "", model = null, effort = null }, id) {
+  if (id) db.prepare("UPDATE assistants SET name = ?, instructions = ?, model = ?, effort = ? WHERE id = ?").run(name, instructions, model, effort, id);
   else id = Number(db.prepare("INSERT INTO assistants (name, kind, instructions, created_at) VALUES (?, 'custom', ?, ?)").run(name, instructions, new Date().toISOString()).lastInsertRowid);
   return getAssistant(db, id);
 }

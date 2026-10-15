@@ -4,6 +4,8 @@ import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Button, Empty, Loadable, PageHeader, Tag } from "../../ui/components.jsx";
 import { consumeMessageStream } from "./message-stream.js";
+import ModelControls from "./ModelControls.jsx";
+import { assistantListReader } from "./assistant-list.js";
 
 const KIND_LABEL = { copywriter: "文案", imported: "Codex 导入", custom: "自建" };
 export default function AssistantsPage({ route }) {
@@ -13,7 +15,7 @@ export default function AssistantsPage({ route }) {
 function AssistantDesk({ initial, selectedId }) {
   const [list, setList] = useState(initial), [modal, setModal] = useState(null);
   const current = list.find((a) => String(a.id) === selectedId) || list[0];
-  const reload = async () => { const rows = await apiSend("GET", "/api/assistants"); setList(rows); return rows; };
+  const [reload] = useState(() => assistantListReader(() => apiSend("GET", "/api/assistants"), setList));
   const saved = async (id) => { await reload(); setModal(null); if (id) window.location.hash = href("assistants", String(id)).slice(1); };
   return <div className="assistant-page">
     <PageHeader title="助手" subtitle="背后接本机 Codex，使用你的 Codex 额度；所有助手只读，不改文件、不执行命令" actions={<>
@@ -22,15 +24,16 @@ function AssistantDesk({ initial, selectedId }) {
     </>} />
     <div className="chat-layout">
       <aside className="chat-list" aria-label="助手列表">{list.map((a) => <a key={a.id} href={href("assistants", String(a.id))} className={a.id === current?.id ? "active" : ""}><strong>{a.name}</strong><Tag>{KIND_LABEL[a.kind]}</Tag></a>)}</aside>
-      {current && <Conversation key={current.id} assistant={current} edit={() => setModal({ type: "edit", assistant: current })} />}
+      {current && <Conversation key={current.id} assistant={current} reloadAssistants={reload} edit={() => setModal({ type: "edit", assistant: current })} />}
     </div>
     {modal && <AssistantDialog key={`${modal.type}-${modal.assistant?.id || ""}`} modal={modal} close={() => setModal(null)} saved={saved} reload={reload} />}
   </div>;
 }
-function Conversation({ assistant, edit }) {
+function Conversation({ assistant, edit, reloadAssistants }) {
   const [messages, setMessages] = useState([]), [draft, setDraft] = useState("");
   const [pending, setPending] = useState(null), [error, setError] = useState("");
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [uncertain, setUncertain] = useState(false);
+  const [settingsBlocked, setSettingsBlocked] = useState(true), [runtimeVersion, setRuntimeVersion] = useState(0);
   const lock = useRef(false), controller = useRef(null), bottom = useRef(null);
   const read = async () => apiSend("GET", `/api/assistants/${assistant.id}/messages`);
   useEffect(() => {
@@ -47,7 +50,7 @@ function Conversation({ assistant, edit }) {
     finally { setLoading(false); lock.current = false; }
   };
   const send = async () => {
-    if (lock.current || loading || uncertain || !draft.trim()) return;
+    if (lock.current || loading || uncertain || settingsBlocked || !draft.trim()) return;
     lock.current = true; setBusy(true); setError("");
     const text = draft.trim(); const abort = new AbortController(); controller.current = abort;
     setPending({ text, replies: [] });
@@ -64,10 +67,11 @@ function Conversation({ assistant, edit }) {
       });
       setMessages(await read()); setPending(null); setDraft("");
     } catch (e) { setError(`${e.message}。输入已保留，请先重新读取历史核对，避免重复发送。`); setUncertain(true); }
-    finally { lock.current = false; setBusy(false); controller.current = null; }
+    finally { lock.current = false; setBusy(false); controller.current = null; setRuntimeVersion((n) => n + 1); }
   };
   return <section className="chat-panel" aria-label={`${assistant.name}对话`}>
     <header className="chat-head"><strong>{assistant.name}</strong><div className="row"><Tag>只读</Tag><Button disabled={busy} onClick={edit}>编辑助手</Button></div></header>
+    <ModelControls assistant={assistant} busy={busy} version={runtimeVersion} reloadAssistants={reloadAssistants} onBlocked={setSettingsBlocked} />
     <div className="chat-messages" aria-busy={busy || loading}>
       {loading && <p className="muted">正在读取历史…</p>}
       {!loading && !messages.length && !pending && <Empty>输入消息开始对话。预设说明可在「编辑助手」中填写。</Empty>}
@@ -77,7 +81,7 @@ function Conversation({ assistant, edit }) {
     </div>
     <div className="assistant-status" role="status">{busy ? "Codex 正在回复…" : "Enter 发送 · Shift+Enter 换行"}</div>
     {error && <div className="assistant-status"><p className="error" role="alert">{error}</p><Button disabled={busy || loading} onClick={reload}>重新读取历史</Button></div>}
-    <footer className="chat-input"><textarea aria-label="消息" placeholder="输入消息，确认后发送" value={draft} onChange={(e) => setDraft(e.target.value)} disabled={busy} maxLength={50000} rows={3} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); } }} /><Button variant="primary" disabled={busy || loading || uncertain || !draft.trim()} onClick={send}><Send size={14} /> 发送</Button></footer>
+    <footer className="chat-input"><textarea aria-label="消息" placeholder="输入消息，确认后发送" value={draft} onChange={(e) => setDraft(e.target.value)} disabled={busy} maxLength={50000} rows={3} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); } }} /><Button variant="primary" disabled={busy || loading || uncertain || settingsBlocked || !draft.trim()} onClick={send}><Send size={14} /> 发送</Button></footer>
   </section>;
 }
 function AssistantDialog({ modal, close, saved, reload }) {
