@@ -92,6 +92,8 @@ function KpiRow({ promos, plans, materials, reports, now }) {
   const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
   const weekStart = localDate(monday);
   const weekDaily = reports.data?.reports?.filter((r) => r.kind === "日报" && r.date >= weekStart && r.date <= localDate(now)).length;
+  const dailySource = reports.data?.sources?.find((source) => source.role === "daily");
+  const dailyError = reports.error || (dailySource?.ok === false ? dailySource.error || "日报来源读取失败" : null);
   const value = (state, fn) => (state.data ? fn(state.data) : state.error ? "—" : 0);
   return (
     <div className="kpi-grid">
@@ -103,8 +105,8 @@ function KpiRow({ promos, plans, materials, reports, now }) {
         delta={promos.data ? count(promos.data, month) - count(promos.data, prev) : null} foot={promos.error || "对比上月"} />
       <Kpi label="本月物料" value={value(materials, (rows) => count(rows, month))}
         delta={materials.data ? count(materials.data, month) - count(materials.data, prev) : null} foot={materials.error || "对比上月"} />
-      <Kpi label="本周日报" value={reports.data ? weekDaily : reports.error ? "—" : 0} unit=" 篇"
-        foot={reports.error || `WK ${isoWeek(now)} · 自 ${weekStart.slice(5)}`} />
+      <Kpi label="本周日报" value={dailyError ? "—" : reports.data ? weekDaily : 0} unit=" 篇"
+        foot={dailyError || `WK ${isoWeek(now)} · 自 ${weekStart.slice(5)}`} />
     </div>
   );
 }
@@ -199,7 +201,9 @@ function LatestReport({ reports }) {
   return (
     <Card title={<><PixelIcon name="reports" /> 最新日报</>} dither extra={<a className="link" href={href("reports")}>全部</a>}>
       <Loadable state={reports}>
-        {({ reports: rows }) => {
+        {({ reports: rows, sources }) => {
+          const dailySource = sources?.find((source) => source.role === "daily");
+          if (dailySource?.ok === false) return <p className="error">{dailySource.error || "日报来源读取失败"}</p>;
           const latest = rows.find((r) => r.kind === "日报");
           if (!latest) return <p className="muted">还没有日报</p>;
           return (
