@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Download, Send } from "lucide-react";
+import { BitAvatar, PixelIcon, StepProgress, TypeText } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Button, Empty, Loadable, PageHeader, Tag } from "../../ui/components.jsx";
@@ -19,11 +19,11 @@ function AssistantDesk({ initial, selectedId }) {
   const saved = async (id) => { await reload(); setModal(null); if (id) window.location.hash = href("assistants", String(id)).slice(1); };
   return <div className="assistant-page">
     <PageHeader title="助手" subtitle="背后接本机 Codex，使用你的 Codex 额度；所有助手只读，不改文件、不执行命令" actions={<>
-      <Button onClick={() => setModal({ type: "import" })}><Download size={14} /> 导入 Codex 会话</Button>
-      <Button variant="primary" onClick={() => setModal({ type: "new" })}><Plus size={14} /> 新建助手</Button>
+      <Button onClick={() => setModal({ type: "import" })}><PixelIcon name="download" size={14} /> 导入 Codex 会话</Button>
+      <Button variant="primary" onClick={() => setModal({ type: "new" })}><PixelIcon name="plus" size={14} /> 新建助手</Button>
     </>} />
     <div className="chat-layout">
-      <aside className="chat-list" aria-label="助手列表">{list.map((a) => <a key={a.id} href={href("assistants", String(a.id))} className={a.id === current?.id ? "active" : ""}><strong>{a.name}</strong><Tag>{KIND_LABEL[a.kind]}</Tag></a>)}</aside>
+      <aside className="chat-list" aria-label="助手列表">{list.map((a) => <a key={a.id} data-dither="" href={href("assistants", String(a.id))} className={a.id === current?.id ? "active" : ""}><BitAvatar seed={a.name} /><strong>{a.name}</strong><Tag>{KIND_LABEL[a.kind]}</Tag></a>)}</aside>
       {current && <Conversation key={current.id} assistant={current} reloadAssistants={reload} edit={() => setModal({ type: "edit", assistant: current })} />}
     </div>
     {modal && <AssistantDialog key={`${modal.type}-${modal.assistant?.id || ""}`} modal={modal} close={() => setModal(null)} saved={saved} reload={reload} />}
@@ -76,12 +76,13 @@ function Conversation({ assistant, edit, reloadAssistants }) {
       {loading && <p className="muted">正在读取历史…</p>}
       {!loading && !messages.length && !pending && <Empty>输入消息开始对话。预设说明可在「编辑助手」中填写。</Empty>}
       {messages.map((m, i) => <div key={i} className={`bubble ${m.role}`}>{m.text}</div>)}
-      {pending && <><div className="bubble user">{pending.text}</div>{pending.replies.map((m) => <div key={m.id} className="bubble assistant">{m.text}</div>)}</>}
+      {pending && <><div className="bubble user">{pending.text}</div>{(pending.replies.length ? pending.replies : [{ text: "" }]).map((m, i) => <div key={i} className="bubble assistant"><TypeText text={m.text} streaming={busy && i === Math.max(0, pending.replies.length - 1)} onReveal={() => bottom.current?.scrollIntoView({ block: "nearest" })} /></div>)}</>}
       <div ref={bottom} />
     </div>
+    {busy && pending && !pending.replies.length && <div className="assistant-wait"><StepProgress label="等待回复首字" /></div>}
     <div className="assistant-status" role="status">{busy ? "Codex 正在回复…" : "Enter 发送 · Shift+Enter 换行"}</div>
     {error && <div className="assistant-status"><p className="error" role="alert">{error}</p><Button disabled={busy || loading} onClick={reload}>重新读取历史</Button></div>}
-    <footer className="chat-input"><textarea aria-label="消息" placeholder="输入消息，确认后发送" value={draft} onChange={(e) => setDraft(e.target.value)} disabled={busy} maxLength={50000} rows={3} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); } }} /><Button variant="primary" disabled={busy || loading || uncertain || settingsBlocked || !draft.trim()} onClick={send}><Send size={14} /> 发送</Button></footer>
+    <footer className="chat-input"><textarea aria-label="消息" placeholder="输入消息，确认后发送" value={draft} onChange={(e) => setDraft(e.target.value)} disabled={busy} maxLength={50000} rows={3} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); } }} /><Button variant="primary" disabled={busy || loading || uncertain || settingsBlocked || !draft.trim()} onClick={send}><PixelIcon name="send" size={14} /> 发送</Button></footer>
   </section>;
 }
 function AssistantDialog({ modal, close, saved, reload }) {
@@ -115,7 +116,7 @@ function AssistantDialog({ modal, close, saved, reload }) {
     <form className="assistant-form" onSubmit={(e) => { e.preventDefault(); setPreview(true); setError(""); }}>
       <fieldset className="material-fields" disabled={busy || uncertain || preview}>
         {importing ? <><label className="material-field" htmlFor="session-search">筛选会话名称<input id="session-search" value={search} onChange={(e) => setSearch(e.target.value)} /></label>
-          {loading ? <p className="muted">正在读取本机会话…</p> : <div className="assistant-sessions">{sessions.filter((s) => s.name.toLowerCase().includes(search.toLowerCase())).map((s) => <label key={s.threadId} className="assistant-session"><input type="checkbox" disabled={s.imported} checked={selected.includes(s.threadId)} onChange={(e) => { setSelected((old) => e.target.checked ? [...old, s.threadId] : old.filter((id) => id !== s.threadId)); }} /><span><strong>{s.name}</strong>{s.imported && <Tag>已导入</Tag>}<small>{new Date(s.updatedAt).toLocaleString("zh-CN")} · {s.cwd}</small></span></label>)}</div>}
+          {loading ? <p className="muted">正在读取本机会话…</p> : <div className="assistant-sessions">{sessions.filter((s) => s.name.toLowerCase().includes(search.toLowerCase())).map((s) => <label key={s.threadId} className="assistant-session" data-dither=""><input type="checkbox" disabled={s.imported} checked={selected.includes(s.threadId)} onChange={(e) => { setSelected((old) => e.target.checked ? [...old, s.threadId] : old.filter((id) => id !== s.threadId)); }} /><span><strong>{s.name}</strong>{s.imported && <Tag>已导入</Tag>}<small>{new Date(s.updatedAt).toLocaleString("zh-CN")} · {s.cwd}</small></span></label>)}</div>}
           {!loading && !sessions.length && !error && <Empty>没有可导入的已命名会话。</Empty>}
         </> : <><label className="material-field" htmlFor="assistant-name">名称<input id="assistant-name" required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} /></label><label className="material-field" htmlFor="assistant-instructions">预设说明<textarea id="assistant-instructions" rows={6} maxLength={20000} value={instructions} onChange={(e) => setInstructions(e.target.value)} /></label></>}
       </fieldset>

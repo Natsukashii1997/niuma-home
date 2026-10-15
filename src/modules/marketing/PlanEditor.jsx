@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { href } from "../../router.js";
 import { apiSend } from "../../api.js";
 import { Button, Card, Empty, PageHeader, Tag } from "../../ui/components.jsx";
@@ -16,6 +16,7 @@ function PlanForm({ month, line }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [busy, setBusy] = useState("");
+  const [progress, setProgress] = useState(null);
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -46,6 +47,7 @@ function PlanForm({ month, line }) {
   }, [path]);
 
   function edit(text, html = "") {
+    setProgress(null);
     setSaved(false);
     setRawText(text);
     setRawHtml(html);
@@ -74,16 +76,19 @@ function PlanForm({ month, line }) {
     if (locked || operation.current || !rawText.trim()) return;
     setSaved(false);
     operation.current = true;
+    setProgress({ label: "解析预览" });
     setBusy("parse"); setError(""); setMessage(""); setPreview(null);
     try {
       setPreview(await apiSend("POST", "/api/plans/parse", { month, line, rawText }));
-    } catch (e) { setError(e.message); }
+      setProgress({ label: "解析预览", done: true });
+    } catch (e) { setError(e.message); setProgress({ label: "解析预览", error: e.message }); }
     finally { operation.current = false; setBusy(""); }
   }
 
   async function save() {
     if (!canSave || operation.current) return;
     operation.current = true;
+    setProgress({ label: "入库并回读核对" });
     setBusy("save"); setError(""); setMessage("");
     try {
       const counts = await apiSend("PUT", path, { rawText, rawHtml, rows: preview.rows });
@@ -97,10 +102,12 @@ function PlanForm({ month, line }) {
       }
       setPreview(verified);
       setSaved(true);
+      setProgress({ label: "入库并回读核对", done: true });
       setMessage("已写入 " + counts.inserted + " 行，更新 " + counts.updated + " 行，删除 " + counts.removed + " 行");
     } catch (e) {
       setPreview(null);
       setNeedsReload(true);
+      setProgress({ label: "入库并回读核对", error: "入库结果未确认，请重新载入核对" });
       setError("入库结果未确认，请重新载入原文核对后再试。" + e.message);
     } finally { operation.current = false; setBusy(""); }
   }
@@ -123,7 +130,7 @@ function PlanForm({ month, line }) {
 
   return (
     <div className="plan-editor">
-      <a className="back-link" href={href("marketing", "plans")}><ArrowLeft size={14} /> 返回方案</a>
+      <a className="back-link" href={href("marketing", "plans")}><PixelIcon name="left" size={14} /> 返回方案</a>
       <PageHeader
         title={monthLabel(month) + " · " + line}
         subtitle="从飞书复制方案，粘贴到左侧；解析结果确认后才会写入促销表"
@@ -132,6 +139,7 @@ function PlanForm({ month, line }) {
           <Button onClick={save} disabled={!canSave} variant="primary">{busy === "save" ? "入库并核对中…" : "确认入库"}</Button>
         </>}
       />
+      {progress && <div className="operation-progress"><StepProgress key={progress.label} {...progress} /></div>}
       {loading && <p className="muted" role="status">正在读取已有原文…</p>}
       {(loadError || error) && <p className="error" role="alert">{loadError || error}</p>}
       {(loadError || needsReload) && <Button onClick={() => window.location.reload()}>重新载入核对</Button>}
@@ -158,9 +166,9 @@ function PlanForm({ month, line }) {
               </table>
             </div>
             {!preview.rows.length && <div className="warn">没有识别到 SKU，请检查原文中的编号行。</div>}
-            {preview.removed.length > 0 && <div className="warn"><AlertTriangle size={14} /><span>将删除的 SKU：{preview.removed.join("、")}。确认入库后删除。</span></div>}
-            {mismatch && <div className="warn"><AlertTriangle size={14} /><span>{preview.line ? "原文业务线为「" + preview.line + "」，与当前「" + line + "」不一致。" : "未识别到业务线，请补充正确的【…板块】标题。"} 请修改原文后重新解析。</span></div>}
-            {preview.unrecognized.length > 0 && <div className="warn"><AlertTriangle size={14} /><div>
+            {preview.removed.length > 0 && <div className="warn"><PixelIcon name="alert" size={14} /><span>将删除的 SKU：{preview.removed.join("、")}。确认入库后删除。</span></div>}
+            {mismatch && <div className="warn"><PixelIcon name="alert" size={14} /><span>{preview.line ? "原文业务线为「" + preview.line + "」，与当前「" + line + "」不一致。" : "未识别到业务线，请补充正确的【…板块】标题。"} 请修改原文后重新解析。</span></div>}
+            {preview.unrecognized.length > 0 && <div className="warn"><PixelIcon name="alert" size={14} /><div>
               <strong>有 {preview.unrecognized.length} 行未识别（含重复 SKU），暂不可入库。请修改原文后重新解析：</strong>
               <ul>{preview.unrecognized.map((item) => <li key={item.lineNo}>第 {item.lineNo} 行：<span className="pre">{item.text}</span></li>)}</ul>
             </div></div>}

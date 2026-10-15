@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ImageIcon, Plus, X } from "lucide-react";
+import { PixelIcon } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { Button, Empty, FilterBar, Loadable, Segmented, Select, Tag } from "../../ui/components.jsx";
 import { LINES, monthLabel } from "../../constants.js";
@@ -55,7 +55,7 @@ function MaterialWorkspace({ initialItems }) {
       <Select label="业务线" value={filter.line} options={LINES} onChange={set("line")} />
       <Select label="类型" value={filter.type} options={[...new Set(items.map((m) => m.type))]} onChange={set("type")} />
       <div className="spacer" />
-      <Button variant="primary" disabled={!!uncertain} onClick={() => { setNotice(""); setSelected("new"); }}><Plus size={14} />新建物料</Button>
+      <Button variant="primary" disabled={!!uncertain} onClick={() => { setNotice(""); setSelected("new"); }}><PixelIcon name="plus" size={14} />新建物料</Button>
     </FilterBar>
     {!selected && warning}
     <p className="muted small" role="status">{notice || (view === "compare" ? "选择物料类型后，按月份并排比较第一张图片；月份筛选在此视图不生效。" : `共 ${shown.length} 个物料，点击卡片查看详情与图片。`)}</p>
@@ -65,9 +65,9 @@ function MaterialWorkspace({ initialItems }) {
         {months.map((month) => <section key={month} className={view === "compare" ? "material-month" : ""}>
           <h3 className="section-title">{monthLabel(month)}</h3>
           <div className={view === "compare" ? "stack" : "material-grid"}>
-            {shown.filter((m) => m.month === month).map((m) => <button key={m.id} className="material-card" onClick={() => { setNotice(""); setSelected(m.id); }} aria-label={`查看物料：${m.name}`}>
+            {shown.filter((m) => m.month === month).map((m) => <button key={m.id} className="material-card" data-dither="" onClick={() => { setNotice(""); setSelected(m.id); }} aria-label={`查看物料：${m.name}`}>
               <div className="material-thumb">
-                {m.images[0] ? <img src={m.images[0].url} alt={m.name} loading="lazy" /> : <ImageIcon size={28} strokeWidth={1.4} />}
+                {m.images[0] ? <img src={m.images[0].url} alt={m.name} loading="lazy" /> : <PixelIcon name="image" size={28} />}
                 <span className="material-count">{m.images.length} 张图</span>
               </div>
               <div className="material-info"><strong>{m.name}</strong><div className="tag-row"><Tag tone="blue">{m.type}</Tag><Tag>{m.line}</Tag>{m.skus.map((sku) => <Tag key={sku}>{sku}</Tag>)}</div>{m.note && <p className="muted small pre">{m.note}</p>}</div>
@@ -89,7 +89,7 @@ function MaterialDialog({ title, busy, onClose, children }) {
   const ref = useRef(null);
   useEffect(() => { const dialog = ref.current; dialog.showModal(); return () => dialog.close(); }, []);
   return <dialog ref={ref} className="material-dialog" aria-labelledby="material-dialog-title" onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}>
-    <div className="card-head"><h2 id="material-dialog-title">{title}</h2><Button disabled={busy} aria-label="关闭弹窗" onClick={onClose}><X size={16} /></Button></div>
+    <div className="card-head"><h2 id="material-dialog-title">{title}</h2><Button disabled={busy} aria-label="关闭弹窗" onClick={onClose}><PixelIcon name="close" size={16} /></Button></div>
     <div className="card-body">{children}</div>
   </dialog>;
 }

@@ -1,0 +1,16 @@
+
+> work-desk@0.1.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 53 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                  0.40 kB │ gzip:  0.28 kB
+dist/assets/GeistPixel-Square-B0mEoKr8.woff2    28.54 kB
+dist/assets/Geist-Variable-Bj2R_7yk.woff2       69.65 kB
+dist/assets/GeistMono-Variable-Dispecij.woff2   71.37 kB
+dist/assets/index-BiPTdyY0.css                  25.88 kB │ gzip:  5.61 kB
+dist/assets/index-D82bLIee.js                  273.22 kB │ gzip: 87.05 kB
+✓ built in 443ms

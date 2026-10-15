@@ -1,0 +1,56 @@
+{
+  "checks": [
+    {
+      "route": "home",
+      "width": 390,
+      "actual": 390
+    },
+    {
+      "route": "marketing/plans",
+      "width": 390,
+      "actual": 390
+    },
+    {
+      "route": "marketing/promos",
+      "width": 390,
+      "actual": 390
+    },
+    {
+      "route": "marketing/materials",
+      "width": 390,
+      "actual": 390
+    },
+    {
+      "route": "brand",
+      "width": 390,
+      "actual": 390
+    },
+    {
+      "route": "business",
+      "width": 390,
+      "actual": 390
+    },
+    {
+      "route": "assistants",
+      "width": 390,
+      "actual": 390
+    },
+    {
+      "route": "reports",
+      "width": 390,
+      "actual": 390
+    },
+    {
+      "route": "settings",
+      "width": 390,
+      "actual": 390
+    }
+  ],
+  "backdrop": {
+    "background": "rgba(0, 0, 0, 0)",
+    "opacity": "1"
+  },
+  "checkboxColor": "rgb(13, 14, 16)",
+  "errors": [],
+  "at": "2026-10-15T10:18:51.240Z"
+}

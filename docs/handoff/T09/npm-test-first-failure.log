@@ -1,0 +1,481 @@
+
+> work-desk@0.1.0 test
+> WORKDESK_DATA_DIR=${WORKDESK_DATA_DIR:-$(mktemp -d)} node --test tests/*.test.mjs
+
+✔ 切换助手后的较早回读迟到，不能覆盖较新模型设置显示 (0.629875ms)
+✖ 模型 API 与设置校验、只改强度、清空恢复、名称编辑保留设置；runtime 来自协议 (14.877417ms)
+✖ 回复中与等待模型校验期间的 PATCH 均返回 409，不更改已保存值 (7.740292ms)
+✖ 延迟 PATCH 请求体重新读取其他编辑后的字段，发送也读取最新选择 (6.356417ms)
+✖ 列表失败返回明确错误；保存模型下架后发送失败且无 turn/start (5.489667ms)
+✖ 助手新增编辑、延迟建会话、隔离目录与说明只传首次，消息历史回读 (14.082209ms)
+✖ 批量导入按线程去重、同名不同会话可选、已绑定置灰，事务失败不部分写入 (6.053667ms)
+✖ 同助手并发拒绝且只建一个线程，失败走 SSE error 不冒充完成 (6.631667ms)
+✖ 请求体延迟到前一轮结束后，重新读取绑定而不创建孤立会话 (5.024625ms)
+✔ 旧助手表重复打开只新增两列，原有记录和线程绑定不变 (17.962209ms)
+✔ 今日日界固定上海时区，不依赖进程时区 (2.039792ms)
+✔ 缓存5分钟，包括空列表；失败不缓存，后续调用能恢复 (0.599292ms)
+✔ 并发读取合并，跨上海零点不复用昨日缓存或昨日慢请求 (0.129166ms)
+✔ CLI错误：缺命令、缺日历权限、未登录、超时和异常输出都显示中文原因 (0.50725ms)
+✔ 官方结构人工样例：开始时间排序、全天、时区换算与地点缺失 (4.296083ms)
+✔ 真实脱敏录制：四条日程逐字段转换，保留同时间事件 (0.481542ms)
+✔ 跨日与日界：全天包含最后日期，同名同时间不去重，过滤其他日期 (0.156625ms)
+✔ 无事件为正常空列表；截断、结构缺失、错误身份或无效时间不冒充空日程 (0.608625ms)
+✖ 隔离HTTP返回约定三字段，缓存与CLI不可用错误不影响首页其他接口 (34.158167ms)
+✔ 模型列表完整分页并过滤隐藏项，缓存十分钟；失败不伪造空列表且可重试 (3.945417ms)
+✔ 选择模型和强度后真实透传；清空设置下一轮恢复全局默认，runtime 回读而非使用期望值 (5.85725ms)
+✔ 无显式全局配置时使用目录默认；无可用默认、强度非法或配置读取失败均阻止发送 (1.203125ms)
+✔ runtime 读取与发送交错时，先完成恢复读取再启动新轮，避免迟到的 resume 干扰回复 (4.204875ms)
+✔ 进程按需复用；新会话组装说明与硬权限，不覆盖默认模型 (4.345875ms)
+✔ 只读权限未采用时失败关闭，导入恢复使用原目录且不重设说明 (0.5925ms)
+✔ 流式早到事件、UTF-8 分块、多条回复与串台过滤，完成只发一次 (0.447208ms)
+✔ 失败/退出不发 done，不自动重放；下次请求重启且审批全部拒绝 (0.764292ms)
+✔ 历史分页完整、只显示用户与助手文本；会话名称不伪造 (0.986417ms)
+✔ 前端 SSE 任意字节切片可解码；提前断流或 error 均失败 (24.1065ms)
+✔ legacy 导入历史使用 thread/read，不迁移或调用不支持的分页接口 (2.159959ms)
+✔ 断开后等待轮次中断完成才释放锁，不能把新消息 steer 入旧轮 (2.956292ms)
+✔ 飞书行转换：月份带年份、选项去数组、空值填「无」 (1.663208ms)
+✔ 重复导入按 月份+业务线+SKU 覆盖，不重复插入 (10.166666ms)
+✔ 建库时补齐预置数据：课时卡别名、文案助手，重复打开不重复插入 (7.616166ms)
+✖ 物料可新建、局部编辑、按三项筛选；关联 SKU 只取同月同业务线 (11.293083ms)
+✖ 多图上传可回读原字节；图片和物料删除同时移除文件，不能跨物料删除 (5.866459ms)
+✖ 非图片、伪装类型、空图、超限和路径穿越均被拒绝 (4.172792ms)
+✖ 插库失败或创建后写入失败，不留下孤立图片；文件目录异常不写记录 (5.708416ms)
+✖ 数据库删除失败、文件清理中途失败均恢复记录和原文件 (5.015416ms)
+✖ 登记文件也不能通过符号链接读取库外内容；文件缺失仍可删除记录 (5.258125ms)
+✖ 分块上传按实际大小限流，20MB 边界可上传且不依赖文件名 (5.112125ms)
+✔ 未知行保留原始行号；未知板块与无归属字段不猜测 (2.403875ms)
+✔ 英文冒号、字母编号、各种列表符号与 CRLF；空 SKU 字段全部为无 (1.185ms)
+✔ 去掉组合列表前缀；混入另一业务线的板块不能静默合并 (0.104459ms)
+✔ 行内已有值不吞后续游离列表，大学辅导不使用国际课程别名 (0.066625ms)
+✔ 别名归一后重复的 SKU 标记原文行，不能静默覆盖 (0.046708ms)
+✔ SKU 的英文点号与字段列表的小数属于正文，不再剥成编号 (0.050541ms)
+✔ 大学辅导样例逐字段还原六个 SKU，未写活动填无 (0.945541ms)
+✔ 国际课程样例忽略空项与重复编号，同业务线别名归一，保留活动换行 (0.385458ms)
+✔ 编号行带「未知标签：」时记为未识别，不当成新 SKU (0.217917ms)
+✖ 预览只读：同月优先，逐字段对比，并仅列当月将删除的 SKU (9.925125ms)
+✖ 确认后保存双格式原文、覆盖目标组并删除遗漏 SKU；重复确认不增行 (9.673208ms)
+✖ 事务中途数据库拒绝第二行时，原文和促销行全部回滚 (3.72775ms)
+✖ 不合法输入、未知行、业务线错配、重复 SKU、过期预览均拒绝写入 (2.860125ms)
+✔ 按 SKU 分组明确倒序，跨业务线独立比较，最近变化基于全量历史 (6.625625ms)
+✔ 业务线联动清除无效 SKU，保留可用同名 SKU；历史失效筛选回到全部 (0.176458ms)
+✔ 视图读写回读一致；损坏数据、读取失败和写入失败不影响默认视图 (0.221083ms)
+✔ 真实脱敏文档日期切分、倒序、飞书表格转可读纯文本 (11.140959ms)
+✔ 日报、周报、无日期说明和子章节边界；列表层级保持 (0.635959ms)
+✔ 相同日期多篇保留；正文编辑和新增日期不改变已有 ID (0.364042ms)
+✔ 日期校验、空段保留、代码块日期不切篇、实体与危险标签只当文本 (0.276292ms)
+✔ 飞书读取固定 profile、用户身份、Markdown；参数独立传递且去掉选区锚点 (1.153667ms)
+✔ 登录、权限、CLI 缺失、超时及损坏输出均给出明确中文且不泄露原始错误 (0.614417ms)
+✔ 内存缓存、连续强制刷新、配置切换及失败后重试 (5.228291ms)
+✔ 普通请求合并；较旧并发刷新和旧链接不能覆盖新缓存 (1.33575ms)
+✔ 空文档为空列表；有正文但没有有效日期标题时明确提示 (0.3975ms)
+✖ 隔离 HTTP：缺配置、列表形状与倒序、详情、404、刷新、错误不返回旧数据 (7.4675ms)
+✖ 三个配置键可分别保存、回读、覆盖；类型去重去空并存 JSON 字符串 (7.952458ms)
+✖ 非法键、非 HTTPS 飞书域名和伪装链接被拒绝且不覆盖已存值 (4.86725ms)
+✖ 类型配置拒绝空清单、非字符串项或无效 JSON，请求格式错误不写入 (3.32375ms)
+✖ XHR 保留原请求内容，只使用可计算的真实上传进度 (2.5625ms)
+✖ XHR 拒绝 HTTP、响应格式、断网与中断，不把未知结果当成功 (0.306167ms)
+ℹ Error: Test "XHR 保留原请求内容，只使用可计算的真实上传进度" at tests/upload-image.test.mjs:5:1 generated asynchronous activity after the test ended. This activity created the error "TypeError: xhr.open is not a function" and would have caused the test to fail, but instead triggered an unhandledRejection event.
+ℹ Error: Test "XHR 拒绝 HTTP、响应格式、断网与中断，不把未知结果当成功" at tests/upload-image.test.mjs:29:1 generated asynchronous activity after the test ended. This activity created the error "TypeError: xhr.open is not a function" and would have caused the test to fail, but instead triggered an unhandledRejection event.
+✔ T05B 日报 ID 固定基线：改动前从两个既有 fixture 提取，旧日期规则不变 (3.778792ms)
+✔ 真实脱敏周报三篇：标题原文、起止日、周次、周年和表格正文 (0.709ms)
+✔ 周报边界：括号、分隔符、空白、跨月年、七天、无效标题、警告及层级 (0.875166ms)
+✔ 同链接规范化读一次、清空回退、双来源角色过滤及旧 ID (1.48775ms)
+✔ 无效周报候选仍界定层级，不漏记，也不把日期子章节当成日报 (0.073792ms)
+✔ 普通第N周汇总标题不改变有效日报或周报的报告层级 (0.175208ms)
+✔ 缓存十分钟边界、只清理变更来源、预览不影响缓存 (0.489ms)
+✔ 双来源并行刷新；失败清缓存，下次恢复；旧数组整体失败与全部失败 (40.207292ms)
+✔ 角色无匹配为失败并显示前五个标题；空文档可成功为空 (0.332542ms)
+✔ 迟到的无效标题响应不能清除新缓存；失败预览不影响已成功缓存 (0.220209ms)
+✔ 周报 ID 与链接、正文无关；同日先日报、同标题按出现顺序；重复 ID 拒绝 (0.227208ms)
+✖ 隔离 HTTP：周报保存严格校验/清空，日报保存旧规则不变，预览只读 (6.173334ms)
+✖ 隔离 HTTP：新旧列表、失败来源详情、全部失败 sources 与预览参数校验 (4.087875ms)
+ℹ tests 85
+ℹ suites 0
+ℹ pass 57
+ℹ fail 28
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 252.899833
+
+✖ failing tests:
+
+test at tests/assistant-models-api.test.mjs:27:1
+✖ 模型 API 与设置校验、只改强度、清空恢复、名称编辑保留设置；runtime 来自协议 (14.877417ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/assistant-models-api.test.mjs:52:1
+✖ 回复中与等待模型校验期间的 PATCH 均返回 409，不更改已保存值 (7.740292ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/assistant-models-api.test.mjs:68:1
+✖ 延迟 PATCH 请求体重新读取其他编辑后的字段，发送也读取最新选择 (6.356417ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/assistant-models-api.test.mjs:82:1
+✖ 列表失败返回明确错误；保存模型下架后发送失败且无 turn/start (5.489667ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/assistants-api.test.mjs:27:1
+✖ 助手新增编辑、延迟建会话、隔离目录与说明只传首次，消息历史回读 (14.082209ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/assistants-api.test.mjs:43:1
+✖ 批量导入按线程去重、同名不同会话可选、已绑定置灰，事务失败不部分写入 (6.053667ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/assistants-api.test.mjs:59:1
+✖ 同助手并发拒绝且只建一个线程，失败走 SSE error 不冒充完成 (6.631667ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/assistants-api.test.mjs:69:1
+✖ 请求体延迟到前一轮结束后，重新读取绑定而不创建孤立会话 (5.024625ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/calendar.test.mjs:107:1
+✖ 隔离HTTP返回约定三字段，缓存与CLI不可用错误不影响首页其他接口 (34.158167ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/materials-api.test.mjs:38:1
+✖ 物料可新建、局部编辑、按三项筛选；关联 SKU 只取同月同业务线 (11.293083ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/materials-api.test.mjs:55:1
+✖ 多图上传可回读原字节；图片和物料删除同时移除文件，不能跨物料删除 (5.866459ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/materials-api.test.mjs:79:1
+✖ 非图片、伪装类型、空图、超限和路径穿越均被拒绝 (4.172792ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/materials-api.test.mjs:97:1
+✖ 插库失败或创建后写入失败，不留下孤立图片；文件目录异常不写记录 (5.708416ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/materials-api.test.mjs:118:1
+✖ 数据库删除失败、文件清理中途失败均恢复记录和原文件 (5.015416ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at processTicksAndRejections (node:internal/process/task_queues:90:21)
+      at runNextTicks (node:internal/process/task_queues:69:3)
+      at process.processImmediate (node:internal/timers:472:9) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/materials-api.test.mjs:146:1
+✖ 登记文件也不能通过符号链接读取库外内容；文件缺失仍可删除记录 (5.258125ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at processTicksAndRejections (node:internal/process/task_queues:90:21)
+      at runNextTicks (node:internal/process/task_queues:69:3)
+      at process.processImmediate (node:internal/timers:472:9) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/materials-api.test.mjs:158:1
+✖ 分块上传按实际大小限流，20MB 边界可上传且不依赖文件名 (5.112125ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at processTicksAndRejections (node:internal/process/task_queues:90:21)
+      at runNextTicks (node:internal/process/task_queues:69:3)
+      at process.processImmediate (node:internal/timers:472:9) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/plans-api.test.mjs:43:1
+✖ 预览只读：同月优先，逐字段对比，并仅列当月将删除的 SKU (9.925125ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/plans-api.test.mjs:65:1
+✖ 确认后保存双格式原文、覆盖目标组并删除遗漏 SKU；重复确认不增行 (9.673208ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/plans-api.test.mjs:87:1
+✖ 事务中途数据库拒绝第二行时，原文和促销行全部回滚 (3.72775ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/plans-api.test.mjs:103:1
+✖ 不合法输入、未知行、业务线错配、重复 SKU、过期预览均拒绝写入 (2.860125ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/reports.test.mjs:82:1
+✖ 隔离 HTTP：缺配置、列表形状与倒序、详情、404、刷新、错误不返回旧数据 (7.4675ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/settings-api.test.mjs:32:1
+✖ 三个配置键可分别保存、回读、覆盖；类型去重去空并存 JSON 字符串 (7.952458ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/settings-api.test.mjs:52:1
+✖ 非法键、非 HTTPS 飞书域名和伪装链接被拒绝且不覆盖已存值 (4.86725ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/settings-api.test.mjs:69:1
+✖ 类型配置拒绝空清单、非字符串项或无效 JSON，请求格式错误不写入 (3.32375ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/upload-image.test.mjs:5:1
+✖ XHR 保留原请求内容，只使用可计算的真实上传进度 (2.5625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+  + undefined
+  - [
+  -   'POST',
+  -   '/api/materials/12/images?name=%E6%B5%8B%E8%AF%95%20%E6%B5%B7%E6%8A%A5.png'
+  - ]
+
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-ui-bitmap/tests/upload-image.test.mjs:18:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: [ 'POST', '/api/materials/12/images?name=%E6%B5%8B%E8%AF%95%20%E6%B5%B7%E6%8A%A5.png' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/upload-image.test.mjs:29:1
+✖ XHR 拒绝 HTTP、响应格式、断网与中断，不把未知结果当成功 (0.306167ms)
+  TypeError: request.onload is not a function
+      at request.status (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-ui-bitmap/tests/upload-image.test.mjs:40:90)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-ui-bitmap/tests/upload-image.test.mjs:47:5)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)
+
+test at tests/weekly-reports.test.mjs:159:1
+✖ 隔离 HTTP：周报保存严格校验/清空，日报保存旧规则不变，预览只读 (6.173334ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/weekly-reports.test.mjs:180:1
+✖ 隔离 HTTP：新旧列表、失败来源详情、全部失败 sources 与预览参数校验 (4.087875ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }

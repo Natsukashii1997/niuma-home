@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Copy, RefreshCw } from "lucide-react";
+import { FlipNumber, PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { href } from "../../router.js";
 import { Button, Empty, Loadable, PageHeader, Segmented, Tag } from "../../ui/components.jsx";
 
@@ -47,8 +47,9 @@ export default function ReportsPage({ route }) {
     <div className="reports-page">
       <PageHeader title="日报周报" subtitle="读取飞书中的日报与周报文档" actions={<>
         <a className="link" href={href("settings")}>设置来源</a>
-        <Button disabled={state.loading} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={14} /> {state.loading ? "读取中…" : "刷新"}</Button>
+        <Button disabled={state.loading} onClick={() => setRefresh(value => value + 1)}><PixelIcon name="refresh" size={14} /> {state.loading ? "读取中…" : "刷新"}</Button>
       </>} />
+      {refresh > 0 && <div className="operation-progress"><StepProgress key={refresh} label="刷新日/周报" done={!state.loading && !state.error && state.data?.sources.every(s => s.ok)} error={state.error || state.data?.sources.filter(s => !s.ok).map(s => s.error).join("；")} /></div>}
       <Loadable state={state}>
         {({ reports, sources }) => {
           const list = reports.filter(r => r.kind === activeKind);
@@ -60,7 +61,7 @@ export default function ReportsPage({ route }) {
               {sources.map(source => <div key={source.role}>
                 <div className="row">
                   <strong>{source.role === "daily" ? "日报文档" : "周报文档"}：</strong>
-                  {source.ok ? <span>{source.count} 篇{source.ignored ? ` · 忽略 ${source.ignored} 篇其他类型` : ""}</span> : <>
+                  {source.ok ? <span><FlipNumber value={source.count} /> 篇{source.ignored ? ` · 忽略 ${source.ignored} 篇其他类型` : ""}</span> : <>
                     <span className="error" role="alert">{source.error}</span>
                     <Button onClick={() => setRefresh(value => value + 1)}>重试</Button>
                   </>}
@@ -79,14 +80,14 @@ export default function ReportsPage({ route }) {
             <p className="muted small">{listFailure ? `${activeKind}来源读取失败，请重试` : `共 ${list.length} 篇${activeKind} · 按日期倒序`} · 刷新可重新读取飞书文档</p>
             <div className="chat-layout">
               <aside className="chat-list" aria-label={`${activeKind}列表`}>
-                {list.length ? list.map(r => <a key={r.id} href={href("reports", r.id)} className={r === current ? "active" : ""}>
+                {list.length ? list.map(r => <a key={r.id} data-dither="" href={href("reports", r.id)} className={r === current ? "active" : ""}>
                   <strong>{r.title}</strong><span className="muted small">{r.date}</span>
                   {r.warnings?.length > 0 && <span title={r.warnings.join("；")} tabIndex={0} aria-label={r.warnings.join("；")}><Tag tone="orange">周次提示</Tag></span>}
                 </a>) : <Empty>{listFailure ? `${activeKind}读取失败，请重试` : `还没有${activeKind}`}</Empty>}
               </aside>
               <section className="chat-panel">
                 {current ? <>
-                  <header className="chat-head"><strong>{current.title}</strong><Button onClick={() => copy(current)}><Copy size={14} /> 复制</Button></header>
+                  <header className="chat-head"><strong>{current.title}</strong><Button onClick={() => copy(current)}><PixelIcon name="copy" size={14} /> 复制</Button></header>
                   {copyStatus && <p className={`report-copy small ${copyStatus.error ? "error" : "muted"}`} role="status">{copyStatus.text}</p>}
                   <div key={current.id} className="report-body pre">{current.body || "这篇报告暂无正文"}</div>
                 </> : <Empty>{selectedId && failedSource ? `暂时无法读取这篇报告：${failedSource.error}` : selectedId ? "这篇日报或周报不存在，请从列表重新选择" : listFailure ? `${activeKind}读取失败，请重试` : `文档中暂未识别到独立的${activeKind}日期标题`}</Empty>}

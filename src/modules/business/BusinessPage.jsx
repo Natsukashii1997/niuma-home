@@ -13,9 +13,9 @@ export default function BusinessPage() {
           <Card key={line} title={line}>
             <div className="metric-grid">
               {METRICS.map((m) => (
-                <div key={m} className="metric">
-                  <span className="muted small">{m}</span>
-                  <strong>—</strong>
+                <div key={m} className="kpi">
+                  <span className="label">{m}</span>
+                  <span className="kpi-value">—</span>
                 </div>
               ))}
             </div>

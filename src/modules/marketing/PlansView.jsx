@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { PixelIcon } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Loadable, Tag } from "../../ui/components.jsx";
@@ -31,10 +31,10 @@ function PlanWall({ promos, plans }) {
               const skuCount = promos.filter((p) => p.month === month && p.line === line).length;
               const hasPlan = plans.some((p) => p.month === month && p.line === line);
               return (
-                <a key={line} className="plan-card" href={href("marketing", "plans", month, line)}>
+                <a key={line} className="plan-card" data-dither="" href={href("marketing", "plans", month, line)}>
                   <div className="plan-card-top">
                     <strong>{line}</strong>
-                    <ChevronRight size={16} className="muted" />
+                    <PixelIcon name="right" size={16} className="muted" />
                   </div>
                   <div className="plan-card-meta">
                     {hasPlan ? (

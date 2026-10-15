@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { PixelIcon } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
 import { Card, Loadable, PageHeader } from "../../ui/components.jsx";
 import { href } from "../../router.js";
@@ -11,10 +11,10 @@ export default function BrandPage() {
       <PageHeader title="品牌策略" subtitle="品牌数据、品牌物料与内容宣发记录" />
       <Loadable state={state}>
         {(settings) => (
-          <Card title="品牌记录表（飞书多维表格）">
+          <Card dither title="品牌记录表（飞书多维表格）">
             {settings.brand_base_url ? (
               <a className="btn btn-primary" href={settings.brand_base_url} target="_blank" rel="noreferrer">
-                <ExternalLink size={14} /> 在飞书打开
+                <PixelIcon name="external" size={14} /> 在飞书打开
               </a>
             ) : (
               <div className="row">

@@ -1,0 +1,182 @@
+{
+  "checks": [
+    {
+      "name": "首页桌面与窄屏",
+      "details": true,
+      "result": "通过"
+    },
+    {
+      "name": "方案网点逐帧悬停到四档",
+      "details": true,
+      "result": "通过"
+    },
+    {
+      "name": "方案解析、确认入库与回读完成；确认按钮置灰",
+      "details": true,
+      "result": "通过"
+    },
+    {
+      "name": "解析失败后进度停止",
+      "details": true,
+      "result": "通过"
+    },
+    {
+      "name": "促销分组折叠及无阴影直角历史浮层",
+      "details": {
+        "shadow": "none",
+        "border": "2px",
+        "radius": "0px"
+      },
+      "result": "通过"
+    },
+    {
+      "name": "两张不同大小 PNG 真实 XHR 上传、进度事件、记录与文件回读",
+      "details": [
+        {
+          "loaded": 16384,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 32768,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 49152,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 65536,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 81920,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 98304,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 114688,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 131072,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 147456,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 163840,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 180224,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 196608,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 212992,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 229376,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 245760,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 247310,
+          "total": 247310,
+          "lengthComputable": true
+        },
+        {
+          "loaded": 15623,
+          "total": 15623,
+          "lengthComputable": true
+        }
+      ],
+      "result": "通过"
+    },
+    {
+      "name": "物料单图删除、整条删除及回读",
+      "details": true,
+      "result": "通过"
+    },
+    {
+      "name": "品牌与业务骨架，无新增统计数据",
+      "details": true,
+      "result": "通过"
+    },
+    {
+      "name": "Agent 等待首字、逐字输出、历史静态显示、模型与强度保存回读",
+      "details": {
+        "events": [
+          {
+            "type": "turn/start",
+            "params": {
+              "threadId": "thread",
+              "input": [
+                {
+                  "type": "text",
+                  "text": "T09 隔离对话验收，请给出测试回复。",
+                  "text_elements": []
+                }
+              ],
+              "model": "b",
+              "effort": "high",
+              "approvalPolicy": "never",
+              "sandboxPolicy": {
+                "type": "readOnly",
+                "networkAccess": false
+              },
+              "environments": []
+            }
+          }
+        ],
+        "dataDir": "/tmp/workdesk-t09-preview-d3l2yj",
+        "externalCalls": 0
+      },
+      "result": "通过"
+    },
+    {
+      "name": "日/周报刷新和来源篇数、周次标签",
+      "details": true,
+      "result": "通过"
+    },
+    {
+      "name": "设置试读、确认保存与回读；失败不保存",
+      "details": true,
+      "result": "通过"
+    }
+  ],
+  "errors": [],
+  "viewport": [
+    1440,
+    820
+  ],
+  "data": "临时人工数据与脱敏 fixture，外部响应替身",
+  "at": "2026-10-15T10:11:44.993Z"
+}

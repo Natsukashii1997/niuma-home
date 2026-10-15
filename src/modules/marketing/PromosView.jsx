@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { PixelIcon } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
 import { Button, Empty, FilterBar, Loadable, Segmented, Select } from "../../ui/components.jsx";
 import { PROMO_FIELDS } from "../../constants.js";
@@ -50,8 +50,8 @@ function PromoTable({ rows }) {
                 <tr className="group-row">
                   <td colSpan={3 + PROMO_FIELDS.length} onClick={() => toggle(key)}>
                     <div className="promo-group">
-                      <button type="button" className="promo-group-toggle" aria-expanded={!collapsed.has(key)} aria-label={`${collapsed.has(key) ? "展开" : "折叠"} ${name}`}>
-                        {collapsed.has(key) ? <ChevronRight size={16} strokeWidth={1.8} /> : <ChevronDown size={16} strokeWidth={1.8} />}
+                      <button type="button" className="promo-group-toggle" data-dither="" aria-expanded={!collapsed.has(key)} aria-label={`${collapsed.has(key) ? "展开" : "折叠"} ${name}`}>
+                        {collapsed.has(key) ? <PixelIcon name="right" size={16} /> : <PixelIcon name="down" size={16} />}
                         <span>{name}</span><span className="muted">{items.length} 条</span>
                         {group === "sku" && <span className="muted small">{latestChange ? `最近变化：${latestChange}` : "暂无变化记录"}</span>}
                       </button>

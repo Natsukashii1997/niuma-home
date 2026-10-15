@@ -6,6 +6,17 @@ export const FRAME = 1000 / 15;
 
 export const prefersReducedMotion = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(prefersReducedMotion);
+  useEffect(() => {
+    const query = matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(query.matches);
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return reduced;
+}
+
 // 按帧计时：每帧回调一次，回调返回 false 时停止。返回取消函数。
 export function frames(onFrame) {
   let frame = 0;
@@ -36,8 +47,9 @@ export function installBitmap() {
   const running = new WeakMap();
   const step = (el, target) => {
     running.get(el)?.();
-    if (prefersReducedMotion()) return;
+    if (prefersReducedMotion()) { el.dataset.level = String(target); return; }
     running.set(el, frames(() => {
+      if (prefersReducedMotion()) { el.dataset.level = String(target); return false; }
       const level = Number(el.dataset.level || 0);
       if (level === target) return false;
       el.dataset.level = String(level + Math.sign(target - level));
@@ -57,13 +69,14 @@ export function installBitmap() {
 
 // 只滚动变化的位：个位先停、高位依次后停，每一位停住时闪一帧橙色。首次出现时从 0 滚到目标值。
 export function FlipNumber({ value, className = "" }) {
+  const reduced = useReducedMotion();
   const target = String(value ?? "—");
   const [cells, setCells] = useState(() => [...target].map((ch) => ({ ch: prefersReducedMotion() ? ch : /\d/.test(ch) ? "0" : ch })));
   const last = useRef(null);
   useEffect(() => {
     const from = last.current ?? target.replace(/\d/g, "0");
     last.current = target;
-    if (prefersReducedMotion() || from === target) {
+    if (reduced || from === target) {
       setCells([...target].map((ch) => ({ ch })));
       return undefined;
     }
@@ -82,7 +95,7 @@ export function FlipNumber({ value, className = "" }) {
       setCells(next.filter((c, i) => c.ch !== " " || i >= len - target.length));
       if (!moving && frame > 3 + len * 2) return false;
     });
-  }, [target]);
+  }, [target, reduced]);
   return (
     <span className={`flip-number ${className}`} aria-label={target}>
       {cells.map((c, i) => <span key={i} aria-hidden="true" className={c.flash ? "flash" : undefined}>{c.ch}</span>)}
@@ -94,6 +107,7 @@ export function FlipNumber({ value, className = "" }) {
 
 // data: [{ label, value, hint? }]。从左到右、自下而上逐点点亮，最新亮起的一批为橙色；highlight 列常亮橙色。
 export function DotMatrix({ data, rows = 10, highlight = -1, unit = "" }) {
+  const reduced = useReducedMotion();
   const max = Math.max(1, ...data.map((d) => d.value));
   const filled = data.map((d) => (d.value > 0 ? Math.max(1, Math.round((d.value / max) * rows)) : 0));
   const total = filled.reduce((s, n) => s + n, 0);
@@ -102,13 +116,13 @@ export function DotMatrix({ data, rows = 10, highlight = -1, unit = "" }) {
   const [hover, setHover] = useState(-1);
   const key = filled.join(",");
   useEffect(() => {
-    if (prefersReducedMotion()) { setLit(total); return undefined; }
+    if (reduced) { setLit(total); return undefined; }
     setLit(0);
     return frames((frame) => {
       setLit(Math.min(total, frame * batch));
       if (frame * batch >= total) return false;
     });
-  }, [key]); // key 概括了 data 的变化
+  }, [key, reduced]); // key 概括了 data 的变化
   let order = 0;
   return (
     <div className="dot-matrix" onPointerLeave={() => setHover(-1)}>
@@ -155,8 +169,8 @@ export function DitherBar({ value }) {
 /* ---------- ⑤ 方块光标逐字打出 ---------- */
 
 // text 可在流式过程中不断变长；streaming 为 false 且全部打完后光标消失。开始前光标闪两次；数字用橙色高亮。
-export function TypeText({ text, streaming = false, className = "" }) {
-  const reduced = prefersReducedMotion();
+export function TypeText({ text, streaming = false, className = "", onReveal }) {
+  const reduced = useReducedMotion();
   const [shown, setShown] = useState(reduced ? text.length : 0);
   const [phase, setPhase] = useState(reduced ? "typing" : "blink"); // blink → typing
   const [blinkOn, setBlinkOn] = useState(true);
@@ -164,7 +178,7 @@ export function TypeText({ text, streaming = false, className = "" }) {
   live.current.length = text.length;
   live.current.streaming = streaming;
   useEffect(() => {
-    if (reduced) return undefined;
+    if (reduced) { live.current.shown = text.length; return undefined; }
     return frames((frame) => {
       if (frame <= 16) { setBlinkOn(Math.floor((frame - 1) / 4) % 2 === 1); return true; } // 亮灭两次
       setPhase("typing");
@@ -175,11 +189,12 @@ export function TypeText({ text, streaming = false, className = "" }) {
     });
   }, [reduced]); // 只在挂载时启动；流式状态经 live 引用读取，避免结束时重新闪烁
   const visible = text.slice(0, reduced ? text.length : shown);
-  const done = !streaming && visible.length >= text.length && phase === "typing";
+  useEffect(() => { onReveal?.(); }, [shown, reduced ? text : "", onReveal]);
+  const done = !streaming && visible.length >= text.length && (reduced || phase === "typing");
   return (
     <span className={`type-text ${className}`}>
       {visible.split(/(\d+(?:[.,:]\d+)*%?)/).map((part, i) => (i % 2 ? <span key={i} className="type-num">{part}</span> : part))}
-      {!done && <span className={`type-cursor${phase === "blink" && !blinkOn ? " off" : ""}`} aria-hidden="true" />}
+      {!done && <span className={`type-cursor${!reduced && phase === "blink" && !blinkOn ? " off" : ""}`} aria-hidden="true" />}
     </span>
   );
 }
@@ -188,18 +203,25 @@ export function TypeText({ text, streaming = false, className = "" }) {
 
 // progress 为 0–1；为 null 时按帧自走到 95% 等待完成。done 时 100% 并显示像素对勾。全程无缓动。
 export function StepProgress({ progress = null, done = false, error = "", label = "" }) {
+  const reduced = useReducedMotion();
   const [auto, setAuto] = useState(0);
   useEffect(() => {
-    if (done || progress !== null || prefersReducedMotion()) return undefined;
-    return frames((frame) => { if (frame % 3 === 0) setAuto((n) => Math.min(19, n + 1)); });
-  }, [done, progress]);
-  const cells = done ? 20 : progress !== null ? Math.floor(progress * 20) : auto;
-  const pct = done ? 100 : progress !== null ? Math.floor(progress * 100) : auto * 5;
+    if (done || error || progress !== null || reduced) return undefined;
+    setAuto(0);
+    return frames((frame) => {
+      if (frame % 3 === 0) setAuto(Math.min(19, frame / 3));
+      if (frame >= 57) return false;
+    });
+  }, [done, error, progress, reduced]);
+  const fraction = progress === null ? null : Math.max(0, Math.min(1, progress));
+  const cells = done ? 20 : fraction !== null ? Math.floor(fraction * 20) : reduced ? 19 : auto;
+  const pct = done ? 100 : fraction !== null ? Math.floor(fraction * 100) : cells * 5;
+  const unknown = !done && fraction === null;
   return (
-    <div className={`step-progress${error ? " is-error" : ""}`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={label || "进度"}>
+    <div className={`step-progress${error ? " is-error" : ""}`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={unknown ? undefined : pct} aria-valuetext={error || (unknown ? "处理中，进度未知" : `${pct}%`)} aria-label={label || "进度"}>
       <div className="step-progress-head">
         <span className="label">{error ? "ERROR" : done ? "DONE" : label || "LOADING"}</span>
-        <span className="num">{done ? <><PixelIcon name="check" /> 100%</> : `${pct}%`}</span>
+        <span className="num">{done ? <><PixelIcon name="check" /> 100%</> : unknown && reduced ? "处理中" : `${pct}%`}</span>
       </div>
       <div className="step-progress-cells">
         {Array.from({ length: 20 }, (_, i) => <i key={i} className={i < cells ? "on" : undefined} />)}
@@ -212,6 +234,8 @@ export function StepProgress({ progress = null, done = false, error = "", label 
 /* ---------- 7×7 像素图标 ---------- */
 
 const ICONS = {
+  upload: ["...#...", "..###..", ".#.#.#.", "...#...", "#..#..#", "#.....#", "#######"],
+  external: ["...####", ".....##", "....#.#", "#..#..#", "#.#....", "#......", "#####.."],
   home: ["...#...", "..###..", ".#####.", "#######", ".#...#.", ".#.#.#.", ".#.#.#."],
   marketing: [".....#.", "...###.", "####.#.", "#..#.#.", "####.#.", ".#.###.", ".#...#."],
   brand: ["...#...", "...#...", "..###..", "#######", "..###..", "...#...", "...#..."],
@@ -272,6 +296,7 @@ export function BitAvatar({ seed, size = 28 }) {
 
 // 在 area 可见范围上覆盖 16px 方格：前 3 帧按随机顺序盖住旧页面，调用 swap 换成新页面，后 3 帧按另一组随机顺序揭开。约 400ms。
 export function dissolve(canvas, area, swap) {
+  if (prefersReducedMotion()) { swap(); return () => {}; }
   const box = area.getBoundingClientRect();
   const left = Math.max(0, box.left), top = Math.max(0, box.top);
   const width = Math.min(innerWidth, box.right) - left, height = Math.min(innerHeight, box.bottom) - top;
@@ -295,6 +320,7 @@ export function dissolve(canvas, area, swap) {
     if (fill) ctx.fillRect(x, y, size, size); else ctx.clearRect(x, y, size, size);
   };
   const stop = frames((frame) => {
+    if (prefersReducedMotion()) { if (frame <= 3) swap(); canvas.style.display = "none"; return false; }
     if (frame <= 3) cover.slice((frame - 1) * third, frame * third).forEach((i) => cell(i, true));
     if (frame === 3) swap();
     if (frame >= 4 && frame <= 6) reveal.slice((frame - 4) * third, (frame - 3) * third).forEach((i) => cell(i, false));

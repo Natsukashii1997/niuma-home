@@ -1,0 +1,198 @@
+{
+  "branch": "ui-bitmap",
+  "baseCommit": "e51c197",
+  "workspace": "/Users/nat/Documents/ChatGPT/个人/work/work-desk-ui-bitmap",
+  "preview": {
+    "host": "127.0.0.1",
+    "port": 5293,
+    "stopped": true,
+    "dist": "/Users/nat/Documents/ChatGPT/个人/work/work-desk-ui-bitmap/dist",
+    "dataDir": "/tmp/workdesk-t09-preview-d3l2yj",
+    "dataSource": "人工临时数据；报告脱敏fixture、Codex假协议、人工日程"
+  },
+  "tests": {
+    "passed": 85,
+    "failed": 0
+  },
+  "styleScan": {
+    "lucide-react": [],
+    "transition": [],
+    "box-shadow": [],
+    "opacity": [],
+    "非零圆角": []
+  },
+  "screenshots": [
+    {
+      "name": "Agent-1440.png",
+      "sha256": "9d59bea35f5c5aa86a3eb50aef2dc20a2434aba9020de03d5fddd81193581882"
+    },
+    {
+      "name": "Agent-820.png",
+      "sha256": "c21175ccc7785fe9e2e71b31046210cb506d4ab88636d99261fe02790f8d84e0"
+    },
+    {
+      "name": "Agent-长段逐字输出跟随滚动.png",
+      "sha256": "a77b53ba151b1dc02b3e82994b0826e7634f10a27020b0ed7bf28ae2203fa09d"
+    },
+    {
+      "name": "Agent-首字前光标与等待.png",
+      "sha256": "44101f78b80a5533c4725214313755c784b5719120d57058cffcf294be136d82"
+    },
+    {
+      "name": "上传失败-部分完成停止后续并锁定.png",
+      "sha256": "40111f4976d32e6723eddc0219b1083ddd02d2430caccb56bf95826cd952730c"
+    },
+    {
+      "name": "业务-1440.png",
+      "sha256": "0a7b1fb2b7881117c2dc39046fd52e5abfcd05bcfee14f27d23f6a43d2eb35c5"
+    },
+    {
+      "name": "业务-820.png",
+      "sha256": "ea8540482670c4d049fb58ec20ad66e2c58436e2d168456cdcfd873f50051788"
+    },
+    {
+      "name": "交互①-数字停止橙色帧.png",
+      "sha256": "b14a20345faf44191a0c4fe738defd4e2b72d3b7b686a9823b7299d8b29b410c"
+    },
+    {
+      "name": "交互②-点阵点亮中.png",
+      "sha256": "b14a20345faf44191a0c4fe738defd4e2b72d3b7b686a9823b7299d8b29b410c"
+    },
+    {
+      "name": "交互③-模块溶解中.png",
+      "sha256": "f6a95eee0db1ff8ad233a59d2400cbe75ffcd4cf35abdc8792754eef5f148629"
+    },
+    {
+      "name": "交互④-网点悬停.png",
+      "sha256": "eff8385186ac9ee0a57bf4d4b5d2e0f882f95dbf1732eb4ab7f8d7888bd9f449"
+    },
+    {
+      "name": "交互⑤-流式光标打字.png",
+      "sha256": "d57aee0b09d0a181060db3dfe1331720f531dd0908261ad7e1755b59dcafc615"
+    },
+    {
+      "name": "交互⑥-真实多图上传进度.png",
+      "sha256": "4722ac40b99d09c7fff30dfcc21c4412abfb246de6eab3688af423f6d8fbefeb"
+    },
+    {
+      "name": "交互⑥-解析进度格.png",
+      "sha256": "b5fd3b3af2cf22285b3a247bcc84f3ccf8d90cd6a5cf4692bbc302a0df8616f7"
+    },
+    {
+      "name": "促销表-1440.png",
+      "sha256": "c18ef77088392403245078d24fb94c57a18c0f59372c5838a731c1fbf6da56f4"
+    },
+    {
+      "name": "促销表-820.png",
+      "sha256": "268348cc9afd376fe4d3e0e997f6ec0cfbcf7a9932321ead9b586e81147f2d52"
+    },
+    {
+      "name": "促销表-历史浮层.png",
+      "sha256": "7e61f04b94b6cc16af82c89c925fd22e6ced5f1d42e22a8f98d65fd2842c78d9"
+    },
+    {
+      "name": "减少动态效果-静态等待光标与进度.png",
+      "sha256": "8af7fa4f94c7ae909a776e22300e350ea2937463c56b3a5b222dcff00ed35832"
+    },
+    {
+      "name": "减少动态效果-首页直接终态.png",
+      "sha256": "7f75ecc8d3cb2401168c7f5e6eb0ad389518411781bb0995a4e8355d2655bb5a"
+    },
+    {
+      "name": "周报-1440.png",
+      "sha256": "59763ee581a884d55bfe8f7014bb373d5ca991514557d6ae52c01cb21898aecd"
+    },
+    {
+      "name": "周报-820.png",
+      "sha256": "1b30eb655263eaed4843915d8e1d5d2e32039c4aa50182abe610ec769a7aa9d7"
+    },
+    {
+      "name": "品牌-1440.png",
+      "sha256": "d6675dea8639a51a1c7aaea2e4f977ff15985e388bb27b8d812c65ea55358da3"
+    },
+    {
+      "name": "品牌-820.png",
+      "sha256": "077dd19947dd904cc8793e047f65841e1b0ff7b93349decb5e4cab9dd469ead3"
+    },
+    {
+      "name": "手机390-物料表单像素勾选.png",
+      "sha256": "1c7bfe35d4e3604082758179ddbecb390a8fa8312348805db2abd0422856e42f"
+    },
+    {
+      "name": "方案-1440.png",
+      "sha256": "756e8a85679a3302b2354f9bad1547e98b57290fb72fd1799670d80d0c19d4e8"
+    },
+    {
+      "name": "方案-820.png",
+      "sha256": "cb2c942acda497cb2fa26d669cc66a39cbceafbcdd7349e5536b295de18b45aa"
+    },
+    {
+      "name": "方案入库-回读完成.png",
+      "sha256": "aa849c7662c27f56d59e247f9fc8789179761f250d703abaccee63175576cf99"
+    },
+    {
+      "name": "方案录入-1440.png",
+      "sha256": "f80b22c39c5439284279e0ebc1fc75277382fff5cc3733d5eb249a52d5ca147b"
+    },
+    {
+      "name": "方案录入-820.png",
+      "sha256": "f367b1bbff05c44fc487dd2006257459572925a9340c79da2357a0f504546f29"
+    },
+    {
+      "name": "方案解析-失败停止进度.png",
+      "sha256": "94f6979e01067fc95b0e0f4d7b9ffd26034281d0034919e3032eb59895eae2d4"
+    },
+    {
+      "name": "日周报-刷新进度.png",
+      "sha256": "d9c43e838f37600a2a95856fafb80d44d323e9c7f97995e117f4f61240816fe0"
+    },
+    {
+      "name": "日报-1440.png",
+      "sha256": "09db4f7861cd823b6d466154c99f0d945d040949e0f3debf0259f7a618a78d10"
+    },
+    {
+      "name": "日报-820.png",
+      "sha256": "cad6bfa57b8a50133ea36859bb1011fa05850b3c5a72ccf2ae450c4c9f99bd9a"
+    },
+    {
+      "name": "物料列表-1440.png",
+      "sha256": "aea404f2196ee6cd6df397ec7c4e5112a80159b7c4a70a5785903f8b7aff0f43"
+    },
+    {
+      "name": "物料列表-820.png",
+      "sha256": "50183f8d2cfbcbaf5d7eac40407e6ceaf1ed34a656d576520760807cf05fe239"
+    },
+    {
+      "name": "物料详情-1440.png",
+      "sha256": "fd017f384d28f6f70a204a11d80eaeea59c0fd05822760c28035e9c5457cb94d"
+    },
+    {
+      "name": "物料详情-820.png",
+      "sha256": "a5ec447f025163ff3cd48b7cb026a3237c92ba19d497f0b41030bb9472a705b0"
+    },
+    {
+      "name": "设置-1440.png",
+      "sha256": "89a4ae7b5fdc5a7eaa8b866917482d067439909996fda6646af5f68c08ffcdc5"
+    },
+    {
+      "name": "设置-820.png",
+      "sha256": "cf8b9b3e653929df7dbfbfb6e699244675098c533cdbc5c765a8d96c85babbd3"
+    },
+    {
+      "name": "设置-周报试读进度.png",
+      "sha256": "a957e33517f30b751bb034f792a2b4311388d6ed69025aeffddf1d077f3c9a38"
+    },
+    {
+      "name": "设置-试读失败.png",
+      "sha256": "4d4798abd63b93e2d5512dd23710ba672489c25b17f08ff6b5adf2a5aafe8d25"
+    },
+    {
+      "name": "首页-1440.png",
+      "sha256": "9eeda443257cc0aca7b0cc2761597df31258cdc04dd9ee60beb24152648024bb"
+    },
+    {
+      "name": "首页-820.png",
+      "sha256": "12ff91d0077cd5ad9ea656a033768e5d3ab1f6fc95e95f1301bd7333ea7a2c28"
+    }
+  ]
+}

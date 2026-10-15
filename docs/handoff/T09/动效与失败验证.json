@@ -1,0 +1,84 @@
+{
+  "checks": [
+    {
+      "name": "真实数字停帧与点阵中间态，浏览器时钟冻结截图",
+      "details": {
+        "during": 6,
+        "after": 20
+      },
+      "result": "通过"
+    },
+    {
+      "name": "模块切换溶解过程",
+      "details": {
+        "display": "block",
+        "filled": 396256,
+        "total": 1190112
+      },
+      "result": "通过"
+    },
+    {
+      "name": "减少动态：数字/点阵直达终态、无溶解、悬停立即4档并复原",
+      "details": [
+        {
+          "target": "1",
+          "shown": "1"
+        },
+        {
+          "target": "9",
+          "shown": "9"
+        },
+        {
+          "target": "0",
+          "shown": "0"
+        },
+        {
+          "target": "0",
+          "shown": "0"
+        },
+        {
+          "target": "6",
+          "shown": "6"
+        },
+        {
+          "target": "9",
+          "shown": "9"
+        }
+      ],
+      "result": "通过"
+    },
+    {
+      "name": "减少动态：真实delta立即全量显示；等待不闪烁、不伪报完成；流结束无光标",
+      "details": {
+        "waiting": "等待回复首字\n处理中",
+        "length": 1980
+      },
+      "result": "通过"
+    },
+    {
+      "name": "长delta逐字展开保持滚动；运行中切换减少动态效果立即终态",
+      "details": {
+        "height": 600,
+        "scrollHeight": 2962,
+        "bottomGap": 15
+      },
+      "result": "通过"
+    },
+    {
+      "name": "上传第二张失败后停止；第一张已回读、第三张未发、锁定重发",
+      "details": {
+        "uploads": 2,
+        "failureProgress": "33"
+      },
+      "result": "通过"
+    },
+    {
+      "name": "日报/周报窄屏多余留白已收紧并回拍",
+      "details": true,
+      "result": "通过"
+    }
+  ],
+  "errors": [],
+  "at": "2026-10-15T10:15:18.862Z",
+  "method": "真实构建与组件；前三种动效用浏览器时钟冻结中间帧；减少动态用浏览器媒体偏好模拟"
+}

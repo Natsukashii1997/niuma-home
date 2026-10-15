@@ -1,6 +1,6 @@
 # 当前状态
 
-更新：2026-10-15（Codex：记录用户确认 T05B 独立周报来源验收通过）
+更新：2026-10-15（Codex：T09 工程验证与截图完成，待验收，仅 ui-bitmap 工作区）
 
 ## 已完成
 
@@ -10,7 +10,7 @@
 
 ## 唯一下一步
 
-**T09 位图风全站改造（Codex，分支 `ui-bitmap`）**：[docs/tasks/T09-位图风全站改造.md](docs/tasks/T09-位图风全站改造.md)。只在工作区 `work-desk-ui-bitmap` 上工作；不碰主工作区与 5280。
+**Claude 验收 T09 位图风全站改造（分支 `ui-bitmap`），随后交用户最终验收**：[docs/tasks/T09-位图风全站改造.md](docs/tasks/T09-位图风全站改造.md)。只在工作区 `work-desk-ui-bitmap` 上工作；不碰主工作区与 5280。
 
 ## 派单队列（建议顺序）
 
@@ -24,7 +24,7 @@
 | T05 | 日报周报读取飞书文档 | 日报待验收；独立周报已由 T05B 接入 | T07；用户已提供日报、周报两份链接 |
 | T06 | 首页接入飞书日历 | 待验收 | — |
 | T05B | 独立周报来源（双来源、「第N周」标题、单源失败） | 已正式采用，用户验收通过 | T05、T07 |
-| T09 | 位图风全站改造（视觉规范 v2，分支 ui-bitmap） | 待认领（Claude 已完成规范、基础件、外框、首页样板） | — |
+| T09 | 位图风全站改造（视觉规范 v2，分支 ui-bitmap） | 待验收 | — |
 | T08 | Agent 模型与推理强度切换 | 已正式采用，用户验收通过 | T04 |
 
 ## 待用户提供
@@ -361,3 +361,73 @@
   - `AGENTS.md`：结构与视觉规则更新
 - 验证：在 5292 端口用隔离数据副本预览，首页使用真实数据渲染，切换模块时溶解转场正常完成，控制台无报错；其他页面通过公共类整体继承新风格。逐页精修和交互接入交给 T09。
 - 未改接口、表结构、业务逻辑；未碰主工作区和 5280；未 push。
+
+### T09 · 2026-10-15 · Codex 交接（待验收）
+
+- 改动文件：
+  - `src/ui/bitmap.jsx`：补上传/外链图标，修复错误进度停止、减弱动态效果实时切换和长段逐字滚动通知。
+  - `src/styles.css`：移除阴影/透明层级，修复网点遮罩、直角浮层、控件、复选框、角标和窄屏间距。
+  - `src/modules/marketing/PlansView.jsx`：方案网点悬停及像素箭头。
+  - `src/modules/marketing/PlanEditor.jsx`：解析/入库进行中、完成、错误进度及像素图标。
+  - `src/modules/marketing/PromosView.jsx`：分组悬停与像素折叠图标。
+  - `src/modules/marketing/MaterialsView.jsx`：物料卡片悬停、列表/弹窗图标。
+  - `src/modules/marketing/MaterialDetail.jsx`：按完成张数加当前XHR进度展示；保留逐张回读和失败锁定。
+  - `src/modules/marketing/upload-image.js`：新增XHR传输函数，URL、Content-Type、原始文件体不变。
+  - `src/modules/brand/BrandPage.jsx`：入口悬停与外链像素图标。
+  - `src/modules/business/BusinessPage.jsx`：使用kpi指标骨架，保留破折号和待建设。
+  - `src/modules/assistants/AssistantsPage.jsx`：头像、悬停、首字光标、流式打字与等待进度，历史静态显示。
+  - `src/modules/reports/ReportsPage.jsx`：刷新进度、来源篇数FlipNumber、悬停与像素图标。
+  - `src/modules/settings/SettingsPage.jsx`：周报试读进度、完成与错误状态。
+  - `package.json、package-lock.json`：移除lucide-react，无新增依赖。
+  - `tests/upload-image.test.mjs`：新增2项XHR契约/异常测试，含HTTP 500 + JSON null。
+  - `CURRENT.md`：认领、待验收状态、下一步与交接。
+  - `docs/handoff/T09/`：43张截图、验证记录、测试/构建日志与隔离验收脚本。
+- 测试：`WORKDESK_DATA_DIR=$(mktemp -d /tmp/workdesk-t09-tests-XXXXXX) npm test`，85通过 / 0失败；`npm run build`通过，输出本工作树dist；`git diff --check`通过。源码无lucide-react、transition、box-shadow、opacity，圆角仅0/点阵50%。首轮57通过/28失败（26项沙箱监听限制、2项新增测试模拟构造器错误），日志保留，修正后全部通过。
+- 浏览器：全部派单页面1440px/820px；9个入口390px无整页横向溢出。方案入库、XHR多图真实进度与删除、Agent流式和模型/强度回读、日周报刷新、设置试读/保存均通过。解析失败、试读失败、上传第二张失败后停止且锁定通过。六种动效均有过程截图；减少动态与运行中切换通过；1980字delta和长段逐字滚动通过。详细结果见交接目录的验证JSON。
+- 截图（均在 `docs/handoff/T09/`）：
+  - `Agent-1440.png`
+  - `Agent-820.png`
+  - `Agent-长段逐字输出跟随滚动.png`
+  - `Agent-首字前光标与等待.png`
+  - `上传失败-部分完成停止后续并锁定.png`
+  - `业务-1440.png`
+  - `业务-820.png`
+  - `交互①-数字停止橙色帧.png`
+  - `交互②-点阵点亮中.png`
+  - `交互③-模块溶解中.png`
+  - `交互④-网点悬停.png`
+  - `交互⑤-流式光标打字.png`
+  - `交互⑥-真实多图上传进度.png`
+  - `交互⑥-解析进度格.png`
+  - `促销表-1440.png`
+  - `促销表-820.png`
+  - `促销表-历史浮层.png`
+  - `减少动态效果-静态等待光标与进度.png`
+  - `减少动态效果-首页直接终态.png`
+  - `周报-1440.png`
+  - `周报-820.png`
+  - `品牌-1440.png`
+  - `品牌-820.png`
+  - `手机390-物料表单像素勾选.png`
+  - `方案-1440.png`
+  - `方案-820.png`
+  - `方案入库-回读完成.png`
+  - `方案录入-1440.png`
+  - `方案录入-820.png`
+  - `方案解析-失败停止进度.png`
+  - `日周报-刷新进度.png`
+  - `日报-1440.png`
+  - `日报-820.png`
+  - `物料列表-1440.png`
+  - `物料列表-820.png`
+  - `物料详情-1440.png`
+  - `物料详情-820.png`
+  - `设置-1440.png`
+  - `设置-820.png`
+  - `设置-周报试读进度.png`
+  - `设置-试读失败.png`
+  - `首页-1440.png`
+  - `首页-820.png`
+- 与派单不一致之处：无实现或接口偏离。外部依赖采用明确的本地测试替身（Codex假协议、报告脱敏fixture、人工日程），未调用真实模型或实时飞书，不把隔离回归描述为生产/真实外部链路复验。未知进度在减少动态时显示静态“处理中”，不伪报完成。
+- 遗留与范围外发现：无已知范围内功能遗留；App和首页结构、服务端、API、业务规则、视觉规范和派单均未改。样板风格/动效漏洞已修复，两轮只读代码复核发现已关闭，12张独立目视检查完成；报告窄屏留白已收紧并回拍。Claude和用户验收仍未进行。
+- 数据与服务：只在 `work-desk-ui-bitmap` / `ui-bitmap` 修改，未写主工作区、未操作5280、未push。临时库 `/tmp/workdesk-t09-preview-d3l2yj` 为人工数据，本工作树未创建默认data目录。专用127.0.0.1:5293已停止，正式合并/采用另行授权。唯一下一步为Claude验收T09。

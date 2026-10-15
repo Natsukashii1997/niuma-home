@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { Button, Card, Loadable, PageHeader, Tag } from "../../ui/components.jsx";
 
@@ -55,6 +56,7 @@ function SettingForm({ field, initialValue, dailyRevision, dailyPending, onDaily
   const [draft, setDraft] = useState(() => displayValue(key, initialValue));
   const [preview, setPreview] = useState(null);
   const [sourcePreview, setSourcePreview] = useState(null);
+  const [trial, setTrial] = useState(null);
   const [busy, setBusy] = useState(false);
   const [uncertain, setUncertain] = useState(false);
   const [error, setError] = useState("");
@@ -65,6 +67,7 @@ function SettingForm({ field, initialValue, dailyRevision, dailyPending, onDaily
   const sourceBlocked = key === "weekly_doc_url" && dailyPending;
   useEffect(() => {
     if (key !== "weekly_doc_url" || previousDaily.current === dailyRevision) return;
+    setTrial(null);
     previousDaily.current = dailyRevision; previewVersion.current++;
     setPreview(null); setSourcePreview(null); setNotice(dailyPending ? "日报来源正在保存或结果待核对，请先完成日报回读。" : "日报来源已核对，请重新预览周报链接。");
   }, [key, dailyRevision, dailyPending]);
@@ -99,20 +102,21 @@ function SettingForm({ field, initialValue, dailyRevision, dailyPending, onDaily
     } catch (error) { setError(`重新读取失败：${error.message}。请稍后再次读取。`); }
     finally { lock.current = false; setBusy(false); }
   };
-  const changed = (event) => { setDraft(event.target.value); setPreview(null); setSourcePreview(null); setError(""); setNotice(""); };
+  const changed = (event) => { setTrial(null); setDraft(event.target.value); setPreview(null); setSourcePreview(null); setError(""); setNotice(""); };
   const previewDraft = async (event) => {
     event.preventDefault(); setNotice(""); setError("");
     if (lock.current || uncertain || sourceBlocked) return;
     if (key === "weekly_doc_url") {
-      setPreview(null); setSourcePreview(null);
+      setPreview(null); setSourcePreview(null); setTrial(null);
       if (draft === "") { setPreview(""); return; }
       lock.current = true; setBusy(true);
+      setTrial({});
       const version = previewVersion.current;
       try {
         const result = await apiSend("POST", "/api/reports/source-preview", { role: "weekly", url: draft });
         if (!result || !Number.isInteger(result.count) || !Array.isArray(result.unrecognized)) throw new Error("试读结果无效，请重试");
-        if (version === previewVersion.current) { setSourcePreview(result); setPreview(draft); }
-      } catch (error) { if (version === previewVersion.current) setError(error.message); }
+        if (version === previewVersion.current) { setSourcePreview(result); setPreview(draft); setTrial({ done: true }); }
+      } catch (error) { if (version === previewVersion.current) { setError(error.message); setTrial({ error: error.message }); } }
       finally { lock.current = false; setBusy(false); }
       return;
     }
@@ -127,8 +131,9 @@ function SettingForm({ field, initialValue, dailyRevision, dailyPending, onDaily
       <p id={`hint-${key}`} className="muted small">{hint}</p>
       {key === "weekly_doc_url" && <Button type="button" disabled={busy || uncertain || sourceBlocked} onClick={() => {
         if (lock.current || uncertain || sourceBlocked) return;
-        setDraft(""); setPreview(""); setSourcePreview(null); setError(""); setNotice("");
+        setTrial(null); setDraft(""); setPreview(""); setSourcePreview(null); setError(""); setNotice("");
       }}>清空</Button>}
+      {trial && <StepProgress label="试读周报来源" {...trial} />}
       {error && <p className="error" role="alert">{error}</p>}
       {uncertain ? <Button type="button" disabled={busy} onClick={reload}>重新读取配置</Button> : preview !== null ? <div className="settings-preview">
         <h3 className="section-title">保存预览</h3><pre className="pre">{displayValue(key, preview)}</pre>
