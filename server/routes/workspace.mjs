@@ -2,6 +2,9 @@ import { json, readJson, route } from "../http.mjs";
 import { getSettings, saveSetting } from "../db.mjs";
 import { createReportReader, reportDocumentUrl } from "../reports.mjs";
 import { createCalendarReader } from "../calendar.mjs";
+import { createCodexResetReader } from "../codex-reset.mjs";
+import { createUserServices, userRoutes, handleV3 } from "./user.mjs";
+import { deliveryRoutes } from "./delivery.mjs";
 
 const invalid = (message) => { throw Object.assign(new Error(message), { status: 400 }); };
 
@@ -31,9 +34,11 @@ function settingValue(key, value) {
 }
 
 // 首页、日报周报、日历、配置
-export function routes(db, reportOptions, calendarOptions) {
+export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
   const calendar = createCalendarReader(calendarOptions);
   const reports = createReportReader(() => getSettings(db), reportOptions);
+  const codexReset = createCodexResetReader(v3Options.codex);
+  const userServices = createUserServices(db, v3Options);
   const reportHandler = (detail) => async (req, res, { params, url }) => {
     try {
       return json(res, 200, await reports({ refresh: url.searchParams.get("refresh") === "1", withSources: url.searchParams.get("withSources") === "1", ...(detail ? { id: params.id } : {}) }));
@@ -42,6 +47,9 @@ export function routes(db, reportOptions, calendarOptions) {
     }
   };
   return [
+    route("GET", "/api/v3/codex-reset", handleV3(() => codexReset())),
+    ...userRoutes(userServices),
+    ...deliveryRoutes(userServices.needs),
     route("GET", "/api/calendar/today", async (req, res) => {
       try { return json(res, 200, await calendar()); }
       catch (error) { return json(res, error.status || 502, { error: error.status ? error.message : "飞书日历读取失败，请稍后重新打开首页" }); }

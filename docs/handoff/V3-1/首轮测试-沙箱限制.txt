@@ -1,0 +1,88 @@
+✔ V3 日期严格补年、跨年、推测与不完整范围，不修来源年份 (1.104208ms)
+✔ V3 时间线重复表头不串列、完整起止与来源、推测不得生成需求 (1.761166ms)
+✔ V3 CSV 多行/引号保留真实行号，截断/少列不当成功 (0.229917ms)
+✔ V3 Codex 四阶段严格取 action；撤回、空时间、进展、已读 (1.1275ms)
+✔ V3 Codex 合并并发、ETag 304、失败不伪装成功或推进水位 (4.35475ms)
+✖ V3 新 GET 覆盖501且保持形状，后续批次仍501，月份校验 (10.440875ms)
+✖ V3 同步仅完整成功替换；失败不覆盖快照或返回旧成功 (4.470083ms)
+✖ V3 采纳先预览后确认，防篡改、持久化回读、重复确认幂等，策略增改 (3.157542ms)
+✖ V3 来源变化、并发旧预览、过期凭据均拒绝；已采纳来源消失显示待复核 (4.796625ms)
+✖ V3 数据库写入故障回滚，不污染其他需求 (3.127792ms)
+✔ V3 飞书读取固定 codex user、四张地区表和完整范围，不导入月历 (0.315334ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 6
+ℹ fail 5
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 92.670417
+
+✖ failing tests:
+
+test at tests/v3-batch1.test.mjs:97:1
+✖ V3 新 GET 覆盖501且保持形状，后续批次仍501，月份校验 (10.440875ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-batch1.test.mjs:109:1
+✖ V3 同步仅完整成功替换；失败不覆盖快照或返回旧成功 (4.470083ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-batch1.test.mjs:119:1
+✖ V3 采纳先预览后确认，防篡改、持久化回读、重复确认幂等，策略增改 (3.157542ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at processTicksAndRejections (node:internal/process/task_queues:90:21)
+      at runNextTicks (node:internal/process/task_queues:69:3)
+      at process.processImmediate (node:internal/timers:472:9) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-batch1.test.mjs:138:1
+✖ V3 来源变化、并发旧预览、过期凭据均拒绝；已采纳来源消失显示待复核 (4.796625ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-batch1.test.mjs:153:1
+✖ V3 数据库写入故障回滚，不污染其他需求 (3.127792ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }

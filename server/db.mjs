@@ -77,6 +77,22 @@ const SCHEMA = `
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
+
+  -- V3：外部只读来源的完整快照；失败时不替换。
+  CREATE TABLE IF NOT EXISTS v3_snapshots (
+    kind TEXT PRIMARY KEY,
+    payload TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  -- V3：本人预览确认后的需求及策略，仅保存在工作台。
+  CREATE TABLE IF NOT EXISTS v3_needs (
+    id TEXT PRIMARY KEY,
+    month TEXT NOT NULL,
+    source_fingerprint TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
 `;
 
 export function openDb(dir = dataDir) {

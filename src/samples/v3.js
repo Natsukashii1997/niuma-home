@@ -3,18 +3,8 @@
 // 接口实现后，对应示例即可删除（见 docs/tasks/V3-接口清单.md）。
 
 /* ---------- 首页 · 交付月 ---------- */
-export const SAMPLE_MONTH = {
-  month: "2026-11",
-  campaign: { id: 1, name: "双11 冲分节", start: "2026-10-01", end: "2026-11-30" },
-  steps: [
-    { key: "needs", label: "主线需求", state: "part", meta: "4 条 · 2 条已采纳", href: "#/user/strategy" },
-    { key: "plans", label: "方案录入", state: "todo", meta: "", href: "#/marketing/plans" },
-    { key: "prices", label: "价格方案", state: "part", meta: "双11底价 草稿 · 1 档低于底线", href: "#/marketing/prices" },
-    { key: "materials", label: "物料交付", state: "todo", meta: "0 / 6 已上传 NAS", href: "#/marketing/materials" },
-    { key: "brief", label: "设计 brief", state: "part", meta: "7 节中 4 节完成", href: "#/marketing/brief" },
-    { key: "campaign", label: "营销战役", state: "part", meta: "5 / 17 节点 · 1 个待审核", href: "#/marketing/campaign" },
-  ],
-};
+// V3-1 已移除演示内容。静态 import/加载 fallback 由 Claude 清理后删除此兼容导出。
+export const SAMPLE_MONTH = { steps: [] };
 
 export const SAMPLE_TODO = [
   { kind: "审核", text: "双11 冲分节 · 策略 / 节奏 / 清单定稿", due: "10-17", href: "#/marketing/campaign", urgent: true },
@@ -43,24 +33,8 @@ export const SAMPLE_REVENUE = {
   ],
 };
 
-export const SAMPLE_CODEX = {
-  stage: "预告",
-  next: "2026-10-18T09:00:00+08:00",
-  label: "北京时间 10 月 18 日 周日 09:00 前",
-  quote: "We're going to reset Codex rate limits for everyone again this weekend — thanks for bearing with us while we scale up capacity.",
-  quoteZh: "本周末会再次为所有人重置 Codex 速率限制，感谢大家在扩容期间的耐心。",
-  author: "thsottiaux",
-  posted: "2026-10-16 08:42",
-  checked: "2026-10-16 10:00",
-  isNew: true,
-  nextCheck: "明天 10:00",
-  pushed: true,
-  history: [
-    { stage: "确认", time: "10-04 09:12", text: "Reset is live. Enjoy." },
-    { stage: "预告", time: "10-03 22:40", text: "Another reset coming tomorrow morning PT." },
-    { stage: "撤回", time: "09-21 11:05", text: "Holding off on the reset we mentioned, sorry folks." },
-  ],
-};
+// V3-1 已移除演示内容。静态 import/加载 fallback 由 Claude 清理后删除此兼容导出。
+export const SAMPLE_CODEX = undefined;
 
 /* ---------- 营销 · 价格方案（灵活学Lite，原价 990 元/小时） ---------- */
 export const SAMPLE_PRICE_SKUS = [
@@ -202,88 +176,12 @@ export const SAMPLE_KNOWLEDGE = {
 };
 
 /* ---------- 用户 · 时间线（示例：结构与飞书《2026海外大学时间线》地区明细表一致，日期为演示值） ---------- */
-export const SAMPLE_TIMELINE = {
-  source: "飞书《2026海外大学时间线》· 地区明细表",
-  syncedAt: "2026-10-14 09:00",
-  stage: "本科",
-  countries: [["AU", "澳洲"], ["NZ", "新西兰"], ["UK", "英国"], ["US", "美国"], ["CA", "加拿大"], ["HK", "香港"], ["SG", "新加坡"], ["MY", "马来西亚"]],
-  terms: { AU: "2026 S2", NZ: "2026 S2", UK: "2026-27 秋季学期", US: "2026 秋 / 2027 春", CA: "2026 秋 / 2027 春", HK: "2026-27 Sem 1", SG: "2026-27 Sem 1", MY: "2026-27 Sem 1" },
-  nodes: { AU: ["选课", "开学", "期中假", "Final", "出分"], UK: ["开学", "Reading Week", "Essay 截止", "期末", "出分"], US: ["开学", "期中", "春季选课", "Final", "出分"], HK: ["开学", "Reading Week", "考试周", "出分"] },
-  table: {
-    AU: [
-      { school: "昆士兰大学", abbr: "UQ", cells: [["06-02", "07-06", "澳新!E4"], ["07-27", "", "澳新!F4"], ["09-28", "10-02", "澳新!G4"], ["11-02", "11-20", "澳新!H4"], ["11-30", "", "澳新!I4"]] },
-      { school: "悉尼大学", abbr: "USYD", cells: [["06-09", "07-20", "澳新!E5"], ["08-03", "", "澳新!F5"], ["09-28", "10-02", "澳新!G5"], ["11-04", "11-22", "澳新!H5"], ["12-04", "", "澳新!I5"]] },
-      { school: "墨尔本大学", abbr: "UniMelb", cells: [["06-02", "07-06", "澳新!E6"], ["07-27", "", "澳新!F6"], ["09-21", "09-25", "澳新!G6"], ["11-02", "11-20", "澳新!H6"], null] },
-      { school: "莫纳什大学", abbr: "Monash", cells: [["06-16", "07-24", "澳新!E7"], ["07-27", "", "澳新!F7"], ["09-28", "10-02", "澳新!G7"], ["11-05", "11-21", "澳新!H7"], ["12-02", "", "澳新!I7", "guess"]] },
-      { school: "澳洲国立大学", abbr: "ANU", cells: [["06-10", "07-17", "澳新!E8"], ["07-27", "", "澳新!F8"], ["09-14", "09-25", "澳新!G8"], ["11-06", "11-19", "澳新!H8"], ["12-01", "", "澳新!I8"]] },
-      { school: "新南威尔士大学", abbr: "UNSW", cells: [["08-18", "09-12", "澳新!E9"], ["09-15", "", "澳新!F9"], null, ["11-14", "11-27", "澳新!H9"], ["11-27", "12-05", "澳新!I9", "conflict"]] },
-      { school: "阿德莱德大学", abbr: "Adelaide", cells: [["06-16", "07-13", "澳新!E10"], ["07-28", "", "澳新!F10"], null, ["11-06", "11-21", "澳新!H10"], ["12-01", "", "澳新!I10", "guess"]] },
-      { school: "西澳大学", abbr: "UWA", cells: [["06-23", "07-20", "澳新!E11"], ["07-28", "", "澳新!F11"], ["09-29", "10-03", "澳新!G11"], ["11-05", "11-20", "澳新!H11"], ["12-03", "", "澳新!I11"]] },
-    ],
-    UK: [
-      { school: "曼彻斯特大学", abbr: "Manchester", cells: [["09-22", "", "英爱!D4"], ["11-03", "11-07", "英爱!E4"], ["11-03", "11-28", "英爱!F4"], ["01-12", "01-30", "英爱!G4"], ["02-20", "", "英爱!H4", "guess"]] },
-      { school: "布里斯托大学", abbr: "Bristol", cells: [["09-22", "", "英爱!D5"], ["11-03", "11-07", "英爱!E5"], ["11-09", "11-27", "英爱!F5"], ["01-12", "01-23", "英爱!G5"], null] },
-      { school: "伦敦大学学院", abbr: "UCL", cells: [["09-29", "", "英爱!D6"], ["11-03", "11-07", "英爱!E6"], ["11-10", "11-28", "英爱!F6"], ["01-05", "01-16", "英爱!G6"], ["02-13", "", "英爱!H6"]] },
-      { school: "格拉斯哥大学", abbr: "Glasgow", cells: [["09-15", "", "英爱!D7"], null, ["11-17", "12-05", "英爱!F7"], ["12-08", "12-19", "英爱!G7"], ["01-23", "", "英爱!H7"]] },
-    ],
-  },
-  agenda: [
-    { from: "2026-11-02", to: "2026-11-20", c: "澳洲", school: "昆士兰大学 UQ", type: "Final", src: "澳新!H4" },
-    { from: "2026-11-02", to: "2026-11-20", c: "澳洲", school: "墨尔本大学 UniMelb", type: "Final", src: "澳新!H6" },
-    { from: "2026-11-02", to: "2026-11-14", c: "新西兰", school: "奥克兰大学 Auckland", type: "Final", src: "澳新!H14" },
-    { from: "2026-11-03", to: "2026-11-28", c: "英国", school: "曼彻斯特大学 Manchester", type: "Essay 截止", src: "英爱!F4" },
-    { from: "2026-11-03", to: "2026-11-07", c: "英国", school: "曼彻斯特大学 Manchester", type: "Reading Week", src: "英爱!E4" },
-    { from: "2026-11-04", to: "2026-11-22", c: "澳洲", school: "悉尼大学 USYD", type: "Final", src: "澳新!H5" },
-    { from: "2026-11-05", to: "2026-11-21", c: "澳洲", school: "莫纳什大学 Monash", type: "Final", src: "澳新!H7" },
-    { from: "2026-11-06", to: "2026-11-19", c: "澳洲", school: "澳洲国立大学 ANU", type: "Final", src: "澳新!H8" },
-    { from: "2026-11-09", to: "2026-11-27", c: "英国", school: "布里斯托大学 Bristol", type: "Essay 截止", src: "英爱!F5" },
-    { from: "2026-11-09", to: "2026-11-18", c: "美国", school: "华盛顿大学 UW", type: "春季选课", src: "美加!G9" },
-    { from: "2026-11-10", to: "2026-11-21", c: "美国", school: "加州大学洛杉矶 UCLA", type: "春季选课", src: "美加!G4" },
-    { from: "2026-11-10", to: "2026-11-28", c: "英国", school: "伦敦大学学院 UCL", type: "Essay 截止", src: "英爱!F6" },
-    { from: "2026-11-12", to: "2026-11-20", c: "美国", school: "加州大学伯克利 UCB", type: "春季选课", src: "美加!G5", flag: "conflict" },
-    { from: "2026-11-14", to: "2026-11-27", c: "澳洲", school: "新南威尔士大学 UNSW", type: "Final", src: "澳新!H9" },
-    { from: "2026-11-16", to: "2026-11-24", c: "美国", school: "加州大学圣地亚哥 UCSD", type: "春季选课", src: "美加!G7" },
-    { from: "2026-11-17", to: "2026-12-05", c: "英国", school: "格拉斯哥大学 Glasgow", type: "Essay 截止", src: "英爱!F7" },
-    { from: "2026-11-24", to: "2026-12-10", c: "香港", school: "香港理工大学 PolyU", type: "考试周", src: "港澳新马!F6" },
-    { from: "2026-11-25", to: "2026-12-12", c: "香港", school: "香港大学 HKU", type: "考试周", src: "港澳新马!F4" },
-    { from: "2026-11-26", to: "2026-12-13", c: "香港", school: "香港中文大学 CUHK", type: "考试周", src: "港澳新马!F5" },
-    { from: "2026-11-30", to: "", c: "澳洲", school: "昆士兰大学 UQ", type: "出分", src: "澳新!I4" },
-  ],
-  anomalies: [
-    { school: "马来西亚国民大学 UKM", issue: "同一考试两种日期", a: "07-06 → 07-26", b: "06-29 → 07-19", src: "7月!A6 / 7月!F19" },
-    { school: "新南威尔士大学 UNSW", issue: "出分与 Final 结束日重叠", a: "出分 11-27", b: "出分 12-05", src: "澳新!I9" },
-    { school: "加州大学伯克利 UCB", issue: "选课没有写日期，按明细表推测", a: "11-12 → 11-20（推测）", b: "", src: "7月!C14" },
-  ],
-};
+// V3-1 已移除演示内容。静态 import/加载 fallback 由 Claude 清理后删除此兼容导出。
+export const SAMPLE_TIMELINE = undefined;
 
 /* ---------- 用户 · 主线需求 ---------- */
-export const SAMPLE_NEEDS = {
-  month: "2026-11",
-  needs: [
-    { id: 1, seg: "澳洲 · 本科", node: "S2 Final", when: "11-02 → 11-20", schools: 10, need: "期末冲刺，集中补薄弱科目", pain: "复习材料多、时间碎，不知道先补哪科", todo: "列考试日程，按科目排冲刺计划", source: "时间线 · 10 校", status: "已采纳", links: "价格 1 · 物料 3",
-      strategy: { goal: "让 S2 期末前两周的澳洲本科生，把「冲刺补课」当作默认选择", actions: {
-        营销: [["双11 主推 10 小时冲刺包，海报写清考试日期", "学生按考试日倒推时间，日期比折扣更能促成行动"], ["私信按学校分批发，UQ / UniMelb 先发", "这两校 Final 最早开始（11-02）"]],
-        产品: [["冲刺包支持按科目拆课时", "痛点是「不知道先补哪科」，拆科目能降低决策成本"]],
-        运营: [["顾问话术加一句：先列考试日程再排课", "对应待办，先帮学生做计划再谈课时"]],
-      } } },
-    { id: 2, seg: "英国 · 本科", node: "第一轮 Essay", when: "11-03 → 11-28", schools: 4, need: "Essay 结构与引用规范", pain: "第一次写英式论文，被扣分不知原因", todo: "拿到题目，预约结构审读", source: "时间线 · 4 校", status: "已采纳", links: "物料 1",
-      strategy: { goal: "首轮 Essay 反馈后一周内，把「结构审读」推到被扣分的英国新生面前", actions: {
-        营销: [["做一张「引用格式扣分对照」干货图", "Voice 显示引用格式是扣分集中点，干货图能先建立信任"]],
-        产品: [["结构审读单次可买，不强制套餐", "第一次写英式论文的学生更愿意先试一次"]],
-        运营: [],
-      } } },
-    { id: 3, seg: "美国 · 本科", node: "春季选课", when: "11-09 → 11-24", schools: 7, need: "选课规划与难度评估", pain: "怕选到硬课拖 GPA，抢课窗口短", todo: "整理学位要求，列备选课表", source: "时间线 · 7 校", status: "草稿", links: "" },
-    { id: 4, seg: "香港 · 本科", node: "Sem 1 考试周", when: "11-24 → 12-13", schools: 5, need: "考前串讲与真题训练", pain: "考试周集中，几门连考", todo: "确认考试时间表，预约串讲", source: "时间线 · 5 校 + 留学之声", status: "草稿", links: "" },
-  ],
-  map: [
-    { type: "选课", lead: 7, need: "选课规划、课程难度评估", pain: "怕选错课拖 GPA；抢课窗口短", todo: "整理学位要求、列备选课表", ok: true },
-    { type: "开学", lead: 14, need: "新学期适应、先修课补基础", pain: "进度快、听不懂第一周的课", todo: "领取课程大纲、标出难点周", ok: true },
-    { type: "Final", lead: 14, need: "期末冲刺、薄弱科目集中补", pain: "复习材料多、时间碎", todo: "列考试日程、排冲刺计划", ok: true },
-    { type: "出分", lead: 0, need: "成绩解读、补考或申诉判断", pain: "挂科焦虑，不清楚申诉流程", todo: "核对成绩单、确认申诉截止日", ok: true },
-    { type: "Essay 截止", lead: 10, need: "论文结构与引用规范", pain: "英式论文写法不熟", todo: "拿到题目、预约结构审读", ok: false },
-    { type: "考试周", lead: 14, need: "考前串讲与真题训练", pain: "几门连考、时间不够", todo: "确认考试时间表、预约串讲", ok: false },
-  ],
-};
+// V3-1 已移除演示内容。静态 import/加载 fallback 由 Claude 清理后删除此兼容导出。
+export const SAMPLE_NEEDS = undefined;
 
 /* ---------- 用户 · 留学之声（基于 AIHOT 引擎；信源为免费英文信源） ---------- */
 export const SAMPLE_VOICE = {
