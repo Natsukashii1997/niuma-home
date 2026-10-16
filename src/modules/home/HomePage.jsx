@@ -2,10 +2,11 @@ import { useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Card, Loadable, SampleBadge, StatusMark } from "../../ui/components.jsx";
 import { BitAvatar, FlipNumber, PixelIcon } from "../../ui/bitmap.jsx";
-import { LINES, deliveryMonth, daysToDeadline, shortMonth } from "../../constants.js";
+import { deliveryMonth, deliverySteps, daysToDeadline, shortMonth } from "../../constants.js";
 import { SAMPLE_MONTH, SAMPLE_TODO, SAMPLE_VOICE } from "../../samples/v3.js";
 import { CodexCard } from "./CodexStrip.jsx";
 import { VoiceCloud } from "../voice/VoicePage.jsx";
+import { STARTERS, handOffDraft } from "../assistants/AssistantsPage.jsx";
 
 // 首页（v3）：Codex 重置 + 待我处理 → 交付月 + 今日日程 → 用户之声 + Agent。业务营收完成度在「业务」页。
 // 工作节奏是本月准备下月，月底前交付。
@@ -56,15 +57,11 @@ export default function HomePage() {
   );
 }
 
-// 交付月：剩余天数 + 6 个环节。方案录入用真实数据，其余环节等 v3 接口（未实现时显示示例）。
+// 交付月：剩余天数 + 6 个环节（见 deliverySteps：方案录入由前端用真实的 /api/plans 计算）。
 function DeliveryCard({ month, plans }) {
   const state = useApi(`/api/v3/months/${month}`, SAMPLE_MONTH);
   const left = daysToDeadline(month);
-  const lines = plans.data ? LINES.filter((l) => plans.data.some((p) => p.month === month && p.line === l)) : [];
-  const steps = (state.data?.steps || SAMPLE_MONTH.steps).map((s) => s.key !== "plans" ? s : {
-    ...s, state: lines.length === 3 ? "done" : lines.length ? "part" : "todo",
-    meta: plans.data ? `${lines.length}/3 条业务线${lines.length < 3 ? ` · 待录 ${LINES.filter((l) => !lines.includes(l)).join("、")}` : ""}` : "读取中",
-  });
+  const steps = deliverySteps(state.data?.steps || SAMPLE_MONTH.steps, plans.data, month);
   const done = steps.filter((s) => s.state === "done").length;
   const campaign = state.data?.campaign;
   return (
@@ -82,7 +79,7 @@ function DeliveryCard({ month, plans }) {
             <a href={s.href} data-dither="">
               <StatusMark state={s.state} />
               <span className="delivery-step-name">{s.label}</span>
-              <span className="delivery-step-meta">{s.meta}</span>
+              <span className="delivery-step-meta" title={s.note}>{s.meta}</span>
               <PixelIcon name="right" className="muted" />
             </a>
           </li>
@@ -92,18 +89,22 @@ function DeliveryCard({ month, plans }) {
   );
 }
 
+// 待我处理的类型色：门禁待审是「待你处理」（琥珀），价格破底线是「风险」（红）。
+const TODO_TONE = { 审核: "warn", 价格: "risk" };
+const daysUntil = (md) => { if (!/^\d{2}-\d{2}$/.test(md || "")) return null; const t = new Date(); return Math.round((new Date(t.getFullYear(), Number(md.slice(0, 2)) - 1, Number(md.slice(3))) - new Date(t.getFullYear(), t.getMonth(), t.getDate())) / 86400000); };
+
 function TodoCard() {
   const state = useApi("/api/v3/home/todo", SAMPLE_TODO);
   return (
     <Card className="col-4" title={<><PixelIcon name="alert" /> 待我处理</>} extra={state.isSample ? <SampleBadge task={state.task} /> : null}>
-      <Loadable state={state}>
+      <Loadable state={state} name="待我处理">
         {(items) => !items.length ? <p className="muted">没有待处理的事</p> : (
           <ul className="list todo-list">
             {items.map((t, i) => (
               <li key={i}>
-                <span className={`todo-kind${t.urgent ? " is-urgent" : ""}`}>{t.kind}</span>
+                <span className={`todo-kind${t.urgent ? ` is-${TODO_TONE[t.kind] || "warn"}` : ""}`}>{t.kind}</span>
                 <a href={t.href} className="todo-text">{t.text}</a>
-                {t.due && <span className={`tnum small${t.urgent ? " signal" : " muted"}`}>{t.due}</span>}
+                {t.due && <span className={`tnum small ${daysUntil(t.due) !== null && daysUntil(t.due) <= 0 ? "risk-text" : t.urgent ? "warn-text" : "muted"}`}>{t.due}</span>}
               </li>
             ))}
           </ul>
@@ -119,7 +120,7 @@ function TodayCard({ now }) {
   const minutes = now.getHours() * 60 + now.getMinutes();
   return (
     <Card className="col-4" title={<><PixelIcon name="calendar" /> 今日日程</>} extra={<a className="link" href="https://www.feishu.cn/calendar/" target="_blank" rel="noreferrer">飞书</a>}>
-      <Loadable state={state}>
+      <Loadable state={state} name="今日日程">
         {(events) => {
           if (!events.length) return <p className="muted">今天没有日程</p>;
           const end = (e) => { const t = [...e.time.matchAll(/(\d{1,2}):(\d{2})/g)].at(-1); return t ? Number(t[1]) * 60 + Number(t[2]) : -1; };
@@ -141,34 +142,47 @@ function TodayCard({ now }) {
   );
 }
 
+// Agent：助手列表 + 第一个助手的常用开场（点一下带着这句进入对话，只填进输入框）+ 新对话。
 function AgentsCard() {
   const state = useApi("/api/assistants");
+  const start = (a, text) => { handOffDraft(a.id, text); location.hash = href("assistants", String(a.id)); };
   return (
     <Card className="col-4" title={<><PixelIcon name="agent" /> Agent</>} extra={<a className="link" href={href("assistants")}>全部</a>}>
-      <Loadable state={state}>
+      <Loadable state={state} name="Agent 列表">
         {(list) => (
-          <ul className="list agent-list">
-            {list.map((a) => (
-              <li key={a.id}>
-                <BitAvatar seed={a.name} />
-                <a href={href("assistants", String(a.id))}>{a.name}</a>
-                <span className="agent-model">{a.model ? a.model : "默认"}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="agent-card">
+            <ul className="list agent-list">
+              {list.map((a) => (
+                <li key={a.id}>
+                  <BitAvatar seed={a.name} />
+                  <a href={href("assistants", String(a.id))}>{a.name}</a>
+                  <span className="agent-model">{a.model ? a.model : "默认"}</span>
+                </li>
+              ))}
+            </ul>
+            {list[0] && (
+              <>
+                <span className="label">常用开场 · {list[0].name}</span>
+                <div className="agent-starters">
+                  {STARTERS.map((t) => <button key={t} type="button" className="phrase" onClick={() => start(list[0], t)}>{t}</button>)}
+                </div>
+                <a className="btn btn-sm agent-new" href={href("assistants", String(list[0].id))}><PixelIcon name="plus" />新对话</a>
+              </>
+            )}
+          </div>
         )}
       </Loadable>
     </Card>
   );
 }
 
-// 用户之声：词云 + 今日摘要，点进 Voice 页看详情。
+// 留学之声：词云 + 今日摘要，点进 Voice 页看详情。
 function VoiceCard() {
   const state = useApi("/api/v3/voice", SAMPLE_VOICE);
   return (
-    <Card className="col-8" title={<><PixelIcon name="voice" /> 用户之声</>}
+    <Card className="col-8" title={<><PixelIcon name="voice" /> 留学之声</>}
       extra={<>{state.isSample && <SampleBadge task={state.task} />}<a className="link" href={href("voice")}>Voice</a></>}>
-      <Loadable state={state}>
+      <Loadable state={state} name="留学之声">
         {(v) => {
           return (
             <div className="voice-cloud-wrap">

@@ -2,9 +2,9 @@ import { useState } from "react";
 import { FlipNumber, PixelIcon } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Card, Loadable, SampleBadge, Segmented, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Card, Loadable, PhaseSteps, SampleBadge, Segmented, Tag, useToast } from "../../ui/components.jsx";
 import { SAMPLE_CAMPAIGN, SAMPLE_MONTH } from "../../samples/v3.js";
-import { deliveryMonth } from "../../constants.js";
+import { deliveryMonth, deliverySteps } from "../../constants.js";
 
 // 营销战役（v3）：大节点（如双11）才开，可跨月。节点来自多维表格模板，节点说明暂空（共识 Q45）。
 // 顶部：战役横条 → 月底交付倒计时条（本月每天一格）→ 阶段卡；下面是节点清单。
@@ -16,7 +16,7 @@ const parseDay = (s) => { const [y, m, d] = s.split("-").map(Number); return new
 
 export default function CampaignView() {
   const state = useApi("/api/v3/campaigns/current", SAMPLE_CAMPAIGN);
-  return <Loadable state={state}>{(c) => <Campaign c={c} sample={state.isSample ? state.task : null} />}</Loadable>;
+  return <Loadable state={state} name="营销战役" big>{(c) => <Campaign c={c} sample={state.isSample ? state.task : null} />}</Loadable>;
 }
 
 function Campaign({ c, sample }) {
@@ -46,23 +46,15 @@ function Campaign({ c, sample }) {
         <Button><PixelIcon name="plus" />新开战役</Button>
       </div>
       <DeadlineBar />
-      <ol className="phase-steps">
-        {phases.map((p, i) => {
-          const ok = p.nodes.filter((n) => n.done).length;
-          const state = ok === p.nodes.length ? "done" : i === curPhase ? "cur" : "todo";
-          const next = p.nodes.find((n) => !n.done);
-          return (
-            <li key={p.name} className={`is-${state}`}>
-              <div className="phase-step-no"><b>{String(i + 1).padStart(2, "0")}</b><i aria-hidden="true" /></div>
-              <strong>{p.name}</strong>
-              <span className="small muted">{ok}/{p.nodes.length} 节点{state === "done" ? " · 已完成" : next ? ` · 下一个：${next.t}${next.due ? ` ${next.due}` : ""}` : ""}</span>
-            </li>
-          );
-        })}
-      </ol>
+      <PhaseSteps items={phases.map((p, i) => {
+        const ok = p.nodes.filter((n) => n.done).length;
+        const state = ok === p.nodes.length ? "done" : i === curPhase ? "cur" : "todo";
+        const next = p.nodes.find((n) => !n.done);
+        return { key: p.name, name: p.name, state, note: `${ok}/${p.nodes.length} 节点${state === "done" ? " · 已完成" : next ? ` · 下一个：${next.t}${next.due ? ` ${next.due}` : ""}` : ""}` };
+      })} />
       <div className="campaign-grid cols-9-3">
         <section className="card node-list">
-          <div className="card-head"><h2><PixelIcon name="timeline" />节点清单</h2><span className="small muted">门禁只提醒、不拦截 · 日期可直接改 · 节点说明待补</span></div>
+          <div className="card-head"><h2><PixelIcon name="timeline" />节点清单</h2><span className="small muted">门禁只提醒、不拦截 · 日期可直接改</span></div>
           <div className="node-cols" aria-hidden="true"><span /><span>编号</span><span>节点</span><span>负责人</span><span>截止</span><span>状态</span></div>
           {phases.map((p, i) => (
             <div key={p.name} className="phase">
@@ -119,10 +111,11 @@ function Campaign({ c, sample }) {
 // 月底交付倒计时：本月每天一格，已过为墨、今天为橙、月底交付日空心；右边是交付月 6 个环节的完成数。
 function DeadlineBar() {
   const month = useApi(`/api/v3/months/${deliveryMonth()}`, SAMPLE_MONTH);
+  const plans = useApi("/api/plans");
   const now = new Date();
   const total = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const day = now.getDate();
-  const steps = month.data?.steps || SAMPLE_MONTH.steps;
+  const steps = deliverySteps(month.data?.steps || SAMPLE_MONTH.steps, plans.data, deliveryMonth());
   const m = now.getMonth() + 1;
   return (
     <div className="deadline-bar">

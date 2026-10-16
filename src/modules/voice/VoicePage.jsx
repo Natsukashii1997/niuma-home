@@ -17,7 +17,7 @@ export default function VoicePage() {
     <>
       <PageHeader title="Voice" subtitle="留学之声：留学生最近在讨论什么。只看多数人的共性——同一人或同一矩阵只算一个来源，独立来源 ≥ 5 才上榜。"
         actions={state.data && <>{state.isSample && <SampleBadge task={state.task} />}<span className="small muted">本机运行 · 上次抓取 {state.data.updatedAt} · 下次 {state.data.nextAt}</span></>} />
-      <Loadable state={state}>{(v) => <VoiceBoard v={v} />}</Loadable>
+      <Loadable state={state} name="留学之声" big>{(v) => <VoiceBoard v={v} />}</Loadable>
     </>
   );
 }

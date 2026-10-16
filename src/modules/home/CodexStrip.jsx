@@ -45,7 +45,7 @@ export function CodexStrip() {
         <PixelIcon name="alert" />
         <span className="codex-stage">Codex 重置 · {c.stage}</span>
         <span className="codex-when">{c.label}</span>
-        <span className="codex-cd tnum">{cd.past ? "已到时间" : `剩 ${cd.d} 天 ${cd.h} 小时 ${cd.mi} 分`}</span>
+        {c.next && <span className={`codex-cd tnum${cd.past ? " is-past" : ""}`}>{cd.past ? "已到重置时间" : `剩 ${cd.d} 天 ${cd.h} 小时 ${cd.mi} 分`}</span>}
         <span className="codex-quote">“{c.quote}”</span>
         {state.isSample && <SampleBadge task={state.task} />}
         <span className="codex-more">详情<PixelIcon name="right" /></span>
@@ -62,13 +62,15 @@ export function CodexCard({ className = "" }) {
   const c = state.data;
   const cd = useCountdown(c?.next || 0);
   if (!c) return null;
+  // 「未安排定时检查」这类实现说明不给使用者看
+  const nextCheck = c.nextCheck && !/未安排/.test(c.nextCheck) ? c.nextCheck : null;
   return (
     <section className={`card ${className}`}>
       <div className="card-head">
         <h2><PixelIcon name="alert" /> Codex 重置预警</h2>
         <div className="card-extra">
           {state.isSample && <SampleBadge task={state.task} />}
-          <Tag tone="orange">{c.stage}</Tag>
+          <Tag tone={STAGE_TONE[c.stage]}>{c.stage}</Tag>
           <button type="button" className="btn btn-sm" onClick={() => setOpen(true)}>历史与规则</button>
         </div>
       </div>
@@ -79,13 +81,13 @@ export function CodexCard({ className = "" }) {
           <p className="codex-zh">{c.quoteZh}</p>
           <div className="codex-foot">
             <span className="codex-stages">{STAGES.map((s) => <Tag key={s} tone={s === c.stage ? "ink" : "neutral"}>{s}</Tag>)}</span>
-            <span className="label">下次检查 {c.nextCheck || "每天 10:00"}{c.pushed ? " · 机械邪龙兽已推送" : ""}</span>
+            {(nextCheck || c.pushed) && <span className="label">{nextCheck ? `下次检查 ${nextCheck}` : ""}{nextCheck && c.pushed ? " · " : ""}{c.pushed ? "机械邪龙兽已推送" : ""}</span>}
           </div>
         </div>
         <div className="codex-count">
           <span className="label">下次重置 · 北京时间</span>
           <strong>{c.label.replace(/^北京时间\s*/, "")}</strong>
-          {cd.past ? <span className="codex-past">已到重置时间</span> : (
+          {!c.next ? null : cd.past ? <span className="codex-past">已到重置时间</span> : (
             <div className="countdown" aria-label={`剩 ${cd.d} 天 ${cd.h} 小时 ${cd.mi} 分`}>
               <span><b>{pad(cd.d)}</b><em>DAYS</em></span><i>:</i>
               <span><b>{pad(cd.h)}</b><em>HRS</em></span><i>:</i>

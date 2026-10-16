@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { PixelIcon } from "./bitmap.jsx";
+import { PixelIcon, StepProgress } from "./bitmap.jsx";
 // 公共组件。新页面优先复用这里的组件，样式见 docs/STYLE-GUIDE.md。
 
 export function PageHeader({ title, subtitle, actions }) {
@@ -107,9 +107,18 @@ export function PendingButton({ task, variant = "default", children }) {
 }
 
 // 统一处理 useApi 的加载中 / 出错状态；正常时渲染 children(data)
-export function Loadable({ state, children }) {
-  if (state.loading) return <p className="muted">加载中…</p>;
-  if (state.error) return <p className="error">{state.error}</p>;
+// 加载：卡片里用 3 行网点骨架（无字区域）；整页级（big）用按帧加载⑥。报错：写明哪份数据、原因，并给「重新读取」。
+export function Loadable({ state, name = "", big = false, children }) {
+  if (state.loading) return big
+    ? <div className="state-loading is-big" role="status"><StepProgress label={`读取${name || "数据"}`} /></div>
+    : <div className="state-loading" role="status" aria-label={`正在读取${name}`}><i /><i /><i /></div>;
+  if (state.error) return (
+    <div className="state-error" role="alert">
+      <strong>{name ? `${name}读取失败` : "读取失败"}</strong>
+      <span className="small">{state.error}</span>
+      {state.reload && <Button onClick={state.reload}><PixelIcon name="refresh" />重新读取</Button>}
+    </div>
+  );
   return children(state.data);
 }
 
@@ -165,8 +174,24 @@ export function StatusMark({ state, label }) {
 }
 
 // 未实现的页面或区块：说明清楚在等什么。
-export function Placeholder({ icon = "clock", title, children }) {
-  return <div className="empty placeholder"><PixelIcon name={icon} size={32} /><strong>{title}</strong>{children && <p>{children}</p>}</div>;
+export function Placeholder({ icon = "clock", title, children, action }) {
+  return <div className="empty placeholder"><PixelIcon name={icon} size={32} /><strong>{title}</strong>{children && <p>{children}</p>}{action}</div>;
+}
+
+// 阶段条（二次评审 P1-10）：编号 + 名称 + 一行说明；当前步 4px 橙顶条；
+// 右上状态方块：done 完成（绿）、cur 进行中（蓝半实心）、left 有遗留（琥珀）、todo 未开始（空心）。
+export function PhaseSteps({ items }) {
+  return (
+    <ol className="phase-steps">
+      {items.map((it, i) => (
+        <li key={it.key ?? i} className={`is-${it.state}`}>
+          <div className="phase-step-no"><b>{String(i + 1).padStart(2, "0")}</b><i aria-hidden="true" /></div>
+          <strong>{it.name}</strong>
+          {it.note && <span className="small muted">{it.note}</span>}
+        </li>
+      ))}
+    </ol>
+  );
 }
 
 // 概况数字条（v2.2）：等宽格、左对齐，标签 → 数字 → 说明；item 带 onClick 时整格是按钮（如健康检查筛选）。

@@ -9,6 +9,8 @@
   --gap: 16px;
   --ctl: 32px;
   --ctl-sm: 28px;
+  --chrome-h: 64px;                               /* 窗口条 34 + Codex 横条 30，吸顶元素贴在它下面 */
+  --sticky-top: calc(var(--chrome-h) + var(--s4)); /* 侧栏类吸顶统一用它（二次评审 P1-14） */
   --head: 48px;
 }
 
@@ -40,8 +42,6 @@ select { height: var(--ctl); }
 .check-inline { height: var(--ctl); }
 .line-switch { height: var(--ctl); }
 .line-switch button { height: 100%; padding: 0 12px; gap: 6px; }
-.country-tabs { height: var(--ctl); margin-bottom: var(--s4); }
-.country-tabs button { height: 100%; padding: 0 14px; }
 .routine .segmented { height: var(--ctl-sm); }
 .btn-xs { height: 24px; }
 
@@ -100,8 +100,6 @@ button.stat.is-on .stat-label, button.stat.is-on .stat-foot, button.stat.is-on .
 .proj-card { width: 100%; display: flex; flex-direction: column; gap: 6px; padding: var(--s3) var(--s4); border: 0; border-bottom: 1px solid var(--line); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .proj-card:hover { background: var(--panel-soft); }
 .proj-card.active { background: var(--panel-soft); box-shadow: inset 4px 0 0 var(--text); }
-.proj-list-foot { padding: var(--s3) var(--s4); border-top: 1px solid var(--line); }
-.proj-list-foot .btn { width: 100%; justify-content: center; }
 .proj-main { display: flex; flex-direction: column; }
 .proj-main > .node-list { flex: 1 1 auto; }
 /* 概况条里的项目名用正文字号，避免和数字抢 */
@@ -110,7 +108,7 @@ button.stat.is-on .stat-label, button.stat.is-on .stat-foot, button.stat.is-on .
 /* 会话 / 日报列表：栏框与右侧等高；日报正文很长时，列表本身吸顶滚动 */
 .chat-list { align-self: stretch; }
 .reports-page .chat-list { max-height: none; overflow: visible; display: block; }
-.chat-list-inner { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 2px; max-height: calc(100vh - 100px); overflow-y: auto; }
+.chat-list-inner { position: sticky; top: var(--sticky-top); display: flex; flex-direction: column; gap: 2px; max-height: calc(100vh - 100px); overflow-y: auto; }
 .campaign-grid .list .link { white-space: nowrap; }
 /* 页内分组标题（如业务页「业务线指标」）：与上一块隔 24 */
 .section-head { display: flex; align-items: center; gap: var(--s2); min-height: var(--ctl); margin: var(--s5) 0 var(--s3); }

@@ -45,7 +45,7 @@ export default function SettingsPage() {
   const form = (settings, key) => { const field = fields.find((f) => f.key === key); return <SettingForm key={key} field={field} initialValue={settings[key] || ""} dailyRevision={dailyRevision} dailyPending={dailyPending} onDailyState={onDailyState} />; };
   return <>
     <PageHeader title="设置" subtitle="每项单独编辑、预览后保存；未接入的项目标「示例」" />
-    <Loadable state={state}>{(settings) => <div className="settings-page set-groups">
+    <Loadable state={state} name="设置" big>{(settings) => <div className="settings-page set-groups">
       <SetGroup title="数据源" icon="link">{form(settings, "report_doc_url")}{form(settings, "weekly_doc_url")}
         <V3Row label="用户时间线" value="飞书《2026海外大学时间线》· 地区明细表 · 只读" /><V3Row label="项目模板" value="多维表格「项目启动模版」· 只读导入" /><V3Row label="知识库范围" value="常浩的知识库 · 预览后写入" /></SetGroup>
       <SetGroup title="营销" icon="marketing">{form(settings, "material_types")}

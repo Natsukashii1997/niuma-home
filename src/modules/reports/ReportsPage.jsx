@@ -52,7 +52,7 @@ export default function ReportsPage({ route }) {
         <Button disabled={state.loading} onClick={() => setRefresh(value => value + 1)}><PixelIcon name="refresh" /> {state.loading ? "读取中…" : "刷新"}</Button>
       </>} />
       {refresh > 0 && <div className="operation-progress"><StepProgress key={refresh} label="刷新日/周报" done={!state.loading && !state.error && state.data?.sources.every(s => s.ok)} error={state.error || state.data?.sources.filter(s => !s.ok).map(s => s.error).join("；")} /></div>}
-      <Loadable state={state}>
+      <Loadable state={state} name="日/周报" big>
         {({ reports, sources }) => {
           const list = reports.filter(r => r.kind === activeKind);
           const current = selectedId ? selected : list[0];
@@ -87,7 +87,7 @@ export default function ReportsPage({ route }) {
               <aside className="chat-list" aria-label={`${activeKind}列表`}>
                 <div className="chat-list-inner">{list.length ? list.map(r => { const sum = summarize(r.body); return <a key={r.id} data-dither="" href={href("reports", r.id)} className={r === current ? "active" : ""}>
                   <strong className="tnum">{r.date}{r.kind === "日报" && <span className="report-wd"> {weekday(r.date)}</span>}</strong>
-                  <span className="small report-sum">{sum.total ? <>{sum.total} 项{sum.pending ? <span className="signal"> · {sum.pending} 待处理</span> : ""}</> : <span className="muted">{cleanCell(r.title)}</span>}</span>
+                  <span className="small report-sum">{sum.total ? <>{sum.total} 项{sum.pending ? <span className="warn-text"> · {sum.pending} 待处理</span> : ""}</> : <span className="muted">{cleanCell(r.title)}</span>}</span>
                   {r.warnings?.length > 0 && <span title={r.warnings.join("；")} tabIndex={0} aria-label={r.warnings.join("；")}><Tag tone="orange">周次提示</Tag></span>}
                 </a>; }) : <Empty>{listFailure ? `${activeKind}读取失败，请重试` : `还没有${activeKind}`}</Empty>}</div>
               </aside>

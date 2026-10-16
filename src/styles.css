@@ -237,7 +237,6 @@ textarea.paste-box::placeholder { color: var(--muted); }
 .report-body { padding: 16px; }
 
 /* 经营指标 */
-.metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .metric { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; background: var(--panel-soft); }
 .metric strong { font-family: var(--font-pixel); font-size: 22px; font-weight: 400; color: var(--muted); }
 
@@ -412,8 +411,6 @@ textarea.paste-box::placeholder { color: var(--muted); }
 .promo-group-toggle .muted { font-family: var(--font-mono); font-size: 11px; }
 .promo-changed { cursor: help; }
 .promo-tooltip { position: fixed; z-index: 30; max-width: min(420px, calc(100vw - 24px)); max-height: 50vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 10px 12px; border: var(--border) solid var(--text); background: var(--panel); color: var(--text); }
-.metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.metric-grid .kpi { min-width: 0; }
 .settings-form select, .material-field select { height: auto; min-height: 36px; padding-right: 28px; }
 @media (max-width: 600px) {
   .page-header, .home-hero { flex-wrap: wrap; }

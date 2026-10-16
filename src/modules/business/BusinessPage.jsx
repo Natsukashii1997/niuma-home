@@ -1,8 +1,11 @@
 import { useApi } from "../../api.js";
-import { Card, Loadable, PageHeader, SampleBadge, Tag } from "../../ui/components.jsx";
+import { Card, Loadable, PageHeader, Placeholder, SampleBadge, Tag } from "../../ui/components.jsx";
 import { PixelIcon } from "../../ui/bitmap.jsx";
 import { LINES } from "../../constants.js";
 import { SAMPLE_REVENUE } from "../../samples/v3.js";
+
+// 业务线名称统一用全称（与月度促销一致），不用接口返回的简称。
+const LINE_NAME = { uni: LINES[0], intl: LINES[1], appeal: LINES[2] };
 
 const METRICS = ["本月", "年度累计", "同比", "环比"];
 
@@ -13,20 +16,9 @@ export default function BusinessPage() {
       <PageHeader title="业务" subtitle="营收完成度，以及三条业务线的月度、年度数据与同环比" />
       <RevenueCard />
       <div className="section-head"><h2>业务线指标</h2><Tag tone="amber">待建设</Tag></div>
-      <div className="grid-3">
-        {LINES.map((line) => (
-          <Card key={line} title={line}>
-            <div className="metric-grid">
-              {METRICS.map((m) => (
-                <div key={m} className="kpi">
-                  <span className="label">{m}</span>
-                  <span className="kpi-value">—</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        ))}
-      </div>
+      <Placeholder icon="business" title="业务线指标待建设">
+        {LINES.join("、")}各看{METRICS.join(" / ")}；等飞书表格的字段确定后接入。
+      </Placeholder>
     </>
   );
 }
@@ -40,7 +32,7 @@ function RevenueCard() {
   return (
     <Card className="revenue" title={<><PixelIcon name="trend" /> 业务营收完成度</>}
       extra={<>{state.isSample && <SampleBadge task={state.task} />}{r && <span className="small muted">{r.period}{r.timePct != null && ` · 时间进度 ${Math.round(r.timePct * 100)}%（竖线）`} · 更新 {r.updatedAt}</span>}</>}>
-      <Loadable state={state}>
+      <Loadable state={state} name="营收完成度">
         {(data) => (
           <div className="rev-groups">
             {data.groups.map((g) => (
@@ -62,7 +54,7 @@ function RevenueItem({ item, timePct }) {
   const toneLabel = { ok: "跟上进度", warn: "略落后", risk: "落后", neutral: "" }[tone];
   return (
     <div className={`rev-item is-${tone}`}>
-      <div className="rev-head"><span className="rev-name">{item.name}</span>{toneLabel && <span className="rev-tone">{toneLabel}</span>}</div>
+      <div className="rev-head"><span className="rev-name">{LINE_NAME[item.key] || item.name}</span>{toneLabel && <span className="rev-tone">{toneLabel}</span>}</div>
       <span className="rev-pct">{Math.round(pct * 100)}%</span>
       <div className="rev-bar" role="img" aria-label={`完成 ${Math.round(pct * 100)}%`}>
         <i style={{ width: `${Math.min(pct, 1) * 100}%` }} />

@@ -9,13 +9,24 @@ import ModelControls from "./ModelControls.jsx";
 import { assistantListReader } from "./assistant-list.js";
 
 const KIND_LABEL = { copywriter: "文案", imported: "Codex 导入", custom: "自建" };
-const STARTERS = ["给 11 月价格图写 3 个主标题，突出「送课时不是降价」", "把这段方案改写成发给业务的私信话术", "按 brief 的 P1–P9 结构，起草冲分节九宫格文案"];
+export const STARTERS = ["给 11 月价格图写 3 个主标题，突出「送课时不是降价」", "把这段方案改写成发给业务的私信话术", "按 brief 的 P1–P9 结构，起草冲分节九宫格文案"];
+
+// 首页「常用开场」带过来的草稿：存一次、读一次即清，只填进输入框，不自动发送。
+const DRAFT_KEY = "workdesk.agent-draft";
+export function handOffDraft(id, text) { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ id, text })); } catch { /* 存不了就只跳转 */ } }
+function takeDraft(id) {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null");
+    if (v && String(v.id) === String(id)) { sessionStorage.removeItem(DRAFT_KEY); return v.text || ""; }
+  } catch { /* 读不到就空着 */ }
+  return "";
+}
 
 // 知识库（v3）：只收文字；新建会话时全量带入助手指令，超过阈值提示改为检索。接口未实现时显示示例。
 function KnowledgePanel({ assistant }) {
   const state = useApi(`/api/v3/assistants/${assistant.id}/knowledge`, SAMPLE_KNOWLEDGE);
   const [toast, showToast] = useToast();
-  return <div className="kb-panel"><Loadable state={state}>{(kb) => {
+  return <div className="kb-panel"><Loadable state={state} name="助手知识库">{(kb) => {
     const total = kb.docs.reduce((n, d) => n + d.chars, 0);
     return <>
       <div className="row kb-meter"><span className="label">知识量</span><span className="tnum">{total.toLocaleString()} / {kb.limit.toLocaleString()} 字</span><span className="small muted">新建会话时全量带入；改动后新会话生效</span><span className="spacer" />{state.isSample && <SampleBadge task={state.task} />}</div>
@@ -29,7 +40,7 @@ function KnowledgePanel({ assistant }) {
 }
 export default function AssistantsPage({ route }) {
   const state = useApi("/api/assistants");
-  return <Loadable state={state}>{(list) => <AssistantDesk initial={list} selectedId={route[0]} />}</Loadable>;
+  return <Loadable state={state} name="助手列表" big>{(list) => <AssistantDesk initial={list} selectedId={route[0]} />}</Loadable>;
 }
 function AssistantDesk({ initial, selectedId }) {
   const [list, setList] = useState(initial), [modal, setModal] = useState(null);
@@ -49,7 +60,7 @@ function AssistantDesk({ initial, selectedId }) {
   </div>;
 }
 function Conversation({ assistant, edit, reloadAssistants }) {
-  const [messages, setMessages] = useState([]), [draft, setDraft] = useState("");
+  const [messages, setMessages] = useState([]), [draft, setDraft] = useState(() => takeDraft(assistant.id));
   const [pending, setPending] = useState(null), [error, setError] = useState("");
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [uncertain, setUncertain] = useState(false);
   const [settingsBlocked, setSettingsBlocked] = useState(true), [runtimeVersion, setRuntimeVersion] = useState(0);

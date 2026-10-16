@@ -1,5 +1,19 @@
 export const LINES = ["大学辅导", "国际课程", "申诉服务"];
 
+// 交付月的 6 个环节：接口返回其余 5 个，「方案录入」由前端用 /api/plans 算出，固定放在第 2 位。
+// 未接入的环节（state 为 pending，或旧接口在 meta 里写「未接入」）统一显示「待接入」，原文放悬停提示。
+export function deliverySteps(steps = [], plans, month) {
+  const done = plans ? LINES.filter((l) => plans.some((p) => p.month === month && p.line === l)) : [];
+  const plan = {
+    key: "plans", label: "方案录入", href: "#/marketing/plans",
+    state: done.length === LINES.length ? "done" : done.length ? "part" : "todo",
+    meta: plans ? `${done.length}/${LINES.length} 条业务线${done.length < LINES.length ? ` · 待录 ${LINES.filter((l) => !done.includes(l)).join("、")}` : ""}` : "读取中",
+  };
+  const rest = steps.filter((s) => s.key !== "plans").map((s) => (s.state === "pending" || /未接入/.test(s.meta || "")
+    ? { ...s, state: "todo", meta: "待接入", note: s.note || s.meta } : s));
+  return [...rest.slice(0, 1), plan, ...rest.slice(1)];
+}
+
 export const PROMO_FIELDS = [
   ["trial", "试听价格"],
   ["price", "正价价格"],

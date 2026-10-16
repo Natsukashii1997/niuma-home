@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend } from "../../api.js";
-import { Button, Card, Empty, Tag } from "../../ui/components.jsx";
+import { Button, Card, Empty, PhaseSteps, Tag } from "../../ui/components.jsx";
 import { PROMO_FIELDS } from "../../constants.js";
 
 // 方案录入：嵌在「月度促销」上半部分，四步 粘贴 → 解析 → 处理 → 确认。
@@ -143,20 +143,12 @@ function PlanForm({ month, line, onSaved }) {
 
   return (
     <div className="plan-editor">
-      <div className="plan-flow">
-        <ol>
-          {FLOW.map(([name, hint], i) => (
-            <li key={name} className={i < stage ? "is-done" : i === stage ? "is-cur" : ""}>
-              <b>{i < stage ? <PixelIcon name="check" /> : i + 1}</b>
-              <span><strong>{name}</strong><em>{hint}</em></span>
-            </li>
-          ))}
-        </ol>
-        <div className="plan-flow-actions">
-          <span className="small muted">{month} · {line}</span>
-          <Button onClick={copy} disabled={locked || !rawText}>复制原文</Button>
-          <Button onClick={save} disabled={!canSave} variant="primary">{busy === "save" ? "入库并核对中…" : "确认入库"}</Button>
-        </div>
+      <PhaseSteps items={FLOW.map(([name, hint], i) => ({ key: name, name, note: hint, state: i < stage ? "done" : i === stage ? "cur" : "todo" }))} />
+      <div className="toolbar">
+        <span className="small muted">写入 {month} · {line}</span>
+        <span className="spacer" />
+        <Button onClick={copy} disabled={locked || !rawText}>复制原文</Button>
+        <Button onClick={save} disabled={!canSave} variant="primary">{busy === "save" ? "入库并核对中…" : "确认入库"}</Button>
       </div>
       {progress && <div className="operation-progress"><StepProgress key={progress.label} {...progress} /></div>}
       {loading && <p className="muted" role="status">正在读取已有原文…</p>}

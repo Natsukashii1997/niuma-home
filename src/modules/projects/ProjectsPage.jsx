@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PixelIcon, TypeText } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Card, Loadable, PageHeader, Placeholder, SampleBadge, Segmented, StatStrip, Tabs, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Card, Loadable, PageHeader, PhaseSteps, Placeholder, SampleBadge, Segmented, StatStrip, Tabs, Tag, useToast } from "../../ui/components.jsx";
 import { SAMPLE_MENTOR, SAMPLE_PROJECTS } from "../../samples/v3.js";
 
 // 项目（v3）：项目推进按多维表格的标准流程模板；管培带教读两位管培生的日志，带教 Agent 只出草稿。
@@ -20,18 +20,20 @@ const STATUS_TONE = { 已结项: "green", 实施中: "blue", 调研中: "blue" }
 
 function Board() {
   const state = useApi("/api/v3/projects", SAMPLE_PROJECTS);
-  return <Loadable state={state}>{(list) => <ProjectBoard list={list} sample={state.isSample ? state.task : null} />}</Loadable>;
+  return <Loadable state={state} name="项目" big>{(list) => <ProjectBoard list={list} sample={state.isSample ? state.task : null} />}</Loadable>;
 }
 
-// 每个项目的摘要：进度、下一个未完成节点、待审门禁、2 天内到期。
+// 每个项目的摘要：进度、下一个未完成节点、待审门禁、2 天内到期（soonest 是其中最早到期的一条）。
 function summary(p) {
   if (!p.nodes) return null;
   const open = p.nodes.filter((n) => !n.done);
+  const soon = open.filter((n) => { const d = daysTo(n.due); return d !== null && d <= 2; });
   return {
     done: p.nodes.length - open.length, total: p.nodes.length,
     next: open[0],
     gates: open.filter((n) => n.gate).length,
-    soon: open.filter((n) => { const d = daysTo(n.due); return d !== null && d <= 2; }).length,
+    soon: soon.length,
+    soonest: [...soon].sort((a, b) => daysTo(a.due) - daysTo(b.due))[0],
     undated: open.filter((n) => !n.due).length,
   };
 }
@@ -48,7 +50,7 @@ function ProjectBoard({ list, sample }) {
   return (
     <div className="proj-layout cols-3-9">
       <section className="card proj-list">
-        <div className="card-head"><h2><PixelIcon name="project" />项目<span className="tnum small muted">{projects.length}</span></h2>{sample && <SampleBadge task={sample} />}</div>
+        <div className="card-head"><h2><PixelIcon name="project" />项目<span className="tnum small muted">{projects.length}</span></h2><div className="card-extra">{sample && <SampleBadge task={sample} />}<Button><PixelIcon name="plus" />新建项目</Button></div></div>
         <div className="proj-items">
         {projects.map((x) => {
           const s = summary(x);
@@ -67,7 +69,6 @@ function ProjectBoard({ list, sample }) {
           );
         })}
         </div>
-        <div className="proj-list-foot"><Button><PixelIcon name="plus" />新建项目 · 套用模板</Button></div>
       </section>
       {!p?.nodes ? <Placeholder icon="project" title="这个项目没有节点数据">已结项的项目只保留名称和模板。</Placeholder> : (
         <section className="proj-main">
@@ -75,27 +76,20 @@ function ProjectBoard({ list, sample }) {
             { label: `项目推进 · 模板 ${p.template}`, value: p.name, foot: <Tag tone={STATUS_TONE[p.status] || "neutral"}>{p.status}</Tag> },
             { label: "节点完成", value: sum.done, unit: `/${sum.total}`, foot: `当前阶段：${p.phases[p.phase]}` },
             { label: "等你审核", value: sum.gates, tone: sum.gates ? "warn" : "", foot: "门禁只提醒、不拦截" },
-            { label: "2 天内到期", value: sum.soon, tone: sum.soon ? "risk" : "", foot: sum.next?.due ? `下一个：${sum.next.due}` : "—" },
+            { label: "2 天内到期", value: sum.soon, tone: sum.soon ? "risk" : "", foot: sum.soonest ? `${sum.soonest.t} · ${sum.soonest.due}` : "—" },
             { label: "未设日期", value: sum.undated, tone: sum.undated ? "muted" : "", foot: "没日期的节点不提醒" },
           ]} />
-          <ol className="phase-steps">
-            {p.phases.map((ph, i) => {
-              const nodes = p.nodes.filter((n) => n.ph === ph);
-              const ok = nodes.filter((n) => n.done).length;
-              const state = i < p.phase ? "done" : i === p.phase ? "cur" : "todo";
-              const next = nodes.find((n) => !n.done);
-              return (
-                <li key={ph} className={`is-${state}`}>
-                  <div className="phase-step-no"><b>{String(i + 1).padStart(2, "0")}</b><i aria-hidden="true" /></div>
-                  <strong>{ph}</strong>
-                  <span className="small muted">{ok}/{nodes.length} 节点{state === "done" ? (next ? <> · <span className="warn-text">{nodes.length - ok} 个未完成</span></> : " · 已完成") : next ? ` · 下一个：${next.t}` : ""}</span>
-                </li>
-              );
-            })}
-          </ol>
+          <PhaseSteps items={p.phases.map((ph, i) => {
+            const nodes = p.nodes.filter((n) => n.ph === ph);
+            const ok = nodes.filter((n) => n.done).length;
+            // 按节点算：全部完成才算完成；当前阶段之前还有没做完的，标「遗留」。
+            const state = i === p.phase ? "cur" : nodes.length === ok ? "done" : i < p.phase ? "left" : "todo";
+            const next = nodes.find((n) => !n.done);
+            return { key: ph, name: ph, state, note: <>{ok}/{nodes.length} 节点{state === "done" ? " · 已完成" : state === "left" ? <> · <span className="warn-text">{nodes.length - ok} 个遗留</span></> : next ? ` · 下一个：${next.t}` : ""}</> };
+          })} />
           <div className="toolbar">
             <Segmented options={[["all", "全部节点"], ["open", "未完成"], ["gate", `等你审核 ${sum.gates}`], ["soon", `2 天内到期 ${sum.soon}`]]} value={filter} onChange={setFilter} />
-            <span className="spacer" /><span className="small muted">门禁只提醒、不拦截 · 未设日期的节点不提醒 · 节点说明待补</span>
+            <span className="spacer" /><span className="small muted">门禁只提醒、不拦截 · 未设日期的节点不提醒</span>
           </div>
           <section className="card node-list">
             <div className="node-cols" aria-hidden="true"><span /><span>序号</span><span>节点</span><span>负责人</span><span>截止</span><span>状态</span></div>
@@ -142,7 +136,7 @@ function ProjectBoard({ list, sample }) {
 
 function Mentor() {
   const state = useApi("/api/v3/mentor", SAMPLE_MENTOR);
-  return <Loadable state={state}>{(list) => <MentorBoard list={list} sample={state.isSample ? state.task : null} />}</Loadable>;
+  return <Loadable state={state} name="带教日志" big>{(list) => <MentorBoard list={list} sample={state.isSample ? state.task : null} />}</Loadable>;
 }
 
 const FLAG_TONE = { 卡点: "red", 提问: "blue" };

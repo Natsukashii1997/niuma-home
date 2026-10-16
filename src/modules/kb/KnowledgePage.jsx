@@ -10,7 +10,7 @@ import { SAMPLE_KB } from "../../samples/v3.js";
 export default function KnowledgePage() {
   const state = useApi("/api/v3/kb/tree", SAMPLE_KB);
   return <><PageHeader title="知识库" subtitle="整理「常浩的知识库」：先在这里整理，预览确认后再同步飞书" />
-    <Loadable state={state}>{(kb) => <Organizer kb={kb} sample={state.isSample ? state.task : null} />}</Loadable></>;
+    <Loadable state={state} name="知识库目录" big>{(kb) => <Organizer kb={kb} sample={state.isSample ? state.task : null} />}</Loadable></>;
 }
 
 const clone = (t) => JSON.parse(JSON.stringify(t));

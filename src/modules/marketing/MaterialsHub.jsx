@@ -26,7 +26,7 @@ export default function MaterialsHub({ route = [] }) {
 
 function NasViews({ view }) {
   const state = useApi("/api/v3/nas", SAMPLE_NAS);
-  return <Loadable state={state}>{(nas) => <NasBoard nas={nas} view={view} sample={state.isSample ? state.task : null} />}</Loadable>;
+  return <Loadable state={state} name="物料墙" big>{(nas) => <NasBoard nas={nas} view={view} sample={state.isSample ? state.task : null} />}</Loadable>;
 }
 
 function NasBar({ nas, sample }) {
@@ -116,7 +116,7 @@ function WallCell({ cell, isDm, onOpen, type, month }) {
 /* ---------- 设计参考：自由画布 ---------- */
 function RefCanvas() {
   const state = useApi("/api/v3/refs", SAMPLE_REFS);
-  return <Loadable state={state}>{(data) => <Canvas data={data} sample={state.isSample ? state.task : null} />}</Loadable>;
+  return <Loadable state={state} name="设计参考" big>{(data) => <Canvas data={data} sample={state.isSample ? state.task : null} />}</Loadable>;
 }
 
 function Canvas({ data, sample }) {

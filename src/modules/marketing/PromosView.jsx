@@ -11,7 +11,7 @@ const LONG = new Set(["newDeal", "renewal"]);
 
 export default function PromosView() {
   const state = useApi("/api/promos");
-  return <Loadable state={state}>{(rows) => <PromoTable rows={rows} />}</Loadable>;
+  return <Loadable state={state} name="方案汇总">{(rows) => <PromoTable rows={rows} />}</Loadable>;
 }
 
 function PromoTable({ rows }) {

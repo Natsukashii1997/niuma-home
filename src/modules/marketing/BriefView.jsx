@@ -14,7 +14,7 @@ const SECTIONS = ["项目背景与目标", "目标受众", "项目时间线", "�
 export default function BriefView() {
   const [month, setMonth] = useState(deliveryMonth());
   const state = useApi(`/api/v3/briefs/${month}`, SAMPLE_BRIEF);
-  return <Loadable state={state}>{(brief) => <Brief key={month} brief={brief} month={month} setMonth={setMonth} sample={state.isSample ? state.task : null} />}</Loadable>;
+  return <Loadable state={state} name="设计 brief" big>{(brief) => <Brief key={month} brief={brief} month={month} setMonth={setMonth} sample={state.isSample ? state.task : null} />}</Loadable>;
 }
 
 const Source = ({ children }) => <span className="source-tag"><PixelIcon name="link" />{children}</span>;

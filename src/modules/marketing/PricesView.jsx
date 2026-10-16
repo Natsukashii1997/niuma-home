@@ -30,7 +30,7 @@ export default function PricesView() {
   const [sku, setSku] = useState(SAMPLE_PRICE_SKUS[0].id);
   const schemes = useApi(`/api/v3/price/schemes?sku=${sku}`, SAMPLE_PRICE_SCHEMES);
   return (
-    <Loadable state={skus}>
+    <Loadable state={skus} name="SKU 列表" big>
       {(list) => (
         <>
           <div className="toolbar">
@@ -44,7 +44,7 @@ export default function PricesView() {
             <span className="spacer" />
             {(skus.isSample || schemes.isSample) && <SampleBadge task={schemes.task || skus.task} />}
           </div>
-          <Loadable state={schemes}>{(data) => <PriceBoard key={sku} sku={list.find((s) => s.id === sku) || list[0]} data={data} />}</Loadable>
+          <Loadable state={schemes} name="价格方案" big>{(data) => <PriceBoard key={sku} sku={list.find((s) => s.id === sku) || list[0]} data={data} />}</Loadable>
         </>
       )}
     </Loadable>
@@ -100,7 +100,7 @@ function PriceBoard({ sku, data }) {
                 <th key={s.id} className={`scheme-head${s.id === base ? " is-base" : ""}`}>
                   <div className="scheme-name">{s.name}{s.id === base && <em>基准</em>}</div>
                   <div className="scheme-meta">
-                    <Tag tone={s.status === "生效中" ? "green" : s.status === "草稿" ? "orange" : "neutral"}>{s.status}</Tag>
+                    <Tag tone={s.status === "生效中" ? "green" : s.status === "草稿" ? "amber" : "neutral"}>{s.status}</Tag>
                     <span>{s.from ? `${s.from.slice(5)} → ${s.to ? s.to.slice(5) : "长期"}` : "未设日期"}</span>
                   </div>
                   {s.need && <div className="scheme-need"><PixelIcon name="target" />{s.need}</div>}
@@ -133,7 +133,7 @@ function PriceBoard({ sku, data }) {
                       </div>
                       {s.id !== base && <div className={`price-diff${v.price < b.price ? " is-down" : ""}`}>{signed(v.price - b.price)}<span> · 单价 {signed(v.unit - b.unit)}</span></div>}
                       {inverted && <div className="price-flag">付费单价高于上一档</div>}
-                      {breach && <div className="price-flag">毛利 {pct(v.margin)} · 低于底线</div>}
+                      {breach && <div className="price-flag is-risk">毛利 {pct(v.margin)} · 低于底线</div>}
                     </td>
                   );
                 })}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
@@ -31,10 +31,23 @@ const mdSpan = (a, b) => (b ? Math.round((new Date(`2026-${b}`) - new Date(`2026
 const CATS = [["exam", "考试", ["Final", "考试周", "期末", "期中"]], ["course", "选课 / 开学", ["选课", "春季选课", "开学"]], ["paper", "论文作业", ["Essay 截止"]], ["break", "假期", ["Reading Week", "期中假"]], ["result", "出分", ["出分"]]];
 const catOf = (type) => (CATS.find(([, , types]) => types.includes(type)) || ["other"])[0];
 
+// 明细表的列是源表原名（如「S1选课时间开放」「final考试(Exams T1)」），按关键词归类，只用于显示 / 隐藏列，不改源表的时间顺序。
+const COL_CATS = [["course", "选课 / 开学"], ["exam", "考试"], ["result", "出分"], ["break", "假期"], ["other", "其他"]];
+const COL_DEFAULT = ["course", "exam", "result"];
+function colCat(name) {
+  const n = name.toLowerCase();
+  if (/出分|成绩/.test(n)) return "result";
+  if (/选课/.test(n)) return "course";
+  if (/休息|假|break|reading ?week|复习周|flexibility/.test(n)) return "break";
+  if (/final|考试|midterm|期中|exam|补考/.test(n)) return "exam";
+  if (/开学|开始|迎新/.test(n)) return "course";
+  return "other";
+}
+
 function Timeline({ route }) {
   const state = useApi("/api/v3/timeline", SAMPLE_TIMELINE);
   const view = ["month", "country", "anomalies"].includes(route[0]) ? route[0] : "month";
-  return <Loadable state={state}>{(tl) => <TimelineBoard tl={tl} view={view} sample={state.isSample ? state.task : null} />}</Loadable>;
+  return <Loadable state={state} name="用户时间线" big>{(tl) => <TimelineBoard tl={tl} view={view} sample={state.isSample ? state.task : null} />}</Loadable>;
 }
 
 function TimelineBoard({ tl, view, sample }) {
@@ -44,14 +57,16 @@ function TimelineBoard({ tl, view, sample }) {
   const go = (v) => { location.hash = href("user", "timeline", v); };
   return (
     <>
-      <p className="tl-intro">各国大学（{tl.stage}）的关键日期：选课、开学、考试、论文、出分。用来决定<b>哪个月</b>、对<b>哪些学校的学生</b>、推<b>什么</b>。</p>
+      <div className="tl-intro">
+        <p>各国大学（{tl.stage}）的关键日期：选课、开学、考试、论文、出分。用来决定<b>哪个月</b>、对<b>哪些学校的学生</b>、推<b>什么</b>。</p>
+        <span className="small muted">{tl.source} · 同步于 {tl.syncedAt}</span>
+      </div>
       <div className="toolbar">
         <Segmented options={[["month", "按月 · 时间轴"], ["country", "按国家 · 明细表"], ["anomalies", `异常待确认 ${tl.anomalies.length}`]]} value={view} onChange={go} />
         <label className="search-box"><PixelIcon name="search" /><input placeholder="搜索学校或事件，如 UQ / Final" value={q} onChange={(e) => setQ(e.target.value)} /></label>
         <label className="check-inline"><input type="checkbox" checked={showSrc} onChange={(e) => setShowSrc(e.target.checked)} />显示来源单元格</label>
         <span className="spacer" />
         {sample && <SampleBadge task={sample} />}
-        <span className="small muted">{tl.source} · 同步于 {tl.syncedAt}</span>
         {sync ? <div style={{ width: 200 }}><StepProgress label="同步飞书（只读）" /></div> : <Button onClick={() => setSync(true)}><PixelIcon name="refresh" />同步</Button>}
       </div>
       {view === "month" ? <MonthTimeline tl={tl} q={q} showSrc={showSrc} /> : view === "country" ? <CountryTable tl={tl} q={q} showSrc={showSrc} /> : <Anomalies tl={tl} />}
@@ -63,6 +78,9 @@ function TimelineBoard({ tl, view, sample }) {
 function MonthTimeline({ tl, q, showSrc }) {
   const [month, setMonth] = useState(deliveryMonth());
   const [country, setCountry] = useState("");
+  const [folded, setFolded] = useState(() => new Set());
+  const fold = (c) => setFolded((o) => { const n = new Set(o); if (n.has(c)) n.delete(c); else n.add(c); return n; });
+  const schoolsOf = (c) => new Set(inMonth.filter((e) => !c || e.c === c).map((e) => e.school)).size;
   const [y, m] = month.split("-").map(Number);
   const nDays = new Date(y, m, 0).getDate();
   const first = `${month}-01`, last = `${month}-${pad(nDays)}`;
@@ -78,24 +96,33 @@ function MonthTimeline({ tl, q, showSrc }) {
       if (!bySchool.has(e.school)) bySchool.set(e.school, []);
       bySchool.get(e.school).push(e);
     }
-    return [...byC.entries()].map(([c, schools]) => [c, [...schools.entries()].map(([school, evs]) => [school, lanes(evs)])]);
+    return [...byC.entries()].map(([c, schools]) => [c, [...schools.entries()]]);
   }, [list]);
+  const [dayW, setDayW] = useState(30);
+  const ro = useRef(null);
+  const daysRef = useCallback((el) => {
+    ro.current?.disconnect();
+    if (!el) return;
+    ro.current = new ResizeObserver(() => setDayW(el.clientWidth / nDays));
+    ro.current.observe(el);
+  }, [nDays]);
+  const place = (e) => placeBar(e, { first, last, nDays, dayW, showSrc });
   const countries = [...new Set(inMonth.map((e) => e.c))];
   const cols = { gridTemplateColumns: `repeat(${nDays}, minmax(0, 1fr))` };
   return (
     <>
       <div className="toolbar">
         <MonthSwitch month={month} onChange={setMonth} mark={month === deliveryMonth() ? "交付月" : ""} />
-        <button type="button" className={`chip${!country ? " is-on" : ""}`} onClick={() => setCountry("")}>全部国家 <span className="tnum">{inMonth.length}</span></button>
-        {countries.map((c) => <button key={c} type="button" className={`chip${country === c ? " is-on" : ""}`} onClick={() => setCountry(country === c ? "" : c)}>{c} <span className="tnum">{inMonth.filter((e) => e.c === c).length}</span></button>)}
+        <button type="button" className={`chip${!country ? " is-on" : ""}`} onClick={() => setCountry("")}>全部国家 <span className="tnum">{schoolsOf("")} 校</span></button>
+        {countries.map((c) => <button key={c} type="button" className={`chip${country === c ? " is-on" : ""}`} onClick={() => setCountry(country === c ? "" : c)}>{c} <span className="tnum">{schoolsOf(c)} 校</span></button>)}
         <span className="spacer" />
-        <span className="tl-cats">{CATS.map(([k, label]) => <span key={k}><i className={`ev-${k}`} />{label}</span>)}<span><i className="ev-flag" />冲突待确认</span></span>
+        <span className="tl-cats">{CATS.map(([k, label]) => <span key={k}><i className={`ev-${k}`} />{label}</span>)}<span><i className="ev-flag" />冲突待确认</span><span><i className="ev-guess" />推测</span></span>
       </div>
       {!groups.length ? <Placeholder icon="calendar" title="这个月没有节点">换个月份，或清掉筛选条件。</Placeholder> : (
         <section className="card gantt">
           <div className="gantt-head">
             <span className="gantt-corner label">{month} · {list.length} 个节点</span>
-            <div className="gantt-days" style={cols}>
+            <div className="gantt-days" style={cols} ref={daysRef}>
               {Array.from({ length: nDays }, (_, i) => {
                 const wd = new Date(y, m - 1, i + 1).getDay();
                 return <span key={i} className={`${wd === 0 || wd === 6 ? "is-wkd" : ""}${i + 1 === todayIdx ? " is-today" : ""}`}><b>{i + 1}</b><em>{WD[wd]}</em></span>;
@@ -104,28 +131,32 @@ function MonthTimeline({ tl, q, showSrc }) {
           </div>
           {groups.map(([c, schools]) => (
             <div key={c} className="gantt-group">
-              <div className="gantt-country"><strong>{c}</strong><span className="small muted">{schools.length} 所学校</span></div>
-              {schools.map(([school, rows]) => (
+              <button type="button" className="gantt-country" aria-expanded={!folded.has(c)} onClick={() => fold(c)}>
+                <PixelIcon name={folded.has(c) ? "right" : "down"} /><strong>{c}</strong><span className="small muted">{schools.length} 所学校</span>
+              </button>
+              {!folded.has(c) && schools.map(([school, evs]) => { const rows = lanes(evs.map(place)); return (
                 <div key={school} className="gantt-row">
                   <div className="gantt-school"><strong>{school.split(" ")[0]}</strong><span className="tnum small muted">{school.split(" ").slice(1).join(" ")}</span></div>
                   <div className="gantt-track" style={{ ...cols, gridTemplateRows: `repeat(${rows.length}, 28px)` }}>
                     {Array.from({ length: nDays }, (_, i) => { const wd = new Date(y, m - 1, i + 1).getDay(); return <i key={`bg${i}`} className={`gantt-bg${wd === 0 || wd === 6 ? " is-wkd" : ""}${i + 1 === todayIdx ? " is-today" : ""}`} style={{ gridColumn: i + 1, gridRow: `1 / ${rows.length + 1}` }} />; })}
-                    {rows.flatMap((evs, lane) => evs.map((e) => {
-                      const s = e.from < first ? 1 : Number(e.from.slice(8));
-                      const end = (e.to || e.from) > last ? nDays : Number((e.to || e.from).slice(8));
-                      const single = !e.to;
-                      const cut = `${e.from < first ? "← " : ""}${md(e.from)}${e.to ? ` → ${md(e.to)}` : ""}${(e.to || e.from) > last ? " →" : ""}`;
-                      return (
-                        <span key={`${e.type}${e.from}`} className={`gantt-bar ev-${catOf(e.type)}${single ? " is-single" : ""}${e.flag ? ` is-${e.flag}` : ""}`}
-                          style={{ gridColumn: `${s} / ${end + 1}`, gridRow: lane + 1 }}
-                          title={`${e.school} · ${e.type}\n${e.from}${e.to ? ` → ${e.to}（${span(e.from, e.to)} 天）` : "（单日）"}\n来源：${e.src}${e.flag === "conflict" ? "\n冲突待确认" : ""}`}>
-                          <b>{e.type}</b><em className="tnum">{cut}{showSrc ? ` · ${e.src}` : ""}</em>
-                        </span>
-                      );
+                    {rows.flatMap((items, lane) => items.flatMap(({ e, s, end, side, cols: n, when }, k) => {
+                      const tip = `${e.school} · ${e.type}\n${e.from}${e.to ? ` → ${e.to}（${span(e.from, e.to)} 天）` : "（单日）"}\n来源：${e.src}${e.flag === "conflict" ? "\n冲突待确认" : e.flag === "guess" ? "\n推测，待确认" : ""}`;
+                      const text = <><b>{e.type}</b><em className="tnum">{when}</em>{e.flag === "guess" && <i className="gantt-guess">推测</i>}</>;
+                      const bar = side === "single" ? [s, s + n] : [s, end];
+                      return [
+                        <span key={`${lane}-${k}`} className={`gantt-bar ev-${catOf(e.type)}${!e.to ? " is-single" : ""}${e.flag ? ` is-${e.flag}` : ""}`}
+                          style={{ gridColumn: `${bar[0]} / ${bar[1] + 1}`, gridRow: lane + 1 }} title={tip}>
+                          {(side === "in" || side === "single") && text}
+                        </span>,
+                        (side === "right" || side === "left") && (
+                          <span key={`${lane}-${k}-t`} className={`gantt-label${side === "left" ? " is-left" : ""}`}
+                            style={{ gridColumn: side === "right" ? `${end + 1} / span ${n}` : `${s - n} / ${s}`, gridRow: lane + 1 }} title={tip}>{text}</span>
+                        ),
+                      ];
                     }))}
                   </div>
                 </div>
-              ))}
+              ); })}
             </div>
           ))}
         </section>
@@ -135,15 +166,42 @@ function MonthTimeline({ tl, q, showSrc }) {
   );
 }
 
-// 同一所学校的事件如果日期重叠，分到不同的行，避免条叠在一起。
-function lanes(evs) {
+// 同一所学校的条（连同放在条外的文字）有重叠时，分到不同的行，避免叠在一起。
+function lanes(items) {
   const out = [];
-  for (const e of evs) {
-    const end = e.to || e.from;
-    const lane = out.find((l) => l.every((x) => (x.to || x.from) < e.from || x.from > end));
-    if (lane) lane.push(e); else out.push([e]);
+  for (const it of items) {
+    const lane = out.find((l) => l.every((x) => x.b < it.a || x.a > it.b));
+    if (lane) lane.push(it); else out.push([it]);
   }
   return out;
+}
+
+// 文字宽度按真实字体量；条里放不下就放到条的右边，右边到月底也放不下就放左边。不截断文字。
+let measureCtx = null;
+function textWidth(text, font) {
+  measureCtx ||= document.createElement("canvas").getContext("2d");
+  measureCtx.font = font;
+  return measureCtx.measureText(text).width;
+}
+
+function placeBar(e, { first, last, nDays, dayW, showSrc }) {
+  const s = e.from < first ? 1 : Number(e.from.slice(8));
+  const end = (e.to || e.from) > last ? nDays : Number((e.to || e.from).slice(8));
+  const when = `${md(e.from)}${e.to ? ` → ${md(e.to)}` : ""}${showSrc ? ` · ${e.src}` : ""}`;
+  const w = textWidth(e.type, '600 12px Geist, "PingFang SC"') + 6 + textWidth(when, '11px "Geist Mono", "PingFang SC"')
+    + (e.flag === "guess" ? 6 + textWidth("推测", '11px Geist, "PingFang SC"') : 0);
+  if (!e.to) { // 单日：菱形 + 文字，文字占的格子也算进分道
+    const n = Math.ceil((w + 20) / dayW);
+    if (s + n - 1 <= nDays) return { e, s, end: s, side: "single", cols: n - 1, when, a: s, b: s + n - 1 };
+    const m = Math.ceil((w + 8) / dayW);
+    if (s - m >= 1) return { e, s, end: s, side: "left", cols: m, when, a: s - m, b: s };
+    return { e, s, end: s, side: "single", cols: nDays - s, when, a: s, b: nDays };
+  }
+  if ((end - s + 1) * dayW - 17 >= w) return { e, s, end, side: "in", cols: 0, when, a: s, b: end };
+  const n = Math.ceil((w + 8) / dayW);
+  if (end + n <= nDays) return { e, s, end, side: "right", cols: n, when, a: s, b: end + n };
+  if (s - n >= 1) return { e, s, end, side: "left", cols: n, when, a: s - n, b: end };
+  return { e, s, end, side: "in", cols: 0, when, a: s, b: end };
 }
 
 // 时间轴下面的文字清单：按开始日期排，一句话写全。
@@ -175,31 +233,47 @@ function MonthList({ list, first, showSrc }) {
 
 function CountryTable({ tl, q, showSrc }) {
   const [c, setC] = useState("AU");
+  const [showCats, setShowCats] = useState(() => new Set(COL_DEFAULT));
   const rows = (tl.table[c] || []).filter((r) => !q || `${r.school}${r.abbr}`.toLowerCase().includes(q.toLowerCase()));
   const nodes = tl.nodes[c] || [];
+  const visible = nodes.map((n, i) => [n, i, colCat(n)]).filter(([, , k]) => showCats.has(k));
+  const catsHere = COL_CATS.filter(([k]) => nodes.some((n) => colCat(n) === k));
+  const toggleCat = (k) => setShowCats((o) => { const n = new Set(o); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const dm = deliveryMonth().slice(5);
   return (
     <>
-      <div className="country-tabs" role="tablist">
+      <div className="toolbar">
         {tl.countries.map(([code, name]) => (
-          <button key={code} type="button" role="tab" aria-selected={c === code} className={c === code ? "active" : ""} onClick={() => setC(code)}>
-            {name}<span className="tnum">{tl.table[code]?.length ?? "—"}</span>
+          <button key={code} type="button" className={`chip${c === code ? " is-on" : ""}`} aria-pressed={c === code} onClick={() => setC(code)}>
+            {name} <span className="tnum">{tl.table[code] ? `${tl.table[code].length} 校` : "—"}</span>
           </button>
         ))}
       </div>
       {!tl.table[c] ? <Placeholder icon="timeline" title={`${tl.countries.find(([k]) => k === c)[1]} · 示例数据未包含`}>示例只放了澳洲和英国的明细；接入飞书后各国都会显示。</Placeholder> : (
         <>
+          <div className="toolbar">
+            <span className="label">显示列</span>
+            {catsHere.map(([k, label]) => (
+              <button key={k} type="button" className={`chip${showCats.has(k) ? " is-on" : ""}`} aria-pressed={showCats.has(k)} onClick={() => toggleCat(k)}>
+                <span className={`ev-dot ev-${k}`} />{label} <span className="tnum">{nodes.filter((n) => colCat(n) === k).length}</span>
+              </button>
+            ))}
+            <span className="spacer" />
+            <span className="small muted">显示 {visible.length} / {nodes.length} 列 · 列按源表的时间顺序排</span>
+          </div>
           <p className="small muted tl-how">每一行是一所学校，每一列是一类事件；格子里是这件事的起止日期和持续天数。{tl.terms[c]}。</p>
           <div className="table-wrap">
             <table className="grid tl-table">
-              <thead><tr><th>学校</th>{nodes.map((n) => <th key={n}><span className={`ev-dot ev-${catOf(n)}`} />{n}</th>)}</tr></thead>
+              <thead><tr><th className="tl-school">学校</th>{visible.map(([n, i, k]) => <th key={i}><span className={`ev-dot ev-${k}`} />{n}</th>)}</tr></thead>
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.abbr}>
-                    <th scope="row"><strong>{r.school}</strong><span className="tnum small muted">{r.abbr}</span></th>
-                    {r.cells.map((cell, i) => {
-                      if (!cell) return <td key={i} className="tl-cell is-missing" title="原表这一格为空"><span>—</span><small>原表没写</small></td>;
-                      const [from, to, src, flag] = cell;
+                    <th scope="row" className="tl-school"><strong>{r.school}</strong><span className="tnum small muted">{r.abbr}</span></th>
+                    {visible.map(([, i]) => {
+                      const cell = r.cells[i];
+                      if (!cell) return <td key={i} className="tl-cell is-missing" title="原表这一格为空"><span>—</span></td>;
+                      const [from, rawTo, src, flag] = cell;
+                      const to = rawTo && rawTo !== from ? rawTo : null; // 起止同一天按单日写
                       const inDm = from.startsWith(dm) || (to && to.startsWith(dm));
                       return (
                         <td key={i} className={`tl-cell${flag ? ` is-${flag}` : ""}${inDm ? " is-dm" : ""}`} title={`来源：${src}`}>
@@ -213,7 +287,7 @@ function CountryTable({ tl, q, showSrc }) {
               </tbody>
             </table>
           </div>
-          <div className="tl-legend small muted"><span><i className="lg-dm" />落在交付月（{dm} 月）</span><span>推测、冲突的格子请到「异常待确认」处理</span></div>
+          <div className="tl-legend small muted"><span><i className="lg-dm" />落在交付月（{dm} 月）</span><span>— 表示原表没写</span><span>推测、冲突的格子请到「异常待确认」处理</span></div>
         </>
       )}
     </>
@@ -252,7 +326,7 @@ const AREAS = ["营销", "产品", "运营"];
 
 function Strategy() {
   const state = useApi(`/api/v3/needs?month=${deliveryMonth()}`, SAMPLE_NEEDS);
-  return <Loadable state={state}>{(data) => <StrategyBoard data={data} sample={state.isSample ? state.task : null} />}</Loadable>;
+  return <Loadable state={state} name="主线需求" big>{(data) => <StrategyBoard data={data} sample={state.isSample ? state.task : null} />}</Loadable>;
 }
 
 function StrategyBoard({ data, sample }) {
@@ -266,7 +340,7 @@ function StrategyBoard({ data, sample }) {
     <>
       <ol className="flow-chain">
         {[["用户时间线", "事件与日期", href("user", "timeline")], ["主线需求", `${needs.length} 条 · ${adopted} 已采纳`, null], ["策略拆解", `${needs.filter((n) => n.strategy).length} 条已拆解`, null], ["营销行动", "价格 · 物料 · brief", href("marketing")]].map(([a, b, to], i) => (
-          <li key={a} className={i === 1 || i === 2 ? "is-here" : ""}>{to ? <a href={to}><b>{a}</b><span>{b}</span></a> : <span><b>{a}</b><span>{b}</span></span>}</li>
+          <li key={a} className={i === 1 ? "is-here" : ""}>{to ? <a href={to}><b>{a}</b><span>{b}</span></a> : <span><b>{a}</b><span>{b}</span></span>}</li>
         ))}
       </ol>
       <div className="toolbar">
@@ -274,7 +348,7 @@ function StrategyBoard({ data, sample }) {
         <span className="spacer" />
         {sample && <SampleBadge task={sample} />}
         <Button onClick={() => showToast("已按对照表重新推导：4 条，无变化（示例）")}><PixelIcon name="refresh" />重新推导</Button>
-        <Button><PixelIcon name="plus" />手写一条需求</Button>
+        <Button><PixelIcon name="plus" />手写主线需求</Button>
       </div>
       <div className="strategy-layout cols-3-9">
         <ol className="need-list">
@@ -283,13 +357,14 @@ function StrategyBoard({ data, sample }) {
               <button type="button" className={n.id === cur?.id ? "is-sel" : ""} onClick={() => setSel(n.id)}>
                 <span className="need-top"><strong>{n.seg} · {n.node}</strong><Tag tone={n.status === "已采纳" ? "green" : "amber"}>{n.status}</Tag></span>
                 <span className="need-need">{n.need}</span>
-                <span className="need-meta tnum small muted">{n.when} · {n.schools} 所学校 · {n.strategy ? `${Object.values(n.strategy.actions).flat().length} 个行动` : "未拆解"}</span>
+                <span className="need-meta tnum small muted">{n.when.replace(/\b20\d\d-/g, "")} · {n.schools} 校 · {n.strategy ? `${Object.values(n.strategy.actions).flat().length} 个行动` : "未拆解"}</span>
               </button>
             </li>
           ))}
         </ol>
         {cur && (
           <section className="card need-detail">
+            <div className="need-detail-inner">
             <div className="card-head">
               <h2><PixelIcon name="target" />{cur.seg} · {cur.node}</h2>
               <span className="tnum small muted">{cur.when} · 来源 {cur.source}</span>
@@ -331,6 +406,7 @@ function StrategyBoard({ data, sample }) {
                   </div>
                 </>
               )}
+            </div>
             </div>
           </section>
         )}
