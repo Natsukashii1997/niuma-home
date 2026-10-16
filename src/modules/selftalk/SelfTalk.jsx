@@ -33,6 +33,7 @@ function Drawer({ data, sample, onClose }) {
   useEffect(() => {
     const key = (e) => {
       if (e.target.closest?.("input, textarea, [contenteditable]")) return;
+      if (e.metaKey || e.ctrlKey) return; // ⌘K 是命令面板，不当作「上一条」
       const it = list[cur];
       if (e.key === "j") setCur((c) => Math.min(list.length - 1, c + 1));
       else if (e.key === "k") setCur((c) => Math.max(0, c - 1));

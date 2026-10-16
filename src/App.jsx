@@ -14,6 +14,8 @@ import ReportsPage from "./modules/reports/ReportsPage.jsx";
 import SettingsPage from "./modules/settings/SettingsPage.jsx";
 import { SelfTalkDrawer, SelfTalkButton } from "./modules/selftalk/SelfTalk.jsx";
 import { CodexStrip } from "./modules/home/CodexStrip.jsx";
+import { CommandPalette } from "./modules/command/CommandPalette.jsx";
+import { StatusBar } from "./modules/statusbar/StatusBar.jsx";
 
 // 新增模块：在这里登记一项（icon 为 src/ui/icons7.js 中的图标名），并在 src/modules/<key>/ 下建页面。
 // 分组：「工作」是本人的主线业务，「协作与工具」是项目、知识与辅助。
@@ -84,9 +86,13 @@ export default function App() {
   const displayed = moduleOf(shown[0]);
   const now = useClock();
   const [drawer, setDrawer] = useState(false);
+  const [command, setCommand] = useState(false); // ⌘K 命令面板
   const { Page } = displayed;
   useEffect(() => {
-    const key = (e) => { if (e.key === "Escape") setDrawer(false); };
+    const key = (e) => {
+      if (e.key === "Escape") setDrawer(false);
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "k") { e.preventDefault(); setCommand((v) => !v); }
+    };
     addEventListener("keydown", key);
     return () => removeEventListener("keydown", key);
   }, []);
@@ -120,6 +126,8 @@ export default function App() {
         </main>
         <SelfTalkDrawer open={drawer} onClose={() => setDrawer(false)} />
       </div>
+      <StatusBar onCommand={() => setCommand(true)} />
+      <CommandPalette open={command} onClose={() => setCommand(false)} />
       <canvas ref={canvas} className="dissolve-canvas" aria-hidden="true" />
     </div>
   );

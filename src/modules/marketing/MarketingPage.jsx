@@ -5,6 +5,7 @@ import PricesView from "./PricesView.jsx";
 import MaterialsHub from "./MaterialsHub.jsx";
 import BriefView from "./BriefView.jsx";
 import CampaignView from "./CampaignView.jsx";
+import SkuView from "./SkuView.jsx";
 
 // v3：页签顺序 营销战役 · 月度促销（方案录入 + 促销表合并） · 价格记录 · 物料沉淀 · 设计 brief。
 const TABS = [
@@ -18,8 +19,10 @@ const TABS = [
 const VIEWS = { campaign: CampaignView, plans: PlansView, promos: PlansView, prices: PricesView, materials: MaterialsHub, brief: BriefView };
 
 // 路由：marketing/<页签>[/…]；marketing/plans/<月份>/<业务线> 选中月度促销的月份和业务线；旧地址 promos 并入月度促销。
+// marketing/sku/<业务线>/<SKU> 是 SKU 档案：一个 SKU 一页，有自己的页头和返回链接，不显示页签。
 export default function MarketingPage({ route }) {
   const [tab = "campaign", ...rest] = route;
+  if (tab === "sku") return <SkuView route={rest} />;
   const View = VIEWS[tab] || CampaignView;
   const active = tab === "promos" ? "plans" : VIEWS[tab] ? tab : "campaign";
   return (

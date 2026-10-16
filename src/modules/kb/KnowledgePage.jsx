@@ -7,10 +7,11 @@ import { SAMPLE_KB } from "../../samples/v3.js";
 // 知识库整理（v3）：一棵可编辑的树 + 暂存区。拖动、多选、剪切粘贴、重命名、新建目录都先进暂存，可撤销；
 // 预览确认后一次同步到飞书（第一批只做移动、重命名、新建目录；不删除，要删的先移到「99 待清理」）。
 // 第 3 轮：搜索（标题 / 标签 / 正文摘要）、详情面板（位置、更新、标签、摘要、被谁引用）、健康检查（点一项只看这类问题）。
-export default function KnowledgePage() {
+// kb/<文档 id>：⌘K 打开某篇文档时直接选中它，右栏显示详情
+export default function KnowledgePage({ route = [] }) {
   const state = useApi("/api/v3/kb/tree", SAMPLE_KB);
   return <><PageHeader title="知识库" subtitle="整理「常浩的知识库」：先在这里整理，预览确认后再同步飞书" />
-    <Loadable state={state} name="知识库目录" big>{(kb) => <Organizer kb={kb} sample={state.isSample ? state.task : null} />}</Loadable></>;
+    <Loadable state={state} name="知识库目录" big>{(kb) => <Organizer key={route[0] || ""} kb={kb} initialSel={route[0]} sample={state.isSample ? state.task : null} />}</Loadable></>;
 }
 
 const clone = (t) => JSON.parse(JSON.stringify(t));
@@ -64,11 +65,11 @@ function Mark({ text, q }) {
   return <>{text.slice(0, i)}<mark>{text.slice(i, i + q.length)}</mark>{text.slice(i + q.length)}</>;
 }
 
-function Organizer({ kb, sample }) {
+function Organizer({ kb, initialSel, sample }) {
   const [tree, setTree] = useState(() => clone(kb.tree));
   const [history, setHistory] = useState([]);
   const [ops, setOps] = useState([]);
-  const [sel, setSel] = useState(new Set());
+  const [sel, setSel] = useState(() => new Set(initialSel && find(kb.tree, initialSel) ? [initialSel] : []));
   const [open, setOpen] = useState(() => new Set(kb.tree.filter((n) => n.kids).map((n) => n.id)));
   const [renaming, setRenaming] = useState(null);
   const [clip, setClip] = useState(null);

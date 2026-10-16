@@ -51,11 +51,12 @@ function colCat(name) {
 function Timeline({ route }) {
   const state = useApi("/api/v3/timeline", SAMPLE_TIMELINE);
   const view = ["month", "country", "anomalies"].includes(route[0]) ? route[0] : "month";
-  return <Loadable state={state} name="用户时间线" big>{(tl) => <TimelineBoard tl={tl} view={view} sample={state.isSample ? state.task : null} />}</Loadable>;
+  // user/timeline/<视图>/<搜索词>：⌘K 打开某所学校时带上校名缩写，进页面就筛好
+  return <Loadable state={state} name="用户时间线" big>{(tl) => <TimelineBoard key={route[1] || ""} tl={tl} view={view} initialQ={route[1] || ""} sample={state.isSample ? state.task : null} />}</Loadable>;
 }
 
-function TimelineBoard({ tl, view, sample }) {
-  const [q, setQ] = useState("");
+function TimelineBoard({ tl, view, initialQ, sample }) {
+  const [q, setQ] = useState(initialQ);
   const [showSrc, setShowSrc] = useState(false);
   const [sync, setSync] = useState(false);
   const go = (v) => { location.hash = href("user", "timeline", v); };
@@ -328,14 +329,15 @@ function Anomalies({ tl }) {
 /* ================= 用户策略：主线需求 → 拆解 → 行动 ================= */
 const AREAS = ["营销", "产品", "运营"];
 
-function Strategy() {
+// user/strategy/<需求 id>：⌘K 打开某条主线需求时直接选中它
+function Strategy({ route = [] }) {
   const state = useApi(`/api/v3/needs?month=${deliveryMonth()}`, SAMPLE_NEEDS);
-  return <Loadable state={state} name="主线需求" big>{(data) => <StrategyBoard data={data} sample={state.isSample ? state.task : null} />}</Loadable>;
+  return <Loadable state={state} name="主线需求" big>{(data) => <StrategyBoard key={route[0] || ""} data={data} initialSel={route[0]} sample={state.isSample ? state.task : null} />}</Loadable>;
 }
 
-function StrategyBoard({ data, sample }) {
+function StrategyBoard({ data, initialSel, sample }) {
   const [needs, setNeeds] = useState(data.needs);
-  const [sel, setSel] = useState(data.needs[0]?.id);
+  const [sel, setSel] = useState(data.needs.some((n) => n.id === initialSel) ? initialSel : data.needs[0]?.id);
   const [toast, showToast] = useToast();
   const cur = needs.find((n) => n.id === sel) || needs[0];
   const adopt = (id) => { setNeeds((o) => o.map((n) => n.id === id ? { ...n, status: "已采纳" } : n)); showToast("已采纳：现在可以拆解策略，促销方案也能关联这条需求（示例）"); };

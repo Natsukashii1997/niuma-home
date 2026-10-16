@@ -54,6 +54,18 @@ export const SAMPLE_PRICE_SCHEMES = {
   ],
 };
 
+// SKU 档案 · 价格图版本：每个月这个 SKU 用的是哪一版价格图（NAS 按「月份 / 类型」整理，不分 SKU，对应关系由接口给出）
+export const SAMPLE_PRICE_CHARTS = {
+  line: "大学辅导",
+  sku: "灵活学Lite",
+  versions: [
+    { month: "2026-08", state: "file", version: 2, big: "4300", path: "2026-08/产品物料/价格图/价格图-v2.jpg" },
+    { month: "2026-09", state: "file", version: 2, big: "4300", path: "2026-09/产品物料/价格图/价格图-v2.jpg" },
+    { month: "2026-10", state: "file", version: 3, big: "4300", path: "2026-10/产品物料/价格图/价格图-v3.jpg" },
+    { month: "2026-11", state: "pending", note: "战役版 · brief 4.1" },
+  ],
+};
+
 /* ---------- 营销 · 物料（NAS） ---------- */
 export const SAMPLE_NAS = {
   root: "/Volumes/营销物料",

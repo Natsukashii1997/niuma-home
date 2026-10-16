@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PixelIcon } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
+import { href } from "../../router.js";
 import { Button, Loadable, SampleBadge, Segmented, Tag, useToast } from "../../ui/components.jsx";
 import { SAMPLE_PRICE_SKUS, SAMPLE_PRICE_SCHEMES } from "../../samples/v3.js";
 
@@ -8,11 +9,11 @@ import { SAMPLE_PRICE_SKUS, SAMPLE_PRICE_SCHEMES } from "../../samples/v3.js";
 // 比较方式：同一档跨方案（相对基准方案的差价）、同一方案跨档位（单价阶梯，倒挂标出）。
 // 口径：课时单价 = 总价 ÷（课时 + 赠送），付费单价 = 总价 ÷ 课时（对应原表的「每课时单价」）。
 
-const money = (n) => Math.round(n).toLocaleString("en-US");
-const pct = (v) => `${Math.round(v * 100)}%`;
-const signed = (n) => (n > 0 ? `+${money(n)}` : n < 0 ? `−${money(-n)}` : "±0");
+export const money = (n) => Math.round(n).toLocaleString("en-US");
+export const pct = (v) => `${Math.round(v * 100)}%`;
+export const signed = (n) => (n > 0 ? `+${money(n)}` : n < 0 ? `−${money(-n)}` : "±0");
 
-function calc(scheme, i, tiers, unitOrig, costPerHour) {
+export function calc(scheme, i, tiers, unitOrig, costPerHour) {
   const h = tiers[i], gift = scheme.gifts[i] || 0, price = scheme.prices[i];
   const orig = h * unitOrig;
   return {
@@ -25,9 +26,10 @@ function calc(scheme, i, tiers, unitOrig, costPerHour) {
   };
 }
 
-export default function PricesView() {
+// 路由 marketing/prices/<SKU id>：从 SKU 档案、⌘K 进来时直接选中该 SKU。
+export default function PricesView({ route = [] }) {
   const skus = useApi("/api/v3/price/skus", SAMPLE_PRICE_SKUS);
-  const [sku, setSku] = useState(SAMPLE_PRICE_SKUS[0].id);
+  const [sku, setSku] = useState(route[0] || SAMPLE_PRICE_SKUS[0].id);
   const schemes = useApi(`/api/v3/price/schemes?sku=${sku}`, SAMPLE_PRICE_SCHEMES);
   return (
     <Loadable state={skus} name="SKU 列表" big>
@@ -41,6 +43,7 @@ export default function PricesView() {
                 </button>
               ))}
             </div>
+            {list.filter((s) => s.id === sku).map((s) => <a key={s.id} className="link link-btn" href={href("marketing", "sku", s.line, s.name)}>{s.name} 档案<PixelIcon name="right" /></a>)}
             <span className="spacer" />
             {(skus.isSample || schemes.isSample) && <SampleBadge task={schemes.task || skus.task} />}
           </div>

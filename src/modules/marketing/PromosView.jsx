@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import { createPortal } from "react-dom";
 import { PixelIcon } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
+import { href } from "../../router.js";
 import { Button, Empty, FilterBar, Loadable, Segmented, Select } from "../../ui/components.jsx";
 import { PROMO_FIELDS } from "../../constants.js";
 import { buildPromoView, normalizePromoView, readPromoView, writePromoView } from "./promo-view.js";
@@ -71,6 +72,7 @@ function PromoTable({ rows }) {
                         {group === "sku" && <span className="muted small">{latestChange ? `最近变化：${latestChange}` : "暂无变化记录"}</span>}
                       </button>
                       <div className="row" onClick={(event) => event.stopPropagation()}>
+                        {group === "sku" && <a className="link link-btn" href={href("marketing", "sku", items[0].line, items[0].sku)}>SKU 档案<PixelIcon name="right" /></a>}
                         <Button onClick={() => copyRows(key, items)}><PixelIcon name="copy" />{copied === key ? "已复制本组" : "复制本组"}</Button>
                       </div>
                     </div>
@@ -78,7 +80,7 @@ function PromoTable({ rows }) {
                 </tr>
                 {!collapsed.has(key) && items.map((row) => (
                   <tr key={JSON.stringify([row.month, row.line, row.sku])}>
-                    {BASE.map(([k]) => <td key={k} className={k === "sku" ? "nowrap promo-sku" : "nowrap"}>{row[k]}</td>)}
+                    {BASE.map(([k]) => <td key={k} className={k === "sku" ? "nowrap promo-sku" : "nowrap"}>{k === "sku" ? <a className="sku-link" href={href("marketing", "sku", row.line, row.sku)} title="打开 SKU 档案">{row.sku}</a> : row[k]}</td>)}
                     {PROMO_FIELDS.map(([field]) => <PromoCell key={field} value={row[field]} field={field} previous={previous.get(row)} />)}
                     <td className="promo-actions"><button type="button" className="icon-btn" title="复制这一行" onClick={() => copyRows(JSON.stringify([row.month, row.line, row.sku]), [row])}><PixelIcon name={copied === JSON.stringify([row.month, row.line, row.sku]) ? "check" : "copy"} /></button></td>
                   </tr>

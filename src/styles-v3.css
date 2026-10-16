@@ -211,6 +211,9 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .promo-more { display: inline-block; margin-top: 2px; font-size: 11px; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
 .promo-long:hover .promo-more { color: var(--signal); }
 .promo-sku { font-weight: 600; }
+.sku-link { color: inherit; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.sku-link:hover { color: var(--signal); text-decoration-color: currentColor; }
+.promo-group .link-btn { font-weight: 400; }
 .promo-actions { width: 40px; min-width: 40px !important; vertical-align: middle !important; }
 .promo-actions .icon-btn { visibility: hidden; }
 .promo-table tr:hover .promo-actions .icon-btn, .promo-actions .icon-btn:focus { visibility: visible; }
@@ -280,6 +283,25 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .price-note { margin: var(--s2) 0 0; }
 .unit-legend svg { width: 10px !important; height: 10px; flex-shrink: 0; }
 .grid td.changed { padding-right: var(--s5); }
+
+/* ---------- 营销 · SKU 档案（第三轮提案 5）：数字条 → 跨月政策 → 单价阶梯 | 价格图版本（6/6，等高） ---------- */
+.sku-page .page-header h1 { display: flex; align-items: center; gap: 6px; }
+.sku-page .card > .table-wrap { flex: 1 1 auto; border: 0; }
+.sku-policy { margin-bottom: var(--gap); }
+.sku-policy .grid { table-layout: fixed; }
+.sku-policy th[scope="row"] { position: static; background: var(--panel); font: 12px var(--font-sans); letter-spacing: 0; color: var(--text-2); }
+.sku-policy td { min-width: 0; font-size: 12px; line-height: 1.5; white-space: normal; }
+.sku-policy thead th.is-dm { background: var(--text); color: var(--panel); }
+.sku-policy thead th.is-dm b { margin-left: var(--s1); padding: 0 var(--s1); background: var(--signal); font-weight: 400; }
+.sku-policy td.is-dm, .sku-policy tbody tr:hover td.is-dm { background-color: var(--panel-soft); }
+.sku-policy td.todo { color: var(--muted); }
+.clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.sku-scheme { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1); }
+.sku-split { display: grid; gap: var(--gap); align-items: stretch; }
+.ver-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s3); }
+.ver-strip figure { display: flex; flex-direction: column; gap: var(--s1); margin: 0; }
+.ver-strip figcaption { font: 11px var(--font-mono); color: var(--muted); }
+.ver-pend { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s1); aspect-ratio: 3 / 4; padding: var(--s2); border: var(--border) solid var(--warn); color: var(--warn); font-size: 12px; text-align: center; }
 
 /* ---------- 缩略图（版式示意 / 真实图片） ---------- */
 .thumb { container-type: inline-size; position: relative; display: flex; flex-direction: column; gap: 6%; width: 100%; aspect-ratio: 3 / 4; padding: 8%; background: var(--panel); border: 1px solid var(--line); overflow: hidden; color: var(--text); text-align: left; }
@@ -865,3 +887,53 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .agent-card { display: flex; flex-direction: column; gap: var(--s3); height: 100%; }
 .agent-starters { display: flex; flex-direction: column; gap: var(--s2); }
 .agent-card .agent-new { align-self: flex-start; margin-top: auto; }
+
+/* ---------- ⌘K 命令面板（第三轮提案 2）：遮罩是墨色网点；选中行反色 + 左侧 4px 橙条，和侧栏选中一致 ---------- */
+.cmdk-dim { position: fixed; inset: 0; z-index: 30; background-image: var(--dither-ink-1); }
+.cmdk { position: fixed; z-index: 31; left: calc(50% + 104px); top: 96px; transform: translateX(-50%); width: min(820px, calc(100vw - 272px)); display: flex; flex-direction: column; background: var(--panel); border: var(--border) solid var(--text); }
+.cmdk-input { display: flex; align-items: center; gap: var(--s2); height: 56px; padding: 0 var(--s4); border-bottom: 1px solid var(--line); }
+.cmdk-input input { flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: none; font: inherit; font-size: 18px; color: var(--text); }
+.cmdk-input input::placeholder { font-size: 14px; color: var(--muted); }
+.cmdk-scopes { display: flex; align-items: center; gap: var(--s1); padding: var(--s2) var(--s4); border-bottom: 1px solid var(--line); }
+.cmdk-scopes button { height: 24px; padding: 0 var(--s2); border: 1px solid var(--line); background: var(--panel); font: inherit; font-size: 12px; color: var(--text-2); cursor: pointer; }
+.cmdk-scopes button:hover { border-color: var(--text); color: var(--text); }
+.cmdk-scopes button.is-on { background: var(--text); border-color: var(--text); color: var(--panel); }
+.cmdk-hint { margin-left: auto; font: 11px var(--font-mono); color: var(--muted); }
+.cmdk-body { display: grid; grid-template-columns: minmax(0, 1fr) 280px; height: min(420px, calc(100vh - 300px)); }
+.cmdk-list { overflow-y: auto; padding: var(--s2) 0; border-right: 1px solid var(--line); }
+.cmdk-group { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--s4) var(--s1); font: 11px var(--font-mono); letter-spacing: 0.06em; color: var(--muted); }
+.cmdk-row { position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; align-items: center; gap: var(--s3); min-height: 36px; padding: 0 var(--s4); cursor: pointer; }
+.cmdk-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cmdk-sub { margin-left: var(--s2); font-size: 12px; color: var(--muted); }
+.cmdk-row mark { padding: 0 1px; background: var(--warn-soft); color: inherit; }
+.cmdk-go { font: 11px var(--font-mono); color: var(--muted); white-space: nowrap; }
+.cmdk-row.is-sel { background: var(--text); color: var(--panel); }
+.cmdk-row.is-sel::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--signal); }
+.cmdk-row.is-sel .cmdk-sub, .cmdk-row.is-sel .cmdk-go { color: #9CA0A8; }
+.cmdk-row.is-sel mark { background: var(--signal); color: var(--panel); }
+.cmdk-empty { padding: var(--s5) var(--s4); color: var(--muted); }
+.cmdk-pre { display: flex; flex-direction: column; gap: var(--s3); min-height: 0; overflow-y: auto; padding: var(--s4); background: var(--panel-soft); }
+.cmdk-pre h3 { margin: 0; font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+.cmdk-pre .kv { grid-template-columns: 64px minmax(0, 1fr); font-size: 12px; }
+.cmdk-pre .kv dd { display: block; }
+.cmdk-pre .kv.is-dates { grid-template-columns: 104px minmax(0, 1fr); }
+.cmdk-acts { display: flex; flex-direction: column; gap: var(--s1); margin-top: auto; padding-top: var(--s2); border-top: 1px solid var(--line); }
+.cmdk-acts > * { display: flex; justify-content: space-between; align-items: center; min-height: 24px; font-size: 12px; color: var(--text); }
+.cmdk-acts a:hover { color: var(--signal); }
+.cmdk-foot { display: flex; align-items: center; gap: var(--s4); padding: var(--s2) var(--s4); border-top: 1px solid var(--line); background: var(--panel-soft); font: 11px var(--font-mono); color: var(--muted); }
+.cmdk-note { margin-left: auto; font-family: var(--font-sans); color: var(--text-2); }
+
+/* ---------- 底部状态栏（第三轮提案 7）：等宽小字；点为绿（正常）/ 琥珀（有问题，悬停看原因）/ 灰空心（未接入） ---------- */
+.statusbar { position: fixed; z-index: 6; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: var(--s4); height: var(--statusbar-h); padding: 0 var(--s3); background: var(--panel); border-top: 1px solid var(--line); font: 11px var(--font-mono); color: var(--muted); white-space: nowrap; }
+.sb-group { display: inline-flex; align-items: center; gap: 6px; }
+.sb-group b { font-weight: 400; color: var(--text); }
+.sb-dot { width: 6px; height: 6px; background: var(--ok); }
+.sb-group.is-warn .sb-dot { background: var(--warn); }
+.sb-group.is-off .sb-dot { background: none; border: 1px solid var(--muted); }
+.sb-item + .sb-item::before { content: "·"; margin-right: 6px; color: var(--muted); }
+.sb-item.is-ok, .statusbar > .sb-item { color: var(--text-2); }
+.sb-item.is-warn, .statusbar > .sb-item.is-warn { color: var(--warn); }
+.sb-item.is-off { color: var(--muted); }
+.sb-cmd { display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 var(--s1); border: 0; background: none; font: inherit; color: var(--text-2); cursor: pointer; }
+.sb-cmd:hover { color: var(--text); }
+.sb-cmd:hover kbd { border-color: var(--text); }
