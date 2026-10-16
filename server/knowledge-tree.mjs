@@ -194,7 +194,8 @@ async function assertWriterIdentity(run = execute) {
   if(identity.profile!=='codex'||identity.appId!=='cli_aacf58ab61b85beb'||identity.identity!=='user')throw failure(403,'知识库写入仅允许机械邪龙兽codex用户身份');
 }
 const operationKind = 'kb-operation', lockKind = 'kb-write-lock';
-const unknownWrite = () => failure(409, '知识库操作结果尚未核实，已锁定重复写入；请先查看操作记录并只读核对，不能重新发送');
+// 结果未核实：带错误码和操作编号，前端据此锁住页面并只读核对，不靠文案判断。
+const unknownWrite = operationId => Object.assign(failure(409, '知识库操作结果尚未核实，已锁定重复写入；请先查看操作记录并只读核对，不能重新发送'), { code: 'KB_RESULT_UNKNOWN', ...(operationId ? { receipt: { operationId, status: 'unknown' } } : {}) });
 const publicOperation = p => p.receipt || { operationId:p.id, spaceId:p.spaceId, state:p.state, completed:p.completed, total:p.operations.length, requiresReconciliation:['writing','unknown','checking','verified'].includes(p.state), error:p.error || null };
 const ownerAlive = p => {
   if (activeWrites.has(p.id)) return true;
@@ -275,7 +276,7 @@ export function createKnowledgeTreeService(db, { now = Date.now, readSource = re
       const spaceId=config().spaceId,kb=await read({refresh:true});
       if(config().spaceId!==spaceId)throw failure(409,'读取期间知识库配置已变化');
       const plan=previewKnowledgeChanges(kb,body),id=randomUUID(),expiresAt=new Date(now()+600000).toISOString();
-      if(getRecord(db,lockKind,spaceId))throw unknownWrite();
+      const lock=getRecord(db,lockKind,spaceId);if(lock)throw unknownWrite(lock.operationId);
       save({id,spaceId,state:'preview',expiresAt,sourceVersion:plan.sourceVersion,operations:plan.operations,expectedRows:rowsOfTree(kb.tree),cursor:0,completed:[],created:{}});
       return {...plan,previewId:id,spaceId,expiresAt,confirmationEndpoint:'/api/v3/kb/confirm'};
     },
@@ -283,11 +284,11 @@ export function createKnowledgeTreeService(db, { now = Date.now, readSource = re
     async confirm(body) {
       if(body?.confirm!==true || typeof body.previewId!=='string')throw failure(400,'请先预览，再明确确认知识库操作');
       let p=load(body.previewId);if(p.receipt)return structuredClone(p.receipt);sameSpace(p);
-      if(p.state!=='preview')throw unknownWrite();
+      if(p.state!=='preview')throw unknownWrite(p.id);
       if(Date.parse(p.expiresAt)<=now())throw failure(409,'知识库预览已过期，请重新预览');
       db.exec('BEGIN IMMEDIATE');
       try {
-        p=load(body.previewId);if(p.state!=='preview'||getRecord(db,lockKind,p.spaceId))throw unknownWrite();
+        p=load(body.previewId);if(p.state!=='preview'||getRecord(db,lockKind,p.spaceId))throw unknownWrite(getRecord(db,lockKind,p.spaceId)?.operationId||p.id);
         p.state='checking';p.ownerPid=process.pid;save(p);putRecord(db,lockKind,p.spaceId,{operationId:p.id},now());db.exec('COMMIT');
       }catch(error){db.exec('ROLLBACK');throw error;}
       activeWrites.add(p.id);
@@ -309,7 +310,7 @@ export function createKnowledgeTreeService(db, { now = Date.now, readSource = re
         }
         return finish(p,'verified',rows);
       }catch(error){
-        if(attemptedWrite){p.state='unknown';p.error='写入或回读结果尚未核实；请只读核对操作记录，禁止重发。';save(p);throw unknownWrite();}
+        if(attemptedWrite){p.state='unknown';p.error='写入或回读结果尚未核实；请只读核对操作记录，禁止重发。';save(p);throw unknownWrite(p.id);}
         p.inFlight=null;
         p.error=error.status?error.message:'知识库执行前核验失败';finish(p,p.cursor?'partial':'aborted');throw error;
       }finally{activeWrites.delete(p.id);}
@@ -323,10 +324,10 @@ export function createKnowledgeTreeService(db, { now = Date.now, readSource = re
         if(p.inFlight.operation.type==='mkdir'&&!p.inFlight.result&&body.confirmObserved===true&&/^[A-Za-z0-9]+$/.test(body.nodeId||'')&&!p.expectedRows.some(n=>n.id===body.nodeId)){
           const observed=await runLark(['wiki','+node-get','--node-token',body.nodeId,'--space-id',p.spaceId],run);
           const op=p.inFlight.operation;
-          if(observed.space_id!==p.spaceId||observed.node_token!==body.nodeId||observed.obj_type!=='docx'||observed.node_type!=='origin'||observed.title!==op.name||(observed.parent_node_token||'')!==op.parentId)throw unknownWrite();
+          if(observed.space_id!==p.spaceId||observed.node_token!==body.nodeId||observed.obj_type!=='docx'||observed.node_type!=='origin'||observed.title!==op.name||(observed.parent_node_token||'')!==op.parentId)throw unknownWrite(p.id);
           p.inFlight.result={nodeId:body.nodeId,confirmedObservation:true};save(p);
         }
-        try{verifiedStep(p,await directory(p));}catch{p.state='unknown';p.error='仍无法按原节点身份和完整目录核实结果，保持写入锁；不自动重试。';save(p);throw unknownWrite();}
+        try{verifiedStep(p,await directory(p));}catch{p.state='unknown';p.error='仍无法按原节点身份和完整目录核实结果，保持写入锁；不自动重试。';save(p);throw unknownWrite(p.id);}
       }
       return finish(p,p.cursor===p.operations.length?'verified':p.cursor?'partial':'aborted');
     },

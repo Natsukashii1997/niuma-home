@@ -36,7 +36,8 @@ export function voiceView(snapshot, now = Date.now()) {
   if (!data || !Array.isArray(data.hot) || !Array.isArray(data.cloud) || typeof data.daily !== 'string') throw fail(502,'VOICE_EXPORT_INCOMPLETE','留学之声导出数据不完整');
   const updated = typeof data.updatedAt === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(data.updatedAt) ? Date.parse(`${data.updatedAt.replace(' ','T')}:00+08:00`) : NaN;
   if (!Number.isFinite(updated) || beijingText(updated) !== data.updatedAt || updated > checked || updated > now || now - updated > 48 * 3600000) throw fail(503,'VOICE_SNAPSHOT_STALE','留学之声数据更新时间缺失或已过期，请人工重新采集');
-  if (!data.hot.length) return { empty: true, checkedAt: snapshot.checkedAt, budget: snapshot.budget };
+  // 合法空榜：来源都读到了，只是没有达到门槛的话题。返回 200 + 空列表，页面写明「现在没有合格的话题」。
+  if (!data.hot.length) return { empty: true, checkedAt: snapshot.checkedAt, budget: snapshot.budget, value: { updatedAt: data.updatedAt, nextAt: null, stats: null, budget: snapshot.budget, hot: [], cloud: [], daily: null, empty: true, note: '免费试运行已读取：当前还没有达到5个独立来源、并完成热度核验的留学话题' } };
   for (const key of ['topics','newTopics','surge','participants','filtered','sourceCount']) if (!numeric(data.stats?.[key])) throw fail(503,'VOICE_METRICS_PENDING','留学之声统计证据尚不完整');
   if (data.stats.topics !== data.hot.length || typeof data.stats.sources !== 'string') throw fail(502,'VOICE_EXPORT_INCOMPLETE','话题数量或来源统计不一致');
   const ids = new Set();
@@ -83,9 +84,7 @@ export function createVoiceReader(db, { now=Date.now, snapshotPath=()=>process.e
       const e=error.status?error:fail(503,'VOICE_EXPORT_UNAVAILABLE','留学之声试运行导出尚不可读，请完成一次人工采集');
       recordSource(db,'voice',{identity:file,attemptAt,error:e.message});throw e;
     } finally {if(fd!==undefined)fs.closeSync(fd);}
-    // 当前Claude页面不能渲染空榜；用明确错误态承接真实空结果，绝不塞演示话题。
-    if(view.empty)throw fail(503,'VOICE_NO_QUALIFIED_TOPICS','免费试运行已读取：当前还没有达到5个独立来源、并完成热度核验的留学话题');
-    return view.value;
+    return view.value; // 空榜也照实返回（hot 为空），绝不塞演示话题
   };
   read.identity=identity;return read;
 }

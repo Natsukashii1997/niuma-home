@@ -8,7 +8,7 @@ import { Button, Card, Loadable, PageHeader, PendingButton, Placeholder, StatStr
 // 只看多数人的共性——同一人 / 同一矩阵只算一个来源，独立来源 ≥ 5 才上榜。
 // 接口用 503 + 错误码区分三种情况，页面分开写，不能混成一种：
 //   来源不可用（未配置、读取失败、记录过期、证据不完整）→ 热榜没有接通，不显示任何话题；
-//   真实读取后没有合格话题（VOICE_NO_QUALIFIED_TOPICS）→ 合法的空榜；
+//   真实读取后没有合格话题 → 合法的空榜（接口 200、hot 为空、note 写原因）；
 //   其他读取失败 → 可以重新读取。
 // 日期和趋势只用接口给的真实值（sparkDates、spark），不补造固定的七天。
 const TREND = { surge: ["急升", "is-surge"], rising: ["上升", "is-up"], up: ["上升", "is-up"], flat: ["平稳", ""], down: ["回落", "is-down"] };
@@ -38,7 +38,7 @@ export default function VoicePage() {
     <>
       <PageHeader title="Voice" subtitle="留学之声：留学生最近在讨论什么。只看多数人的共性——同一人或同一矩阵只算一个来源，独立来源 ≥ 5 才上榜。"
         actions={state.data && <span className="small muted">本机运行 · 上次抓取 {state.data.updatedAt} · {state.data.nextAt ? `下次 ${state.data.nextAt}` : "人工采集，不定时"}</span>} />
-      {issue ? <VoiceIssue issue={issue} reload={state.reload} /> : <Loadable state={state} name="留学之声" big>{(v) => (v.hot?.length ? <VoiceBoard v={v} /> : <VoiceIssue issue={{ kind: "empty", title: "现在没有合格的话题", text: "接口返回了空榜：还没有达到 5 个独立来源的话题。" }} />)}</Loadable>}
+      {issue ? <VoiceIssue issue={issue} reload={state.reload} /> : <Loadable state={state} name="留学之声" big>{(v) => (v.hot?.length ? <VoiceBoard v={v} /> : <VoiceIssue issue={{ kind: "empty", title: "现在没有合格的话题", text: v.note || "还没有达到 5 个独立来源的话题。" }} />)}</Loadable>}
     </>
   );
 }

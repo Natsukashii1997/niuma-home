@@ -8,9 +8,9 @@ const handle = fn => async (req, res, context) => {
   try {
     const result = await fn(req, context);
     if (result?.origin === 'demo' || Array.isArray(result) && result.some(row => row.origin === 'demo')) {
-      // 当前 useApi 仅凭 501 显示示例标记；保留演示标记，等待 Claude 接入 origin 后再统一 200。
+      // 演示口径：200 + 数据里的 origin:'demo'（另加响应头），前端据此标「示例」；不再借 501 冒充未实现。
       res.setHeader('x-workdesk-data-origin', 'demo');
-      return json(res, 501, Array.isArray(result) ? result : { ...result, task: '演示数据（待正式价格表）' });
+      return json(res, 200, Array.isArray(result) ? result : { ...result, task: '演示数据（待正式价格表）' });
     }
     json(res, 200, result);
   } catch (error) {

@@ -1,44 +1,6 @@
 // v3 示例数据：只在 /api/v3/* 接口返回 501（尚未实现）时显示，页面会标「示例」。
-// 价格数据来自常浩 2026-10-16 提供的灵活学Lite 价格表；其余为演示用，不代表真实业务。
 // 接口实现后，对应示例即可删除（见 docs/tasks/V3-接口清单.md）。已接真实接口的示例和兼容导出已在 V3 接线时删除；
-// 剩下的是：价格与营收（用户确认暂用演示口径）、价格图与 NAS（暂缓接入）、brief 句式参考（演示句式，无真实来源）。
-
-/* ---------- 首页 · 业务营收完成度（真实数据来自飞书多维表格，常浩后续提供；以下为演示值，大学一项取自 10-16 截图） ---------- */
-export const SAMPLE_REVENUE = {
-  period: "2026 年度",
-  timePct: 0.79,
-  updatedAt: "10-16 09:30",
-  groups: [
-    { label: "总计", items: [
-      { key: "total", name: "总营收", current: 17356727, target: 29961834 },
-      { key: "new", name: "总新签", current: 9800000, target: 17500000 },
-      { key: "renew", name: "总续费", current: 7556727, target: 12461834 },
-    ] },
-    { label: "业务线", items: [
-      { key: "uni", name: "大学辅导", current: 4656727, target: 12061834 },
-      { key: "intl", name: "国课", current: 10650000, target: 15500000 },
-      { key: "appeal", name: "申诉", current: 2050000, target: 2400000 },
-    ] },
-  ],
-};
-
-/* ---------- 营销 · 价格方案（灵活学Lite，原价 990 元/小时） ---------- */
-export const SAMPLE_PRICE_SKUS = [
-  { id: "uni-lite", line: "大学辅导", name: "灵活学Lite", unitOrig: 990, tiers: [5, 10, 20, 30, 50, 100, 150, 200] },
-  { id: "intl-lite", line: "国际课程", name: "灵活学Lite", unitOrig: 990, tiers: [5, 10, 20, 30, 50, 100, 150, 200] },
-];
-
-export const SAMPLE_PRICE_SCHEMES = {
-  sku: "uni-lite",
-  floorMargin: 0.25, // 毛利底线与课时成本均为演示口径，真实值由常浩确定
-  costPerHour: 440,
-  schemes: [
-    { id: "regular", name: "常规优惠版", kind: "常规", status: "生效中", from: "2026-07-01", to: "", prices: [4300, 8250, 15600, 22000, 34000, 64500, 93500, 118000], gifts: [0, 0, 0, 0, 0, 0, 0, 0] },
-    { id: "d11", name: "双11底价", kind: "活动", status: "草稿", from: "2026-11-01", to: "2026-11-30", need: "澳洲 · 本科 · S2 Final", prices: [3990, 7800, 14850, 21100, 32750, 63500, 92500, 116000], gifts: [0, 0, 0, 0, 0, 0, 0, 0] },
-    { id: "cny", name: "新春囤课价", kind: "活动", status: "历史", from: "2026-01-20", to: "2026-02-28", prices: [4088, 7988, 15088, 21488, 33188, 63988, 92988, 117888], gifts: [0, 0, 0, 0, 0, 0, 0, 0] },
-    { id: "gift", name: "赠送课时价", kind: "赠课", status: "生效中", from: "2026-09-01", to: "", prices: [4300, 8900, 16500, 23600, 37400, 71500, 104000, 132000], gifts: [0, 1, 2, 3, 5, 10, 15, 20] },
-  ],
-};
+// 剩下的是：价格图与 NAS（暂缓接入）、brief 句式参考（演示句式，无真实来源）。价格与营收的演示口径由后端返回（origin: "demo"），页面照样标「示例」。
 
 // SKU 档案 · 价格图版本：每个月这个 SKU 用的是哪一版价格图（NAS 按「月份 / 类型」整理，不分 SKU，对应关系由接口给出）
 export const SAMPLE_PRICE_CHARTS = {

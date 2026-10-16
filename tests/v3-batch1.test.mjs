@@ -142,6 +142,7 @@ test('V3 来源变化、并发旧预览、过期凭据均拒绝；已采纳来�
   const preview = async () => (await request('POST',`${endpoint}/preview`,{month:'2026-11'})).body;
   const confirm = p => request('POST',`${endpoint}/adopt`,{previewId:p.previewId,confirm:true});
   const p = await preview(), changed = sheets(); changed[2].rows[1].values[2]='11.8-11.21'; setData(changed);
+  assert.equal((await request('POST','/api/v3/timeline/sync')).status,200); // 来源变化经同步进入快照后，旧预览必须被拒绝
   assert.equal((await confirm(p)).status,409);
   const p1 = await preview(), p2 = await preview(); assert.equal((await confirm(p1)).status,200); assert.equal((await confirm(p2)).status,409);
   const p3 = await preview(); advance(600001); assert.equal((await confirm(p3)).status,409);

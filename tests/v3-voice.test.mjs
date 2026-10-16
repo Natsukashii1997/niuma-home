@@ -42,14 +42,14 @@ test('Voice采集失败通过路由返回概括错误，状态记error且不推�
   const failed=await invoke(all,'/api/v3/voice');assert.equal(failed.status,503);assert.equal(failed.body.code,'VOICE_SOURCE_UNAVAILABLE');assert.ok(!JSON.stringify(failed.body).includes('敏感原始错误标记'));
   const state=()=>sourceStatus(db,{implemented:['voice'],voiceIdentity:file}).sources.voice;
   assert.equal(state().state,'error');assert.equal(state().at,undefined);assert.ok(!state().error.includes('敏感原始错误标记'));
-  writeFileSync(file,JSON.stringify(sample()));assert.equal((await invoke(all,'/api/v3/voice')).body.code,'VOICE_NO_QUALIFIED_TOPICS');assert.equal(state().state,'ok');
+  writeFileSync(file,JSON.stringify(sample()));const empty=await invoke(all,'/api/v3/voice');assert.equal(empty.status,200);assert.deepEqual([empty.body.empty,empty.body.hot.length],[true,0]);assert.equal(state().state,'ok');
   clock+=60000;broken.checkedAt=new Date(clock).toISOString();broken.data.updatedAt='2026-10-16 14:01';broken.checks.sourceReads.successful=2;writeFileSync(file,JSON.stringify(broken));
   assert.equal((await invoke(all,'/api/v3/voice')).body.code,'VOICE_SOURCE_UNAVAILABLE');assert.equal(state().state,'error');assert.equal(state().at,'2026-10-16 14:00');
 });
 test('Voice空榜明确未达标，不返回假示例；成功读取状态与费用独立持久化，失败保留水位',async t=>{
   const{db,dir}=database(t),file=path.join(dir,'voice.json');writeFileSync(file,JSON.stringify(sample()));
   const read=createVoiceReader(db,{snapshotPath:file,now:()=>now});
-  await assert.rejects(read(),e=>e.status===503&&e.code==='VOICE_NO_QUALIFIED_TOPICS');
+  const empty=await read();assert.deepEqual([empty.empty,empty.hot,empty.cloud],[true,[],[]]);assert.match(empty.note,/没有达到5个独立来源/);
   const state=()=>sourceStatus(db,{implemented:['voice'],voiceIdentity:file}).sources.voice;
   assert.deepEqual(state(),{state:'ok',at:'2026-10-16 14:00',used:0,limit:10});
   writeFileSync(file,'broken');await assert.rejects(read(),e=>e.code==='VOICE_EXPORT_UNAVAILABLE');assert.equal(state().state,'error');assert.equal(state().at,'2026-10-16 14:00');assert.equal(state().used,0);

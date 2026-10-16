@@ -4,7 +4,7 @@ import { href } from "../../router.js";
 import Thumb from "../../ui/Thumb.jsx";
 import { Button, Loadable, PageHeader, Placeholder, SampleBadge, StatStrip, Tag, useToast } from "../../ui/components.jsx";
 import { PROMO_FIELDS, currentMonth, deliveryMonth, shiftMonth, shortMonth } from "../../constants.js";
-import { SAMPLE_PRICE_CHARTS, SAMPLE_PRICE_SCHEMES, SAMPLE_PRICE_SKUS } from "../../samples/v3.js";
+import { SAMPLE_PRICE_CHARTS } from "../../samples/v3.js";
 import { calc, money, pct, signed } from "./PricesView.jsx";
 
 // SKU 档案（第三轮提案 5）：一个 SKU 一页说清——每个月的政策、价格方案、单价阶梯和价格图版本。
@@ -24,9 +24,9 @@ function parsePrice(text = "") {
 export default function SkuView({ route = [] }) {
   const [line = "", name = ""] = route;
   const promos = useApi("/api/promos");
-  const skus = useApi("/api/v3/price/skus", SAMPLE_PRICE_SKUS);
+  const skus = useApi("/api/v3/price/skus");
   const priceSku = skus.data?.find((s) => s.line === line && s.name === name) || null;
-  const schemes = useApi(priceSku ? `/api/v3/price/schemes?sku=${encodeURIComponent(priceSku.id)}` : null, SAMPLE_PRICE_SCHEMES);
+  const schemes = useApi(priceSku ? `/api/v3/price/schemes?sku=${encodeURIComponent(priceSku.id)}` : null);
   const charts = useApi(`/api/v3/price/charts?line=${encodeURIComponent(line)}&sku=${encodeURIComponent(name)}`, SAMPLE_PRICE_CHARTS);
   const sources = [promos, skus, charts, ...(priceSku ? [schemes] : [])];
   const failed = sources.find((s) => s.error);

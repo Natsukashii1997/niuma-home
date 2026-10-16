@@ -87,9 +87,9 @@ test('KB并发确认按空间串行，未确认操作与进行中恢复均不能
 
 test('KB响应丢失保留未知锁，重启服务不能重发；只读核对后仅完成已执行部分',async t=>{
   const{db,state,service}=setup(t),kb=service(),p=await kb.preview({ops:[rename,{type:'rename',id:'peer',name:'尚未执行'}]});
-  state.failAfterWrite=true;await assert.rejects(kb.confirm({previewId:p.previewId,confirm:true}),{status:409});assert.equal(kb.status(p.previewId).state,'unknown');
+  state.failAfterWrite=true;await assert.rejects(kb.confirm({previewId:p.previewId,confirm:true}),{status:409,code:'KB_RESULT_UNKNOWN',receipt:{operationId:p.previewId,status:'unknown'}});assert.equal(kb.status(p.previewId).state,'unknown');
   assert.equal(getRecord(db,'kb-write-lock',KB_SPACE).operationId,p.previewId);
-  const restarted=service();await assert.rejects(restarted.confirm({previewId:p.previewId,confirm:true}),{status:409});await assert.rejects(restarted.preview({ops:[rename]}),{status:409});assert.equal(state.writes.length,1);
+  const restarted=service();await assert.rejects(restarted.confirm({previewId:p.previewId,confirm:true}),{status:409});await assert.rejects(restarted.preview({ops:[rename]}),{status:409,code:'KB_RESULT_UNKNOWN',receipt:{operationId:p.previewId,status:'unknown'}});assert.equal(state.writes.length,1);
   const recovered=await restarted.reconcile(p.previewId);assert.equal(recovered.state,'partial');assert.equal(recovered.completed.length,1);assert.equal(recovered.remaining.length,1);assert.equal(state.writes.length,1);assert.equal(getRecord(db,'kb-write-lock',KB_SPACE),null);
   state.failAfterWrite=false;const next=await restarted.preview({ops:recovered.remaining.map(({before,...op})=>op)});await restarted.confirm({previewId:next.previewId,confirm:true});assert.equal(state.writes.length,2);
 });

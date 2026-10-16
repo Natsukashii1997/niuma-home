@@ -2,7 +2,6 @@ import { useApi } from "../../api.js";
 import { Card, Loadable, PageHeader, Placeholder, SampleBadge, Tag } from "../../ui/components.jsx";
 import { PixelIcon } from "../../ui/bitmap.jsx";
 import { LINES } from "../../constants.js";
-import { SAMPLE_REVENUE } from "../../samples/v3.js";
 
 // 业务线名称统一用全称（与月度促销一致），不用接口返回的简称。
 const LINE_NAME = { uni: LINES[0], intl: LINES[1], appeal: LINES[2] };
@@ -29,7 +28,7 @@ const wan = (n) => `${(n / 10000).toLocaleString("en-US", { minimumFractionDigit
 
 // 业务营收完成度：总计一行、业务线一行。竖线是时间进度；完成度不低于时间进度为绿，落后 15 个百分点以内为琥珀，再落后为红。
 function RevenueCard() {
-  const state = useApi("/api/v3/business/revenue", SAMPLE_REVENUE);
+  const state = useApi("/api/v3/business/revenue");
   const r = state.data;
   return (
     <Card className="revenue" title={<><PixelIcon name="trend" /> 业务营收完成度</>}

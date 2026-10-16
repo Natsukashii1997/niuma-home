@@ -5,7 +5,6 @@ import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { deliveryMonth } from "../../constants.js";
 import { href } from "../../router.js";
 import { Button, Loadable, SampleBadge, Tag } from "../../ui/components.jsx";
-import { SAMPLE_PRICE_SKUS, SAMPLE_PRICE_SCHEMES } from "../../samples/v3.js";
 
 // 价格（v3）：一张课时卡（5–200 小时）× 多套价格方案的矩阵。
 // 比较方式：同一档跨方案（相对基准方案的差价）、同一方案跨档位（单价阶梯，倒挂标出）。
@@ -30,9 +29,10 @@ export function calc(scheme, i, tiers, unitOrig, costPerHour) {
 
 // 路由 marketing/prices/<SKU id>：从 SKU 档案、⌘K 进来时直接选中该 SKU。
 export default function PricesView({ route = [] }) {
-  const skus = useApi("/api/v3/price/skus", SAMPLE_PRICE_SKUS);
-  const [sku, setSku] = useState(route[0] || SAMPLE_PRICE_SKUS[0].id);
-  const schemes = useApi(`/api/v3/price/schemes?sku=${sku}`, SAMPLE_PRICE_SCHEMES);
+  const skus = useApi("/api/v3/price/skus");
+  const [picked, setSku] = useState(route[0] || "");
+  const sku = picked || skus.data?.[0]?.id || "";
+  const schemes = useApi(sku ? `/api/v3/price/schemes?sku=${encodeURIComponent(sku)}` : null);
   const [fresh, setFresh] = useState(null); // 保存后回读到的方案
   const [notice, setNotice] = useState("");
   return (

@@ -186,6 +186,7 @@ function VoiceCard() {
       extra={<a className="link" href={href("voice")}>Voice<PixelIcon name="right" /></a>}>
       {issue ? <div className={`voice-issue is-${issue.kind}`}><strong>{issue.title}</strong><span className="small">{issue.text}</span></div> : <Loadable state={state} name="留学之声">
         {(v) => {
+          if (!v.hot?.length) return <div className="voice-issue is-empty"><strong>现在没有合格的话题</strong><span className="small">{v.note || "还没有达到 5 个独立来源的话题。"}</span></div>;
           return (
             <div className="voice-cloud-wrap">
               <VoiceCloud cloud={v.cloud} />

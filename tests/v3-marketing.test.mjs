@@ -78,12 +78,12 @@ test('产品目录真实名称与促销表一致；仅两Lite演示矩阵标明�
   const { request, db } = await setup(t);
   for (const line of ['大学辅导', '国际课程']) savePromo(db, { month: '2026-11', line, sku: '灵活学Lite', trial: '', price: '', newDeal: '', renewal: '' });
   const list = await request('GET', '/api/v3/price/skus');
-  assert.equal(list.status, 501); assert.equal(list.origin, 'demo'); assert.equal(list.body.length, 2);
+  assert.equal(list.status, 200); assert.equal(list.origin, 'demo'); assert.equal(list.body.length, 2); assert.ok(list.body.every(s => s.origin === 'demo'));
   for (const sku of list.body) {
     assert.equal(sku.name, '灵活学Lite'); assert.ok(db.prepare('SELECT 1 FROM promos WHERE line=? AND sku=?').get(sku.line, sku.name));
     assert.equal(sku.unitOrig, 990); assert.deepEqual(sku.tiers, [5, 10, 20, 30, 50, 100, 150, 200]);
     const matrix = await request('GET', `/api/v3/price/schemes?sku=${sku.id}`);
-    assert.equal(matrix.status, 501); assert.equal(matrix.origin, 'demo'); assert.equal(matrix.body.origin, 'demo'); assert.equal(matrix.body.sku, sku.id);
+    assert.equal(matrix.status, 200); assert.equal(matrix.origin, 'demo'); assert.equal(matrix.body.origin, 'demo'); assert.equal(matrix.body.sku, sku.id);
     assert.equal(matrix.body.floorMargin, .25); assert.equal(matrix.body.costPerHour, 440);
   }
   assert.equal(db.prepare("SELECT count(*) AS n FROM v3_documents WHERE kind='price-schemes'").get().n, 0);

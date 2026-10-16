@@ -100,9 +100,8 @@ function Organizer({ initialKb, initialSel }) {
       rememberOp(pv.previewId);
       try { return await apiSend("POST", "/api/v3/kb/confirm", { previewId: pv.previewId, confirm: true }); }
       catch (e) {
-        // 后端「结果尚未核实」也是 409：再读一次操作记录，确认是不是已经开始写了。
-        const st = await apiSend("GET", `/api/v3/kb/operations/${encodeURIComponent(pv.previewId)}`).catch(() => null);
-        if (!st || ["unknown", "writing", "checking"].includes(st.state)) throw Object.assign(e, { receipt: { operationId: pv.previewId, status: st?.state || "未知" } });
+        // 结果尚未核实时后端带 code = KB_RESULT_UNKNOWN 和操作编号；其余 409（如目录已变化）是预览失效。
+        if (e.code === "KB_RESULT_UNKNOWN" && !e.receipt) e.receipt = { operationId: pv.previewId, status: "unknown" };
         throw e;
       }
     },
@@ -322,7 +321,6 @@ function Organizer({ initialKb, initialSel }) {
               <div className="row"><input className="kb-title" value={observed} onChange={(e) => setObserved(e.target.value.trim())} placeholder="飞书里看到的新目录节点 token" /><Button disabled={!observed} onClick={() => reconcile({ confirmObserved: true, nodeId: observed })}>我已在飞书核对，提交核对</Button></div>
             </div>
           )}
-          {(flow.phase === "stale" || flow.phase === "error") && /尚未核实/.test(flow.error || "") && lastOp() && <div className="row"><Button onClick={() => reconcile()}><PixelIcon name="refresh" />只读核对上次的同步操作</Button></div>}
           {check && <p className={`small ${/仍未能|无法/.test(check) ? "warn-text" : "muted"}`}>{check}</p>}
         </div>
         <Segmented options={[["detail", "详情"], ["ops", `规则批量 · 暂存明细${ops.length ? ` ${ops.length}` : ""}`]]} value={side} onChange={setSide} />

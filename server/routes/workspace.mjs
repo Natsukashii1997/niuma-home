@@ -79,7 +79,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     route("GET", "/api/v3/codex-reset", handleV3(() => codexReset())),
     ...userRoutes(userServices),
     route('GET', '/api/v3/home/todo', handleV3((req, { url }) => todo(url.searchParams.get('month') || undefined))),
-    route('GET', '/api/v3/business/revenue', (req, res) => { res.setHeader('x-workdesk-data-origin', 'demo'); json(res, 501, demoRevenue()); }),
+    route('GET', '/api/v3/business/revenue', (req, res) => { res.setHeader('x-workdesk-data-origin', 'demo'); json(res, 200, { ...demoRevenue(), origin: 'demo', task: '演示数据（待正式营收表）' }); }),
     ...deliveryRoutes(userServices.needs, db),
     ...projectRoutes(projectServices),
     ...marketingRoutes(db, v3Options),

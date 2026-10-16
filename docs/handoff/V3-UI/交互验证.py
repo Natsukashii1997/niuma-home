@@ -163,8 +163,9 @@ async def main():
             await confirm_box(pg); await wait_box(pg, "warn", timeout=120000)
             await shot(pg, "需求-冲突要求重新预览", full=False)
             await pg.get_by_role("button", name="重新预览").click(); await wait_box(pg, "preview", timeout=120000)
-            await confirm_box(pg); await wait_box(pg, "saved", timeout=120000)
+            t0 = asyncio.get_event_loop().time(); await confirm_box(pg); await wait_box(pg, "saved", timeout=120000); secs = asyncio.get_event_loop().time() - t0
             rec("需求采纳：别处先改了 → 提示预览失效，重新预览后确认成功", "实际", True, "409 → 预览已失效 → 重新预览 → 已采纳")
+            rec("需求确认对照最近快照，不再整份重读飞书", "实际", secs < 5, f"确认到回读完成用时 {secs:.1f} 秒")
             need_title = (await pg.locator(".need-detail .card-head h2").inner_text()).strip()
             await pg.get_by_role("button", name="编辑策略").click()
             await pg.locator(".strategy-goal-edit textarea").fill("11 月先帮新西兰 Final 的学生排好冲刺计划（验收测试）")
@@ -363,7 +364,7 @@ async def main():
                 ops = [{"type": o["type"], "id": o["id"], "before": "📅 用户时间线", "name": o.get("name")} for o in body.get("ops", [])]
                 await route.fulfill(status=200, content_type="application/json", body=json.dumps({"previewId": "kbop-mock", "spaceId": "7620758074885835965", "expiresAt": "2099-01-01T00:00:00Z", "operations": ops, "note": "预览不会写入（模拟）"}))
             await pg.route("**/api/v3/kb/preview", kbprev)
-            await pg.route("**/api/v3/kb/confirm", lambda r: r.fulfill(status=409, content_type="application/json", body=json.dumps({"error": "知识库操作结果尚未核实，已锁定重复写入；请先查看操作记录并只读核对，不能重新发送（模拟）"})))
+            await pg.route("**/api/v3/kb/confirm", lambda r: r.fulfill(status=409, content_type="application/json", body=json.dumps({"error": "知识库操作结果尚未核实，已锁定重复写入；请先查看操作记录并只读核对，不能重新发送（模拟）", "code": "KB_RESULT_UNKNOWN", "receipt": {"operationId": "kbop-mock", "status": "unknown"}})))
             await pg.route("**/api/v3/kb/operations/kbop-mock", lambda r: r.fulfill(status=200, content_type="application/json", body=json.dumps({"operationId": "kbop-mock", "state": "unknown"})))
             await pg.route("**/api/v3/kb/operations/kbop-mock/reconcile", lambda r: r.fulfill(status=200, content_type="application/json", body=json.dumps({"operationId": "kbop-mock", "state": "verified", "completed": [{"index": 0}], "remaining": []})))
             await pg.get_by_role("button", name="预览并同步").click(); await wait_box(pg, "preview")
@@ -381,7 +382,7 @@ async def main():
             t = await pg.locator(".placeholder").inner_text()
             rec("Voice：学生来源不可用时写明热榜没接通，不显示任何话题", "实际", "没有接通" in t, t.replace("\n", " ")[:60])
             await shot(pg, "Voice-来源不可用（真实）")
-            await pg.route("**/api/v3/voice", lambda r: r.fulfill(status=503, content_type="application/json", body=json.dumps({"code": "VOICE_NO_QUALIFIED_TOPICS", "error": "免费试运行已读取：当前还没有达到5个独立来源的话题（模拟）"})))
+            await pg.route("**/api/v3/voice", lambda r: r.fulfill(status=200, content_type="application/json", body=json.dumps({"updatedAt": "2026-10-16 10:00", "nextAt": None, "stats": None, "hot": [], "cloud": [], "daily": None, "empty": True, "note": "免费试运行已读取：当前还没有达到5个独立来源的话题（模拟）"})))
             await go(pg, "/voice"); await pg.locator(".placeholder").wait_for()
             t2 = await pg.locator(".placeholder").inner_text()
             await shot(pg, "Voice-合法空榜（模拟）", full=False)

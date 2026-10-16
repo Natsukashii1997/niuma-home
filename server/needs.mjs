@@ -103,7 +103,9 @@ export function createNeedsService(db, timeline, { now = Date.now } = {}) {
       if (!p || p.id !== id) throw failure(409, '预览不存在或已过期，请重新预览');
       if (strategyOnly && !p.wasAdopted) throw failure(409, '只有已采纳需求可以修改策略');
       if (p.committed) return structuredClone(p.result);
-      const fresh = (await derived(p.month, true)).find(r => r.need.id === id);
+      // 对照最近一次时间线快照（缓存过期会自动重读），不再每次确认都整份重读飞书：那样一次确认要等半分钟以上。
+      // 来源在快照之后才变化的，同步后列表会把这条已采纳需求标成「待复核」，不会被当成确定事实。
+      const fresh = (await derived(p.month)).find(r => r.need.id === id);
       if (p.committed) return structuredClone(p.result);
       if (!fresh || fresh.fingerprint !== p.fingerprint) throw failure(409, '时间线来源已变化，请重新预览后确认');
       if (recordVersion(stored(db, id)) !== p.baseline) throw failure(409, '需求已被其他操作修改，请重新预览');
