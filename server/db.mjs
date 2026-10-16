@@ -93,6 +93,25 @@ const SCHEMA = `
     payload TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
+
+  -- V3：最近读取结果与成功水位，状态栏只读此表，不访问来源。
+  CREATE TABLE IF NOT EXISTS v3_source_status (
+    kind TEXT PRIMARY KEY,
+    identity TEXT NOT NULL DEFAULT '',
+    attempt_at INTEGER NOT NULL,
+    success_at TEXT,
+    error TEXT,
+    extra TEXT NOT NULL DEFAULT '{}'
+  );
+
+  -- V3：本地业务记录；外部原件只读，用户确认后保存本地版本。
+  CREATE TABLE IF NOT EXISTS v3_documents (
+    kind TEXT NOT NULL,
+    id TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (kind, id)
+  );
 `;
 
 export function openDb(dir = dataDir) {

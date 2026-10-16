@@ -1,6 +1,6 @@
 # 当前状态
 
-更新：2026-10-16（Codex：V3 接口第 1 批后端与隔离验证完成，待 Claude 接线与验收，仅 ui-v3 worktree）
+更新：2026-10-16（Codex：V3后续接口与隔离验证已交付；NAS按用户要求暂缓，UI待Claude接线）
 
 ## 已完成
 
@@ -10,7 +10,7 @@
 
 ## 唯一下一步
 
-**Claude 接线并验收 V3 接口第 1 批**：[docs/handoff/V3-1/README.md](docs/handoff/V3-1/README.md)。先处理同步/采纳预览确认、plans 第六项、Codex 未知时间与未启用推送文案、空兼容导出和真实长原文展示问题。未经验收不做第2批；不碰主工作区与5280、不写飞书、不新增定时任务。
+**Claude 接线并验收 V3 后续接口**：[docs/handoff/V3-2-5/README.md](docs/handoff/V3-2-5/README.md)。用户已取消逐批停等验收，本轮连续完成第2–5批可实施接口、演示营收及V3-6状态接口。重点接入预览→确认→回读、人工AI草稿、底栏status与设置；修复项目未知状态/空列表、Voice空榜、时间线异常页溢出。NAS/价格图用户最新要求“先跳过，我会重新整理”；价格与营收暂演示。Voice免费试运行已完成基础部署，但学生来源仍不可用，不能宣称热榜接通。不要碰主工作区、5280、真实data，不新增调度、不push/merge；真实飞书写入仍须用户确认准确预览。
 
 ## 派单队列（建议顺序）
 
@@ -454,3 +454,106 @@
 - 与清单不一致/待Claude处理：原UI同步/采纳未接API；静态导入使示例名字暂不能删；前端未补plans导致0/5；next=null被显示已到重置时间；详情推送文案写死；明细表跨年/空格语义与异常长文本需修。详见`接口接线说明.md`，没有越权修改模块/组件/样式，也未改派单与API文档。
 - 业务边界与范围外发现：后续批次价格/NAS/brief/战役无真实状态源，不能伪造完成；首页待处理/Voice、战役本体继续显示示例。校名无缩写保留空；UCB身份推断标guess，复杂多段/缺年/限定对象进入异常；没有自行纠正来源。异常人工裁定、飞书导出、手写需求不在本批扩展。
 - 定时与机械邪龙兽推送：只在README写10:00检查/补查/帖子去重/回读/失败交接方案，未安装或发送。下一步只交Claude验收，不进入后续批次；用户最终验收尚未完成。
+
+
+### V3 后续各批共同交接 · 2026-10-16 · Codex（后端已交付，UI与使用验收待）
+
+- 执行基线：用户追加“持续做完、不逐批停等验收”覆盖原第1批停止条件；UI仍全部交Claude。NAS在补地址后再次明确暂缓；价格/成本和营收采用演示值；仅批准Voice免费人工试运行，模型/付费/定时关闭。
+- 工程：`WORKDESK_DATA_DIR=$(mktemp -d) npm test`，**225通过 / 0失败**；`npx vite build --outDir "$(mktemp -d)"`通过；`git diff --check`通过。测试/构建均隔离，完整日志在[后续交接目录](docs/handoff/V3-2-5/)。沙箱回环监听EPERM首败、真实分页/限流修正及测试路径规范化已记录，未跳过失败断言。
+- 采用：5295已重启并采用最终代码，5296预览不变，均127.0.0.1；数据仍为`/tmp/workdesk-ui-v3.6nAf`。最终回读：带教2人各18篇、selftalk64条，日报/周报成功时间跨重启保留；Voice503来源不可用，NAS off。没有写主工作区/5280/真实data，没有执行飞书写入，没有实际调用模型；新外部确认和AI路径均为mock测试，不能当作真实使用验收。
+- 截图：18张1440宽全页图与请求记录在`docs/handoff/V3-2-5/`；无JS错误、请求均完成。异常时间线页面内容宽4859，截图按要求保留1440视口、纵向全页；横向溢出仍待Claude修复。项目阶段undefined及未知状态误算也未越界修UI。
+- 分工与差异：具体新增写入路由已先写[接口接线说明](docs/handoff/V3-2-5/接口接线说明.md)及[飞书导出补充接线](docs/handoff/V3-2-5/飞书导出补充接线.md)，权威API/派单文档留Claude更新。真实读取的示例内容已删除，但保留undefined兼容导出供现有UI import；价格/营收501用于保留“示例”，待Claude支持origin后改200。无工作台npm依赖新增；参考图使用系统sips。Voice独立依赖与启停见[试运行说明](docs/handoff/V3-2-5/voice-trial/README.md)。
+- 安全与独立复核：修复时间线旧成功快照身份错配、带教旧慢请求污染新来源、未显式关闭网页搜索、whoami不支持通用format参数；补对应回归。外部写入未知结果持久锁定，不重发；可核对已知文档，缺ID的未知创建仍需人工核实，不能按标题猜测。
+- 文件逐项说明（所有新增代码均在本worktree）：
+
+| 文件 | 作用 |
+|---|---|
+| server/db.mjs | 仅SCHEMA新增来源状态和通用本地文档表 |
+| server/source-status.mjs | 仅数据库读取六类来源状态，保留成功水位并核对来源身份 |
+| server/ai-draft.mjs | 人工触发只读模型草稿，完整来源上限与失败保护 |
+| server/codex.mjs | 显式禁用网页搜索，避免私人正文进入搜索工具 |
+| server/feishu-export.mjs | brief/策略只新建导出、准确目录预览、幂等收据与未知结果核对 |
+| server/local-records.mjs | 通用本地预览、确认、并发检查、事务回读与幂等收据 |
+| server/v3-settings.mjs | 已核对来源默认值、参数校验、只读固定身份与配置预览确认 |
+| server/reports.mjs | 日/周报成功与失败事件回调，缓存时间不冒充重新读取时间 |
+| server/timeline.mjs | 读取设置中的时间线来源，成功快照绑定来源身份，失败不覆盖成功快照 |
+| server/needs.mjs | 自言自语草稿进入同一采纳与来源变化复核流程 |
+| server/codex-reset.mjs | 无调度时nextCheck返回null |
+| server/projects.mjs | 真实项目分页读取、未知状态保留、本地节点覆盖与预览确认 |
+| server/mentor.mjs | 近30天完整日志、规则与人工AI草稿、来源竞态保护、本地带教记录 |
+| server/knowledge-tree.mjs | 完整目录与文档信息、重复候选、整理预览确认及未知操作核对 |
+| server/price.mjs | 正式SKU对齐、已授权演示价格、真实需求关联与毛利门禁 |
+| server/campaigns.mjs | 真实营销模板、多选阶段与节点、实例预览确认 |
+| server/briefs.mjs | 七节派生、逐字段覆盖、来源变化保护及受控导出 |
+| server/home-todo.mjs | 汇总真实异常、草稿、完整日期到期节点及本地待办 |
+| server/demo-revenue.mjs | 固定演示营收快照，保留原更新时间 |
+| server/references.mjs | 画布元数据、图片压缩、确认后文件登记及受限回读 |
+| server/selftalk.mjs | 固定本人消息、完整分页、本地分类转换和人工完整周汇总 |
+| server/assistant-knowledge.mjs | 文字知识本地保存及首次新会话全量注入，不截断 |
+| server/voice.mjs | 免费试运行导出只读核验，独立来源/热度历史门槛，明确未配置或未达标 |
+| server/routes/workspace.mjs | 注册以上新路由、只读状态与配置预览确认 |
+| server/routes/user.mjs | 注册策略导出、返回受控操作错误与收据 |
+| server/routes/projects.mjs | 项目、带教、知识库读取与本地操作路由 |
+| server/routes/v3-marketing.mjs | 营销接口、演示来源头及导出预览确认接线 |
+| server/routes/delivery.mjs | 五个后端交付环节按实际记录计算，方案录入仍由前端负责 |
+| server/routes/references.mjs | 画布读取、预览确认和图片读取，限制请求体大小 |
+| server/routes/selftalk.mjs | 本人消息与本地分类操作路由 |
+| server/routes/assistant-knowledge.mjs | 知识文档读取、预览、增删确认 |
+| server/routes/assistants.mjs | 新会话建线程时带入知识，已有会话不改指令 |
+| fixtures/v3-demo-price.json | 用户准许的价格演示值，不写成真实需求或正式矩阵 |
+| fixtures/v3-demo-revenue.json | 用户准许的固定营收演示值 |
+| src/samples/v3.js | 删除已接真实接口的虚构内容；价格/营收/NAS仍有明确例外 |
+| tests/codex.test.mjs | 验证模型权限及网页搜索关闭 |
+| tests/v3-ai-draft.test.mjs | 草稿输入完整性、人工确认、来源切换竞态与局部正文拒绝 |
+| tests/v3-selftalk-digest.test.mjs | 完整北京时间自然周、覆盖范围、并发与固定回执 |
+| tests/v3-kb-write.test.mjs | 目录确认、固定身份、逐项回读与未知恢复的模拟测试 |
+| tests/v3-export.test.mjs | 只新建导出、参数转义、目标绑定、未知结果恢复的模拟测试 |
+| tests/v3-batch1.test.mjs | 按后续已接入状态更新回归断言 |
+| tests/v3-projects.test.mjs | 项目/带教/知识库来源、分页、限流与预览确认回归 |
+| tests/v3-marketing.test.mjs | 营销字段、毛利/需求门禁、来源切换和并发回归 |
+| tests/v3-delivery.test.mjs | 交付月真实完成状态与过期来源回归 |
+| tests/v3-personal.test.mjs | 本人消息身份/分页/本地转换及知识库边界 |
+| tests/v3-integration.test.mjs | 零外部状态读取、跨重启水位、设置、画布、首页、需求贯通 |
+| tests/v3-voice.test.mjs | 免费边界、预算证据、过期、五来源、历史缺失与合法空榜 |
+| CURRENT.md | 持续认领与逐批交接；保留Claude同时写入内容 |
+| docs/handoff/V3-2-5/ | 接线说明、验证证据、截图与Voice核验 |
+
+### V3 第2批 · 2026-10-16 · Codex 交接
+
+- 完成：首页真实待办、项目分页与本地节点更新、近30天带教日志/人工草稿/本地记录、知识库完整目录和文档信息；目录整理支持预览确认和逐步回读，仅移动/改名/新建空docx目录。
+- 文件：上表中的home-todo、projects、mentor、knowledge-tree、ai-draft、routes/projects及对应测试；具体每个文件作用见共同交接。
+- 验证：纳入225/0总回归；知识库写入12项模拟测试通过，带教/AI草稿8项通过。项目实际45节点（17主节点），状态/日期原文空则保留未知；知识库76节点，72篇docx成功、4个不支持正文的对象明确error/未知字数。
+- 截图：`首页.png`、`项目推进.png`、`管培带教.png`、`知识库.png`。UI仍须接真实保存、来源失败、未知状态、空列表与正文/目录并存；Q&A关联数无事实源，不假报0。
+
+### V3 第3批 · 2026-10-16 · Codex 交接
+
+- 完成：真实营销模板17条的多值节点与阶段、本地战役实例；7节brief从已采纳需求/真实保存价格派生并保护人工覆盖；价格矩阵预览确认和毛利门禁；brief及需求策略只新建导出、全文与元数据回读、固定收据及只读恢复。
+- 文件：上表中的price、campaigns、briefs、feishu-export、routes/v3-marketing、routes/user、routes/delivery、演示价格fixture及对应测试。
+- 验证：纳入225/0总回归；导出22项模拟测试、营销15项通过。实际SKU目录7条、两个Lite名称精确对应；价格/成本依用户决定仍为演示，未伪造正式表。未真实导出飞书，首个确认导出仍需验证真实异步完成及Markdown往返。
+- 截图：`营销战役.png`、`设计brief.png`、`价格记录-演示.png`。真实模板不等于在推进战役；日期空、无实例进度。价格演示保留示例标记；导出按钮必须展示准确目录、完整内容后确认。
+
+### V3 第4批 · 2026-10-16 · Codex 交接（NAS用户暂缓）
+
+- 完成：参考画布真实本地元数据、图片压缩、预览确认后登记、受限图片回读；空库返回真实空画布。
+- 文件：上表中的references、routes/references、integration测试。NAS/price/charts未实现；用户给QuickConnect入口后又明确“先跳过，我会重新整理”，不等待、不按示例文件名编SKU映射。
+- 验证：纳入225/0总回归，压缩与确认写入均临时目录。图片移除后旧文件暂保留，不自动清理；这不影响画布引用，但将来可单独安排回收。
+- 截图：`设计参考.png`、`SKU档案-演示价格图.png`。价格图仍示例是暂缓事实，不能标为已交付。
+
+### V3 第5批 · 2026-10-16 · Codex 交接
+
+- 完成：本人近10天飞书消息只读分页、标记/归档/转待办/需求草稿、完整自然周AI预览确认；助手文字知识全量带入首次会话；设置新键预览确认及固定机械邪龙兽身份；Voice只读导出适配器与已批准免费试运行。
+- 文件：上表中的selftalk、assistant-knowledge、ai-draft、codex、v3-settings、voice及相关路由/测试、voice-trial审查与复现文件。
+- 验证：纳入225/0总回归；周汇总14项通过，模型均mock。当前周五最近10天不完整覆盖上一周，正确409；不扩大拉取范围。Voice固定官方提交隔离部署、60项迁移，5397只读API/5497数据库回环监听；模型/付费请求/调度均0。官方读取器读到20条UKVI背景和25条CC国际学生候选，但CC48小时内0条，原3学生源失败；工作台明确503，未造话题/7日趋势/零统计。
+- 截图：`Voice-来源不可用.png`、`自言自语.png`、`助手知识库.png`、`设置-待Claude接线.png`。设置7项示例需Claude接线；助手仅文字，现UI允许docx但没有抽取，不能直接上传二进制。Voice学生作者归一、同话题5人、7天历史及付费人民币月预算尚未验收，免费运行不代表付费门禁已实现。没有定时任务或对外推送。
+
+### V3-6 状态接口与第1批联动回归 · 2026-10-16 · Codex 交接
+
+- 完成：GET status只读数据库，日报/周报成功水位跨重启，来源改变显示never，失败不冒充成功；交付月仅真实记录计完成，方案录入继续前端plans负责；无调度的codex-reset nextCheck为null。
+- 文件：上表中的db SCHEMA新增表、source-status、reports、workspace、timeline、needs、delivery、codex-reset、batch1/integration/delivery测试；不改既有列、不改前端。
+- 验证：225/0总回归；实际status读取1ms，日报/周报仍返回20:48成功时间，timeline/kb21:33、NAS off、Voice error，证据在`docs/handoff/V3-6/status真实返回.json`。NAS价格图按最新决定暂缓。
+- 截图：`首页.png`、`用户时间线-按月.png`、`用户时间线-明细.png`、`用户时间线-异常.png`、`用户策略.png`、`营销战役.png`。底栏应改读单一status端点，避免为显示状态重复拉全量来源；当前底栏仍是Claude原实现。
+
+### business/revenue · 2026-10-16 · Codex 交接（用户准许演示）
+
+- 文件：`server/demo-revenue.mjs`返回固定营收口径与时间；`fixtures/v3-demo-revenue.json`保留原演示数值；workspace注册路由、integration测试验证演示来源；sample常量按当前UI机制保留。
+- 验证：225/0总回归、构建通过；截图`营收-演示.png`。接口仍501与demo来源头，页面保留示例；未假称飞书真实营收已接通。正式来源待未来用户提供，与本轮演示决定分开。

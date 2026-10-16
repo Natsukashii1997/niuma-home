@@ -25,7 +25,7 @@ export function codexResetView(source, { seen = new Set(), now = Date.now() } = 
     quote: latest?.originalText || '', quoteZh: latest?.text || '', author,
     posted: latest ? beijingText(latest.publishedAt) : '', checked: source.checkedAt ? beijingText(source.checkedAt) : '尚无完整核验时间',
     // 本批只读，没有自动标已读；明确已读动作接入前，新信号保留。
-    isNew: signals.some(p => !seen.has(p.id)), nextCheck: '未安排定时检查（本批仅按需读取）', pushed: false,
+    isNew: signals.some(p => !seen.has(p.id)), nextCheck: null, pushed: false,
     history: signals.slice(1).map(p => ({ stage: stages[p.action], time: beijingText(p.publishedAt), text: p.originalText })),
   };
 }

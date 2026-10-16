@@ -4,7 +4,7 @@ import { mkdir } from "node:fs/promises";
 
 // 与本机 codex-cli 0.160.1 生成协议保持一致。不修改全局配置或账号。
 const disabledFeatures = ["shell_tool", "shell_snapshot", "hooks", "plugins", "apps", "multi_agent", "multi_agent_v2", "memories", "skill_mcp_dependency_install", "browser_use", "computer_use", "image_generation", "workspace_dependencies", "tool_suggest"];
-export const launchArgs = ["app-server", ...disabledFeatures.flatMap((key) => ["-c", `features.${key}=false`]), "-c", "notify=[]", "-c", "memories.use_memories=false", "-c", "memories.generate_memories=false"];
+export const launchArgs = ["app-server", ...disabledFeatures.flatMap((key) => ["-c", `features.${key}=false`]), "-c", 'web_search="disabled"', "-c", "notify=[]", "-c", "memories.use_memories=false", "-c", "memories.generate_memories=false"];
 const readonly = { approvalPolicy: "never", sandbox: "read-only" };
 const policy = "这是个人工作台的只读文本助手。仅回答用户，不执行命令、不写入或修改文件、不调用外部工具。写文件或执行命令的请求须说明无法执行。";
 
@@ -139,7 +139,7 @@ export class CodexClient {
   async safeConfig(cwd) {
     const { config } = await this.request("config/read", { cwd, includeLayers: false });
     // 空表不会清除继承配置，按该目录实际配置逐个禁用 MCP。
-    return { mcp_servers: Object.fromEntries(Object.keys(config.mcp_servers || {}).map((name) => [name, { enabled: false }])) };
+    return { web_search: 'disabled', mcp_servers: Object.fromEntries(Object.keys(config.mcp_servers || {}).map((name) => [name, { enabled: false }])) };
   }
   checkPermissions(result) {
     if (result.approvalPolicy !== "never" || result.sandbox?.type !== "readOnly" || result.sandbox.networkAccess !== false) throw new Error("Codex 未采用要求的只读权限，已停止发送");

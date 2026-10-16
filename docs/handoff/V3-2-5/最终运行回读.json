@@ -1,0 +1,73 @@
+[
+  {
+    "path": "/api/v3/voice",
+    "status": 503,
+    "elapsedMs": 9,
+    "body": {
+      "error": "学生讨论来源尚未全部读取成功，请稍后重新采集；当前不能判断是否有合格话题",
+      "code": "VOICE_SOURCE_UNAVAILABLE"
+    }
+  },
+  {
+    "path": "/api/v3/status",
+    "status": 200,
+    "elapsedMs": 1,
+    "body": {
+      "checkedAt": "2026-10-16 21:34",
+      "sources": {
+        "daily": {
+          "state": "ok",
+          "at": "2026-10-16 20:48"
+        },
+        "weekly": {
+          "state": "ok",
+          "at": "2026-10-16 20:48"
+        },
+        "timeline": {
+          "state": "ok",
+          "at": "2026-10-16 21:33"
+        },
+        "kb": {
+          "state": "ok",
+          "at": "2026-10-16 21:33"
+        },
+        "nas": {
+          "state": "off"
+        },
+        "voice": {
+          "state": "error",
+          "error": "学生讨论来源尚未全部读取成功，请稍后重新采集；当前不能判断是否有合格话题"
+        }
+      }
+    }
+  },
+  {
+    "path": "/api/v3/mentor",
+    "status": 200,
+    "elapsedMs": 2,
+    "body": [
+      {
+        "name": "林瑶",
+        "logs": 18,
+        "feedbackOrigin": "rules",
+        "draft": true
+      },
+      {
+        "name": "胡贵兰",
+        "logs": 18,
+        "feedbackOrigin": "rules",
+        "draft": true
+      }
+    ]
+  },
+  {
+    "path": "/api/v3/selftalk",
+    "status": 200,
+    "elapsedMs": 7,
+    "body": {
+      "pulledAt": "2026-10-16 21:33",
+      "items": 64,
+      "digestPresent": false
+    }
+  }
+]

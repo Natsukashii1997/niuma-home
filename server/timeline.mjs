@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { beijingText, failure, saveSnapshot } from './v3-common.mjs';
+import { getSettings } from './db.mjs';
 
 const execute = promisify(execFile);
 export const TIMELINE_SOURCE = { title: '2026海外大学时间线', token: 'BRzDsSWKGh8sMgtI2AocU42qnlg', url: 'https://vm94j8bzy7.feishu.cn/wiki/ZWx9wzNaCiNMsqkAhCtc7lfgnIm' };
@@ -172,18 +173,18 @@ export function parseAnnotatedCsv(data) {
 }
 
 const colName = number => { let value = ''; while (number) { number--; value = String.fromCharCode(65 + number % 26) + value; number = Math.floor(number / 26); } return value; };
-export async function readTimelineSheets({ run = execute } = {}) {
+export async function readTimelineSheets({ run = execute, source = TIMELINE_SOURCE } = {}) {
   async function call(command, args) {
     let result;
     try {
-      const { stdout } = await run('lark-cli', ['--profile', 'codex', 'sheets', command, '--as', 'user', '--spreadsheet-token', TIMELINE_SOURCE.token, '--format', 'json', ...args], { encoding: 'utf8', timeout: 60_000, maxBuffer: 8 * 1024 * 1024, shell: false });
+      const { stdout } = await run('lark-cli', ['--profile', 'codex', 'sheets', command, '--as', 'user', '--spreadsheet-token', source.token, '--format', 'json', ...args], { encoding: 'utf8', timeout: 60_000, maxBuffer: 8 * 1024 * 1024, shell: false });
       result = JSON.parse(stdout);
     } catch (error) { throw failure(error.killed ? 504 : 502, '时间线读取失败，请检查 codex 配置的 lark-cli 用户登录、权限和网络'); }
     if (result.ok !== true || result.identity !== 'user' || !result.data || result.truncated || result.data.truncated) throw failure(502, '飞书未返回完整的用户身份数据');
     return result.data;
   }
   const info = await call('+workbook-info', []);
-  if (info.title !== TIMELINE_SOURCE.title || !Array.isArray(info.sheets) || info.warning_message || !Number.isInteger(info.revision)) throw failure(502, '时间线来源或版本不符，未更新快照');
+  if (info.title !== source.title || !Array.isArray(info.sheets) || info.warning_message || !Number.isInteger(info.revision)) throw failure(502, '时间线来源或版本不符，未更新快照');
   const sheets = [];
   for (const name of REGION_SHEETS) {
     const found = info.sheets.filter(s => s.sheet_name === name && s.resource_type === 'sheet' && s.is_hidden === false);
@@ -200,19 +201,26 @@ export async function readTimelineSheets({ run = execute } = {}) {
   return sheets;
 }
 
-export function createTimelineReader(db, { readSheets = readTimelineSheets, now = Date.now, ttl = 600_000 } = {}) {
-  let cached, pending, at = -Infinity;
+export function createTimelineReader(db, { readSheets = readTimelineSheets, now = Date.now, ttl = 600_000, onSource = () => {} } = {}) {
+  let cached, pending, at = -Infinity, cachedIdentity;
   return async ({ refresh = false } = {}) => {
+    const identity = getSettings(db).timeline_source || JSON.stringify(TIMELINE_SOURCE);
+    let source; try { source = JSON.parse(identity); } catch { throw failure(400, '时间线来源配置格式错误'); }
+    if (cachedIdentity !== identity) { cached = undefined; at = -Infinity; }
     if (pending) return pending;
     if (!refresh && cached && now() - at >= 0 && now() - at < ttl) return cached;
     pending = (async () => {
+      const attemptAt = now();
       try {
-        const sheets = await readSheets();
+        const sheets = await readSheets({ source });
+        if ((getSettings(db).timeline_source || JSON.stringify(TIMELINE_SOURCE)) !== identity) throw failure(409, '读取期间来源已修改，请重新同步');
         const payload = parseTimeline(sheets, beijingText(now()));
         if (sheets.length !== 4) throw failure(502, '须完整读取四张地区明细表');
-        saveSnapshot(db, 'timeline', payload, new Date(now()).toISOString());
-        cached = payload; at = now(); return payload;
-      } catch (error) { cached = undefined; at = -Infinity; throw error; }
+        // 快照身份属于本次成功读取，不能借用最近一次（可能失败的）尝试身份。
+        saveSnapshot(db, 'timeline', { identity, value: payload }, new Date(now()).toISOString());
+        onSource({ identity, attemptAt, at: new Date(now()).toISOString() });
+        cached = payload; cachedIdentity = identity; at = now(); return payload;
+      } catch (error) { cached = undefined; at = -Infinity; onSource({ identity, attemptAt, error: error.status ? error.message : '时间线读取失败，请检查来源与访问权限' }); throw error; }
     })();
     try { return await pending; } finally { pending = undefined; }
   };

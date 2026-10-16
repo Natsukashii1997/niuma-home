@@ -1,0 +1,9 @@
+{
+  "checkedAt": "2026-10-16T13:37:44.033186+00:00",
+  "healthStatus": 200,
+  "health": {
+    "ok": true,
+    "mode": "free-manual-trial"
+  },
+  "listeners": "COMMAND   PID USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME\nssh     16806  nat   10u  IPv4 0xb893c51a27336605      0t0  TCP 127.0.0.1:5497 (LISTEN)\nnode    31397  nat   15u  IPv4 0x154264db638061fd      0t0  TCP 127.0.0.1:5295 (LISTEN)\nnode    33054  nat   14u  IPv4 0x82b328b1320b4645      0t0  TCP 127.0.0.1:5397 (LISTEN)\nnode    60699  nat   21u  IPv4 0x819da923539fa545      0t0  TCP 127.0.0.1:5296 (LISTEN)\n"
+}

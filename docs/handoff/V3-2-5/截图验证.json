@@ -1,0 +1,798 @@
+[
+  {
+    "page": "首页",
+    "route": "home",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/months/2026-11",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/home/todo",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 0,
+    "undefinedShown": false,
+    "file": "首页.png"
+  },
+  {
+    "page": "用户时间线-按月",
+    "route": "user/timeline/month",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 0,
+    "undefinedShown": false,
+    "file": "用户时间线-按月.png"
+  },
+  {
+    "page": "用户时间线-明细",
+    "route": "user/timeline/country",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 0,
+    "undefinedShown": false,
+    "file": "用户时间线-明细.png"
+  },
+  {
+    "page": "用户时间线-异常",
+    "route": "user/timeline/anomalies",
+    "viewportWidth": 1440,
+    "documentWidth": 4859,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 0,
+    "undefinedShown": false,
+    "file": "用户时间线-异常.png"
+  },
+  {
+    "page": "用户策略",
+    "route": "user/strategy",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/needs?month=2026-11",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 0,
+    "undefinedShown": false,
+    "file": "用户策略.png"
+  },
+  {
+    "page": "项目推进",
+    "route": "projects/board",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/projects",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 0,
+    "undefinedShown": true,
+    "file": "项目推进.png"
+  },
+  {
+    "page": "管培带教",
+    "route": "projects/mentor",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      },
+      {
+        "path": "/api/v3/mentor",
+        "status": 200
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 0,
+    "undefinedShown": false,
+    "file": "管培带教.png"
+  },
+  {
+    "page": "知识库",
+    "route": "kb",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 0,
+    "undefinedShown": false,
+    "file": "知识库.png"
+  },
+  {
+    "page": "营销战役",
+    "route": "marketing/campaign",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/campaigns/current",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      },
+      {
+        "path": "/api/v3/months/2026-11",
+        "status": 200
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 0,
+    "undefinedShown": false,
+    "file": "营销战役.png"
+  },
+  {
+    "page": "设计brief",
+    "route": "marketing/brief",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/briefs/2026-11",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 0,
+    "undefinedShown": false,
+    "file": "设计brief.png"
+  },
+  {
+    "page": "设计参考",
+    "route": "marketing/materials/refs",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/refs",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 0,
+    "undefinedShown": false,
+    "file": "设计参考.png"
+  },
+  {
+    "page": "价格记录-演示",
+    "route": "marketing/prices",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/price/skus",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/price/schemes?sku=uni-lite",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 1,
+    "undefinedShown": false,
+    "file": "价格记录-演示.png"
+  },
+  {
+    "page": "SKU档案-演示价格图",
+    "route": "marketing/sku/大学辅导/灵活学Lite",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/price/charts?line=%E5%A4%A7%E5%AD%A6%E8%BE%85%E5%AF%BC&sku=%E7%81%B5%E6%B4%BB%E5%AD%A6Lite",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/price/skus",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      },
+      {
+        "path": "/api/v3/price/schemes?sku=uni-lite",
+        "status": 501
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 1,
+    "undefinedShown": false,
+    "file": "SKU档案-演示价格图.png"
+  },
+  {
+    "page": "营收-演示",
+    "route": "business",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/business/revenue",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 1,
+    "undefinedShown": false,
+    "file": "营收-演示.png"
+  },
+  {
+    "page": "助手知识库",
+    "route": "assistants",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      },
+      {
+        "path": "/api/v3/assistants/1/knowledge",
+        "status": 200
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 0,
+    "undefinedShown": false,
+    "file": "助手知识库.png"
+  },
+  {
+    "page": "自言自语",
+    "route": "home",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/home/todo",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/months/2026-11",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      },
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 0,
+    "undefinedShown": false,
+    "file": "自言自语.png"
+  },
+  {
+    "page": "设置-待Claude接线",
+    "route": "settings",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 7,
+    "undefinedShown": false,
+    "file": "设置-待Claude接线.png"
+  },
+  {
+    "page": "Voice-来源不可用",
+    "route": "voice",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/kb/tree",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/nas",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 503
+      }
+    ],
+    "pending": 0,
+    "sampleBadges": 0,
+    "undefinedShown": false,
+    "file": "Voice-来源不可用.png"
+  }
+]

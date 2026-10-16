@@ -1,0 +1,7 @@
+Official commit c8704e5313e6b051560365226b3919d7e0ada5ea; complete archive sha256 6d76db67bf7fe289a34a19db23da9c96cfbae642dad1a67929ffeed66ccd773c.
+No SKILL.md; skill structural activation checks not applicable, no Skill installed.
+Reviewed manifests, lock, API startup, migration runner, SQL capability scan, fixed-source RSS reader and network guard.
+396 lock entries; only fsevents lifecycle scripts; install all dependencies with ignore-scripts, omit dev, explicit public npm registry, isolated cache and empty user/global npm config.
+API custom entry registers only GET public routes; no original main heartbeat/watchdog or worker.
+No seed demo sources, no credentials directory, all model/paid/notification flags false.
+Postgres official 17-alpine digest sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24.

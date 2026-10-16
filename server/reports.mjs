@@ -59,8 +59,9 @@ export function mergeReports(groups) {
 }
 
 // 缓存完整解析结果，按本次来源角色筛选，避免单/双文档切换时复用错误列表。
-export function createReportReader(getConfig, { readDocument = readReportDocument, now = Date.now } = {}) {
+export function createReportReader(getConfig, { readDocument = readReportDocument, now = Date.now, onSource = () => {} } = {}) {
   const entries = new Map();
+  let lastAttempt = 0;
   const config = () => {
     const value = getConfig();
     return typeof value === "string" || !value ? { report_doc_url: value } : value;
@@ -104,17 +105,22 @@ export function createReportReader(getConfig, { readDocument = readReportDocumen
   };
   const load = async (source, single, refresh) => {
     const meta = { role: source.role, url: source.url, ok: false, count: 0, ignored: 0, unrecognized: [] };
+    const attemptAt = lastAttempt = Math.max(now(), lastAttempt + 1);
     let parsed;
     try {
       if (source.error) throw source.error;
       parsed = await read(source.url, refresh);
       const selected = select(parsed, source.role, single);
       const reports = selected.map(r => ({ ...r, id: source.role === "weekly" ? `w-${r.id}` : r.id, source: source.role }));
-      return { reports, meta: { ...meta, ok: true, count: reports.length, ignored: parsed.reports.length - reports.length, unrecognized: parsed.unrecognized, fetchedAt: new Date(parsed.time).toISOString() } };
+      const completed = { ...meta, ok: true, count: reports.length, ignored: parsed.reports.length - reports.length, unrecognized: parsed.unrecognized, fetchedAt: new Date(parsed.time).toISOString() };
+      onSource({ ...completed, attemptAt, single, kinds: [...new Set(selected.map(r => r.kind))] });
+      return { reports, meta: completed };
     } catch (error) {
       // 只有当前缓存解析失败才清理；旧请求不能清掉新一代成功缓存。
       if (parsed && entries.get(source.url)?.cache === parsed) entries.get(source.url).cache = undefined;
-      return { reports: [], meta: { ...meta, ignored: error.ignored || 0, unrecognized: error.unrecognized || [], status: error.status || 502, error: error.status ? error.message : "飞书文档读取失败，请稍后刷新重试" } };
+      const completed = { ...meta, ignored: error.ignored || 0, unrecognized: error.unrecognized || [], status: error.status || 502, error: error.status ? error.message : "飞书文档读取失败，请稍后刷新重试" };
+      onSource({ ...completed, attemptAt, single });
+      return { reports: [], meta: completed };
     }
   };
   const legacy = rows => rows.map(({ source, ...row }) => row);
