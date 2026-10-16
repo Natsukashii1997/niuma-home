@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
-import { Button, Card, Loadable, PageHeader, Tag } from "../../ui/components.jsx";
+import { Button, Card, Loadable, PageHeader, SampleBadge, Tag } from "../../ui/components.jsx";
+import { PixelIcon } from "../../ui/bitmap.jsx";
 
 const fields = [
   { key: "brand_base_url", label: "品牌多维表格链接", hint: "用于品牌页的「在飞书打开」入口。", placeholder: "https://你的团队.feishu.cn/base/…" },
   { key: "report_doc_url", label: "日报文档链接", hint: "日/周报页与首页从这份文档读取日报；未配置周报文档时，也从这里识别周报。", placeholder: "https://你的团队.feishu.cn/docx/…" },
   { key: "weekly_doc_url", label: "周报文档链接（可选）", hint: "不填时，从日报文档中识别周报。", placeholder: "https://你的团队.feishu.cn/docx/…" },
-  { key: "material_types", label: "物料类型清单", hint: "每行一个类型；预览时自动去掉空行、首尾空白和重复项。", placeholder: "海报\n朋友圈图\n社群海报\n落地页\n其他" },
+  { key: "material_types", label: "物料类型清单", hint: "每行一个类型；预览时自动去掉空行、首尾空白和重复项。", placeholder: "价格图\n试听海报\n选课海报\n活动海报\n朋友圈三宫格\n朋友圈九宫格" },
 ];
 
 function displayValue(key, value) {
@@ -41,11 +42,16 @@ export default function SettingsPage() {
   const [dailyRevision, setDailyRevision] = useState(0);
   const [dailyPending, setDailyPending] = useState(false);
   const onDailyState = pending => { setDailyPending(pending); setDailyRevision(value => value + 1); };
+  const form = (settings, key) => { const field = fields.find((f) => f.key === key); return <SettingForm key={key} field={field} initialValue={settings[key] || ""} dailyRevision={dailyRevision} dailyPending={dailyPending} onDailyState={onDailyState} />; };
   return <>
-    <PageHeader title="设置" subtitle="品牌链接、日报周报来源与物料类型；每项单独预览、确认保存" />
-    <Loadable state={state}>{(settings) => <div className="settings-page stack">
-      {fields.map((field) => <SettingForm key={field.key} field={field} initialValue={settings[field.key] || ""}
-        dailyRevision={dailyRevision} dailyPending={dailyPending} onDailyState={onDailyState} />)}
+    <PageHeader title="设置" subtitle="每项单独编辑、预览后保存；未接入的项目标「示例」" />
+    <Loadable state={state}>{(settings) => <div className="settings-page set-groups">
+      <SetGroup title="数据源" icon="link">{form(settings, "report_doc_url")}{form(settings, "weekly_doc_url")}
+        <V3Row label="用户时间线" value="飞书《2026海外大学时间线》· 地区明细表 · 只读" /><V3Row label="项目模板" value="多维表格「项目启动模版」· 只读导入" /><V3Row label="知识库范围" value="常浩的知识库 · 预览后写入" /></SetGroup>
+      <SetGroup title="营销" icon="marketing">{form(settings, "material_types")}
+        <V3Row label="NAS 物料目录" value="/Volumes/营销物料 · 按 YYYY-MM/产品物料｜营销物料/类型/" /><V3Row label="价格口径" value="毛利底线 25% · 课时成本 440 元（演示值，待你确定）" /></SetGroup>
+      <SetGroup title="推送与预算" icon="send"><V3Row label="机械邪龙兽" value="只推送 Codex 重置预警（预告 / 确认 / 修正 / 撤回）" /><V3Row label="留学之声预算" value="¥10 / 月 · 本月已用 ¥3.42 · 三级熔断" /></SetGroup>
+      <SetGroup title="入口" icon="brand">{form(settings, "brand_base_url")}</SetGroup>
     </div>}</Loadable>
   </>;
 }
@@ -122,8 +128,16 @@ function SettingForm({ field, initialValue, dailyRevision, dailyPending, onDaily
     }
     try { setPreview(previewValue(key, draft)); } catch (error) { setPreview(null); setError(error.message); }
   };
-  return <Card title={label} extra={<Tag tone={saved ? "green" : "neutral"}>{saved ? "已配置" : "未配置"}</Tag>}>
-    <form className="settings-form" aria-label={`${label}配置`} onSubmit={previewDraft}>
+  const [open, setOpen] = useState(false);
+  const expanded = open || uncertain || busy || preview !== null;
+  return <div className={`set-row${expanded ? " is-open" : ""}`}>
+    <div className="set-row-head">
+      <span className="set-label">{label}</span>
+      <span className="set-value">{saved ? displayValue(key, saved).split("\n").join(" · ") : <span className="muted">尚未配置</span>}</span>
+      <Tag tone={saved ? "green" : "neutral"}>{saved ? "已配置" : "未配置"}</Tag>
+      <Button onClick={() => setOpen((v) => !v)} disabled={busy}><PixelIcon name={expanded ? "up" : "edit"} />{expanded ? "收起" : "编辑"}</Button>
+    </div>
+    {expanded && <form className="settings-form" aria-label={`${label}配置`} onSubmit={previewDraft}>
       <label className="settings-field" htmlFor={`setting-${key}`}>{label}</label>
       {key === "material_types"
         ? <textarea id={`setting-${key}`} value={draft} onChange={changed} rows={5} placeholder={placeholder} disabled={busy || uncertain} aria-describedby={`hint-${key}`} />
@@ -145,7 +159,17 @@ function SettingForm({ field, initialValue, dailyRevision, dailyPending, onDaily
         <div className="row"><Button type="button" disabled={busy} onClick={() => setPreview(null)}>取消预览</Button><Button type="button" variant="primary" disabled={busy || sourceBlocked} onClick={confirm}>确认保存</Button></div>
       </div> : <Button type="submit" variant="primary" disabled={busy || sourceBlocked}>预览保存</Button>}
       <p className="small muted" role="status">{busy ? "正在处理，请稍候…" : notice}</p>
-      <div className="settings-saved"><h3 className="section-title">已保存的值{uncertain ? "（上次读取，待核对）" : ""}</h3><pre className="pre">{saved ? displayValue(key, saved) : "尚未配置"}</pre></div>
-    </form>
-  </Card>;
+      {uncertain && <div className="settings-saved"><h3 className="section-title">已保存的值（上次读取，待核对）</h3><pre className="pre">{saved ? displayValue(key, saved) : "尚未配置"}</pre></div>}
+    </form>}
+    {!expanded && notice && <p className="small muted set-notice" role="status">{notice}</p>}
+  </div>;
+}
+
+function SetGroup({ title, icon, children }) {
+  return <Card title={<><PixelIcon name={icon} />{title}</>}><div className="set-rows">{children}</div></Card>;
+}
+
+// v3 新增的配置项：接口未实现，先展示当前口径。
+function V3Row({ label, value }) {
+  return <div className="set-row"><div className="set-row-head"><span className="set-label">{label}</span><span className="set-value">{value}</span><SampleBadge task="V3-接口清单" /><Button disabled title="接口待实现"><PixelIcon name="edit" />编辑</Button></div></div>;
 }

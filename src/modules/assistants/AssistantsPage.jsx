@@ -2,12 +2,31 @@ import { useEffect, useRef, useState } from "react";
 import { BitAvatar, PixelIcon, StepProgress, TypeText } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Empty, Loadable, PageHeader, Tag } from "../../ui/components.jsx";
+import { Button, Empty, Loadable, PageHeader, SampleBadge, Segmented, Tag, useToast } from "../../ui/components.jsx";
+import { SAMPLE_KNOWLEDGE } from "../../samples/v3.js";
 import { consumeMessageStream } from "./message-stream.js";
 import ModelControls from "./ModelControls.jsx";
 import { assistantListReader } from "./assistant-list.js";
 
 const KIND_LABEL = { copywriter: "文案", imported: "Codex 导入", custom: "自建" };
+const STARTERS = ["给 11 月价格图写 3 个主标题，突出「送课时不是降价」", "把这段方案改写成发给业务的私信话术", "按 brief 的 P1–P9 结构，起草冲分节九宫格文案"];
+
+// 知识库（v3）：只收文字；新建会话时全量带入助手指令，超过阈值提示改为检索。接口未实现时显示示例。
+function KnowledgePanel({ assistant }) {
+  const state = useApi(`/api/v3/assistants/${assistant.id}/knowledge`, SAMPLE_KNOWLEDGE);
+  const [toast, showToast] = useToast();
+  return <div className="kb-panel"><Loadable state={state}>{(kb) => {
+    const total = kb.docs.reduce((n, d) => n + d.chars, 0);
+    return <>
+      <div className="row kb-meter"><span className="label">知识量</span><span className="tnum">{total.toLocaleString()} / {kb.limit.toLocaleString()} 字</span><span className="small muted">新建会话时全量带入；改动后新会话生效</span><span className="spacer" />{state.isSample && <SampleBadge task={state.task} />}</div>
+      <span className="dither-bar"><span className="dither-bar-fill" style={{ width: `${Math.min(100, (total / kb.limit) * 100)}%` }} /></span>
+      <label className="drop-zone"><PixelIcon name="upload" />拖入或选择文字文件（.md / .txt / .docx），也可以直接粘贴<input type="file" hidden accept=".md,.txt,.docx" onChange={() => showToast("已加入知识库（示例，未写入）")} /></label>
+      <table className="grid compact"><thead><tr><th>类型</th><th>标题</th><th className="r">字数</th><th>加入时间</th><th /></tr></thead>
+        <tbody>{kb.docs.map((d) => <tr key={d.title}><td><Tag tone={d.kind === "brief 范本" ? "blue" : "neutral"}>{d.kind}</Tag></td><td>{d.title}</td><td className="r">{d.chars.toLocaleString()}</td><td className="tnum small muted">{d.at}</td><td><button type="button" className="icon-btn" title="移除" onClick={() => showToast(`已移除「${d.title}」（示例）`)}><PixelIcon name="close" /></button></td></tr>)}</tbody></table>
+      {toast}
+    </>;
+  }}</Loadable></div>;
+}
 export default function AssistantsPage({ route }) {
   const state = useApi("/api/assistants");
   return <Loadable state={state}>{(list) => <AssistantDesk initial={list} selectedId={route[0]} />}</Loadable>;
@@ -18,9 +37,9 @@ function AssistantDesk({ initial, selectedId }) {
   const [reload] = useState(() => assistantListReader(() => apiSend("GET", "/api/assistants"), setList));
   const saved = async (id) => { await reload(); setModal(null); if (id) window.location.hash = href("assistants", String(id)).slice(1); };
   return <div className="assistant-page">
-    <PageHeader title="助手" subtitle="背后接本机 Codex，使用你的 Codex 额度；所有助手只读，不改文件、不执行命令" actions={<>
-      <Button onClick={() => setModal({ type: "import" })}><PixelIcon name="download" size={14} /> 导入 Codex 会话</Button>
-      <Button variant="primary" onClick={() => setModal({ type: "new" })}><PixelIcon name="plus" size={14} /> 新建助手</Button>
+    <PageHeader title="Agent" subtitle="本机 Codex · 只读，不改文件、不执行命令" actions={<>
+      <Button onClick={() => setModal({ type: "import" })}><PixelIcon name="download" /> 导入 Codex 会话</Button>
+      <Button variant="primary" onClick={() => setModal({ type: "new" })}><PixelIcon name="plus" /> 新建助手</Button>
     </>} />
     <div className="chat-layout">
       <aside className="chat-list" aria-label="助手列表">{list.map((a) => <a key={a.id} data-dither="" href={href("assistants", String(a.id))} className={a.id === current?.id ? "active" : ""}><BitAvatar seed={a.name} /><strong>{a.name}</strong><Tag>{KIND_LABEL[a.kind]}</Tag></a>)}</aside>
@@ -34,6 +53,7 @@ function Conversation({ assistant, edit, reloadAssistants }) {
   const [pending, setPending] = useState(null), [error, setError] = useState("");
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [uncertain, setUncertain] = useState(false);
   const [settingsBlocked, setSettingsBlocked] = useState(true), [runtimeVersion, setRuntimeVersion] = useState(0);
+  const [tab, setTab] = useState("chat"), [modelOpen, setModelOpen] = useState(false);
   const lock = useRef(false), controller = useRef(null), bottom = useRef(null);
   const read = async () => apiSend("GET", `/api/assistants/${assistant.id}/messages`);
   useEffect(() => {
@@ -70,11 +90,17 @@ function Conversation({ assistant, edit, reloadAssistants }) {
     finally { lock.current = false; setBusy(false); controller.current = null; setRuntimeVersion((n) => n + 1); }
   };
   return <section className="chat-panel" aria-label={`${assistant.name}对话`}>
-    <header className="chat-head"><strong>{assistant.name}</strong><div className="row"><Tag>只读</Tag><Button disabled={busy} onClick={edit}>编辑助手</Button></div></header>
-    <ModelControls assistant={assistant} busy={busy} version={runtimeVersion} reloadAssistants={reloadAssistants} onBlocked={setSettingsBlocked} />
+    <header className="chat-head"><div className="row"><BitAvatar seed={assistant.name} /><strong>{assistant.name}</strong><Tag>只读</Tag></div>
+      <div className="row">
+        <Segmented options={[["chat", "对话"], ["kb", "知识库"]]} value={tab} onChange={setTab} />
+        <Button aria-expanded={modelOpen} onClick={() => setModelOpen((v) => !v)}><PixelIcon name="settings" />{assistant.model || "默认模型"}{assistant.effort ? ` · ${assistant.effort}` : ""}</Button>
+        <Button disabled={busy} onClick={edit}><PixelIcon name="edit" />编辑</Button>
+      </div></header>
+    <div className={modelOpen ? "model-panel is-open" : "model-panel"}><ModelControls assistant={assistant} busy={busy} version={runtimeVersion} reloadAssistants={reloadAssistants} onBlocked={setSettingsBlocked} /></div>
+    {tab === "kb" ? <KnowledgePanel assistant={assistant} /> : <>
     <div className="chat-messages" aria-busy={busy || loading}>
       {loading && <p className="muted">正在读取历史…</p>}
-      {!loading && !messages.length && !pending && <Empty>输入消息开始对话。预设说明可在「编辑助手」中填写。</Empty>}
+      {!loading && !messages.length && !pending && <div className="chat-starters"><p className="muted small">常用开场，点一下填进输入框：</p>{STARTERS.map((t) => <button key={t} type="button" className="phrase" onClick={() => setDraft(t)}>{t}</button>)}</div>}
       {messages.map((m, i) => <div key={i} className={`bubble ${m.role}`}>{m.text}</div>)}
       {pending && <><div className="bubble user">{pending.text}</div>{(pending.replies.length ? pending.replies : [{ text: "" }]).map((m, i) => <div key={i} className="bubble assistant"><TypeText text={m.text} streaming={busy && i === Math.max(0, pending.replies.length - 1)} onReveal={() => bottom.current?.scrollIntoView({ block: "nearest" })} /></div>)}</>}
       <div ref={bottom} />
@@ -82,7 +108,8 @@ function Conversation({ assistant, edit, reloadAssistants }) {
     {busy && pending && !pending.replies.length && <div className="assistant-wait"><StepProgress label="等待回复首字" /></div>}
     <div className="assistant-status" role="status">{busy ? "Codex 正在回复…" : "Enter 发送 · Shift+Enter 换行"}</div>
     {error && <div className="assistant-status"><p className="error" role="alert">{error}</p><Button disabled={busy || loading} onClick={reload}>重新读取历史</Button></div>}
-    <footer className="chat-input"><textarea aria-label="消息" placeholder="输入消息，确认后发送" value={draft} onChange={(e) => setDraft(e.target.value)} disabled={busy} maxLength={50000} rows={3} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); } }} /><Button variant="primary" disabled={busy || loading || uncertain || settingsBlocked || !draft.trim()} onClick={send}><PixelIcon name="send" size={14} /> 发送</Button></footer>
+    <footer className="chat-input"><textarea aria-label="消息" placeholder="输入消息，确认后发送" value={draft} onChange={(e) => setDraft(e.target.value)} disabled={busy} maxLength={50000} rows={3} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); } }} /><Button variant="primary" disabled={busy || loading || uncertain || settingsBlocked || !draft.trim()} onClick={send}><PixelIcon name="send" /> 发送</Button></footer>
+    </>}
   </section>;
 }
 function AssistantDialog({ modal, close, saved, reload }) {

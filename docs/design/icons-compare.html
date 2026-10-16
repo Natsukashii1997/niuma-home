@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>图标方案对比</title>
+<style>
+  @font-face { font-family: "Geist"; src: url("../../src/assets/fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; }
+  @font-face { font-family: "Geist Mono"; src: url("../../src/assets/fonts/GeistMono-Variable.woff2") format("woff2"); font-weight: 100 900; }
+  :root { --bg: #EDEEF1; --panel: #FBFBFC; --soft: #F3F4F6; --text: #0D0E10; --text-2: #3D4047; --muted: #686D76; --line: #D5D8DE; --signal: #FF4F1F; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 32px 40px 64px; background: var(--bg); color: var(--text); font: 14px/1.6 "Geist", "PingFang SC", sans-serif; }
+  h1 { margin: 0 0 6px; font-size: 24px; }
+  .lead { margin: 0 0 24px; color: var(--text-2); max-width: 900px; }
+  .opts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .opt { background: var(--panel); border: 2px solid var(--line); display: flex; flex-direction: column; }
+  .opt.is-rec { border-color: var(--text); }
+  .opt-head { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .opt-head h2 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+  .opt-head h2 em { font-style: normal; font-size: 11px; padding: 0 6px; background: var(--signal); color: #fff; }
+  .opt-head p { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+  .side { padding: 12px; border-bottom: 1px solid var(--line); background: #F7F7F9; }
+  .side .g { padding: 8px 10px 4px; font: 10px "Geist Mono", monospace; letter-spacing: .08em; color: var(--muted); }
+  .side a { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; color: var(--text); font-size: 14px; }
+  .side a.on { background: var(--text); color: var(--panel); }
+  .side a svg { flex-shrink: 0; color: var(--text-2); }
+  .side a.on svg { color: var(--panel); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); }
+  .cell { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 4px 10px; background: var(--panel); }
+  .cell .big { display: grid; place-items: center; width: 56px; height: 56px; background: var(--soft); }
+  .cell span { font: 11px "Geist Mono", monospace; color: var(--muted); }
+  .cell .miss { font-size: 11px; color: var(--muted); }
+  .notes { margin-top: 24px; padding: 16px 20px; background: var(--panel); border: 2px solid var(--line); max-width: 1100px; }
+  .notes h3 { margin: 0 0 8px; font-size: 14px; }
+  .notes ul { margin: 0; padding-left: 18px; }
+</style>
+</head>
+<body>
+<h1>图标方案对比 · 已选 C</h1>
+<p class="lead">左边的侧栏是各方案在实际尺寸下的效果，下面的格子是放大 3 倍后的细节。A 原版、B 现版只作对照；C、D 是这次的新方案，请选一个（也可以说哪几个图标要换）。选定后全站统一替换，所有图标仍从 <code>PixelIcon</code> 一个入口出。</p>
+<div class="opts" id="opts"></div>
+<div class="notes">
+  <h3>怎么选</h3>
+  <ul>
+    <li><b>A 原版 7×7</b>：粗、实心，和像素数字、点阵很搭；缺点是只有 23 个，新模块（用户、Voice、项目、知识库）没有图标。</li>
+    <li><b>B 现版 16×16</b>：线条细、细节多，但在侧栏里显得发虚，和像素字体不是一个重量——这是你说「不搭」的主要原因。</li>
+    <li><b>C 回到 7×7 实心并补齐（推荐）</b>：沿用原版的粗细和实心块面，把新模块补齐，侧栏和像素数字视觉重量一致。</li>
+    <li><b>D 几何线性</b>：不走像素风，2px 方头直线，读起来最清楚、最「普通」；整体会更像常规工具软件，位图感变弱。</li>
+  </ul>
+</div>
+<script type="module">
+// 2026-10-16 已选定 C 方案，16×16 图标稿已删除，B 栏只保留说明。
+const ICONS16 = {};
+
+const NAMES = [["home", "首页"], ["marketing", "营销"], ["user", "用户"], ["voice", "Voice"], ["brand", "品牌"], ["business", "业务"], ["project", "项目"], ["kb", "知识库"], ["agent", "Agent"], ["reports", "日/周报"], ["settings", "设置"], ["calendar", "日历"], ["alert", "预警"], ["bolt", "战役"], ["trend", "营收"], ["search", "搜索"]];
+
+// A：main 分支 c3fa737 的 7×7 原版图标（只取本页用到的）。
+const A = {
+  home: ["...#...", "..###..", ".#####.", "#######", ".#...#.", ".#.#.#.", ".#.#.#."],
+  marketing: [".....#.", "...###.", "####.#.", "#..#.#.", "####.#.", ".#.###.", ".#...#."],
+  brand: ["...#...", "...#...", "..###..", "#######", "..###..", "...#...", "...#..."],
+  business: ["......#", "....#.#", "....#.#", "..#.#.#", "..#.#.#", "#.#.#.#", "#######"],
+  agent: ["...#...", ".#####.", "#.....#", "#.#.#.#", "#.....#", ".#####.", ".#...#."],
+  reports: ["#####..", "#...##.", "#.....#", "#.###.#", "#.....#", "#.###.#", "#######"],
+  settings: ["..#.#..", ".#####.", "##...##", ".#...#.", "##...##", ".#####.", "..#.#.."],
+  calendar: [".#...#.", "#######", "#.....#", "#.#.#.#", "#.....#", "#.#.#.#", "#######"],
+  alert: ["...#...", "..#.#..", "..#.#..", ".#.#.#.", ".#...#.", "#..#..#", "#######"],
+  search: [".###...", "#...#..", "#...#..", "#...#..", ".###...", "....##.", ".....##"],
+};
+
+// C：沿用 A 的 7×7 实心画法，补齐新模块。
+const C = {
+  ...A,
+  user: ["..###..", ".#####.", ".#####.", "..###..", ".......", ".#####.", "#######"],
+  voice: ["#######", "#.....#", "#.#.#.#", "#.....#", "#######", ".##....", ".#....."],
+  project: ["######.", "#####..", "######.", "#......", "#......", "#......", "#......"],
+  kb: ["###.###", "#..#..#", "#..#..#", "#..#..#", "#..#..#", "###.###", "...#..."],
+  bolt: ["....##.", "...##..", "..##...", ".#####.", "...##..", "..##...", ".##...."],
+  trend: ["...####", ".....##", "....#.#", "...#...", "#.#....", ".#.....", "......."],
+};
+
+// D：24 网格几何线性图标，2px 方头直线。
+const D = {
+  home: '<path d="M4 10.5 12 4l8 6.5V20H4z"/><path d="M10 20v-5h4v5"/>',
+  marketing: '<path d="M4 9.5h3l9-4.5v14l-9-4.5H4z"/><path d="M7.5 14.5 9 20h3l-1.5-5.5"/><path d="M19.5 10v4"/>',
+  user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/>',
+  voice: '<path d="M4 5h16v11h-9l-4 3.5V16H4z"/><path d="M8.5 10.5h0M12 10.5h0M15.5 10.5h0"/>',
+  brand: '<path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>',
+  business: '<path d="M4 20h16M7 20v-6M12 20V9M17 20V5"/>',
+  project: '<path d="M5 21V4M5 4h12l-2.5 4L17 12H5"/>',
+  kb: '<path d="M12 6.5C10 5 7 4.5 4 5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5zM12 6.5v13"/>',
+  agent: '<rect x="5" y="8" width="14" height="11"/><path d="M12 4.5V8M9.5 12.5v2M14.5 12.5v2M2.5 12v3M21.5 12v3"/>',
+  reports: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',
+  settings: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><rect x="13" y="5" width="4" height="4"/><rect x="7" y="15" width="4" height="4"/>',
+  calendar: '<rect x="4" y="5.5" width="16" height="14.5"/><path d="M4 10h16M8.5 3v4M15.5 3v4"/>',
+  alert: '<path d="M12 3.5 21 20H3z"/><path d="M12 10v4.5M12 17v.5"/>',
+  bolt: '<path d="M13 3 5 13.5h6L10 21l8-11h-6z"/>',
+  trend: '<path d="M3.5 17l6-6 4 4 7-7.5"/><path d="M15 7.5h5.5V13"/>',
+  search: '<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5.5 5.5"/>',
+};
+
+const pixel = (rows, n, px) => rows ? `<svg width="${px}" height="${px}" viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges" fill="currentColor">${rows.flatMap((r, y) => [...r].map((c, x) => c === "#" ? `<rect x="${x}" y="${y}" width="1" height="1"/>` : "")).join("")}</svg>` : null;
+const line = (body, px) => body ? `<svg width="${px}" height="${px}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">${body}</svg>` : null;
+
+const OPTS = [
+  { key: "A", title: "A 原版 7×7", sub: "main 分支 · 14px 显示（每格 2px）", draw: (n, big) => pixel(A[n], 7, big ? 42 : 14) },
+  { key: "B", title: "B 现版 16×16", sub: "已被 C 替换，图标稿已删除", draw: (n, big) => pixel(ICONS16[n], 16, big ? 48 : 16) },
+  { key: "C", title: "C 7×7 实心补齐", sub: "推荐 · 14px 显示，粗细与像素数字一致", rec: true, draw: (n, big) => pixel(C[n], 7, big ? 42 : 14) },
+  { key: "D", title: "D 几何线性", sub: "非像素 · 18px 显示，2px 方头直线", draw: (n, big) => line(D[n], big ? 48 : 18) },
+];
+
+const SIDE = [["工作", ["home", "marketing", "user", "voice", "brand", "business"]], ["协作与工具", ["project", "kb", "agent", "reports"]], ["", ["settings"]]];
+const label = Object.fromEntries(NAMES);
+document.getElementById("opts").innerHTML = OPTS.map((o) => `
+  <section class="opt${o.rec ? " is-rec" : ""}">
+    <div class="opt-head"><h2>${o.title}${o.rec ? "<em>推荐</em>" : ""}</h2><p>${o.sub}</p></div>
+    <div class="side">${SIDE.map(([g, items]) => `${g ? `<div class="g">${g}</div>` : `<div class="g">&nbsp;</div>`}${items.map((n) => `<a class="${n === "marketing" ? "on" : ""}">${o.draw(n) || '<svg width="14" height="14"></svg>'}${label[n]}</a>`).join("")}`).join("")}</div>
+    <div class="grid">${NAMES.map(([n, l]) => `<div class="cell"><div class="big">${o.draw(n, true) || '<span class="miss">无</span>'}</div><span>${l}</span></div>`).join("")}</div>
+  </section>`).join("");
+</script>
+</body>
+</html>

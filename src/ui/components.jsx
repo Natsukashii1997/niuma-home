@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { PixelIcon } from "./bitmap.jsx";
 // 公共组件。新页面优先复用这里的组件，样式见 docs/STYLE-GUIDE.md。
 
 export function PageHeader({ title, subtitle, actions }) {
@@ -80,7 +82,7 @@ export function Tag({ tone = "neutral", children }) {
 }
 
 export function SampleBadge({ task }) {
-  return <span className="sample-badge" title={task ? `接口待实现，见 docs/tasks/${task}.md` : "示例数据"}>示例{task ? ` · ${task}` : ""}</span>;
+  return <span className="sample-badge" title={task ? `示例数据：接口待实现，见 docs/tasks/${task}.md` : "示例数据"}>示例</span>;
 }
 
 export function Empty({ children }) {
@@ -109,4 +111,60 @@ export function Loadable({ state, children }) {
   if (state.loading) return <p className="muted">加载中…</p>;
   if (state.error) return <p className="error">{state.error}</p>;
   return children(state.data);
+}
+
+/* ---------- v3 新增 ---------- */
+
+// 弹窗：用原生 <dialog>，Esc 关闭；遮罩为墨色网点（STYLE-GUIDE v2.1）。
+export function Modal({ open, onClose, title, icon, children, footer, wide = false }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
+  return (
+    <dialog ref={ref} className={`modal${wide ? " is-wide" : ""}`} onClose={onClose} onCancel={onClose}>
+      {open && <>
+        <div className="card-head"><h2>{icon && <PixelIcon name={icon} />}{title}</h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="关闭"><PixelIcon name="close" /></button></div>
+        <div className="modal-body">{children}</div>
+        {footer && <div className="modal-foot">{footer}</div>}
+      </>}
+    </dialog>
+  );
+}
+
+// 轻提示：只写明做了什么；原型阶段的写操作统一说明「示例，未写入」。
+export function useToast() {
+  const [text, setText] = useState("");
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const show = (t) => { setText(t); clearTimeout(timer.current); timer.current = setTimeout(() => setText(""), 2600); };
+  const node = text ? <div className="toast" role="status"><PixelIcon name="check" /><span>{text}</span></div> : null;
+  return [node, show];
+}
+
+// 月份切换：‹ 上月 · 当前 · 下月 ›；current 为交付月时加标记。
+export function MonthSwitch({ month, onChange, mark }) {
+  const [y, m] = month.split("-").map(Number);
+  const shift = (d) => { const x = new Date(y, m - 1 + d, 1); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}`; };
+  return (
+    <span className="month-switch">
+      <button type="button" onClick={() => onChange(shift(-1))} aria-label="上个月"><PixelIcon name="left" /></button>
+      <span className="is-cur">{month}{mark && <em>{mark}</em>}</span>
+      <button type="button" onClick={() => onChange(shift(1))} aria-label="下个月"><PixelIcon name="right" /></button>
+    </span>
+  );
+}
+
+// 状态符号：done ■ / part ▣ / todo □ / warn（橙）
+export function StatusMark({ state, label }) {
+  return <span className={`status-mark is-${state}`} title={label}><i aria-hidden="true" />{label && <span>{label}</span>}</span>;
+}
+
+// 未实现的页面或区块：说明清楚在等什么。
+export function Placeholder({ icon = "clock", title, children }) {
+  return <div className="empty placeholder"><PixelIcon name={icon} size={32} /><strong>{title}</strong>{children && <p>{children}</p>}</div>;
 }

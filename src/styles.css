@@ -12,17 +12,22 @@
   --panel-soft: #F3F4F6;  /* 表头、次级底 */
   --text: #0D0E10;        /* 墨色 */
   --text-2: #3D4047;
-  --muted: #7B808A;       /* 次要灰 */
+  --muted: #686D76;       /* 次要灰（v2.2 加深，正文旁的说明文字对比度 ≥ 4.5） */
   --line: #D5D8DE;        /* 描边 */
-  --signal: #FF4F1F;      /* 唯一强调色：信号橙 */
-  /* 兼容旧变量：主操作与选中统一为墨色，状态色收敛为墨 / 橙 */
+  --signal: #FF4F1F;      /* 品牌强调：信号橙（当前项、新信号、主操作悬停） */
+  /* v2.2 语义色：只用于「需要读出含义」的地方——达成 / 风险 / 信息 / 待处理，不做装饰 */
+  --ok: #1E8E4E;  --ok-soft: #E3F4EA;
+  --risk: #D92D20; --risk-soft: #FDECEA;
+  --info: #2563EB; --info-soft: #E8EFFD;
+  --warn: #B26B00; --warn-soft: #FDF2DC;
+  /* 兼容旧变量 */
   --accent: var(--text);
   --accent-soft: #E4E6EA;
-  --green: var(--text);
-  --green-soft: #E4E6EA;
+  --green: var(--ok);
+  --green-soft: var(--ok-soft);
   --orange: var(--signal);
   --orange-soft: #FFEDE6;
-  --red: var(--signal);
+  --red: var(--risk);
   --changed: var(--panel);
   --radius: 0;
   --gap: 16px;
@@ -127,9 +132,12 @@ h1, h2, h3 { margin: 0; }
 .link { color: var(--text); font-family: var(--font-mono); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
 .link:hover { color: var(--signal); }
 .tag { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border: 1px solid var(--line); font-family: var(--font-mono); font-size: 11px; color: var(--text-2); white-space: nowrap; }
-.tag-blue { border-color: var(--text); color: var(--text); }
-.tag-green { background: var(--text); border-color: var(--text); color: var(--panel); }
-.tag-orange, .tag-red { border-color: var(--signal); color: var(--signal); }
+.tag-blue { border-color: var(--info-soft); background: var(--info-soft); color: var(--info); }
+.tag-green { border-color: var(--ok-soft); background: var(--ok-soft); color: var(--ok); }
+.tag-orange { border-color: var(--signal); color: var(--signal); }
+.tag-red { border-color: var(--risk-soft); background: var(--risk-soft); color: var(--risk); }
+.tag-amber { border-color: var(--warn-soft); background: var(--warn-soft); color: var(--warn); }
+.tag-ink { border-color: var(--text); background: var(--text); color: var(--panel); }
 .tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid var(--line); }
 .chip:hover { border-color: var(--text); }
@@ -138,7 +146,7 @@ h1, h2, h3 { margin: 0; }
 /* 文本 */
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
-.error { color: var(--signal); }
+.error { color: var(--risk); }
 .pre { white-space: pre-wrap; margin: 0; }
 .clamp { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
 .nowrap { white-space: nowrap; }
@@ -200,8 +208,8 @@ textarea.paste-box::placeholder { color: var(--muted); }
 .plan-editor .warn svg { flex-shrink: 0; margin-top: 3px; }
 .plan-editor .warn ul { margin: 6px 0 0; padding-left: 20px; }
 .plan-editor .page-header { flex-wrap: wrap; }
-.warn { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 12px; border: 1px solid var(--line); border-left: 4px solid var(--signal); background: var(--panel); color: var(--text); }
-.warn svg { color: var(--signal); }
+.warn { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 12px; border: 1px solid var(--warn-soft); border-left: 4px solid var(--warn); background: var(--warn-soft); color: var(--text); }
+.warn svg { color: var(--warn); }
 
 /* 物料 */
 .material-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--gap); }
@@ -283,10 +291,6 @@ textarea.paste-box::placeholder { color: var(--muted); }
 .home-row { display: grid; gap: var(--gap); margin-bottom: var(--gap); }
 .home-row.wide { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 .home-row.thirds { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.card-figure { font-family: var(--font-pixel); font-size: 28px; line-height: 1; }
-.line-share { display: flex; flex-direction: column; gap: 14px; }
-.line-share-item { display: flex; flex-direction: column; gap: 6px; }
-.line-share-item .row { justify-content: space-between; }
 .today-list li.is-now .list-time, .today-list li.is-now span:not(.small) { color: var(--signal); }
 .agent-list li { gap: 10px; }
 .agent-list .agent-model { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
