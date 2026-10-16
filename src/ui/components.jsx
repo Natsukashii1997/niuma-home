@@ -30,15 +30,20 @@ export function Card({ title, extra, children, className = "", dither = false })
 }
 
 // 页签：items = [{ key, label, href }]
+// 页签。item.desc 是该页签的说明，显示在页签下第一行，随页签切换（二次评审 P2-2）。
 export function Tabs({ items, active }) {
+  const desc = items.find((t) => t.key === active)?.desc;
   return (
-    <nav className="tabs">
-      {items.map((t) => (
-        <a key={t.key} href={t.href} className={t.key === active ? "active" : ""}>
-          {t.label}
-        </a>
-      ))}
-    </nav>
+    <>
+      <nav className="tabs">
+        {items.map((t) => (
+          <a key={t.key} href={t.href} className={t.key === active ? "active" : ""}>
+            {t.label}
+          </a>
+        ))}
+      </nav>
+      {desc && <p className="tab-desc">{desc}</p>}
+    </>
   );
 }
 
@@ -77,6 +82,11 @@ export function FilterBar({ children }) {
 }
 
 // tone: neutral / blue / green / orange / red
+// 节点勾选框：14px 墨框，勾上后白底 + 像素对勾（不再整块涂黑，二次评审 P2-4）。营销战役、项目推进共用。
+export function NodeCheck({ checked, onChange, label }) {
+  return <span className="node-check"><input type="checkbox" checked={checked} onChange={onChange} aria-label={label} />{checked && <PixelIcon name="tick" />}</span>;
+}
+
 export function Tag({ tone = "neutral", children }) {
   return <span className={`tag tag-${tone}`}>{children}</span>;
 }

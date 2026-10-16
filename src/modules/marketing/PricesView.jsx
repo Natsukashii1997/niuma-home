@@ -74,7 +74,7 @@ function PriceBoard({ sku, data }) {
   };
   return (
     <>
-      <div className="toolbar price-toolbar">
+      <div className="toolbar">
         <label className="select"><span>基准方案</span>
           <select value={base} onChange={(e) => setBase(e.target.value)}>{schemes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
         </label>
@@ -165,7 +165,8 @@ function PriceInput({ value, onDone }) {
   );
 }
 
-// 课时单价阶梯：每套方案一条折线（基准为粗墨线，其余细线 + 不同端点形状），悬停某一档时竖线对齐并列出各方案数值。
+// 课时单价阶梯：每套方案一条折线。默认只突出基准（粗墨线），悬停或点选图例的方案画成橙线，其余是浅灰细线（二次评审 P2-6）；
+// 悬停某一档时竖线对齐并列出各方案数值。
 const MARKS = ["square", "ring", "diamond", "dot", "square", "ring"];
 function UnitChart({ schemes, base, tiers, c, hover, setHover }) {
   const W = 1000, H = 190, L = 56, R = 16, T = 16, B = 30;
@@ -174,18 +175,26 @@ function UnitChart({ schemes, base, tiers, c, hover, setHover }) {
   const x = (i) => L + (i * (W - L - R)) / (tiers.length - 1);
   const y = (v) => T + ((max - v) * (H - T - B)) / Math.max(1, max - min);
   const ticks = useMemo(() => { const out = []; for (let v = min; v <= max; v += 50) out.push(v); return out; }, [min, max]);
+  const [pin, setPin] = useState(null);
+  const [peek, setPeek] = useState(null);
+  const focus = peek || pin;
+  const order = [...schemes].sort((a, b) => rank(a.id) - rank(b.id)); // 突出的线画在最上面
+  function rank(id) { return id === focus ? 2 : id === base ? 1 : 0; }
   return (
     <div className="unit-chart">
       <div className="unit-chart-head"><span className="label">课时单价阶梯（元/小时，含赠送）</span>
-        <span className="unit-legend">{schemes.map((s, k) => <span key={s.id} className={s.id === base ? "is-base" : ""}><Mark kind={MARKS[k]} />{s.name}</span>)}</span></div>
+        <span className="unit-legend">{schemes.map((s, k) => (
+          <button type="button" key={s.id} className={`${s.id === base ? "is-base" : ""}${s.id === focus && s.id !== base ? " is-focus" : ""}`} aria-pressed={pin === s.id} title="点一下固定高亮，再点取消"
+            onMouseEnter={() => setPeek(s.id)} onMouseLeave={() => setPeek(null)} onClick={() => setPin(pin === s.id ? null : s.id)}><Mark kind={MARKS[k]} />{s.name}</button>
+        ))}</span></div>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="课时单价随课时档位变化" onMouseLeave={() => setHover(-1)}>
         {ticks.map((v) => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} className="grid-line" /><text x={L - 8} y={y(v) + 4} className="axis" textAnchor="end">{v}</text></g>)}
         {tiers.map((h, i) => <text key={h} x={x(i)} y={H - 8} className={`axis${hover === i ? " is-hot" : ""}`} textAnchor="middle">{h}h</text>)}
         {hover >= 0 && <line x1={x(hover)} x2={x(hover)} y1={T - 6} y2={H - B} className="cross" />}
-        {schemes.map((s, k) => (
-          <g key={s.id} className={s.id === base ? "series is-base" : "series"}>
+        {order.map((s) => (
+          <g key={s.id} className={s.id === base ? "series is-base" : s.id === focus ? "series is-focus" : "series"}>
             <polyline points={tiers.map((_, i) => `${x(i)},${y(c(s, i).unit)}`).join(" ")} />
-            {tiers.map((_, i) => <MarkAt key={i} kind={MARKS[k]} cx={x(i)} cy={y(c(s, i).unit)} />)}
+            {tiers.map((_, i) => <MarkAt key={i} kind={MARKS[schemes.indexOf(s)]} cx={x(i)} cy={y(c(s, i).unit)} />)}
           </g>
         ))}
         {tiers.map((_, i) => <rect key={i} x={x(i) - (W - L - R) / (tiers.length - 1) / 2} y={0} width={(W - L - R) / (tiers.length - 1)} height={H} fill="transparent" onMouseEnter={() => setHover(i)} />)}

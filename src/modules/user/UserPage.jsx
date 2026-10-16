@@ -9,7 +9,11 @@ import { SAMPLE_NEEDS, SAMPLE_TIMELINE } from "../../samples/v3.js";
 // 用户（v3）：时间线 → 用户策略（主线需求是策略的起点）。Voice 已独立成侧栏模块。
 // 时间线的第一要求是严谨：写全「学校 · 事件 · 起止日期」；冲突和推测单独标出，工作台不自行猜测；
 // 来源单元格默认收起，打开「显示来源」或悬停才看，避免干扰阅读。
-const TABS = [["timeline", "用户时间线"], ["strategy", "用户策略"]].map(([key, label]) => ({ key, label, href: href("user", key) }));
+// 用户时间线的说明在视图里（右侧带来源），所以这里不写 desc
+const TABS = [
+  ["timeline", "用户时间线"],
+  ["strategy", "用户策略", "主线需求由「事件 → 需求」对照表从时间线推导；采纳后才拆解策略、才能被促销关联"],
+].map(([key, label, desc]) => ({ key, label, desc, href: href("user", key) }));
 
 export default function UserPage({ route }) {
   const [tab = "timeline", ...rest] = route;
@@ -58,7 +62,7 @@ function TimelineBoard({ tl, view, sample }) {
   return (
     <>
       <div className="tl-intro">
-        <p>各国大学（{tl.stage}）的关键日期：选课、开学、考试、论文、出分。用来决定<b>哪个月</b>、对<b>哪些学校的学生</b>、推<b>什么</b>。</p>
+        <p>各国大学（{tl.stage}）的关键日期：选课、开学、考试、论文、出分。用来决定哪个月、对哪些学校的学生、推什么。</p>
         <span className="small muted">{tl.source} · 同步于 {tl.syncedAt}</span>
       </div>
       <div className="toolbar">
@@ -188,16 +192,16 @@ function placeBar(e, { first, last, nDays, dayW, showSrc }) {
   const s = e.from < first ? 1 : Number(e.from.slice(8));
   const end = (e.to || e.from) > last ? nDays : Number((e.to || e.from).slice(8));
   const when = `${md(e.from)}${e.to ? ` → ${md(e.to)}` : ""}${showSrc ? ` · ${e.src}` : ""}`;
-  const w = textWidth(e.type, '600 12px Geist, "PingFang SC"') + 6 + textWidth(when, '11px "Geist Mono", "PingFang SC"')
-    + (e.flag === "guess" ? 6 + textWidth("推测", '11px Geist, "PingFang SC"') : 0);
+  const w = textWidth(e.type, '600 12px Geist, "PingFang SC"') + 4 + textWidth(when, '11px "Geist Mono", "PingFang SC"')
+    + (e.flag === "guess" ? 4 + textWidth("推测", '11px Geist, "PingFang SC"') : 0);
   if (!e.to) { // 单日：菱形 + 文字，文字占的格子也算进分道
-    const n = Math.ceil((w + 20) / dayW);
+    const n = Math.ceil((w + 18) / dayW);
     if (s + n - 1 <= nDays) return { e, s, end: s, side: "single", cols: n - 1, when, a: s, b: s + n - 1 };
     const m = Math.ceil((w + 8) / dayW);
     if (s - m >= 1) return { e, s, end: s, side: "left", cols: m, when, a: s - m, b: s };
     return { e, s, end: s, side: "single", cols: nDays - s, when, a: s, b: nDays };
   }
-  if ((end - s + 1) * dayW - 17 >= w) return { e, s, end, side: "in", cols: 0, when, a: s, b: end };
+  if ((end - s + 1) * dayW - 13 >= w) return { e, s, end, side: "in", cols: 0, when, a: s, b: end };
   const n = Math.ceil((w + 8) / dayW);
   if (end + n <= nDays) return { e, s, end, side: "right", cols: n, when, a: s, b: end + n };
   if (s - n >= 1) return { e, s, end, side: "left", cols: n, when, a: s - n, b: end };
@@ -344,7 +348,7 @@ function StrategyBoard({ data, sample }) {
         ))}
       </ol>
       <div className="toolbar">
-        <span className="small muted">{data.month} · 需求由「事件 → 需求」对照表从时间线推导；采纳后才拆解策略、才能被促销关联</span>
+        <span className="small muted">{data.month}</span>
         <span className="spacer" />
         {sample && <SampleBadge task={sample} />}
         <Button onClick={() => showToast("已按对照表重新推导：4 条，无变化（示例）")}><PixelIcon name="refresh" />重新推导</Button>

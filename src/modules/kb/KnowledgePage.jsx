@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
-import { Button, Loadable, Modal, PageHeader, SampleBadge, StatStrip, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Loadable, Modal, PageHeader, SampleBadge, Segmented, StatStrip, Tag, useToast } from "../../ui/components.jsx";
 import { SAMPLE_KB } from "../../samples/v3.js";
 
 // 知识库整理（v3）：一棵可编辑的树 + 暂存区。拖动、多选、剪切粘贴、重命名、新建目录都先进暂存，可撤销；
@@ -79,6 +79,7 @@ function Organizer({ kb, sample }) {
   const docs = kb.docs || {};
   const [q, setQ] = useState("");
   const [issue, setIssue] = useState("");
+  const [side, setSide] = useState("detail"); // 右栏页签：详情 / 规则批量 · 暂存明细
   const health = useMemo(() => healthOf(tree, docs), [tree, docs]);
   const issueCount = (k) => [...health.values()].filter((v) => v.includes(k)).length;
   const ql = q.trim().toLowerCase();
@@ -171,7 +172,7 @@ function Organizer({ kb, sample }) {
     return () => removeEventListener("keydown", key);
   });
 
-  const counts = { move: ops.filter((o) => o.type === "move").length, rename: ops.filter((o) => o.type === "rename").length, mkdir: ops.filter((o) => o.type === "mkdir").length };
+  useEffect(() => { if (sel.size) setSide("detail"); }, [sel]); // 点选了文档就回到详情
   const pick = (e, id) => {
     setSel((old) => { const s = new Set(e.metaKey || e.ctrlKey || e.shiftKey ? old : []); if (s.has(id) && (e.metaKey || e.ctrlKey)) s.delete(id); else s.add(id); return s; });
   };
@@ -214,7 +215,7 @@ function Organizer({ kb, sample }) {
           return { label, value: n, foot: why, tone: n ? (k === "stale" ? "muted" : "warn") : "ok", active: issue === k, disabled: !n, onClick: () => setIssue(issue === k ? "" : k) };
         }),
       ]} />
-      <div className="kb-layout cols-4-4-4">
+      <div className="kb-layout cols-5-7">
       <section className="card kb-tree-card">
         <div className="card-head">
           <h2><PixelIcon name="kb" />{kb.space}</h2>
@@ -231,20 +232,22 @@ function Organizer({ kb, sample }) {
         <div className="kb-search">
           <label className="search-box"><PixelIcon name="search" /><input placeholder="搜索标题、标签、正文摘要" value={q} onChange={(e) => setQ(e.target.value)} />{q && <button type="button" className="icon-btn" onClick={() => setQ("")} aria-label="清除搜索"><PixelIcon name="close" /></button>}</label>
           {filtering && <span className="kb-filter-note small">{issue && <>只看「{ISSUES.find(([k]) => k === issue)[1]}」</>}{issue && ql && " · "}{ql && <>搜索「{q.trim()}」</>} · {hits} 项<button type="button" className="link-btn" onClick={() => { setQ(""); setIssue(""); }}>清除</button></span>}
+          <span className="kb-keys" tabIndex={0}><kbd>⌘</kbd>快捷键
+            <span className="kb-keys-pop small" role="tooltip">拖动到目录即可移动 · <kbd>⌘</kbd>/<kbd>⇧</kbd> 多选 · <kbd>⌘X</kbd> <kbd>⌘V</kbd> 剪切粘贴 · <kbd>F2</kbd> 或双击重命名 · <kbd>⌘⇧N</kbd> 新建目录 · <kbd>⌘Z</kbd> 撤销</span>
+          </span>
         </div>
-        <div className="kb-hint small muted">拖动到目录即可移动 · <kbd>⌘</kbd>/<kbd>⇧</kbd> 多选 · <kbd>⌘X</kbd> <kbd>⌘V</kbd> 剪切粘贴 · <kbd>F2</kbd> 或双击重命名 · <kbd>⌘⇧N</kbd> 新建目录 · <kbd>⌘Z</kbd> 撤销</div>
         <ul className="kb-tree" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { if (e.target.closest(".kb-node")) return; e.preventDefault(); move(JSON.parse(e.dataTransfer.getData("text/plain") || "[]"), null); }}>
           {shown.length ? shown.map((n) => <Node key={n.id} n={n} depth={0} />) : <li className="kb-none small muted">没有符合条件的文档</li>}
         </ul>
         <div className={`kb-stage${ops.length ? " has-ops" : ""}`}>
-          <span><b className="tnum">{ops.length}</b> 项暂存 · 移动 {counts.move} · 重命名 {counts.rename} · 新建目录 {counts.mkdir}</span>
+          <span><b className="tnum">{ops.length}</b> 项暂存 · 同步前不改飞书</span>
           <span className="spacer" />
-          <span className="small">同步前不会改动飞书</span>
           <Button variant="primary" disabled={!ops.length} onClick={() => setPreview("list")}><PixelIcon name="send" />预览并同步</Button>
         </div>
       </section>
-      <Detail tree={tree} docs={docs} health={health} sel={sel} setSel={setSel} onRename={setRenaming} onTrash={toTrash} showToast={showToast} />
-      <aside className="stack">
+      <div className="stack kb-side">
+        <Segmented options={[["detail", "详情"], ["ops", `规则批量 · 暂存明细${ops.length ? ` ${ops.length}` : ""}`]]} value={side} onChange={setSide} />
+        {side === "detail" ? <Detail tree={tree} docs={docs} health={health} sel={sel} setSel={setSel} onRename={setRenaming} onTrash={toTrash} showToast={showToast} /> : <>
         <section className="card">
           <div className="card-head"><h2><PixelIcon name="filter" />规则批量</h2></div>
           <div className="card-body stack-sm">
@@ -257,7 +260,8 @@ function Organizer({ kb, sample }) {
           <div className="card-head"><h2><PixelIcon name="clock" />暂存明细</h2><span className="tnum small muted">{ops.length}</span></div>
           <ol className="list kb-ops">{ops.length ? ops.map((o, i) => <li key={i} className="small"><span className="kb-op-type">{{ move: "移动", rename: "重命名", mkdir: "新建" }[o.type]}</span><span>{o.type === "rename" ? `${o.from} → ${o.name}` : o.type === "mkdir" ? `${o.name}（在 ${o.to}）` : `${o.name}：${o.from} → ${o.to}`}</span></li>) : <li className="small muted">还没有改动</li>}</ol>
         </section>
-      </aside>
+        </>}
+      </div>
       </div>
       <Modal open={!!preview} onClose={() => setPreview(null)} icon="send" title="同步到飞书 · 预览" wide
         footer={<><Button onClick={() => setPreview(null)}>返回修改</Button><Button variant="primary" disabled={preview === "run"} onClick={() => setPreview("run")}>确认同步 {ops.length} 项</Button></>}>

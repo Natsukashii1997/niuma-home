@@ -119,7 +119,7 @@ function TodayCard({ now }) {
   const state = useApi("/api/calendar/today");
   const minutes = now.getHours() * 60 + now.getMinutes();
   return (
-    <Card className="col-4" title={<><PixelIcon name="calendar" /> 今日日程</>} extra={<a className="link" href="https://www.feishu.cn/calendar/" target="_blank" rel="noreferrer">飞书</a>}>
+    <Card className="col-4" title={<><PixelIcon name="calendar" /> 今日日程</>} extra={<a className="link" href="https://www.feishu.cn/calendar/" target="_blank" rel="noreferrer">飞书<PixelIcon name="external" /></a>}>
       <Loadable state={state} name="今日日程">
         {(events) => {
           if (!events.length) return <p className="muted">今天没有日程</p>;
@@ -147,7 +147,7 @@ function AgentsCard() {
   const state = useApi("/api/assistants");
   const start = (a, text) => { handOffDraft(a.id, text); location.hash = href("assistants", String(a.id)); };
   return (
-    <Card className="col-4" title={<><PixelIcon name="agent" /> Agent</>} extra={<a className="link" href={href("assistants")}>全部</a>}>
+    <Card className="col-4" title={<><PixelIcon name="agent" /> Agent</>} extra={<a className="link" href={href("assistants")}>全部<PixelIcon name="right" /></a>}>
       <Loadable state={state} name="Agent 列表">
         {(list) => (
           <div className="agent-card">
@@ -181,7 +181,7 @@ function VoiceCard() {
   const state = useApi("/api/v3/voice", SAMPLE_VOICE);
   return (
     <Card className="col-8" title={<><PixelIcon name="voice" /> 留学之声</>}
-      extra={<>{state.isSample && <SampleBadge task={state.task} />}<a className="link" href={href("voice")}>Voice</a></>}>
+      extra={<>{state.isSample && <SampleBadge task={state.task} />}<a className="link" href={href("voice")}>Voice<PixelIcon name="right" /></a></>}>
       <Loadable state={state} name="留学之声">
         {(v) => {
           return (

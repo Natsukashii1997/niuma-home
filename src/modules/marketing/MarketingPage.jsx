@@ -8,11 +8,11 @@ import CampaignView from "./CampaignView.jsx";
 
 // v3：页签顺序 营销战役 · 月度促销（方案录入 + 促销表合并） · 价格记录 · 物料沉淀 · 设计 brief。
 const TABS = [
-  { key: "campaign", label: "营销战役" },
-  { key: "plans", label: "月度促销" },
-  { key: "prices", label: "价格记录" },
-  { key: "materials", label: "物料沉淀" },
-  { key: "brief", label: "设计 brief" },
+  { key: "campaign", label: "营销战役", desc: "本月战役的节点、物料决定与复盘" },
+  { key: "plans", label: "月度促销", desc: "按月份、业务线录入促销方案，下方是全部月份的方案汇总" },
+  { key: "prices", label: "价格记录", desc: "各 SKU 的价格方案：按课时档对比总价、单价和毛利，标出低于毛利底线的格子" },
+  { key: "materials", label: "物料沉淀", desc: "按月份沉淀的产品物料、营销物料和设计参考：每月交付了什么、沿用了哪一版" },
+  { key: "brief", label: "设计 brief", desc: "交付月物料的设计需求：逐节填写，九宫格可直接改，右侧文案助手可以起草" },
 ].map((t) => ({ ...t, href: href("marketing", t.key) }));
 
 const VIEWS = { campaign: CampaignView, plans: PlansView, promos: PlansView, prices: PricesView, materials: MaterialsHub, brief: BriefView };

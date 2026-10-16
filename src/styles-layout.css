@@ -29,19 +29,19 @@
 .card > .card-head { flex-shrink: 0; min-height: var(--head); padding: 0 var(--s4); }
 .card > .card-head h2 { gap: 6px; line-height: 20px; min-width: 0; }
 .card > .card-body { flex: 1 1 auto; padding: var(--s4); }
-.card-head .btn, .card-extra .btn { height: var(--ctl-sm); padding: 0 10px; font-size: 12px; }
+.card-head .btn, .card-extra .btn { height: var(--ctl-sm); padding: 0 var(--s2); font-size: 12px; }
 .card-head .segmented { height: var(--ctl-sm); }
 
 /* ---------- 控件：工具栏 32px、卡内 28px ---------- */
 .btn { gap: 6px; }
 .segmented { height: var(--ctl); }
-.segmented button { display: inline-flex; align-items: center; height: 100%; padding: 0 12px; }
-.chip, button.chip, a.chip { box-sizing: border-box; height: var(--ctl); padding: 0 12px; gap: 6px; }
+.segmented button { display: inline-flex; align-items: center; height: 100%; padding: 0 var(--s3); }
+.chip, button.chip, a.chip { box-sizing: border-box; height: var(--ctl); padding: 0 var(--s3); gap: 6px; }
 select { height: var(--ctl); }
 .search-box { height: var(--ctl); }
 .check-inline { height: var(--ctl); }
 .line-switch { height: var(--ctl); }
-.line-switch button { height: 100%; padding: 0 12px; gap: 6px; }
+.line-switch button { height: 100%; padding: 0 var(--s3); gap: 6px; }
 .routine .segmented { height: var(--ctl-sm); }
 .btn-xs { height: 24px; }
 
@@ -49,7 +49,7 @@ select { height: var(--ctl); }
 .pixel-icon { vertical-align: -1px; }
 .card-head h2 .pixel-icon, .btn .pixel-icon, .chip .pixel-icon, .link-btn .pixel-icon { vertical-align: middle; }
 .btn .pixel-icon { margin-left: 0; }
-.link-btn { display: inline-flex; align-items: center; gap: 4px; }
+.link-btn { display: inline-flex; align-items: center; gap: var(--s1); }
 
 /* ---------- 概况数字条：等宽格、左对齐，标签 → 数字 → 说明 ---------- */
 .stat-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin-bottom: var(--gap); background: var(--panel); border: var(--border) solid var(--line); }
@@ -84,7 +84,6 @@ button.stat.is-on .stat-label, button.stat.is-on .stat-foot, button.stat.is-on .
 .campaign-grid > .stack > :last-child, .kb-layout > .stack > :last-child { flex: 1 1 auto; }
 .campaign-grid > .stack > :last-child .card-body { display: flex; flex-direction: column; }
 .campaign-grid > .stack > :last-child .review-box { flex: 1 1 auto; min-height: 120px; }
-.plan-editor .split .empty { height: 100%; display: grid; place-items: center; box-sizing: border-box; }
 .kb-detail, .proj-list { position: static; }
 
 /* ---------- 页面级补充 ---------- */
@@ -97,13 +96,13 @@ button.stat.is-on .stat-label, button.stat.is-on .stat-foot, button.stat.is-on .
 /* 项目列表：一张卡，项目一行一条 */
 .proj-list .card-head h2 .tnum { font-weight: 400; }
 .proj-items { flex: 1 1 auto; }
-.proj-card { width: 100%; display: flex; flex-direction: column; gap: 6px; padding: var(--s3) var(--s4); border: 0; border-bottom: 1px solid var(--line); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.proj-card { width: 100%; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3) var(--s4); border: 0; border-bottom: 1px solid var(--line); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .proj-card:hover { background: var(--panel-soft); }
 .proj-card.active { background: var(--panel-soft); box-shadow: inset 4px 0 0 var(--text); }
 .proj-main { display: flex; flex-direction: column; }
 .proj-main > .node-list { flex: 1 1 auto; }
 /* 概况条里的项目名用正文字号，避免和数字抢 */
-.proj-main .stat:first-child .stat-value { font-size: 20px; }
+.proj-main .stat:first-child .stat-value { font-size: 18px; font-weight: 600; }
 .stat-foot .stat-bar { flex: 0 0 72px; }
 /* 会话 / 日报列表：栏框与右侧等高；日报正文很长时，列表本身吸顶滚动 */
 .chat-list { align-self: stretch; }
@@ -112,4 +111,4 @@ button.stat.is-on .stat-label, button.stat.is-on .stat-foot, button.stat.is-on .
 .campaign-grid .list .link { white-space: nowrap; }
 /* 页内分组标题（如业务页「业务线指标」）：与上一块隔 24 */
 .section-head { display: flex; align-items: center; gap: var(--s2); min-height: var(--ctl); margin: var(--s5) 0 var(--s3); }
-.section-head h2 { font-size: 16px; font-weight: 700; }
+.section-head h2 { font-size: 18px; font-weight: 600; }

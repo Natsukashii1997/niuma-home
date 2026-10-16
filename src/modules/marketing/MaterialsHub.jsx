@@ -59,7 +59,7 @@ function NasBoard({ nas, view, sample }) {
           {nas.types.map((t) => (
             <Row key={t.key}>
               <div className="wall-t"><strong>{t.key}</strong><span className="small muted">{t.fixed ? "每月固定" : "活动时出"}</span></div>
-              {nas.months.map((m) => <WallCell key={m} cell={nas.cells[`${m}|${t.key}`]} type={t.key} month={m} isDm={m === dm} onOpen={() => setOpen({ month: m, type: t.key, cell: nas.cells[`${m}|${t.key}`] })} />)}
+              {nas.months.map((m) => <WallCell key={m} cell={nas.cells[`${m}|${t.key}`]} source={nas.cells[`${nas.cells[`${m}|${t.key}`]?.from}|${t.key}`]} type={t.key} month={m} isDm={m === dm} onOpen={() => setOpen({ month: m, type: t.key, cell: nas.cells[`${m}|${t.key}`] })} />)}
             </Row>
           ))}
         </div>
@@ -98,11 +98,19 @@ function NasBoard({ nas, view, sample }) {
 
 const Row = ({ children }) => <>{children}</>;
 
-function WallCell({ cell, isDm, onOpen, type, month }) {
+function WallCell({ cell, source, isDm, onOpen, type, month }) {
   if (!cell) return <div className="wall-c"><span className="wall-empty">本月未出</span></div>;
   if (cell.state === "pending") return <div className={`wall-c${isDm ? " is-dm" : ""}`}><button type="button" className="wall-empty is-pending" onClick={onOpen}><PixelIcon name="clock" />待交付<span className="small">{cell.note}</span></button></div>;
   if (cell.state === "skip") return <div className={`wall-c${isDm ? " is-dm" : ""}`}><span className="wall-empty"><PixelIcon name="close" />本月不出</span></div>;
-  if (cell.state === "reuse") return <div className={`wall-c${isDm ? " is-dm" : ""}`}><button type="button" className="wall-empty is-reuse" onClick={onOpen}><PixelIcon name="refresh" />沿用 {cell.from.slice(5)} 月</button></div>;
+  // 沿用：画被沿用那张的线框缩略图，写明来自哪个月、哪一版（二次评审 P2-7）
+  if (cell.state === "reuse") return (
+    <div className={`wall-c${isDm ? " is-dm" : ""}`}>
+      <button type="button" className="wall-file" data-dither="" onClick={onOpen} aria-label={`${month} ${type} 沿用 ${cell.from}`}>
+        <Thumb kind="poster" title={type} big={source?.big} outline />
+        <span className="wall-meta"><span>沿用 {cell.from.slice(5)} 月{source?.version ? ` · v${source.version}` : ""}</span></span>
+      </button>
+    </div>
+  );
   return (
     <div className={`wall-c${isDm ? " is-dm" : ""}`}>
       <button type="button" className="wall-file" data-dither="" onClick={onOpen} aria-label={`${month} ${type}`}>

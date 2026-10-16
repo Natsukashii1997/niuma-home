@@ -1,6 +1,6 @@
 // 物料缩略图。有真实图片（src）时直接显示；没有时用版式示意（示例数据阶段），
-// 示意只用墨色、网点和至多一处信号橙，避免被误认为真实物料。
-export default function Thumb({ src, kind = "poster", title = "", big = "", accent = false, alt = "" }) {
+// 示意只用墨色、网点和至多一处信号橙，避免被误认为真实物料。outline：只画轮廓不填色（物料墙「沿用」格）。
+export default function Thumb({ src, kind = "poster", title = "", big = "", accent = false, alt = "", outline = false }) {
   if (src) return <span className={`thumb thumb-img thumb-${kind}`}><img src={src} alt={alt || title} loading="lazy" /></span>;
   if (kind === "grid9" || kind === "grid3") {
     const n = kind === "grid9" ? 9 : 3;
@@ -19,7 +19,7 @@ export default function Thumb({ src, kind = "poster", title = "", big = "", acce
     );
   }
   return (
-    <span className={`thumb thumb-${kind}${accent ? " is-accent" : ""}`} aria-label={`${title}（示意）`}>
+    <span className={`thumb thumb-${kind}${accent && !outline ? " is-accent" : ""}${outline ? " is-outline" : ""}`} aria-label={`${title}（示意）`}>
       <span className="t-head"><span className="t-logo" /><span className="t-corner" /></span>
       <span className="t-title">{title}</span>
       {big ? <b className="t-big">{big}</b> : <span className="t-dither t-block" />}

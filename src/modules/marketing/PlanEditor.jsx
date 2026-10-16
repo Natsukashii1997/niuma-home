@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend } from "../../api.js";
-import { Button, Card, Empty, PhaseSteps, Tag } from "../../ui/components.jsx";
+import { Button, Card, PhaseSteps, Tag } from "../../ui/components.jsx";
 import { PROMO_FIELDS } from "../../constants.js";
 
 // 方案录入：嵌在「月度促销」上半部分，四步 粘贴 → 解析 → 处理 → 确认。
@@ -160,10 +160,10 @@ function PlanForm({ month, line, onSaved }) {
           <textarea className="paste-box" aria-label="方案原文" value={rawText} disabled={locked}
             onChange={(event) => edit(event.target.value)} onPaste={paste}
             placeholder="在此粘贴飞书里的方案，例如「🟥【大学辅导板块】1. 灵活学Lite …」" />
-          <p className="muted small">{rawHtml ? "已保留粘贴的原始格式。" : "当前为纯文本。"} 编辑后需重新解析；局部修改后按纯文本保存和复制。</p>
+          <p className="muted small">{rawHtml ? "已保留粘贴的原始格式。" : "当前为纯文本。"} 局部修改后按纯文本保存和复制。</p>
         </Card>
         <Card title="解析预览" extra={preview && <Tag>{preview.rows.length} 个 SKU</Tag>}>
-          {!preview ? <Empty>把飞书里的方案粘贴到左侧，会自动解析出各 SKU 的字段和与上月的差异</Empty> : <>
+          {!preview ? <div className="parse-empty"><p className="small muted">解析后显示：各 SKU 字段、与上月的差异</p><div className="state-loading" aria-hidden="true"><i /><i /><i /></div></div> : <>
             <p className="muted small">优先对比本月已有数据；本月无数据时对比该业务线上一个有数据的月份。标「改」的格子下方是旧值。</p>
             <div className="table-wrap">
               <table className="grid compact">

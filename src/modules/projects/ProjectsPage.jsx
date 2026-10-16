@@ -2,12 +2,15 @@ import { useState } from "react";
 import { PixelIcon, TypeText } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Card, Loadable, PageHeader, PhaseSteps, Placeholder, SampleBadge, Segmented, StatStrip, Tabs, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Card, Loadable, NodeCheck, PageHeader, PhaseSteps, Placeholder, SampleBadge, Segmented, StatStrip, Tabs, Tag, useToast } from "../../ui/components.jsx";
 import { SAMPLE_MENTOR, SAMPLE_PROJECTS } from "../../samples/v3.js";
 
 // 项目（v3）：项目推进按多维表格的标准流程模板；管培带教读两位管培生的日志，带教 Agent 只出草稿。
 // 节点到期前 2 天在工作台提醒，不做机器人推送；门禁只提醒、不拦截。
-const TABS = [["board", "项目推进"], ["mentor", "管培带教"]].map(([key, label]) => ({ key, label, href: href("projects", key) }));
+const TABS = [
+  ["board", "项目推进", "各项目的阶段、节点和负责人；节点到期前 2 天在工作台提醒"],
+  ["mentor", "管培带教", "管培生的飞书日志、卡点与提问；带教 Agent 每周出建议草稿，不自动发送"],
+].map(([key, label, desc]) => ({ key, label, desc, href: href("projects", key) }));
 
 export default function ProjectsPage({ route }) {
   const [tab = "board"] = route;
@@ -89,7 +92,6 @@ function ProjectBoard({ list, sample }) {
           })} />
           <div className="toolbar">
             <Segmented options={[["all", "全部节点"], ["open", "未完成"], ["gate", `等你审核 ${sum.gates}`], ["soon", `2 天内到期 ${sum.soon}`]]} value={filter} onChange={setFilter} />
-            <span className="spacer" /><span className="small muted">门禁只提醒、不拦截 · 未设日期的节点不提醒</span>
           </div>
           <section className="card node-list">
             <div className="node-cols" aria-hidden="true"><span /><span>序号</span><span>节点</span><span>负责人</span><span>截止</span><span>状态</span></div>
@@ -105,7 +107,7 @@ function ProjectBoard({ list, sample }) {
                       const kidsDone = n.kids ? n.kids.filter(([, ok]) => ok).length : 0;
                       return (
                         <li key={n.i} className={`node${n.done ? " is-done" : ""}${n.gate ? " is-gate" : ""}`}>
-                          <input type="checkbox" checked={!!n.done} onChange={() => { update(n.i, { done: !n.done }); showToast("已更新（示例，未写入）"); }} aria-label={`完成：${n.t}`} />
+                          <NodeCheck checked={!!n.done} onChange={() => { update(n.i, { done: !n.done }); showToast("已更新（示例，未写入）"); }} label={`完成：${n.t}`} />
                           <span className="tnum small muted">{n.i + 1}</span>
                           <div className="node-main">
                             <span className="node-t">{n.t}{n.gate && <Tag tone={n.done ? "neutral" : "amber"}>{n.done ? "门禁" : "等你审核"}</Tag>}</span>
@@ -160,7 +162,7 @@ function MentorBoard({ list, sample }) {
         </div>
         <span className="spacer" />
         {sample && <SampleBadge task={sample} />}
-        <span className="small muted">读飞书日志 · 最近 30 天 · 带教 Agent 只出草稿，不自动发送</span>
+        <span className="small muted">最近 30 天</span>
         <Button><PixelIcon name="refresh" />刷新日志</Button>
       </div>
       <StatStrip items={[
@@ -171,7 +173,7 @@ function MentorBoard({ list, sample }) {
       ]} />
       <div className="mentor-layout cols-6-6">
         <Card title={<><PixelIcon name="reports" />{p.name} · 日志</>} extra={<button type="button" className="link-btn">加载更早</button>}>
-          <ol className="logs">{p.logs.map((l) => <li key={l.d} className={l.flag === "卡点" ? "is-block" : ""}><span className="tnum small muted">{l.d}</span><i /><span>{l.t}{l.flag && <> <Tag tone={FLAG_TONE[l.flag] || "neutral"}>{l.flag}</Tag></>}</span></li>)}</ol>
+          <ol className="logs">{p.logs.map((l) => <li key={l.d}><span className="tnum small muted">{l.d}</span><span>{l.t}</span>{l.flag && <Tag tone={FLAG_TONE[l.flag] || "neutral"}>{l.flag}</Tag>}</li>)}</ol>
         </Card>
         <section className="card coach">
           <div className="card-head"><h2><PixelIcon name="mentor" />带教 Agent · 本周建议</h2><span className="row"><Tag tone="amber">草稿</Tag><a className="link" href={href("assistants")}>对话</a></span></div>

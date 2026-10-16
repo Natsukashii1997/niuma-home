@@ -47,7 +47,7 @@ export default function ReportsPage({ route }) {
   }
   return (
     <div className="reports-page">
-      <PageHeader title="日/周报" actions={<>
+      <PageHeader title="日/周报" subtitle="按日期拆分飞书日报、周报文档，只读；可以按状态和业务线筛选事项" actions={<>
         <a className="link" href={href("settings")}>设置来源</a>
         <Button disabled={state.loading} onClick={() => setRefresh(value => value + 1)}><PixelIcon name="refresh" /> {state.loading ? "读取中…" : "刷新"}</Button>
       </>} />
@@ -87,13 +87,13 @@ export default function ReportsPage({ route }) {
               <aside className="chat-list" aria-label={`${activeKind}列表`}>
                 <div className="chat-list-inner">{list.length ? list.map(r => { const sum = summarize(r.body); return <a key={r.id} data-dither="" href={href("reports", r.id)} className={r === current ? "active" : ""}>
                   <strong className="tnum">{r.date}{r.kind === "日报" && <span className="report-wd"> {weekday(r.date)}</span>}</strong>
-                  <span className="small report-sum">{sum.total ? <>{sum.total} 项{sum.pending ? <span className="warn-text"> · {sum.pending} 待处理</span> : ""}</> : <span className="muted">{cleanCell(r.title)}</span>}</span>
+                  <span className="small report-sum">{sum.total ? <>{sum.total} 项{sum.pending ? <span className="warn-text"> · {sum.pending} 待处理</span> : ""}</> : <span className="muted">无事项表</span>}</span>
                   {r.warnings?.length > 0 && <span title={r.warnings.join("；")} tabIndex={0} aria-label={r.warnings.join("；")}><Tag tone="orange">周次提示</Tag></span>}
                 </a>; }) : <Empty>{listFailure ? `${activeKind}读取失败，请重试` : `还没有${activeKind}`}</Empty>}</div>
               </aside>
               <section className="chat-panel">
                 {current ? <>
-                  <header className="chat-head"><strong>{cleanCell(current.title)}</strong><Button onClick={() => copy(current)}><PixelIcon name="copy" /> 复制原文</Button></header>
+                  <header className="chat-head"><ReportHead report={current} /><Button onClick={() => copy(current)}><PixelIcon name="copy" /> 复制原文</Button></header>
                   {copyStatus && <p className={`report-copy small ${copyStatus.error ? "error" : "muted"}`} role="status">{copyStatus.text}</p>}
                   <ReportBody key={current.id} body={current.body} />
                 </> : <Empty>{selectedId && failedSource ? `暂时无法读取这篇报告：${failedSource.error}` : selectedId ? "这篇日报或周报不存在，请从列表重新选择" : listFailure ? `${activeKind}读取失败，请重试` : `文档中暂未识别到独立的${activeKind}日期标题`}</Empty>}
@@ -104,6 +104,12 @@ export default function ReportsPage({ route }) {
       </Loadable>
     </div>
   );
+}
+
+// 文档卡头写摘要，日期留给正文第一行，不重复（二次评审 P2-13）
+function ReportHead({ report }) {
+  const sum = summarize(report.body);
+  return <strong>{report.kind} · {sum.total ? <>{sum.total} 项{sum.pending ? <span className="warn-text"> · {sum.pending} 待处理</span> : ""}</> : <span className="muted">无事项表</span>}</strong>;
 }
 
 const WD = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];

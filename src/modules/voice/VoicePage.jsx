@@ -54,13 +54,15 @@ function VoiceBoard({ v }) {
   const cur = list.find((t) => t.id === sel) || list[0];
   const rising = [...v.hot].sort((a, b) => (b.spark[6] - b.spark[5]) - (a.spark[6] - a.spark[5])).slice(0, 3);
   const s = v.stats;
+  const surgeTop = v.hot.find((t) => t.trend === "surge");
   return (
     <>
       <StatStrip items={[
-        { label: "今日上榜话题", value: s.topics, foot: `新增 ${s.newTopics} · 急升 ${s.surge}` },
+        { label: "今日上榜话题", value: s.topics, foot: `新增 ${s.newTopics}` },
         { label: "独立来源 · 48 小时", value: s.participants, foot: `个案已过滤 ${s.filtered}` },
         { label: "信源", value: s.sourceCount, foot: `${s.sources} · 免费` },
-        { label: "本月模型费用", value: `¥${v.budget.used.toFixed(2)}`, unit: ` / ${v.budget.limit}`, foot: <><span className="stat-bar"><i style={{ width: `${(v.budget.used / v.budget.limit) * 100}%` }} /></span>超预算自动停</> },
+        // 模型费用已在设置页「留学之声预算」，这里换成急升话题数（二次评审 P2-9，用户确认）
+        { label: "急升话题", value: s.surge, foot: <span className="clamp-1">{surgeTop ? surgeTop.title : "今天没有急升话题"}</span> },
       ]} />
       <div className="voice-top cols-6-6">
         <Card title={<><PixelIcon name="voice" />大家在说什么</>} extra={word ? <button type="button" className="link-btn" onClick={() => setWord("")}>清除「{word}」</button> : <span className="small muted">点一个词，下面的热榜只看相关话题</span>}>
@@ -92,7 +94,7 @@ function VoiceBoard({ v }) {
                   <span className={`rank tnum${i === 0 ? " is-top" : ""}`}>{String(i + 1).padStart(2, "0")}</span>
                   <span className="hot-main">
                     <strong>{t.title}</strong>
-                    <span className="tag-row"><Tag tone="ink">{t.kind}</Tag>{t.tags.map((g) => <Tag key={g}>{g}</Tag>)}</span>
+                    <span className="tag-row"><Tag tone="frame">{t.kind}</Tag>{t.tags.map((g) => <Tag key={g}>{g}</Tag>)}</span>
                   </span>
                   <span className="hot-heat"><b className="tnum">{t.heat.toFixed(1)}</b><span className="small muted">{t.part} 个来源</span><span className={`trend ${TREND[t.trend][1]}`}>{TREND[t.trend][0]}</span></span>
                   <Spark data={t.spark} />
@@ -155,11 +157,11 @@ function DayBars({ data }) {
 
 function TrendChart({ topics }) {
   const W = 1000, H = 220, L = 40, R = 260, T = 12, B = 26;
-  const max = Math.max(...topics.flatMap((t) => t.spark));
-  const x = (i) => L + (i * (W - L - R)) / 6, y = (val) => T + (1 - val / max) * (H - T - B);
+  // 热度是 0–100，刻度固定，不随当天最大值变（P2-9）
+  const x = (i) => L + (i * (W - L - R)) / 6, y = (val) => T + (1 - val / 100) * (H - T - B);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="trend-chart" role="img" aria-label="话题热度趋势">
-      {[0, 0.5, 1].map((p) => <g key={p}><line x1={L} x2={W - R} y1={y(max * p)} y2={y(max * p)} className="grid-line" /><text x={L - 8} y={y(max * p) + 4} textAnchor="end" className="axis">{Math.round(max * p)}</text></g>)}
+      {[0, 25, 50, 75, 100].map((v) => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} className="grid-line" /><text x={L - 8} y={y(v) + 4} textAnchor="end" className="axis">{v}</text></g>)}
       {DAYS.map((l, i) => <text key={l} x={x(i)} y={H - 6} textAnchor="middle" className="axis">{l}</text>)}
       {topics.map((t, k) => (
         <g key={t.id} className={k === 0 ? "series is-top" : "series"}>

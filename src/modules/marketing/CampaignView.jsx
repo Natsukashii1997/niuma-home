@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FlipNumber, PixelIcon } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Card, Loadable, PhaseSteps, SampleBadge, Segmented, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Card, Loadable, NodeCheck, PhaseSteps, SampleBadge, Segmented, Tag, useToast } from "../../ui/components.jsx";
 import { SAMPLE_CAMPAIGN, SAMPLE_MONTH } from "../../samples/v3.js";
 import { deliveryMonth, deliverySteps } from "../../constants.js";
 
@@ -65,7 +65,7 @@ function Campaign({ c, sample }) {
                   const kidsDone = n.kids ? n.kids.filter(([, ok]) => ok).length : 0;
                   return (
                     <li key={n.n} className={`node${n.done ? " is-done" : ""}${n.gate ? " is-gate" : ""}`}>
-                      <input type="checkbox" checked={!!n.done} onChange={() => toggle(n.n)} aria-label={`完成：${n.t}`} />
+                      <NodeCheck checked={!!n.done} onChange={() => toggle(n.n)} label={`完成：${n.t}`} />
                       <span className="tnum small muted">{n.n}</span>
                       <div className="node-main">
                         <span className="node-t">{n.t}{n.milestone && <Tag>里程碑</Tag>}{n.gate && <Tag tone={n.done ? "neutral" : "amber"}>{n.done ? "门禁" : "等你审核"}</Tag>}</span>
@@ -87,7 +87,7 @@ function Campaign({ c, sample }) {
           ))}
         </section>
         <div className="stack">
-          <Card title={<><PixelIcon name="image" />常规物料怎么处理</>}>
+          <Card title={<><PixelIcon name="image" />常规物料决定</>}>
             <table className="grid compact routine">
               <tbody>{routine.map(([type, choice], i) => (
                 <tr key={type}><td>{type}</td><td><Segmented options={CHOICES} value={choice} onChange={(v) => { setRoutine((old) => old.map((r, j) => j === i ? [type, v] : r)); showToast(`${type}：${CHOICES.find(([k]) => k === v)[1]}（物料墙同步，示例）`); }} /></td></tr>
@@ -96,7 +96,7 @@ function Campaign({ c, sample }) {
             <p className="small muted">每次开战役逐项决定；结果同步到物料墙的交付月。</p>
           </Card>
           <Card title={<><PixelIcon name="calendar" />挂在哪些月</>}>
-            <ul className="list">{c.months.map((m) => <li key={m}><span className="tnum">{m}</span><span className="small muted">{m === c.months[0] ? "预热：价格图沿用常规" : "战役价格 · 九宫格 · 价格图战役版"}</span><span className="spacer" /><a className="link" href={href("marketing", "plans", m)}>月度促销</a></li>)}</ul>
+            <ul className="list month-hooks">{c.months.map((m) => <li key={m}><div className="month-hook-top"><span className="tnum">{m}</span><a className="link" href={href("marketing", "plans", m)}>月度促销<PixelIcon name="right" /></a></div><span className="small muted">{m === c.months[0] ? "预热：价格图沿用常规" : "战役价格 · 九宫格 · 价格图战役版"}</span></li>)}</ul>
           </Card>
           <Card title={<><PixelIcon name="archive" />复盘</>}>
             <textarea className="review-box" placeholder="战役结束后写复盘：目标达成、有效的物料与玩法、下次要改的地方。保存后归档到对应月份。" />
@@ -126,7 +126,7 @@ function DeadlineBar() {
           {Array.from({ length: total }, (_, i) => <i key={i} className={i + 1 < day ? "is-past" : i + 1 === day ? "is-today" : i + 1 === total ? "is-end" : undefined} title={`${String(m).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`} />)}
         </div>
       </div>
-      <div className="dl-num is-right"><span className="label">完成</span><span className="dl-big"><b>{steps.filter((st) => st.state === "done").length}</b><small>/{steps.length}</small></span></div>
+      <div className="dl-num is-right"><span className="label">完成</span><span className="dl-done">{steps.filter((st) => st.state === "done").length}/{steps.length}</span></div>
     </div>
   );
 }

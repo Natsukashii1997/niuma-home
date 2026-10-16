@@ -71,7 +71,7 @@ export function CodexCard({ className = "" }) {
         <div className="card-extra">
           {state.isSample && <SampleBadge task={state.task} />}
           <Tag tone={STAGE_TONE[c.stage]}>{c.stage}</Tag>
-          <button type="button" className="btn btn-sm" onClick={() => setOpen(true)}>历史与规则</button>
+          <button type="button" className="link-btn" onClick={() => setOpen(true)}>历史与规则<PixelIcon name="right" /></button>
         </div>
       </div>
       <div className="codex-card">

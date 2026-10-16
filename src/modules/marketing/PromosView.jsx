@@ -8,6 +8,8 @@ import { buildPromoView, normalizePromoView, readPromoView, writePromoView } fro
 
 const GROUPS = [["sku", "按 SKU"], ["line", "按业务线"], ["month", "按月份"]];
 const LONG = new Set(["newDeal", "renewal"]);
+// 定宽列；新签、续费两列不写宽度，平分剩余（二次评审 P2-5）
+const COL_W = { month: 88, line: 88, sku: 120, trial: 88, price: 168 };
 
 export default function PromosView() {
   const state = useApi("/api/promos");
@@ -49,10 +51,14 @@ function PromoTable({ rows }) {
         <Select label="业务线" value={filter.line} options={uniq("line")} onChange={set("line")} />
         <Select label="SKU" value={filter.sku} options={uniq("sku", rows.filter((row) => !filter.line || row.line === filter.line))} onChange={set("sku")} />
         <span className="legend"><i className="changed-dot" /> 与上一个有数据的月份不同</span>
+        <span className="spacer" />
+        <Button disabled={!groups.length || allExpanded} onClick={() => setCollapsed(new Set())}>全部展开</Button>
+        <Button disabled={!groups.length || allCollapsed} onClick={() => setCollapsed(new Set(groups.map((item) => item.key)))}>全部折叠</Button>
       </FilterBar>
       {!groups.length ? <Empty>没有符合条件的记录</Empty> : (
         <div className="table-wrap promo-table-wrap" role="region" aria-label="促销表" tabIndex={0}>
           <table className="grid promo-table">
+            <colgroup>{BASE.map(([k]) => <col key={k} style={{ width: COL_W[k] }} />)}{PROMO_FIELDS.map(([f]) => <col key={f} style={{ width: COL_W[f] }} />)}<col style={{ width: 40 }} /></colgroup>
             <thead><tr>{BASE.map(([k, l]) => <th key={k}>{l}</th>)}{PROMO_FIELDS.map(([, label]) => <th key={label}>{label}</th>)}<th aria-label="操作" /></tr></thead>
             {groups.map(({ key, name, rows: items, latestChange }) => (
               <tbody key={key}>
@@ -66,8 +72,6 @@ function PromoTable({ rows }) {
                       </button>
                       <div className="row" onClick={(event) => event.stopPropagation()}>
                         <Button onClick={() => copyRows(key, items)}><PixelIcon name="copy" />{copied === key ? "已复制本组" : "复制本组"}</Button>
-                        <Button disabled={allExpanded} onClick={() => setCollapsed(new Set())}>全部展开</Button>
-                        <Button disabled={allCollapsed} onClick={() => setCollapsed(new Set(groups.map((item) => item.key)))}>全部折叠</Button>
                       </div>
                     </div>
                   </td>

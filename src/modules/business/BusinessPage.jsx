@@ -24,6 +24,8 @@ export default function BusinessPage() {
 }
 
 const fmt = (n) => Math.round(n).toLocaleString("en-US");
+// 卡里写万元、保留 1 位小数，悬停看精确值（二次评审 P2-12）
+const wan = (n) => `${(n / 10000).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} 万`;
 
 // 业务营收完成度：总计一行、业务线一行。竖线是时间进度；完成度不低于时间进度为绿，落后 15 个百分点以内为琥珀，再落后为红。
 function RevenueCard() {
@@ -60,7 +62,7 @@ function RevenueItem({ item, timePct }) {
         <i style={{ width: `${Math.min(pct, 1) * 100}%` }} />
         {timePct != null && <b style={{ left: `${timePct * 100}%` }} title={`时间进度 ${Math.round(timePct * 100)}%`} />}
       </div>
-      <div className="rev-nums tnum"><span className="rev-cur">当前 {fmt(item.current)}</span><span className="rev-sep" />目标 {fmt(item.target)}</div>
+      <div className="rev-nums tnum" title={`当前 ${fmt(item.current)} · 目标 ${fmt(item.target)}`}><span className="rev-cur">当前 {wan(item.current)}</span><span className="rev-sep" />目标 {wan(item.target)}</div>
     </div>
   );
 }
