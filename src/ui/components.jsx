@@ -92,7 +92,8 @@ export function Tag({ tone = "neutral", children }) {
 }
 
 export function SampleBadge({ task }) {
-  return <span className="sample-badge" title={task ? `示例数据：接口待实现，见 docs/tasks/${task}.md` : "示例数据"}>示例</span>;
+  const title = !task ? "示例数据" : /^演示/.test(task) ? `${task}：不是正式业务数据` : `示例数据：接口待实现，见 docs/tasks/${task}.md`;
+  return <span className="sample-badge" title={title}>示例</span>;
 }
 
 export function Empty({ children }) {

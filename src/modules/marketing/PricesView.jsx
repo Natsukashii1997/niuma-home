@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PixelIcon } from "../../ui/bitmap.jsx";
-import { useApi } from "../../api.js";
+import { apiRead, apiSend, useApi } from "../../api.js";
+import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
+import { deliveryMonth } from "../../constants.js";
 import { href } from "../../router.js";
-import { Button, Loadable, SampleBadge, Segmented, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Loadable, SampleBadge, Tag } from "../../ui/components.jsx";
 import { SAMPLE_PRICE_SKUS, SAMPLE_PRICE_SCHEMES } from "../../samples/v3.js";
 
 // 价格（v3）：一张课时卡（5–200 小时）× 多套价格方案的矩阵。
@@ -31,6 +33,8 @@ export default function PricesView({ route = [] }) {
   const skus = useApi("/api/v3/price/skus", SAMPLE_PRICE_SKUS);
   const [sku, setSku] = useState(route[0] || SAMPLE_PRICE_SKUS[0].id);
   const schemes = useApi(`/api/v3/price/schemes?sku=${sku}`, SAMPLE_PRICE_SCHEMES);
+  const [fresh, setFresh] = useState(null); // 保存后回读到的方案
+  const [notice, setNotice] = useState("");
   return (
     <Loadable state={skus} name="SKU 列表" big>
       {(list) => (
@@ -47,34 +51,60 @@ export default function PricesView({ route = [] }) {
             <span className="spacer" />
             {(skus.isSample || schemes.isSample) && <SampleBadge task={schemes.task || skus.task} />}
           </div>
-          <Loadable state={schemes} name="价格方案" big>{(data) => <PriceBoard key={sku} sku={list.find((s) => s.id === sku) || list[0]} data={data} />}</Loadable>
+          <SavedNote text={notice} onClose={() => setNotice("")} />
+          <Loadable state={schemes} name="价格方案" big>{(data) => { const d = fresh?.sku === sku ? fresh : data; return <PriceBoard key={`${sku}-${JSON.stringify(d.schemes).length}-${fresh ? 1 : 0}`} sku={list.find((s) => s.id === sku) || list[0]} data={d} onSaved={(back, text = "") => { setFresh(back); setNotice(text); }} onEdit={() => setNotice("")} />; }}</Loadable>
         </>
       )}
     </Loadable>
   );
 }
 
-function PriceBoard({ sku, data }) {
-  const [schemes, setSchemes] = useState(data.schemes);
+// 保存：整张矩阵（原价、档位、全部方案）预览 → 确认 → 回读。活动方案必须关联一条已采纳的主线需求；低于毛利底线的方案要写原因。
+// 成本和毛利底线仍是演示口径，所以保存后页面继续标「示例」。
+const SCHEME_KEYS = ["id", "name", "kind", "status", "from", "to", "prices", "gifts", "needId", "need", "breachReason"];
+function cleanScheme(s) {
+  const out = Object.fromEntries(SCHEME_KEYS.filter((k) => s[k] !== undefined).map((k) => [k, s[k]]));
+  if (!out.needId) { delete out.needId; delete out.need; } // 后端不接受手填的需求文字
+  if (!out.breachReason) delete out.breachReason;
+  return out;
+}
+
+function PriceBoard({ sku, data, onSaved, onEdit }) {
+  const [schemes, setSchemesRaw] = useState(data.schemes);
+  const flow = useWriteFlow();
+  const needsState = useApi(`/api/v3/needs?month=${deliveryMonth()}`);
+  const adoptedNeeds = (needsState.data?.needs || []).filter((n) => n.status === "已采纳");
+  const setSchemes = (fn) => { if (flow.busy || flow.phase === "unknown") return; setSchemesRaw(fn); flow.reset(); onEdit(); };
+  const setScheme = (id, patch) => setSchemes((old) => old.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  const dirty = JSON.stringify(schemes) !== JSON.stringify(data.schemes);
   const [base, setBase] = useState(data.schemes[0].id);
   const [show, setShow] = useState(["regular", "d11", "cny", "gift"].filter((id) => data.schemes.some((s) => s.id === id)));
   const [hover, setHover] = useState(-1);
   const [editing, setEditing] = useState(null); // { scheme, i }
-  const [toast, showToast] = useToast();
   const tiers = sku.tiers;
   const visible = schemes.filter((s) => show.includes(s.id));
   const baseScheme = schemes.find((s) => s.id === base) || schemes[0];
   const c = (s, i) => calc(s, i, tiers, sku.unitOrig, data.costPerHour);
-  const save = (schemeId, i, value) => {
-    setSchemes((old) => old.map((s) => s.id !== schemeId ? s : { ...s, prices: s.prices.map((p, j) => (j === i ? value : p)) }));
-    showToast(`已改为 ${money(value)}（示例，未写入）`);
-  };
+  const save = (schemeId, i, value) => setSchemes((old) => old.map((s) => s.id !== schemeId ? s : { ...s, prices: s.prices.map((p, j) => (j === i ? value : p)) }));
   const addScheme = () => {
     const id = `new-${Date.now()}`;
-    setSchemes((old) => [...old, { id, name: "新方案", kind: "活动", status: "草稿", from: "", to: "", prices: [...baseScheme.prices], gifts: tiers.map(() => 0) }]);
+    const dm = deliveryMonth(), [y, m] = dm.split("-").map(Number);
+    setSchemes((old) => [...old, { id, name: "新方案", kind: "活动", status: "草稿", from: `${dm}-01`, to: `${dm}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`, prices: [...baseScheme.prices], gifts: tiers.map(() => 0) }]);
     setShow((old) => [...old, id]);
-    showToast("已按基准方案复制出一列草稿，直接改格子里的总价");
   };
+  const isBreach = (s) => tiers.some((_, i) => c(s, i).margin < data.floorMargin);
+  const body = () => ({ unitOrig: sku.unitOrig, tiers, schemes: schemes.map(cleanScheme) });
+  const preview = () => flow.preview(() => apiSend("POST", `/api/v3/price/schemes/preview?sku=${encodeURIComponent(sku.id)}`, body()));
+  const confirm = () => flow.confirm(
+    (pv) => apiSend("PUT", `/api/v3/price/schemes?sku=${encodeURIComponent(sku.id)}`, { previewId: pv.previewId, confirm: true }),
+    async (receipt, pv) => {
+      const back = await apiRead(`/api/v3/price/schemes?sku=${encodeURIComponent(sku.id)}`);
+      const ok = JSON.stringify(back.schemes) === JSON.stringify(pv.value.schemes);
+      if (ok) onSaved(back, "价格方案已保存，回读核对一致（成本和毛利底线仍是演示口径）");
+      return ok;
+    },
+  );
+  const reread = async () => { const back = await apiRead(`/api/v3/price/schemes?sku=${encodeURIComponent(sku.id)}`); flow.resolve(); onSaved({ ...back }); };
   return (
     <>
       <div className="toolbar">
@@ -89,8 +119,19 @@ function PriceBoard({ sku, data }) {
         </span>
         <span className="spacer" />
         <span className="small muted">原价 {sku.unitOrig} 元/小时 · 毛利底线 {pct(data.floorMargin)} · 课时成本 {data.costPerHour} 元</span>
-        <Button variant="primary" onClick={addScheme}><PixelIcon name="plus" />新增方案</Button>
+        <Button onClick={addScheme} disabled={flow.busy || flow.phase === "unknown"}><PixelIcon name="plus" />新增方案</Button>
+        <Button variant="primary" disabled={!dirty || flow.busy || flow.phase === "unknown"} onClick={preview}><PixelIcon name="eye" />预览保存</Button>
       </div>
+      {dirty && flow.phase === "idle" && <p className="small warn-text price-dirty">有改动还没保存：点「预览保存」生成预览，确认后才写入。</p>}
+      <WriteBox flow={flow} title="价格方案保存预览" onConfirm={confirm} onRepreview={preview} onReread={reread}>
+        {(pv) => <dl className="kv">
+          <dt>SKU</dt><dd>{sku.line} · {sku.name}</dd>
+          <dt>方案</dt><dd>{pv.value.schemes.map((x) => `${x.name}（${x.status}）`).join("、")}</dd>
+          <dt>关联需求</dt><dd>{pv.value.schemes.filter((x) => x.need).map((x) => `${x.name} → ${x.need}`).join("；") || "无"}</dd>
+          <dt>破底线原因</dt><dd>{pv.value.schemes.filter((x) => x.breachReason).map((x) => `${x.name}：${x.breachReason}`).join("；") || "无"}</dd>
+          <dt>写到哪里</dt><dd>工作台本地价格记录；成本和毛利底线仍是演示口径，页面继续标「示例」</dd>
+        </dl>}
+      </WriteBox>
 
       <UnitChart schemes={visible} base={base} tiers={tiers} c={c} hover={hover} setHover={setHover} />
 
@@ -146,7 +187,30 @@ function PriceBoard({ sku, data }) {
         </table>
       </div>
       <p className="small muted price-note">单价 = 总价 ÷（课时 + 赠送）；付费单价 = 总价 ÷ 课时；折扣 = 总价 ÷ 原价；差价相对基准方案。点击总价可以直接改，Enter 保存，Tab / ⇧Tab 换到下 / 上一档，Esc 取消。</p>
-      {toast}
+      <section className="card scheme-settings">
+        <div className="card-head"><h2><PixelIcon name="edit" />方案设置</h2><span className="small muted">活动方案要关联一条已采纳的主线需求；低于毛利底线的方案要写原因</span></div>
+        <table className="grid compact">
+          <thead><tr><th>名称</th><th>类型</th><th>状态</th><th>生效期</th><th>关联需求</th><th>破底线原因</th></tr></thead>
+          <tbody>{schemes.map((x) => {
+            const breach = isBreach(x);
+            return (
+              <tr key={x.id}>
+                <td><input className="cell-input" value={x.name} onChange={(e) => setScheme(x.id, { name: e.target.value })} /></td>
+                <td><select className="cell-input" value={x.kind} onChange={(e) => setScheme(x.id, { kind: e.target.value })}>{["常规", "活动", "赠课"].map((k) => <option key={k}>{k}</option>)}</select></td>
+                <td><select className="cell-input" value={x.status} onChange={(e) => setScheme(x.id, { status: e.target.value })}>{["生效中", "草稿", "历史"].map((k) => <option key={k}>{k}</option>)}</select></td>
+                <td className="nowrap"><input className="cell-input date" value={x.from} placeholder="开始" onChange={(e) => setScheme(x.id, { from: e.target.value.trim() })} /> → <input className="cell-input date" value={x.to} placeholder="长期" onChange={(e) => setScheme(x.id, { to: e.target.value.trim() })} /></td>
+                <td>{x.kind === "活动" || x.needId ? (
+                  <select className="cell-input" value={x.needId || ""} onChange={(e) => { const n = adoptedNeeds.find((k) => k.id === e.target.value); setScheme(x.id, n ? { needId: n.id, need: `${n.seg} · ${n.node}` } : { needId: "", need: "" }); }}>
+                    <option value="">{adoptedNeeds.length ? "选一条已采纳需求" : "还没有已采纳需求"}</option>
+                    {adoptedNeeds.map((n) => <option key={n.id} value={n.id}>{n.seg} · {n.node}</option>)}
+                  </select>) : <span className="muted small">—</span>}
+                  {x.need && !x.needId && <span className="small warn-text">原文「{x.need}」不是已采纳需求，保存前要重新选</span>}</td>
+                <td>{breach ? <input className="cell-input" value={x.breachReason || ""} placeholder="必填：为什么低于底线" onChange={(e) => setScheme(x.id, { breachReason: e.target.value })} /> : <span className="muted small">—</span>}</td>
+              </tr>
+            );
+          })}</tbody>
+        </table>
+      </section>
     </>
   );
 }

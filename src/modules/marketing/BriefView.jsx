@@ -1,47 +1,94 @@
 import { useState } from "react";
-import { PixelIcon, StepProgress, TypeText } from "../../ui/bitmap.jsx";
-import { useApi } from "../../api.js";
+import { PixelIcon } from "../../ui/bitmap.jsx";
+import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Loadable, Modal, MonthSwitch, SampleBadge, StatusMark, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Loadable, MonthSwitch, SampleBadge, StatusMark, Tag, useToast } from "../../ui/components.jsx";
+import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
+import { FeishuExport } from "../../ui/feishu-export.jsx";
 import Thumb from "../../ui/Thumb.jsx";
 import { deliveryMonth } from "../../constants.js";
-import { SAMPLE_BRIEF, SAMPLE_PHRASES } from "../../samples/v3.js";
+import { SAMPLE_PHRASES } from "../../samples/v3.js";
+import { briefPatch, briefText } from "./brief-edit.js";
 
-// 设计 brief（v3）：按月写，骨架固定 7 节。背景、受众从主线需求带入，价格从价格方案带入，带入的地方标出来源。
-// 左边目录一次只看一节（也可以「全部展开」），右边常驻文案助手和句式参考。
+// 设计 brief（v3）：按月写，骨架固定 7 节。背景、受众从已采纳的主线需求带入，价格从生效中的价格方案带入（演示价格不带入）。
+// 页面上直接改文字和表格；改动先攒在页面里，点「预览保存」生成预览，确认后保存到工作台并回读核对。你改过的字段以后不会被自动覆盖。
+// 导出飞书只新建文档：预览写清目标文件夹、标题和全文，确认后才创建。
 const SECTIONS = ["项目背景与目标", "目标受众", "项目时间线", "详细文案与框架", "交付物清单与规格", "负责人与审批", "附件"];
+const STATUS = [["todo", "待写"], ["part", "写了一部分"], ["done", "完成"]];
+const TABLES = {
+  audience: { sec: 2, cols: ["物料", "面向人群", "当前状态与待办"] },
+  timeline: { sec: 3, cols: ["物料", "交付时间", "优先级", "对接人", "说明"] },
+  specs: { sec: 5, cols: ["物料", "比例", "尺寸", "格式"] },
+  owners: { sec: 6, cols: ["角色", "负责人", "状态"] },
+};
 
 export default function BriefView() {
   const [month, setMonth] = useState(deliveryMonth());
-  const state = useApi(`/api/v3/briefs/${month}`, SAMPLE_BRIEF);
-  return <Loadable state={state} name="设计 brief" big>{(brief) => <Brief key={month} brief={brief} month={month} setMonth={setMonth} sample={state.isSample ? state.task : null} />}</Loadable>;
+  const state = useApi(`/api/v3/briefs/${month}`);
+  const [fresh, setFresh] = useState(null); // 保存后回读到的 brief
+  const [notice, setNotice] = useState("");
+  const brief = fresh?.month === month ? fresh : null;
+  return <Loadable state={state} name="设计 brief" big>{(b) => { const cur = brief || b; return <><SavedNote text={notice} onClose={() => setNotice("")} /><Brief key={`${month}-${cur.version}`} brief={cur} month={month} setMonth={(m) => { setFresh(null); setNotice(""); setMonth(m); }} onSaved={(back, text = "") => { setFresh(back); setNotice(text); }} onEdit={() => setNotice("")} /></>; }}</Loadable>;
 }
 
 const Source = ({ children }) => <span className="source-tag"><PixelIcon name="link" />{children}</span>;
 
-function Brief({ brief, month, setMonth, sample }) {
-  const [sec, setSec] = useState(4);
+// 看起来像正文的输入框：多行自动撑高。
+function Text({ value, onChange, placeholder = "待写", className = "" }) {
+  return <textarea className={`doc-input ${className}`} rows={1} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)}
+    ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; } }} />;
+}
+
+function Brief({ brief, month, setMonth, onSaved, onEdit }) {
+  const [sec, setSec] = useState(1);
   const [all, setAll] = useState(false);
-  const [exp, setExp] = useState(null);
-  const [draft, setDraft] = useState(null);
+  const [draft, setDraft] = useState(() => structuredClone(brief));
   const [toast, showToast] = useToast();
-  const done = Object.values(brief.status).filter((s) => s === "done").length;
+  const flow = useWriteFlow();
+  const patch = briefPatch(brief, draft);
+  const changed = Object.keys(patch);
+  const edit = (fn) => { if (flow.busy || flow.phase === "unknown") return; setDraft((d) => { const n = structuredClone(d); fn(n); return n; }); flow.reset(); onEdit(); };
+  const done = Object.values(draft.status).filter((s) => s === "done").length;
   const show = (n) => all || sec === n;
+  const copy = async (text, label) => { try { await navigator.clipboard.writeText(text); showToast(`已复制${label}`); } catch { showToast("复制失败：浏览器不允许写剪贴板"); } };
+  const preview = () => flow.preview(() => apiSend("POST", `/api/v3/briefs/${month}/preview`, { patch }));
+  const confirm = () => flow.confirm(
+    (pv) => apiSend("PUT", `/api/v3/briefs/${month}`, { previewId: pv.previewId, confirm: true }),
+    async (receipt, pv) => {
+      const back = await apiSend("GET", `/api/v3/briefs/${month}`);
+      const ok = back.version === pv.value.version && Object.keys(patch).every((k) => JSON.stringify(back[k]) === JSON.stringify(pv.value[k]));
+      if (ok) onSaved(back, `已保存为 ${back.version}，回读核对一致`);
+      return ok;
+    },
+  );
+  const reread = async () => { const back = await apiSend("GET", `/api/v3/briefs/${month}`); flow.resolve(); onSaved({ ...back }); };
+  const head = (n, extra) => (
+    <h3><span className="tnum">{n}</span>{SECTIONS[n - 1]}{extra}
+      <span className="spacer" />
+      <select className="sec-status" value={draft.status[n] || "todo"} onChange={(e) => edit((d) => { d.status[n] = e.target.value; })} aria-label={`第 ${n} 节状态`}>{STATUS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+    </h3>
+  );
   return (
     <>
       <div className="toolbar">
-        <MonthSwitch month={month} onChange={setMonth} mark={month === deliveryMonth() ? "交付月" : ""} />
-        <span className="small muted">{brief.version} · 最后编辑 {brief.editedAt} · 7 节完成 {done} 节</span>
+        <MonthSwitch month={month} onChange={(m) => { if (!changed.length || confirm_(`${month} 有 ${changed.length} 处改动还没保存，切换月份会丢掉。继续？`)) setMonth(m); }} mark={month === deliveryMonth() ? "交付月" : ""} />
+        <span className="small muted">{brief.version} · {brief.editedAt ? `最后保存 ${brief.editedAt}` : "还没保存过"} · 7 节完成 {done} 节</span>
         <span className="spacer" />
-        {sample && <SampleBadge task={sample} />}
-        <Button onClick={() => showToast("已复制 brief 全文（Markdown，可直接贴进飞书）")}><PixelIcon name="copy" />复制全文</Button>
-        <Button variant="primary" onClick={() => setExp("preview")}><PixelIcon name="external" />导出飞书文档</Button>
+        <Button onClick={() => copy(briefText(draft), " brief 全文")}><PixelIcon name="copy" />复制全文</Button>
+        <Button variant="primary" disabled={!changed.length || flow.busy || flow.phase === "unknown"} onClick={preview}><PixelIcon name="eye" />预览保存{changed.length ? `（${changed.length} 处）` : ""}</Button>
       </div>
+      <WriteBox flow={flow} title="brief 保存预览" onConfirm={confirm} onRepreview={preview} onReread={reread}>
+        {(pv) => <dl className="kv">
+          <dt>月份</dt><dd className="tnum">{month} · 保存后版本 {pv.value.version}</dd>
+          <dt>改动</dt><dd>{changed.map((k) => FIELD_LABEL[k] || k).join("、")}</dd>
+          <dt>写到哪里</dt><dd>工作台本地；改过的字段以后不会被需求或价格自动覆盖</dd>
+        </dl>}
+      </WriteBox>
       <div className="brief-layout">
         <nav className="brief-outline" aria-label="章节">
           {SECTIONS.map((t, i) => (
             <button key={t} type="button" className={!all && sec === i + 1 ? "active" : ""} onClick={() => { setAll(false); setSec(i + 1); }}>
-              <span className="tnum">{i + 1}</span><span>{t}</span><StatusMark state={brief.status[i + 1] || "todo"} />
+              <span className="tnum">{i + 1}</span><span>{t}</span><StatusMark state={draft.status[i + 1] || "todo"} />
             </button>
           ))}
           <button type="button" className={`outline-all${all ? " active" : ""}`} onClick={() => setAll((v) => !v)}><PixelIcon name="menu" />{all ? "只看当前一节" : "全部展开"}</button>
@@ -49,87 +96,96 @@ function Brief({ brief, month, setMonth, sample }) {
 
         <article className="doc">
           <span className="label">design brief · {month}</span>
-          <h2>{brief.title}</h2>
-          {show(1) && <section><h3><span className="tnum">1</span>项目背景与目标<Source>来自主线需求</Source></h3>
-            <p contentEditable suppressContentEditableWarning className="editable">{brief.background.text}</p>
-            <ol className="goals">{brief.background.goals.map((g) => <li key={g} contentEditable suppressContentEditableWarning className="editable">{g}</li>)}</ol></section>}
-          {show(2) && <section><h3><span className="tnum">2</span>目标受众<Source>来自主线需求</Source></h3>
-            <table className="grid compact"><thead><tr><th>物料</th><th>面向人群</th><th>当前状态与待办</th></tr></thead>
-              <tbody>{brief.audience.map((r) => <tr key={r[0]}>{r.map((c, i) => <td key={i} contentEditable suppressContentEditableWarning className="editable">{c}</td>)}</tr>)}</tbody></table></section>}
-          {show(3) && <section><h3><span className="tnum">3</span>项目时间线</h3>
-            <table className="grid compact"><thead><tr><th>物料</th><th>交付时间</th><th>优先级</th><th>对接人</th><th>说明</th></tr></thead>
-              <tbody>{brief.timeline.map((r) => <tr key={r[0]}><td>{r[0]}</td><td className="tnum">{r[1]}</td><td><Tag tone={r[2] === "P0" ? "orange" : "neutral"}>{r[2]}</Tag></td><td>@{r[3]}</td><td>{r[4]}</td></tr>)}</tbody></table></section>}
-          {show(4) && <section><h3><span className="tnum">4</span>详细文案与框架</h3>
-            {brief.items.map((it) => <BriefItem key={it.id} it={it} onAsk={() => setDraft(it.title)} />)}</section>}
-          {show(5) && <section><h3><span className="tnum">5</span>交付物清单与规格</h3>
-            <table className="grid compact"><thead><tr><th>物料</th><th>比例</th><th>尺寸</th><th>格式</th></tr></thead>
-              <tbody>{brief.specs.map((r) => <tr key={r[0]}><td>{r[0]}</td><td className="tnum">{r[1]}</td><td className="tnum">{r[2]}</td><td>{r[3]}</td></tr>)}</tbody></table></section>}
-          {show(6) && <section><h3><span className="tnum">6</span>负责人与审批</h3>
-            <dl className="kv">{brief.owners.flatMap((r) => [<dt key={r[0]}>{r[0]}</dt>, <dd key={`${r[0]}-v`}>{r[1]}{r[2] && <span className="signal small"> · {r[2]}</span>}</dd>])}</dl></section>}
-          {show(7) && <section><h3><span className="tnum">7</span>附件</h3><div className="dashed-drop"><PixelIcon name="upload" />拖入附件，或从 NAS 选择</div></section>}
+          <h2><Text value={draft.title} onChange={(v) => edit((d) => { d.title = v; })} placeholder="标题" className="is-title" /></h2>
+          {show(1) && <section>{head(1, draft.background.from && <Source>来自 {draft.background.from}</Source>)}
+            <Text value={draft.background.text} onChange={(v) => edit((d) => { d.background.text = v; })} placeholder="背景：交付月要解决什么问题（已采纳的主线需求会带入这里）" />
+            <ol className="goals">{draft.background.goals.map((g, k) => <li key={k}><Text value={g} onChange={(v) => edit((d) => { d.background.goals[k] = v; })} /><button type="button" className="icon-btn" title="删掉这条目标" onClick={() => edit((d) => { d.background.goals.splice(k, 1); })}><PixelIcon name="close" /></button></li>)}</ol>
+            <button type="button" className="link-btn" onClick={() => edit((d) => { d.background.goals.push(""); })}><PixelIcon name="plus" />加一条目标</button></section>}
+          {Object.entries(TABLES).map(([key, t]) => show(t.sec) && (
+            <section key={key}>{head(t.sec)}
+              <RowsTable cols={t.cols} rows={draft[key]} onChange={(fn) => edit((d) => fn(d[key]))} />
+            </section>
+          )).slice(0, 2)}
+          {show(4) && <section>{head(4)}
+            {!draft.items.length ? <p className="small muted">没有带入的物料：交付月还没有已采纳的主线需求，或没有生效中的真实价格方案（演示价格不会带入）。</p>
+              : draft.items.map((it, k) => <BriefItem key={it.id} it={it} onChange={(fn) => edit((d) => fn(d.items[k]))} />)}</section>}
+          {Object.entries(TABLES).map(([key, t]) => show(t.sec) && (
+            <section key={key}>{head(t.sec)}
+              <RowsTable cols={t.cols} rows={draft[key]} onChange={(fn) => edit((d) => fn(d[key]))} />
+            </section>
+          )).slice(2)}
+          {show(7) && <section>{head(7)}<div className="dashed-drop"><PixelIcon name="upload" />附件上传接口还没有（见 V3 接口清单）；导出时这一节为空。</div></section>}
           {!all && (
             <div className="doc-pager">
               <Button disabled={sec === 1} onClick={() => setSec(sec - 1)}><PixelIcon name="left" />{sec > 1 ? SECTIONS[sec - 2] : "上一节"}</Button>
               <Button disabled={sec === 7} onClick={() => setSec(sec + 1)}>{sec < 7 ? SECTIONS[sec] : "下一节"}<PixelIcon name="right" /></Button>
             </div>
           )}
+          <div className="doc-export">
+            <FeishuExport key={month} what=" brief " disabled={changed.length > 0} disabledNote="有改动还没保存：先保存，导出的是已保存的版本"
+              previewPath={`/api/v3/briefs/${month}/export-preview`} confirmPath={`/api/v3/briefs/${month}/export`} statusBase={`/api/v3/briefs/${month}/exports`} />
+            {changed.length > 0 && <span className="small muted">有改动还没保存；导出的是已保存的版本，先保存再导出。</span>}
+          </div>
         </article>
 
         <aside className="brief-rail">
           <section className="card">
-            <div className="card-head"><h2><PixelIcon name="agent" />文案助手</h2><a className="link" href={href("assistants")}>知识库</a></div>
+            <div className="card-head"><h2><PixelIcon name="agent" />文案助手</h2><a className="link" href={href("assistants")}>去对话</a></div>
             <div className="card-body stack-sm">
-              {draft ? <div className="ai-box"><span className="label"><PixelIcon name="spark" />{draft} · 草稿</span>
-                <TypeText key={draft} text={draft.includes("九宫格") ? "P5 留给「冲分」大字；P9 写「11.30 前，把 6 小时用在最该补的那门课」，配二维码和「先排一次考试日程」。" : "主标题「3,990 元 5 小时，课时单价不到 800」，副标题写赠课：「10 小时送 1 小时，送的是课时」。"} />
-                <div className="row"><Button className="btn btn-xs" onClick={() => showToast("已插入到当前段落（示例，未写入）")}>插入</Button><button type="button" className="link-btn" onClick={() => setDraft(null)}>丢弃</button></div></div>
-                : <p className="small muted">在第 4 节的物料上点「让助手起草」，草稿会出现在这里，确认后再插入。</p>}
-              <div className="label">句式参考 · 点击复制</div>
-              {SAMPLE_PHRASES.map(([k, t]) => <button type="button" key={k} className="phrase" onClick={() => showToast(`已复制：${t}`)}><span className="label">{k}</span>{t}</button>)}
+              <p className="small muted">需要起草时去 Agent 页和文案助手对话，确认后的文字再贴回对应段落。这里不自动生成。</p>
+              <div className="label">句式参考 · 点击复制 <SampleBadge /></div>
+              <p className="small muted">演示句式，不是知识库里沉淀的内容。</p>
+              {SAMPLE_PHRASES.map(([k, t]) => <button type="button" key={k} className="phrase" onClick={() => copy(t, `：${t}`)}><span className="label">{k}</span>{t}</button>)}
             </div>
           </section>
         </aside>
       </div>
-      <Modal open={!!exp} onClose={() => setExp(null)} icon="external" title="导出飞书文档 · 预览"
-        footer={<><Button onClick={() => setExp(null)}>取消</Button><Button variant="primary" disabled={exp === "run"} onClick={() => setExp("run")}>确认导出</Button></>}>
-        <dl className="kv">
-          <dt>目标位置</dt><dd>常浩的知识库 / 01 营销月档案 /</dd>
-          <dt>文档名</dt><dd>{month} 设计 brief · 双11 冲分节</dd>
-          <dt>内容</dt><dd>7 节 · {brief.items.length} 个物料 · 参考图以图片插入</dd>
-          <dt>方式</dt><dd>只新建，不覆盖已有文档；写完回读核对章节标题</dd>
-        </dl>
-        {exp === "run" && <div style={{ marginTop: 16 }}><StepProgress label="写入飞书（示例）" /></div>}
-      </Modal>
       {toast}
     </>
   );
 }
 
-function BriefItem({ it, onAsk }) {
-  if (it.kind === "skip") return <div className="brief-item"><h4>{it.title}</h4><div className="dashed-drop"><PixelIcon name="close" />{it.note}</div></div>;
+const FIELD_LABEL = { title: "标题", background: "项目背景与目标", audience: "目标受众", timeline: "项目时间线", items: "详细文案与框架", specs: "交付物清单与规格", owners: "负责人与审批", status: "各节状态" };
+const confirm_ = (text) => window.confirm(text);
+
+function RowsTable({ cols, rows, onChange }) {
   return (
-    <div className="brief-item">
-      <h4>{it.title}{it.priceFrom && <Source>{it.priceFrom}</Source>}<span className="spacer" /><button type="button" className="link-btn" onClick={onAsk}><PixelIcon name="spark" />让助手起草</button></h4>
-      {it.blocks && (
-        <table className="grid compact brief-blocks"><thead><tr><th>涉及板块</th><th>内容</th><th>说明 · 示例</th></tr></thead>
-          <tbody>{it.blocks.map((b) => <tr key={b[0]}><td className="k">{b[0]}</td><td contentEditable suppressContentEditableWarning className="editable">{b[1]}</td><td contentEditable suppressContentEditableWarning className="editable muted">{b[2]}</td></tr>)}</tbody></table>
-      )}
-      {it.cells && (
-        <div className="p9">
-          {[0, 1, 2].map((i) => <Cell key={i} n={i} text={it.cells[i]} />)}
-          <div className="p9-cell span3"><b>P4–P6 · 横跨三格</b><span contentEditable suppressContentEditableWarning className="editable">{it.cells[3]}</span></div>
-          {[6, 7, 8].map((i) => <Cell key={i} n={i} text={it.cells[i]} />)}
-        </div>
-      )}
-      <div className="ref-strip">
-        {it.refs.map((r) => <figure key={r.title} className="ref-slot"><Thumb kind={r.kind} big={r.big} title={r.title} accent={r.accent} /><figcaption>参考 · {r.title}</figcaption></figure>)}
-        {it.reuse ? <figure className="ref-slot is-reuse"><Thumb kind="poster" big={it.reuse.big} title={it.reuse.title} /><figcaption>沿用往期 · {it.reuse.month} {it.reuse.title}</figcaption></figure>
-          : <a className="ref-slot is-add" href={href("marketing", "materials")}><PixelIcon name="plus" />从物料墙选择沿用</a>}
-        <a className="ref-slot is-add" href={href("marketing", "materials", "refs")}><PixelIcon name="canvas" />从设计参考添加</a>
-      </div>
-    </div>
+    <>
+      <table className="grid compact brief-table">
+        <thead><tr>{cols.map((c) => <th key={c}>{c}</th>)}<th aria-label="操作" /></tr></thead>
+        <tbody>
+          {!rows.length && <tr><td colSpan={cols.length + 1} className="muted small">还没有内容</td></tr>}
+          {rows.map((r, i) => (
+            <tr key={i}>{r.map((c, j) => <td key={j}><Text value={c} placeholder="" onChange={(v) => onChange((list) => { list[i][j] = v; })} /></td>)}
+              <td className="row-del"><button type="button" className="icon-btn" title="删掉这一行" onClick={() => onChange((list) => { list.splice(i, 1); })}><PixelIcon name="close" /></button></td></tr>
+          ))}
+        </tbody>
+      </table>
+      <button type="button" className="link-btn" onClick={() => onChange((list) => { list.push(cols.map(() => "")); })}><PixelIcon name="plus" />加一行</button>
+    </>
   );
 }
 
-function Cell({ n, text }) {
-  return <div className={`p9-cell${text ? "" : " is-empty"}`}><b>P{n + 1}</b><span contentEditable suppressContentEditableWarning className="editable">{text || "待写"}</span></div>;
+function BriefItem({ it, onChange }) {
+  if (it.kind === "skip") return <div className="brief-item"><h4>{it.title}</h4><Text value={it.note} onChange={(v) => onChange((x) => { x.note = v; })} /></div>;
+  return (
+    <div className="brief-item">
+      <h4>{it.title}{it.priceFrom && <Source>{it.priceFrom}</Source>}</h4>
+      {it.blocks && (
+        <table className="grid compact brief-blocks"><thead><tr><th>涉及板块</th><th>内容</th><th>说明 · 示例</th></tr></thead>
+          <tbody>{it.blocks.map((b, i) => <tr key={i}><td className="k">{b[0]}</td><td><Text value={b[1]} onChange={(v) => onChange((x) => { x.blocks[i][1] = v; })} /></td><td><Text value={b[2]} className="muted" onChange={(v) => onChange((x) => { x.blocks[i][2] = v; })} /></td></tr>)}</tbody></table>
+      )}
+      {it.cells && (
+        <div className="p9">
+          {it.cells.map((c, i) => <div key={i} className={`p9-cell${c ? "" : " is-empty"}`}><b>P{i + 1}</b><Text value={c} onChange={(v) => onChange((x) => { x.cells[i] = v; })} /></div>)}
+        </div>
+      )}
+      <div className="ref-strip">
+        {(it.refs || []).map((r) => <figure key={r.title} className="ref-slot"><Thumb kind={r.kind} big={r.big} title={r.title} accent={r.accent} /><figcaption>参考 · {r.title}</figcaption></figure>)}
+        {it.reuse ? <figure className="ref-slot is-reuse"><Thumb kind="poster" big={it.reuse.big} title={it.reuse.title} /><figcaption>沿用往期 · {it.reuse.month} {it.reuse.title}</figcaption></figure> : null}
+        <a className="ref-slot is-add" href={href("marketing", "materials", "refs")}><PixelIcon name="canvas" />去设计参考</a>
+      </div>
+      {it.kind === "price" && <Tag tone="neutral">价格来自生效中的价格方案</Tag>}
+    </div>
+  );
 }

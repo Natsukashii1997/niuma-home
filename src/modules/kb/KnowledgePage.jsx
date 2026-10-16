@@ -1,18 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
-import { useApi } from "../../api.js";
-import { Button, Loadable, Modal, PageHeader, SampleBadge, Segmented, StatStrip, Tag, useToast } from "../../ui/components.jsx";
-import { SAMPLE_KB } from "../../samples/v3.js";
+import { PixelIcon } from "../../ui/bitmap.jsx";
+import { apiSend, useApi } from "../../api.js";
+import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
+import { toBackendOps } from "./kb-ops.js";
+import { Button, Loadable, PageHeader, Segmented, StatStrip, Tag, useToast } from "../../ui/components.jsx";
 
 // 知识库整理（v3）：一棵可编辑的树 + 暂存区。拖动、多选、剪切粘贴、重命名、新建目录都先进暂存，可撤销；
 // 预览确认后一次同步到飞书（第一批只做移动、重命名、新建目录；不删除，要删的先移到「99 待清理」）。
 // 第 3 轮：搜索（标题 / 标签 / 正文摘要）、详情面板（位置、更新、标签、摘要、被谁引用）、健康检查（点一项只看这类问题）。
 // kb/<文档 id>：⌘K 打开某篇文档时直接选中它，右栏显示详情
 export default function KnowledgePage({ route = [] }) {
-  const state = useApi("/api/v3/kb/tree", SAMPLE_KB);
-  return <><PageHeader title="知识库" subtitle="整理「常浩的知识库」：先在这里整理，预览确认后再同步飞书" />
-    <Loadable state={state} name="知识库目录" big>{(kb) => <Organizer key={route[0] || ""} kb={kb} initialSel={route[0]} sample={state.isSample ? state.task : null} />}</Loadable></>;
+  const state = useApi("/api/v3/kb/tree");
+  return <><PageHeader title="知识库" subtitle="整理「常浩的知识库」：先在这里暂存，预览确认后才同步飞书（只移动、重命名、新建目录，不删除）" />
+    <Loadable state={state} name="知识库目录" big>{(kb) => <Organizer key={route[0] || ""} initialKb={kb} initialSel={route[0]} />}</Loadable></>;
 }
+
+// 上一次确认同步的操作记录编号：页面刷新后也能只读核对（结果不明时后端会锁住整个空间的写入）。
+const LAST_OP = "work-desk:kb-last-op";
+const rememberOp = (id) => { try { localStorage.setItem(LAST_OP, id); } catch { /* 存不了就只在本页保留 */ } };
+const lastOp = () => { try { return localStorage.getItem(LAST_OP) || ""; } catch { return ""; } };
 
 const clone = (t) => JSON.parse(JSON.stringify(t));
 function find(tree, id, parent = null) {
@@ -42,6 +48,7 @@ const ISSUES = [
   ["dup", "疑似重复", "标题和正文与另一篇很像", "保留一份，另一份移到「99 待清理」"],
   ["stale", "半年未更新", `超过 ${STALE_DAYS} 天没改过`, "只是提醒：确认内容是否还有效"],
   ["empty", "空目录", "目录里没有文档", "同步不删除目录，确认没用后在飞书手动删"],
+  ["error", "正文没读到", "这篇的正文读取失败或类型不支持，字数和摘要未知", "到飞书打开确认；不是空文档"],
 ];
 function healthOf(tree, docs) {
   const map = new Map();
@@ -49,6 +56,7 @@ function healthOf(tree, docs) {
   const walk = (nodes, parent) => nodes.forEach((n) => {
     if (n.kids) { if (!n.kids.length && n.name !== "99 待清理") add(n.id, "empty"); walk(n.kids, n); return; }
     const d = docs[n.id] || {};
+    if (d.error) add(n.id, "error");
     if (!parent) add(n.id, "root");
     if (/^未命名/.test(n.name)) add(n.id, "unnamed");
     if (d.dupOf) add(n.id, "dup");
@@ -65,17 +73,59 @@ function Mark({ text, q }) {
   return <>{text.slice(0, i)}<mark>{text.slice(i, i + q.length)}</mark>{text.slice(i + q.length)}</>;
 }
 
-function Organizer({ kb, initialSel, sample }) {
-  const [tree, setTree] = useState(() => clone(kb.tree));
+function Organizer({ initialKb, initialSel }) {
+  const [kb, setKb] = useState(initialKb);
+  const [tree, setTree] = useState(() => clone(initialKb.tree));
+  const kbTree = kb.tree;
   const [history, setHistory] = useState([]);
   const [ops, setOps] = useState([]);
-  const [sel, setSel] = useState(() => new Set(initialSel && find(kb.tree, initialSel) ? [initialSel] : []));
-  const [open, setOpen] = useState(() => new Set(kb.tree.filter((n) => n.kids).map((n) => n.id)));
+  const [sel, setSel] = useState(() => new Set(initialSel && find(initialKb.tree, initialSel) ? [initialSel] : []));
+  const [open, setOpen] = useState(() => new Set(initialKb.tree.filter((n) => n.kids).map((n) => n.id)));
   const [renaming, setRenaming] = useState(null);
   const [clip, setClip] = useState(null);
-  const [preview, setPreview] = useState(null);
   const [toast, showToast] = useToast();
-  const origin = useMemo(() => { const m = new Map(); const walk = (ns, p) => ns.forEach((n) => { m.set(n.id, p); n.kids && walk(n.kids, n.name); }); walk(kb.tree, "根目录"); return m; }, [kb.tree]);
+  const flow = useWriteFlow();
+  const preview = flow.phase !== "idle";
+  const origin = useMemo(() => { const m = new Map(); const walk = (ns, p) => ns.forEach((n) => { m.set(n.id, p); n.kids && walk(n.kids, n.name); }); walk(kbTree, "根目录"); return m; }, [kbTree]);
+  const [check, setCheck] = useState("");
+  const syncBox = useRef(null);
+  useEffect(() => { if (flow.phase !== "idle") syncBox.current?.scrollIntoView({ block: "nearest" }); }, [flow.phase]);
+  const [observed, setObserved] = useState("");
+  // 用飞书回读到的目录替换页面：暂存清空，以飞书为准。
+  const refresh = (fresh) => { setKb(fresh); setTree(clone(fresh.tree)); setOps([]); setHistory([]); };
+  const nameOf = (id) => (id === "" ? "根目录" : find(tree, id)?.node.name || find(kbTree, id)?.node.name || id);
+  const previewSync = () => { setCheck(""); flow.preview(() => apiSend("POST", "/api/v3/kb/preview", { ops: toBackendOps(ops) })); };
+  const confirmSync = () => flow.confirm(
+    async (pv) => {
+      rememberOp(pv.previewId);
+      try { return await apiSend("POST", "/api/v3/kb/confirm", { previewId: pv.previewId, confirm: true }); }
+      catch (e) {
+        // 后端「结果尚未核实」也是 409：再读一次操作记录，确认是不是已经开始写了。
+        const st = await apiSend("GET", `/api/v3/kb/operations/${encodeURIComponent(pv.previewId)}`).catch(() => null);
+        if (!st || ["unknown", "writing", "checking"].includes(st.state)) throw Object.assign(e, { receipt: { operationId: pv.previewId, status: st?.state || "未知" } });
+        throw e;
+      }
+    },
+    async (receipt) => {
+      const fresh = await apiSend("GET", "/api/v3/kb/tree");
+      refresh(fresh);
+      if (receipt.state === "verified") return true;
+      return `只完成了 ${receipt.completed?.length || 0} / ${(receipt.completed?.length || 0) + (receipt.remaining?.length || 0)} 项（${receipt.state === "partial" ? "部分完成" : "没有执行"}）。页面已按飞书当前目录刷新；剩下的要重新暂存、预览`;
+    },
+  );
+  // 结果不明：只读核对原操作记录，绝不重新发送写入。新建目录的响应丢了时，要你在飞书里看到新目录、填上它的节点 token 才能核对。
+  async function reconcile(extra = {}) {
+    const id = flow.receipt?.operationId || lastOp();
+    if (!id) { setCheck("没有操作记录编号，无法自动核对；请到飞书目录人工检查。工作台不会重试。"); return; }
+    setCheck("正在只读核对…");
+    try {
+      const r = await apiSend("POST", `/api/v3/kb/operations/${encodeURIComponent(id)}/reconcile`, extra);
+      if (r.state === "preview") { setCheck("这条记录还没开始执行，不需要核对。"); flow.resolve(); return; }
+      refresh(await apiSend("GET", "/api/v3/kb/tree"));
+      flow.resolve();
+      setCheck(r.state === "verified" ? `已核对：${r.completed.length} 项都已完成` : `已核对：完成 ${r.completed?.length || 0} 项，${r.remaining?.length || 0} 项没做（${r.state === "partial" ? "部分完成" : "没有执行"}）；剩下的要重新预览`);
+    } catch (e) { setCheck(`仍未能核实：${e.message}。保持锁定，不会重试。`); }
+  }
   const box = useRef(null);
   const docs = kb.docs || {};
   const [q, setQ] = useState("");
@@ -115,7 +165,7 @@ function Organizer({ kb, initialSel, sample }) {
       if (!hit || (target && contains(hit.node, folderId)) || hit.parent?.id === (folderId || undefined)) continue;
       const node = detach(next, id);
       (target ? (target.kids ||= []) : next).push(node);
-      moved.push({ type: "move", id, name: node.name, from: hit.parent?.name || "根目录", to: target?.name || "根目录" });
+      moved.push({ type: "move", id, name: node.name, from: hit.parent?.name || "根目录", to: target?.name || "根目录", parentId: folderId || "" });
     }
     if (moved.length) { commit(next, moved); if (folderId) setOpen((o) => new Set(o).add(folderId)); showToast(`已暂存：移动 ${moved.length} 项到「${target?.name || "根目录"}」`); }
   };
@@ -131,28 +181,28 @@ function Organizer({ kb, initialSel, sample }) {
     const target = [...sel].map((s) => find(next, s)?.node).find((n) => n && n.kids);
     const node = { id, name: "新建目录", kids: [], isNew: true };
     (target ? target.kids : next).push(node);
-    commit(next, { type: "mkdir", id, name: node.name, to: target?.name || "根目录" });
+    commit(next, { type: "mkdir", id, name: node.name, to: target?.name || "根目录", parentId: target?.id || "" });
     setOpen((o) => new Set(o).add(id).add(target?.id)); setRenaming(id);
   };
   const toTrash = () => {
     let next = clone(tree);
     let trash = next.find((n) => n.name === "99 待清理");
     const extra = [];
-    if (!trash) { trash = { id: `t${Date.now()}`, name: "99 待清理", kids: [], isNew: true }; next.push(trash); extra.push({ type: "mkdir", id: trash.id, name: trash.name, to: "根目录" }); }
+    if (!trash) { trash = { id: `t${Date.now()}`, name: "99 待清理", kids: [], isNew: true }; next.push(trash); extra.push({ type: "mkdir", id: trash.id, name: trash.name, to: "根目录", parentId: "" }); }
     const moved = [];
-    for (const id of sel) { const hit = find(next, id); if (!hit || hit.node === trash) continue; const node = detach(next, id); trash.kids.push(node); moved.push({ type: "move", id, name: node.name, from: hit.parent?.name || "根目录", to: trash.name }); }
+    for (const id of sel) { const hit = find(next, id); if (!hit || hit.node === trash) continue; const node = detach(next, id); trash.kids.push(node); moved.push({ type: "move", id, name: node.name, from: hit.parent?.name || "根目录", to: trash.name, parentId: trash.id }); }
     if (moved.length) { commit(next, [...extra, ...moved]); setSel(new Set()); showToast(`已移到「99 待清理」${moved.length} 项，需要在飞书里手动删除`); }
   };
   const applyRules = () => {
     const next = clone(tree); const staged = [];
-    const folderFor = (name) => { let f = next.find((n) => n.name === name); if (!f) { f = { id: `r${name}`, name, kids: [], isNew: true }; next.push(f); staged.push({ type: "mkdir", id: f.id, name, to: "根目录" }); } return f; };
+    const folderFor = (name) => { let f = next.find((n) => n.name === name); if (!f) { f = { id: `r${Date.now()}${staged.length}`, name, kids: [], isNew: true }; next.push(f); staged.push({ type: "mkdir", id: f.id, name, to: "根目录", parentId: "" }); } return f; };
     const files = []; const walk = (ns) => ns.forEach((n) => { if (n.file) files.push(n.id); if (n.kids) walk(n.kids); }); walk(next);
     for (const id of files) {
       const hit = find(next, id); const t = hit.node.name;
       const dest = /brief/i.test(t) ? "01 营销月档案" : /日志|Q&A/.test(t) ? "03 管培带教" : /^未命名/.test(t) ? "99 待清理" : /会议纪要/.test(t) ? "04 会议纪要" : null;
       if (!dest || hit.parent?.name === dest) continue;
       const f = folderFor(dest); const node = detach(next, id); f.kids.push(node);
-      staged.push({ type: "move", id, name: node.name, from: hit.parent?.name || "根目录", to: dest });
+      staged.push({ type: "move", id, name: node.name, from: hit.parent?.name || "根目录", to: dest, parentId: f.id });
     }
     if (staged.length) { commit(next, staged); setOpen(new Set(next.filter((n) => n.kids).map((n) => n.id))); showToast(`规则命中 ${staged.filter((o) => o.type === "move").length} 个文档，已暂存，可撤销`); }
   };
@@ -160,7 +210,7 @@ function Organizer({ kb, initialSel, sample }) {
   useEffect(() => {
     const key = (e) => {
       if (!box.current?.contains(document.activeElement) && document.activeElement !== document.body) return;
-      if (renaming || preview) return;
+      if (renaming || preview) return; // 预览或同步期间不改暂存
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) return; // 在搜索框里打字时不触发树的快捷键
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); undo(); }
@@ -177,14 +227,15 @@ function Organizer({ kb, initialSel, sample }) {
   const pick = (e, id) => {
     setSel((old) => { const s = new Set(e.metaKey || e.ctrlKey || e.shiftKey ? old : []); if (s.has(id) && (e.metaKey || e.ctrlKey)) s.delete(id); else s.add(id); return s; });
   };
-  const Node = ({ n, depth }) => {
+  // 用渲染函数而不是在这里定义组件：内部定义的组件每次渲染都是新类型，点一下整棵树就重建，双击改名、拖动都会失效。
+  const renderNode = (n, depth) => {
     const isOpen = filtering || open.has(n.id);
     const hit = hitOf(n);
     const probs = health.get(n.id) || [];
     const movedFrom = origin.get(n.id) && origin.get(n.id) !== pathOf(tree, n.id) ? origin.get(n.id) : null;
     const renamed = ops.find((o) => o.type === "rename" && o.id === n.id);
     return (
-      <li>
+      <li key={n.id}>
         <div className={`kb-node${sel.has(n.id) ? " is-sel" : ""}${movedFrom ? " is-moved" : ""}${n.isNew ? " is-new" : ""}`} style={{ paddingLeft: 8 + depth * 18 }}
           draggable onDragStart={(e) => { e.dataTransfer.setData("text/plain", JSON.stringify(sel.has(n.id) ? [...sel] : [n.id])); }}
           onDragOver={(e) => { if (n.kids) { e.preventDefault(); e.currentTarget.classList.add("is-drop"); } }}
@@ -202,7 +253,7 @@ function Organizer({ kb, initialSel, sample }) {
           {movedFrom && <span className="kb-op is-move">← {movedFrom}</span>}
           {n.kids && <span className="tnum small muted kb-count">{n.kids.length}</span>}
         </div>
-        {n.kids && isOpen && n.kids.length > 0 && <ul>{n.kids.map((k) => <Node key={k.id} n={k} depth={depth + 1} />)}</ul>}
+        {n.kids && isOpen && n.kids.length > 0 && <ul>{n.kids.map((k) => renderNode(k, depth + 1))}</ul>}
       </li>
     );
   };
@@ -216,12 +267,14 @@ function Organizer({ kb, initialSel, sample }) {
           return { label, value: n, foot: why, tone: n ? (k === "stale" ? "muted" : "warn") : "ok", active: issue === k, disabled: !n, onClick: () => setIssue(issue === k ? "" : k) };
         }),
       ]} />
+      {(kb.sourceError || kb.limitations?.length > 0) && (
+        <div className="warn kb-source-note"><PixelIcon name="alert" /><span>{kb.sourceError ? `${kb.sourceError}：读不到的文档字数和摘要未知，不算空文档，健康检查里标「正文没读到」。` : ""}{kb.limitations?.length ? `来源限制：${kb.limitations.join("；")}。` : ""}{kb.scopeNote ? ` ${kb.scopeNote}` : ""}</span></div>
+      )}
       <div className="kb-layout cols-5-7">
       <section className="card kb-tree-card">
         <div className="card-head">
           <h2><PixelIcon name="kb" />{kb.space}</h2>
           <div className="row">
-            {sample && <SampleBadge task={sample} />}
             <span className="small muted">读取于 {kb.readAt}</span>
           </div>
         </div>
@@ -238,15 +291,40 @@ function Organizer({ kb, initialSel, sample }) {
           </span>
         </div>
         <ul className="kb-tree" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { if (e.target.closest(".kb-node")) return; e.preventDefault(); move(JSON.parse(e.dataTransfer.getData("text/plain") || "[]"), null); }}>
-          {shown.length ? shown.map((n) => <Node key={n.id} n={n} depth={0} />) : <li className="kb-none small muted">没有符合条件的文档</li>}
+          {shown.length ? shown.map((n) => renderNode(n, 0)) : <li className="kb-none small muted">没有符合条件的文档</li>}
         </ul>
         <div className={`kb-stage${ops.length ? " has-ops" : ""}`}>
           <span><b className="tnum">{ops.length}</b> 项暂存 · 同步前不改飞书</span>
           <span className="spacer" />
-          <Button variant="primary" disabled={!ops.length} onClick={() => setPreview("list")}><PixelIcon name="send" />预览并同步</Button>
+          <Button variant="primary" disabled={!ops.length || flow.busy || flow.phase === "unknown"} onClick={previewSync}><PixelIcon name="send" />预览并同步</Button>
         </div>
       </section>
       <div className="stack kb-side">
+        <div className="kb-sync" ref={syncBox}>
+          <WriteBox flow={flow} title="同步到飞书 · 预览" confirmLabel={`确认同步 ${flow.pv?.operations?.length || ops.length} 项`} savedText="已同步到飞书，逐项回读核对一致" onConfirm={confirmSync} onRepreview={previewSync} onReread={() => reconcile()}>
+            {(pv) => (
+              <>
+                <dl className="kv">
+                  <dt>知识空间</dt><dd>{kb.space}（{pv.spaceId}）</dd>
+                  <dt>写入身份</dt><dd>固定的 codex 飞书用户身份；确认后执行前会再核对一次</dd>
+                  <dt>说明</dt><dd>{pv.note}</dd>
+                </dl>
+                <table className="grid compact"><thead><tr><th>#</th><th>操作</th><th>内容</th></tr></thead>
+                  <tbody>{pv.operations.map((o, i) => <tr key={i}><td className="tnum">{i + 1}</td><td>{{ move: "移动", rename: "重命名", mkdir: "新建目录" }[o.type]}</td>
+                    <td>{o.type === "rename" ? <>「{o.before}」→「{o.name}」</> : o.type === "mkdir" ? <>「{o.name}」，放在「{nameOf(o.parentId)}」下</> : <>「{nameOf(o.id)}」：「{nameOf(o.before)}」→「{nameOf(o.parentId)}」</>}</td></tr>)}</tbody></table>
+                <p className="small muted">移动和重命名后，飞书文档链接不变；「99 待清理」里的文档需要你在飞书手动删除。</p>
+              </>
+            )}
+          </WriteBox>
+          {flow.phase === "unknown" && (
+            <div className="write-box is-unknown kb-observed">
+              <span className="small">如果是「新建目录」的结果丢了：先在飞书里找到这个新目录，把它的节点 token 填在这里再核对。工作台不会按名字去猜。</span>
+              <div className="row"><input className="kb-title" value={observed} onChange={(e) => setObserved(e.target.value.trim())} placeholder="飞书里看到的新目录节点 token" /><Button disabled={!observed} onClick={() => reconcile({ confirmObserved: true, nodeId: observed })}>我已在飞书核对，提交核对</Button></div>
+            </div>
+          )}
+          {(flow.phase === "stale" || flow.phase === "error") && /尚未核实/.test(flow.error || "") && lastOp() && <div className="row"><Button onClick={() => reconcile()}><PixelIcon name="refresh" />只读核对上次的同步操作</Button></div>}
+          {check && <p className={`small ${/仍未能|无法/.test(check) ? "warn-text" : "muted"}`}>{check}</p>}
+        </div>
         <Segmented options={[["detail", "详情"], ["ops", `规则批量 · 暂存明细${ops.length ? ` ${ops.length}` : ""}`]]} value={side} onChange={setSide} />
         {side === "detail" ? <Detail tree={tree} docs={docs} health={health} sel={sel} setSel={setSel} onRename={setRenaming} onTrash={toTrash} showToast={showToast} /> : <>
         <section className="card">
@@ -264,13 +342,6 @@ function Organizer({ kb, initialSel, sample }) {
         </>}
       </div>
       </div>
-      <Modal open={!!preview} onClose={() => setPreview(null)} icon="send" title="同步到飞书 · 预览" wide
-        footer={<><Button onClick={() => setPreview(null)}>返回修改</Button><Button variant="primary" disabled={preview === "run"} onClick={() => setPreview("run")}>确认同步 {ops.length} 项</Button></>}>
-        <p className="small muted">移动和重命名后，飞书文档链接不变；「99 待清理」里的文档需要你在飞书手动删除。同步后会回读目录树核对。</p>
-        <table className="grid compact"><thead><tr><th>#</th><th>操作</th><th>内容</th></tr></thead>
-          <tbody>{ops.map((o, i) => <tr key={i}><td className="tnum">{i + 1}</td><td>{{ move: "移动", rename: "重命名", mkdir: "新建目录" }[o.type]}</td><td>{o.type === "rename" ? `${o.from} → ${o.name}` : o.type === "mkdir" ? `${o.name}（在 ${o.to}）` : `${o.name}：${o.from} → ${o.to}`}</td></tr>)}</tbody></table>
-        {preview === "run" && <div style={{ marginTop: 14 }}><StepProgress label="写入飞书（示例）" /></div>}
-      </Modal>
       {toast}
     </div>
   );
@@ -307,6 +378,7 @@ function Detail({ tree, docs, health, sel, setSel, onRename, onTrash, showToast 
         <div className="card-body stack-sm">
           <dl className="kv"><dt>位置</dt><dd>{chain}</dd><dt>文档</dt><dd className="tnum">{files.length} 篇 · 子目录 {n.kids.filter((k) => k.kids).length} 个</dd><dt>最近更新</dt><dd className="tnum">{latest ? `${latest}（${daysAgo(latest)} 天前）` : "—"}</dd><dt>有问题</dt><dd>{inner ? <span className="warn-text">{inner} 篇</span> : "无"}</dd></dl>
           {probs.map(([k, label, why, tip]) => <div key={k} className="kb-tip"><strong>{label}</strong><span>{why}。{tip}</span></div>)}
+          {docs[n.id] && <DocBody d={docs[n.id]} title="这个目录本身也是一篇文档" />}
           <div className="row"><Button disabled={!files.length} onClick={() => setSel(new Set(files))}><PixelIcon name="check" />选中目录内全部文档</Button><Button onClick={() => onRename(n.id)}><PixelIcon name="edit" />重命名</Button></div>
         </div>
       </section>
@@ -316,12 +388,13 @@ function Detail({ tree, docs, health, sel, setSel, onRename, onTrash, showToast 
   const dup = d.dupOf ? find(tree, d.dupOf)?.node : null;
   return (
     <section className="card kb-detail">
-      <div className="card-head"><h2><PixelIcon name="file" />{n.name}</h2><button type="button" className="link-btn" onClick={() => showToast("接入后在飞书打开这篇文档（示例）")}><PixelIcon name="external" />飞书打开</button></div>
+      <div className="card-head"><h2><PixelIcon name="file" />{n.name}</h2>{d.url ? <a className="link" href={d.url} target="_blank" rel="noreferrer"><PixelIcon name="external" />飞书打开</a> : <span className="small muted">没有链接</span>}</div>
       <div className="card-body stack-sm">
         <dl className="kv">
           <dt>位置</dt><dd>{chain}</dd>
           <dt>更新</dt><dd className="tnum">{d.updated ? <>{d.updated}<span className={daysAgo(d.updated) > STALE_DAYS ? " warn-text" : " muted"}>（{daysAgo(d.updated)} 天前）</span></> : "—"}</dd>
-          <dt>字数</dt><dd className="tnum">{d.chars != null ? d.chars.toLocaleString("en-US") : "—"}{d.chars === 0 && <span className="warn-text"> · 空文档</span>}</dd>
+          <dt>字数</dt><dd className="tnum">{d.chars != null ? d.chars.toLocaleString("en-US") : <span className="muted">未知</span>}{d.chars === 0 && !d.error && <span className="warn-text"> · 空文档</span>}</dd>
+          {d.type && <><dt>类型</dt><dd>{d.type}</dd></>}
           <dt>标签</dt><dd>{d.tags?.length ? <span className="tag-row">{d.tags.map((t) => <Tag key={t}>{t}</Tag>)}</span> : <span className="muted">无</span>}</dd>
         </dl>
         {probs.map(([k, label, why, tip]) => (
@@ -331,12 +404,28 @@ function Detail({ tree, docs, health, sel, setSel, onRename, onTrash, showToast 
             {k === "dup" && dup && <button type="button" className="link-btn" onClick={() => setSel(new Set([dup.id]))}>看另一篇</button>}
           </div>
         ))}
+        {d.error && <div className="kb-tip is-error"><strong>正文没读到</strong><span>{d.error}。字数和摘要未知，不是空文档。</span></div>}
         <div className="label">正文摘要</div>
-        {d.excerpt ? <p className="kb-excerpt">{d.excerpt}</p> : <p className="small muted">没有正文</p>}
+        {d.excerpt ? <p className="kb-excerpt">{d.excerpt}</p> : <p className="small muted">{d.error ? "读取失败，没有摘要" : d.chars === 0 ? "空文档" : "没有摘要"}</p>}
         <div className="label">被谁引用 · {d.refs?.length || 0}</div>
-        {d.refs?.length ? <ul className="list small">{d.refs.map((r) => <li key={r}><PixelIcon name="link" />{r}</li>)}</ul> : <p className="small muted">没有被 Agent 或页面引用，移动或清理不影响其他地方。</p>}
+        {d.refs?.length ? <ul className="list small">{d.refs.map((r) => <li key={r}><PixelIcon name="link" />{r}</li>)}</ul> : <p className="small muted">{d.referencesComplete === false ? "工作台只核对已登记的来源；没登记不等于没有引用。" : "没有被 Agent 或页面引用。"}</p>}
         <div className="row"><Button onClick={() => onRename(n.id)}><PixelIcon name="edit" />重命名</Button><Button onClick={onTrash}><PixelIcon name="archive" />移到待清理</Button></div>
       </div>
     </section>
+  );
+}
+
+// 目录节点本身也可能是一篇有正文的文档：在目录详情里一起显示它的正文信息。
+function DocBody({ d, title }) {
+  return (
+    <div className="kb-dir-doc">
+      <div className="label">{title}</div>
+      <dl className="kv">
+        <dt>更新</dt><dd className="tnum">{d.updated || "—"}</dd>
+        <dt>字数</dt><dd className="tnum">{d.chars != null ? d.chars.toLocaleString("en-US") : <span className="muted">未知</span>}</dd>
+        {d.url && <><dt>链接</dt><dd><a className="link" href={d.url} target="_blank" rel="noreferrer">飞书打开</a></dd></>}
+      </dl>
+      {d.error ? <p className="small warn-text">正文没读到：{d.error}</p> : d.excerpt ? <p className="kb-excerpt">{d.excerpt}</p> : <p className="small muted">没有摘要</p>}
+    </div>
   );
 }

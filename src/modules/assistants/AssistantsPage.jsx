@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { BitAvatar, PixelIcon, StepProgress, TypeText } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Empty, Loadable, PageHeader, SampleBadge, Segmented, Tag, useToast } from "../../ui/components.jsx";
-import { SAMPLE_KNOWLEDGE } from "../../samples/v3.js";
+import { Button, Empty, Loadable, PageHeader, Segmented, Tag } from "../../ui/components.jsx";
+import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { consumeMessageStream } from "./message-stream.js";
 import ModelControls from "./ModelControls.jsx";
 import { assistantListReader } from "./assistant-list.js";
@@ -22,21 +22,76 @@ function takeDraft(id) {
   return "";
 }
 
-// 知识库（v3）：只收文字；新建会话时全量带入助手指令，超过阈值提示改为检索。接口未实现时显示示例。
+// 知识库（v3）：只收纯文本（.md / .txt 或直接粘贴）；新建会话时全量带入助手指令，已有会话不变。
+// 添加、移除都先预览，确认后保存并回读。docx 等二进制文件不当文本提交：先另存为文本或复制正文粘贴。
+const TEXT_FILE = /\.(md|markdown|txt)$/i;
+const hasControlChars = (t) => /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(t);
+
 function KnowledgePanel({ assistant }) {
-  const state = useApi(`/api/v3/assistants/${assistant.id}/knowledge`, SAMPLE_KNOWLEDGE);
-  const [toast, showToast] = useToast();
-  return <div className="kb-panel"><Loadable state={state} name="助手知识库">{(kb) => {
-    const total = kb.docs.reduce((n, d) => n + d.chars, 0);
-    return <>
-      <div className="row kb-meter"><span className="label">知识量</span><span className="tnum">{total.toLocaleString()} / {kb.limit.toLocaleString()} 字</span><span className="small muted">新建会话时全量带入；改动后新会话生效</span><span className="spacer" />{state.isSample && <SampleBadge task={state.task} />}</div>
+  const base = `/api/v3/assistants/${assistant.id}/knowledge`;
+  const state = useApi(base);
+  const [fresh, setFresh] = useState(null);
+  const kb = fresh || state.data;
+  const [form, setForm] = useState({ title: "", body: "", kind: "文字" });
+  const [note, setNote] = useState("");
+  const [op, setOp] = useState(null); // { action, doc? }
+  const flow = useWriteFlow();
+  const locked = flow.busy || flow.phase === "unknown";
+  const change = (patch) => { setForm((f) => ({ ...f, ...patch })); setNote(""); if (op?.action === "add") flow.reset(); };
+  async function pickFile(file) {
+    if (!file) return;
+    if (!TEXT_FILE.test(file.name) || (file.type && !file.type.startsWith("text/"))) { setNote(`「${file.name}」不是纯文本文件。只收 .md / .txt；docx 请先另存为文本，或复制正文粘贴进来。`); return; }
+    const text = await file.text();
+    if (hasControlChars(text)) { setNote(`「${file.name}」里有二进制内容，不能当文本提交。`); return; }
+    change({ title: form.title || file.name.replace(TEXT_FILE, ""), body: text });
+  }
+  const previewAdd = () => {
+    if (hasControlChars(form.body)) { setNote("正文里有二进制内容，不能当文本提交。"); return; }
+    setOp({ action: "add" }); flow.reset();
+    flow.preview(() => apiSend("POST", `${base}/preview`, { title: form.title.trim(), body: form.body, kind: form.kind.trim() || "文字" }));
+  };
+  const previewDelete = (doc) => { if (locked) return; setOp({ action: "delete", doc }); flow.reset(); flow.preview(() => apiSend("POST", `${base}/preview`, { action: "delete", docId: doc.id })); };
+  const confirm = () => flow.confirm(
+    (pv) => apiSend(op.action === "delete" ? "DELETE" : "POST", base, { previewId: pv.previewId, confirm: true }),
+    async (receipt, pv) => {
+      const back = await apiSend("GET", base);
+      setFresh(back);
+      const has = back.docs.some((d) => d.id === pv.value.id);
+      if (op.action === "add" && has) setForm({ title: "", body: "", kind: "文字" });
+      return op.action === "delete" ? !has : has;
+    },
+  );
+  const reread = async () => { setFresh(await apiSend("GET", base)); flow.resolve(); };
+  if (!kb) return <div className="kb-panel"><Loadable state={state} name="助手知识库">{() => null}</Loadable></div>;
+  const total = kb.docs.reduce((n, d) => n + d.chars, 0);
+  return (
+    <div className="kb-panel">
+      <div className="row kb-meter"><span className="label">知识量</span><span className="tnum">{total.toLocaleString()} / {kb.limit.toLocaleString()} 字</span><span className="small muted">新建会话时全量带入；已有会话不变</span></div>
       <span className="dither-bar"><span className="dither-bar-fill" style={{ width: `${Math.min(100, (total / kb.limit) * 100)}%` }} /></span>
-      <label className="drop-zone"><PixelIcon name="upload" />拖入或选择文字文件（.md / .txt / .docx），也可以直接粘贴<input type="file" hidden accept=".md,.txt,.docx" onChange={() => showToast("已加入知识库（示例，未写入）")} /></label>
-      <table className="grid compact"><thead><tr><th>类型</th><th>标题</th><th className="r">字数</th><th>加入时间</th><th /></tr></thead>
-        <tbody>{kb.docs.map((d) => <tr key={d.title}><td><Tag tone={d.kind === "brief 范本" ? "blue" : "neutral"}>{d.kind}</Tag></td><td>{d.title}</td><td className="r">{d.chars.toLocaleString()}</td><td className="tnum small muted">{d.at}</td><td><button type="button" className="icon-btn" title="移除" onClick={() => showToast(`已移除「${d.title}」（示例）`)}><PixelIcon name="close" /></button></td></tr>)}</tbody></table>
-      {toast}
-    </>;
-  }}</Loadable></div>;
+      {kb.warning && <p className="small warn-text">{kb.warning}</p>}
+      <div className="kb-add">
+        <div className="row">
+          <input className="kb-title" value={form.title} placeholder="标题" onChange={(e) => change({ title: e.target.value })} disabled={locked} />
+          <input className="kb-kind" value={form.kind} placeholder="类型" onChange={(e) => change({ kind: e.target.value })} disabled={locked} />
+          <label className="btn btn-xs"><PixelIcon name="upload" />选文本文件<input type="file" hidden accept=".md,.markdown,.txt,text/plain,text/markdown" disabled={locked} onChange={(e) => { pickFile(e.target.files[0]); e.target.value = ""; }} /></label>
+        </div>
+        <textarea className="review-box" value={form.body} placeholder="粘贴纯文本正文（只收文字，不收 docx、图片）" onChange={(e) => change({ body: e.target.value })} disabled={locked} />
+        <div className="row"><span className={`small ${note ? "warn-text" : "muted"}`}>{note || `${Array.from(form.body).length.toLocaleString()} 字`}</span><span className="spacer" /><Button variant="primary" disabled={!form.title.trim() || !form.body.trim() || locked} onClick={previewAdd}><PixelIcon name="eye" />预览加入</Button></div>
+      </div>
+      <WriteBox flow={flow} title={op?.action === "delete" ? "移除预览" : "加入预览"} confirmLabel={op?.action === "delete" ? "确认移除" : "确认加入"} savedText={op?.action === "delete" ? "已移除，回读核对一致" : "已加入，回读核对一致"} onConfirm={confirm} onRepreview={() => (op?.action === "delete" ? previewDelete(op.doc) : previewAdd())} onReread={reread}>
+        {(pv) => <dl className="kv">
+          <dt>助手</dt><dd>{assistant.name}</dd>
+          <dt>{op?.action === "delete" ? "移除" : "加入"}</dt><dd>{pv.value.title}（{pv.value.kind} · {pv.value.chars.toLocaleString()} 字）</dd>
+          <dt>之后共计</dt><dd className="tnum">{pv.totalChars.toLocaleString()} / {pv.limit.toLocaleString()} 字{pv.warning ? ` · ${pv.warning}` : ""}</dd>
+          <dt>生效</dt><dd>之后新建的会话；已有会话不变</dd>
+        </dl>}
+      </WriteBox>
+      {!kb.docs.length ? <p className="small muted">还没有知识文档。</p> : (
+        <table className="grid compact"><thead><tr><th>类型</th><th>标题</th><th className="r">字数</th><th>加入时间</th><th /></tr></thead>
+          <tbody>{kb.docs.map((d) => <tr key={d.id}><td><Tag tone="neutral">{d.kind}</Tag></td><td>{d.title}</td><td className="r">{d.chars.toLocaleString()}</td><td className="tnum small muted">{d.at}</td><td><button type="button" className="icon-btn" title="移除（先预览）" disabled={locked} onClick={() => previewDelete(d)}><PixelIcon name="close" /></button></td></tr>)}</tbody></table>
+      )}
+    </div>
+  );
 }
 export default function AssistantsPage({ route }) {
   const state = useApi("/api/assistants");

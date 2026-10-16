@@ -51,3 +51,16 @@ export function daysToDeadline(month, now = new Date()) {
 }
 
 export const shortMonth = (month) => `${Number(month.slice(5))} 月`;
+
+// ISO 周次「YYYY-Www」（周一为一周开始），按本地日期计算。
+export function isoWeek(date = new Date()) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = (d.getDay() + 6) % 7; // 周一 = 0
+  d.setDate(d.getDate() - day + 3); // 移到本周四
+  const firstThu = new Date(d.getFullYear(), 0, 4);
+  const week = 1 + Math.round(((d - firstThu) / 86400000 - 3 + ((firstThu.getDay() + 6) % 7)) / 7);
+  return `${d.getFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+// 本地日期「YYYY-MM-DD」（不用 toISOString，避免时区把日期推到前一天）。
+export const localDate = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

@@ -3,9 +3,8 @@ import { href } from "../../router.js";
 import { Card, Loadable, SampleBadge, StatusMark } from "../../ui/components.jsx";
 import { BitAvatar, FlipNumber, PixelIcon } from "../../ui/bitmap.jsx";
 import { deliveryMonth, deliverySteps, daysToDeadline, shortMonth } from "../../constants.js";
-import { SAMPLE_MONTH, SAMPLE_TODO, SAMPLE_VOICE } from "../../samples/v3.js";
 import { CodexCard } from "./CodexStrip.jsx";
-import { VoiceCloud } from "../voice/VoicePage.jsx";
+import { VoiceCloud, voiceIssue } from "../voice/VoicePage.jsx";
 import { STARTERS, handOffDraft } from "../assistants/AssistantsPage.jsx";
 
 // 首页（v3）：Codex 重置 + 待我处理 → 交付月 + 今日日程 → 用户之声 + Agent。业务营收完成度在「业务」页。
@@ -58,10 +57,11 @@ export default function HomePage() {
 }
 
 // 交付月：剩余天数 + 6 个环节（见 deliverySteps：方案录入由前端用真实的 /api/plans 计算）。
+// 环节接口读取失败时写明失败，不显示「0/x」这种看起来像真实进度的数字。
 function DeliveryCard({ month, plans }) {
-  const state = useApi(`/api/v3/months/${month}`, SAMPLE_MONTH);
+  const state = useApi(`/api/v3/months/${month}`);
   const left = daysToDeadline(month);
-  const steps = deliverySteps(state.data?.steps || SAMPLE_MONTH.steps, plans.data, month);
+  const steps = state.data ? deliverySteps(state.data.steps, plans.data, month) : [];
   const done = steps.filter((s) => s.state === "done").length;
   const campaign = state.data?.campaign;
   return (
@@ -69,11 +69,11 @@ function DeliveryCard({ month, plans }) {
       <div className="delivery-main">
         <span className="label">交付月 · {month}{state.isSample && <SampleBadge task={state.task} />}</span>
         <div className="delivery-days"><FlipNumber value={left} /><small>天</small></div>
-        <p className="small muted">{deadlineLabel(month)} 截止 · 已完成 {done}/{steps.length}</p>
+        <p className="small muted">{deadlineLabel(month)} 截止 · {state.data ? `已完成 ${done}/${steps.length}` : state.error ? "环节状态读取失败" : "读取中"}</p>
         <div className="delivery-pips" aria-hidden="true">{steps.map((s) => <i key={s.key} className={`is-${s.state}`} />)}</div>
         {campaign && <a className="delivery-campaign" href="#/marketing/campaign"><PixelIcon name="bolt" />{campaign.name}<span className="mono small">{campaign.start.slice(5)} → {campaign.end.slice(5)}</span></a>}
       </div>
-      <ul className="delivery-steps">
+      {!state.data ? <div className="delivery-steps is-state"><Loadable state={state} name="交付月环节">{() => null}</Loadable></div> : <ul className="delivery-steps">
         {steps.map((s) => (
           <li key={s.key}>
             <a href={s.href} data-dither="">
@@ -84,17 +84,18 @@ function DeliveryCard({ month, plans }) {
             </a>
           </li>
         ))}
-      </ul>
+      </ul>}
     </section>
   );
 }
 
 // 待我处理的类型色：门禁待审是「待你处理」（琥珀），价格破底线是「风险」（红）。
 const TODO_TONE = { 审核: "warn", 价格: "risk" };
-const daysUntil = (md) => { if (!/^\d{2}-\d{2}$/.test(md || "")) return null; const t = new Date(); return Math.round((new Date(t.getFullYear(), Number(md.slice(0, 2)) - 1, Number(md.slice(3))) - new Date(t.getFullYear(), t.getMonth(), t.getDate())) / 86400000); };
+// 到期日：接口给完整的 YYYY-MM-DD 时按完整日期算；只给 MM-DD 时按今年算。
+const daysUntil = (due) => { const t = new Date(); const m = /^(?:(\d{4})-)?(\d{2})-(\d{2})$/.exec(due || ""); if (!m) return null; return Math.round((new Date(m[1] ? Number(m[1]) : t.getFullYear(), Number(m[2]) - 1, Number(m[3])) - new Date(t.getFullYear(), t.getMonth(), t.getDate())) / 86400000); };
 
 function TodoCard() {
-  const state = useApi("/api/v3/home/todo", SAMPLE_TODO);
+  const state = useApi("/api/v3/home/todo");
   return (
     <Card className="col-4" title={<><PixelIcon name="alert" /> 待我处理</>} extra={state.isSample ? <SampleBadge task={state.task} /> : null}>
       <Loadable state={state} name="待我处理">
@@ -178,11 +179,12 @@ function AgentsCard() {
 
 // 留学之声：词云 + 今日摘要，点进 Voice 页看详情。
 function VoiceCard() {
-  const state = useApi("/api/v3/voice", SAMPLE_VOICE);
+  const state = useApi("/api/v3/voice");
+  const issue = voiceIssue(state);
   return (
     <Card className="col-8" title={<><PixelIcon name="voice" /> 留学之声</>}
-      extra={<>{state.isSample && <SampleBadge task={state.task} />}<a className="link" href={href("voice")}>Voice<PixelIcon name="right" /></a></>}>
-      <Loadable state={state} name="留学之声">
+      extra={<a className="link" href={href("voice")}>Voice<PixelIcon name="right" /></a>}>
+      {issue ? <div className={`voice-issue is-${issue.kind}`}><strong>{issue.title}</strong><span className="small">{issue.text}</span></div> : <Loadable state={state} name="留学之声">
         {(v) => {
           return (
             <div className="voice-cloud-wrap">
@@ -192,7 +194,7 @@ function VoiceCard() {
             </div>
           );
         }}
-      </Loadable>
+      </Loadable>}
     </Card>
   );
 }

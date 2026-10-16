@@ -1,13 +1,7 @@
 // v3 示例数据：只在 /api/v3/* 接口返回 501（尚未实现）时显示，页面会标「示例」。
 // 价格数据来自常浩 2026-10-16 提供的灵活学Lite 价格表；其余为演示用，不代表真实业务。
-// 接口实现后，对应示例即可删除（见 docs/tasks/V3-接口清单.md）。
-
-/* ---------- 首页 · 交付月 ---------- */
-// V3-1 已移除演示内容。静态 import/加载 fallback 由 Claude 清理后删除此兼容导出。
-export const SAMPLE_MONTH = { steps: [] };
-
-// 真实接口已接入；兼容现有静态 import，待 Claude 清理导入后删除。
-export const SAMPLE_TODO = undefined;
+// 接口实现后，对应示例即可删除（见 docs/tasks/V3-接口清单.md）。已接真实接口的示例和兼容导出已在 V3 接线时删除；
+// 剩下的是：价格与营收（用户确认暂用演示口径）、价格图与 NAS（暂缓接入）、brief 句式参考（演示句式，无真实来源）。
 
 /* ---------- 首页 · 业务营收完成度（真实数据来自飞书多维表格，常浩后续提供；以下为演示值，大学一项取自 10-16 截图） ---------- */
 export const SAMPLE_REVENUE = {
@@ -27,9 +21,6 @@ export const SAMPLE_REVENUE = {
     ] },
   ],
 };
-
-// V3-1 已移除演示内容。静态 import/加载 fallback 由 Claude 清理后删除此兼容导出。
-export const SAMPLE_CODEX = undefined;
 
 /* ---------- 营销 · 价格方案（灵活学Lite，原价 990 元/小时） ---------- */
 export const SAMPLE_PRICE_SKUS = [
@@ -99,14 +90,7 @@ export const SAMPLE_NAS = {
   ],
 };
 
-/* ---------- 营销 · 设计参考 ---------- */
-// 真实接口已接入；兼容现有静态 import，待 Claude 清理导入后删除。
-export const SAMPLE_REFS = undefined;
-
-/* ---------- 营销 · 设计 brief（骨架来自《双11 第二批设计 Brief》7 节） ---------- */
-// 真实接口已接入；兼容现有静态 import，待 Claude 清理导入后删除。
-export const SAMPLE_BRIEF = undefined;
-
+/* ---------- 营销 · 设计 brief 句式参考（演示句式，没有真实来源；页面标「示例」） ---------- */
 export const SAMPLE_PHRASES = [
   ["标题", "「还剩 3 周，够把一门课拉回来」"],
   ["价格表述", "「3,990 元 5 小时，课时单价不到 800」"],
@@ -114,39 +98,3 @@ export const SAMPLE_PHRASES = [
   ["紧迫感", "「11.30 截止，名额按排课余量放」"],
   ["行动号召", "「扫码，先排一次考试日程」"],
 ];
-
-/* ---------- 营销 · 营销战役（节点来自多维表格「项目启动模版 / 营销战役」） ---------- */
-// 真实接口已接入；兼容现有静态 import，待 Claude 清理导入后删除。
-export const SAMPLE_CAMPAIGN = undefined;
-
-/* ---------- Agent · 文案助手知识库 ---------- */
-// 真实接口已接入；兼容现有静态 import，待 Claude 清理导入后删除。
-export const SAMPLE_KNOWLEDGE = undefined;
-
-/* ---------- 用户 · 时间线（示例：结构与飞书《2026海外大学时间线》地区明细表一致，日期为演示值） ---------- */
-// V3-1 已移除演示内容。静态 import/加载 fallback 由 Claude 清理后删除此兼容导出。
-export const SAMPLE_TIMELINE = undefined;
-
-/* ---------- 用户 · 主线需求 ---------- */
-// V3-1 已移除演示内容。静态 import/加载 fallback 由 Claude 清理后删除此兼容导出。
-export const SAMPLE_NEEDS = undefined;
-
-/* ---------- 用户 · 留学之声（基于 AIHOT 引擎；信源为免费英文信源） ---------- */
-// 真实试运行未就绪或未达门槛时显示明确错误，不再用虚构话题。
-export const SAMPLE_VOICE = undefined;
-
-/* ---------- 项目 · 推进（节点来自多维表格「项目启动模版 / 项目推进」） ---------- */
-// 真实接口已接入；兼容现有静态 import，待 Claude 清理导入后删除。
-export const SAMPLE_PROJECTS = undefined;
-
-/* ---------- 项目 · 管培带教 ---------- */
-// 真实接口已接入；兼容现有静态 import，待 Claude 清理导入后删除。
-export const SAMPLE_MENTOR = undefined;
-
-/* ---------- 知识库整理 ---------- */
-// 真实接口已接入；兼容现有静态 import，待 Claude 清理导入后删除。
-export const SAMPLE_KB = undefined;
-
-/* ---------- 自言自语（本人发给本人的飞书消息，最近 10 天） ---------- */
-// 真实接口已接入；兼容现有静态 import，待 Claude 清理导入后删除。
-export const SAMPLE_SELFTALK = undefined;

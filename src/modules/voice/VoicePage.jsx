@@ -2,22 +2,43 @@ import { useState } from "react";
 import { PixelIcon, TypeText } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Card, Loadable, PageHeader, SampleBadge, StatStrip, Tag, useToast } from "../../ui/components.jsx";
-import { SAMPLE_VOICE } from "../../samples/v3.js";
+import { Button, Card, Loadable, PageHeader, PendingButton, Placeholder, StatStrip, Tag } from "../../ui/components.jsx";
 
 // Voice · 留学之声（v3，侧栏独立模块）：留学生最近在讨论什么。基于本机运行的 AIHOT 引擎，免费英文信源；
 // 只看多数人的共性——同一人 / 同一矩阵只算一个来源，独立来源 ≥ 5 才上榜。
+// 接口用 503 + 错误码区分三种情况，页面分开写，不能混成一种：
+//   来源不可用（未配置、读取失败、记录过期、证据不完整）→ 热榜没有接通，不显示任何话题；
+//   真实读取后没有合格话题（VOICE_NO_QUALIFIED_TOPICS）→ 合法的空榜；
+//   其他读取失败 → 可以重新读取。
+// 日期和趋势只用接口给的真实值（sparkDates、spark），不补造固定的七天。
 const TREND = { surge: ["急升", "is-surge"], rising: ["上升", "is-up"], up: ["上升", "is-up"], flat: ["平稳", ""], down: ["回落", "is-down"] };
 const COUNTRY = ["澳洲", "新西兰", "英国", "美国", "加拿大", "香港", "新加坡", "马来西亚"];
-const DAYS = ["10-10", "10-11", "10-12", "10-13", "10-14", "10-15", "10-16"];
+
+export function voiceIssue(state) {
+  if (!state.error) return null;
+  if (state.code === "VOICE_NO_QUALIFIED_TOPICS") return { kind: "empty", title: "现在没有合格的话题", text: state.error };
+  if (/^VOICE_/.test(state.code || "")) return { kind: "unavailable", title: "学生讨论来源不可用，热榜没有接通", text: state.error };
+  return { kind: "error", title: "留学之声读取失败", text: state.error };
+}
+
+function VoiceIssue({ issue, reload }) {
+  return (
+    <Placeholder icon={issue.kind === "empty" ? "voice" : "alert"} title={issue.title}
+      action={issue.kind !== "unavailable" && reload ? <Button onClick={reload}><PixelIcon name="refresh" />重新读取</Button> : null}>
+      <span className={issue.kind === "unavailable" ? "warn-text" : issue.kind === "error" ? "risk-text" : ""}>{issue.text}</span>
+      {issue.kind === "unavailable" && <><br />免费人工试运行：模型、付费采集和定时任务都没开；这里不显示任何示例话题。</>}
+    </Placeholder>
+  );
+}
 
 export default function VoicePage() {
-  const state = useApi("/api/v3/voice", SAMPLE_VOICE);
+  const state = useApi("/api/v3/voice");
+  const issue = voiceIssue(state);
   return (
     <>
       <PageHeader title="Voice" subtitle="留学之声：留学生最近在讨论什么。只看多数人的共性——同一人或同一矩阵只算一个来源，独立来源 ≥ 5 才上榜。"
-        actions={state.data && <>{state.isSample && <SampleBadge task={state.task} />}<span className="small muted">本机运行 · 上次抓取 {state.data.updatedAt} · 下次 {state.data.nextAt}</span></>} />
-      <Loadable state={state} name="留学之声" big>{(v) => <VoiceBoard v={v} />}</Loadable>
+        actions={state.data && <span className="small muted">本机运行 · 上次抓取 {state.data.updatedAt} · {state.data.nextAt ? `下次 ${state.data.nextAt}` : "人工采集，不定时"}</span>} />
+      {issue ? <VoiceIssue issue={issue} reload={state.reload} /> : <Loadable state={state} name="留学之声" big>{(v) => (v.hot?.length ? <VoiceBoard v={v} /> : <VoiceIssue issue={{ kind: "empty", title: "现在没有合格的话题", text: "接口返回了空榜：还没有达到 5 个独立来源的话题。" }} />)}</Loadable>}
     </>
   );
 }
@@ -44,15 +65,15 @@ function VoiceBoard({ v }) {
   const [scope, setScope] = useState("");
   const [kind, setKind] = useState("");
   const [word, setWord] = useState("");
-  const [sel, setSel] = useState(v.hot[0].id);
-  const [toast, showToast] = useToast();
+  const [sel, setSel] = useState(v.hot[0]?.id);
   const tags = [...new Set(v.hot.flatMap((t) => t.tags))];
   const countries = tags.filter((t) => COUNTRY.includes(t));
   const schools = tags.filter((t) => !COUNTRY.includes(t));
   const kinds = [...new Set(v.hot.map((t) => t.kind))];
   const list = v.hot.filter((t) => (!scope || t.tags.includes(scope)) && (!kind || t.kind === kind) && (!word || `${t.title}${t.summary}`.includes(word)));
   const cur = list.find((t) => t.id === sel) || list[0];
-  const rising = [...v.hot].sort((a, b) => (b.spark[6] - b.spark[5]) - (a.spark[6] - a.spark[5])).slice(0, 3);
+  const delta = (t) => (t.spark?.length >= 2 ? t.spark.at(-1) - t.spark.at(-2) : 0);
+  const rising = [...v.hot].sort((a, b) => delta(b) - delta(a)).slice(0, 3);
   const s = v.stats;
   const surgeTop = v.hot.find((t) => t.trend === "surge");
   return (
@@ -60,7 +81,7 @@ function VoiceBoard({ v }) {
       <StatStrip items={[
         { label: "今日上榜话题", value: s.topics, foot: `新增 ${s.newTopics}` },
         { label: "独立来源 · 48 小时", value: s.participants, foot: `个案已过滤 ${s.filtered}` },
-        { label: "信源", value: s.sourceCount, foot: `${s.sources} · 免费` },
+        { label: "信源", value: s.sourceCount, foot: s.sources ? `${s.sources} · 免费` : "免费信源" },
         // 模型费用已在设置页「留学之声预算」，这里换成急升话题数（二次评审 P2-9，用户确认）
         { label: "急升话题", value: s.surge, foot: <span className="clamp-1">{surgeTop ? surgeTop.title : "今天没有急升话题"}</span> },
       ]} />
@@ -69,9 +90,9 @@ function VoiceBoard({ v }) {
           <VoiceCloud cloud={v.cloud} size={1.1} onPick={setWord} />
         </Card>
         <Card title={<><PixelIcon name="reports" />今日摘要</>} extra={<span className="small muted">覆盖昨天 08:00 — 今天 08:00</span>}>
-          <div className="ai-box"><span className="label"><PixelIcon name="spark" />AI 总述</span><TypeText text={v.daily} /></div>
+          {v.daily ? <div className="ai-box"><span className="label"><PixelIcon name="spark" />AI 总述</span><TypeText text={v.daily} /></div> : <p className="small muted">今天没有生成总述（模型调用未开启）。</p>}
           <div className="label voice-sub">上升最快</div>
-          <ol className="list rising-list">{rising.map((t) => <li key={t.id}><button type="button" className="link-btn" onClick={() => { setWord(""); setScope(""); setKind(""); setSel(t.id); }}>{t.title}</button><span className={`trend ${TREND[t.trend][1]}`}>{TREND[t.trend][0]} +{(t.spark[6] - t.spark[5]).toFixed(0)}</span></li>)}</ol>
+          <ol className="list rising-list">{rising.map((t) => <li key={t.id}><button type="button" className="link-btn" onClick={() => { setWord(""); setScope(""); setKind(""); setSel(t.id); }}>{t.title}</button><span className={`trend ${TREND[t.trend]?.[1] || ""}`}>{TREND[t.trend]?.[0] || t.trend} {delta(t) >= 0 ? "+" : ""}{delta(t).toFixed(0)}</span></li>)}</ol>
         </Card>
       </div>
       <div className="toolbar">
@@ -97,7 +118,7 @@ function VoiceBoard({ v }) {
                     <span className="tag-row"><Tag tone="frame">{t.kind}</Tag>{t.tags.map((g) => <Tag key={g}>{g}</Tag>)}</span>
                   </span>
                   <span className="hot-heat"><b className="tnum">{t.heat.toFixed(1)}</b><span className="small muted">{t.part} 个来源</span><span className={`trend ${TREND[t.trend][1]}`}>{TREND[t.trend][0]}</span></span>
-                  <Spark data={t.spark} />
+                  <Spark data={t.spark || []} />
                 </button>
               </li>
             ))}
@@ -114,13 +135,13 @@ function VoiceBoard({ v }) {
                   <span><b>{cur.tags.join(" · ")}</b>范围</span>
                 </div>
                 <div className="label">近 7 天热度</div>
-                <DayBars data={cur.spark} />
+                <DayBars data={cur.spark || []} dates={cur.sparkDates} />
                 <div className="ai-box"><span className="label"><PixelIcon name="spark" />共性摘要</span>{cur.summary}</div>
-                <div className="label">代表来源 · {cur.sources.length}</div>
-                <ul className="src-list">{cur.sources.map(([t, src]) => <li key={t}><q>{t}</q><span className="tnum small muted">{src}</span></li>)}</ul>
+                <div className="label">代表来源 · {(cur.sources || []).length}</div>
+                <ul className="src-list">{(cur.sources || []).map(([t, src]) => <li key={t}><q>{t}</q><span className="tnum small muted">{src}</span></li>)}</ul>
                 <div className="label">关联主线需求</div>
                 {cur.need ? <a className="chip" href={href("user", "strategy")}><PixelIcon name="link" />{cur.need}</a> : <span className="small muted">还没有对应的主线需求</span>}
-                <div className="row"><Button onClick={() => showToast("已生成主线需求草稿，去用户策略页采纳（示例）")}><PixelIcon name="plus" />转为主线需求草稿</Button></div>
+                <div className="row"><PendingButton task="V3-接口清单"><PixelIcon name="plus" />转为主线需求草稿</PendingButton></div>
               </div>
             </section>
           )}
@@ -129,26 +150,26 @@ function VoiceBoard({ v }) {
       <Card title={<><PixelIcon name="trend" />近 7 天热度走势</>} extra={<span className="small muted">前 4 个话题 · 粗线为第一名</span>}>
         <TrendChart topics={v.hot.slice(0, 4)} />
       </Card>
-      {toast}
     </>
   );
 }
 
 function Spark({ data }) {
-  const max = Math.max(...data);
+  if (!data.length) return <span className="spark" aria-hidden="true" />;
+  const max = Math.max(1, ...data);
   return <span className="spark" aria-hidden="true">{data.map((d, i) => <i key={i} style={{ height: `${Math.max(2, (d / max) * 22)}px` }} className={i === data.length - 1 ? "is-last" : ""} />)}</span>;
 }
 
-// 单个话题的 7 天柱状图，每根柱子标数值和日期。
-function DayBars({ data }) {
-  const max = Math.max(...data);
+// 单个话题的 7 天柱状图，每根柱子标数值和日期；日期取接口的 sparkDates，没有就不写日期。
+function DayBars({ data, dates }) {
+  const max = Math.max(1, ...data);
   return (
     <div className="day-bars">
       {data.map((d, i) => (
         <div key={i} className={i === data.length - 1 ? "is-last" : ""}>
           <span className="tnum">{d}</span>
           <i style={{ height: `${Math.max(3, (d / max) * 64)}px` }} />
-          <em className="tnum">{DAYS[i].slice(3)}</em>
+          <em className="tnum">{dates?.[i] ? String(dates[i]).slice(5, 10) : ""}</em>
         </div>
       ))}
     </div>
@@ -162,11 +183,11 @@ function TrendChart({ topics }) {
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="trend-chart" role="img" aria-label="话题热度趋势">
       {[0, 25, 50, 75, 100].map((v) => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} className="grid-line" /><text x={L - 8} y={y(v) + 4} textAnchor="end" className="axis">{v}</text></g>)}
-      {DAYS.map((l, i) => <text key={l} x={x(i)} y={H - 6} textAnchor="middle" className="axis">{l}</text>)}
+      {(topics[0]?.sparkDates || []).map((l, i) => <text key={l} x={x(i)} y={H - 6} textAnchor="middle" className="axis">{String(l).slice(5, 10)}</text>)}
       {topics.map((t, k) => (
         <g key={t.id} className={k === 0 ? "series is-top" : "series"}>
           <polyline points={t.spark.map((val, i) => `${x(i)},${y(val)}`).join(" ")} />
-          <text x={W - R + 10} y={y(t.spark[6]) + 4} className="end-label">{t.title.length > 16 ? `${t.title.slice(0, 16)}…` : t.title} · {t.heat}</text>
+          <text x={W - R + 10} y={y(t.spark.at(-1)) + 4} className="end-label">{t.title.length > 16 ? `${t.title.slice(0, 16)}…` : t.title} · {t.heat}</text>
         </g>
       ))}
     </svg>

@@ -4,7 +4,6 @@ import { useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Tag } from "../../ui/components.jsx";
 import { deliveryMonth } from "../../constants.js";
-import { SAMPLE_KB, SAMPLE_NEEDS, SAMPLE_TIMELINE } from "../../samples/v3.js";
 import { GROUP_LABEL, SCOPES, buildActions, buildDocs, buildNeeds, buildPages, buildSchools, buildSkus, parseQuery, pushRecent, readRecent, search } from "./command-index.js";
 
 // ⌘K 命令面板（第三轮提案 2）：任何页面按 ⌘K / Ctrl+K 打开。按对象找：页面、SKU、学校、主线需求、知识库文档、操作。
@@ -17,9 +16,9 @@ export function CommandPalette({ open, onClose }) {
   const [armed, setArmed] = useState(false);
   useEffect(() => { if (open) setArmed(true); }, [open]);
   const promos = useApi(armed ? "/api/promos" : null);
-  const timeline = useApi(armed ? "/api/v3/timeline" : null, SAMPLE_TIMELINE);
-  const needs = useApi(armed ? `/api/v3/needs?month=${deliveryMonth()}` : null, SAMPLE_NEEDS);
-  const kb = useApi(armed ? "/api/v3/kb/tree" : null, SAMPLE_KB);
+  const timeline = useApi(armed ? "/api/v3/timeline" : null);
+  const needs = useApi(armed ? `/api/v3/needs?month=${deliveryMonth()}` : null);
+  const kb = useApi(armed ? "/api/v3/kb/tree" : null);
   const items = useMemo(() => {
     const mark = (list, state) => (state.isSample ? list.map((it) => ({ ...it, sample: true })) : list);
     return [

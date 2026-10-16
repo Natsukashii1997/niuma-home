@@ -1,10 +1,11 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
-import { useApi } from "../../api.js";
+import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Loadable, MonthSwitch, PageHeader, Placeholder, SampleBadge, Segmented, Tabs, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Loadable, MonthSwitch, PageHeader, PendingButton, Placeholder, Segmented, Tabs, Tag } from "../../ui/components.jsx";
+import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
+import { FeishuExport } from "../../ui/feishu-export.jsx";
 import { deliveryMonth } from "../../constants.js";
-import { SAMPLE_NEEDS, SAMPLE_TIMELINE } from "../../samples/v3.js";
 
 // 用户（v3）：时间线 → 用户策略（主线需求是策略的起点）。Voice 已独立成侧栏模块。
 // 时间线的第一要求是严谨：写全「学校 · 事件 · 起止日期」；冲突和推测单独标出，工作台不自行猜测；
@@ -29,7 +30,9 @@ const pad = (n) => String(n).padStart(2, "0");
 const md = (d) => d.slice(5);
 const toDate = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
 const span = (from, to) => (to ? Math.round((toDate(to) - toDate(from)) / 86400000) + 1 : 1);
-const mdSpan = (a, b) => (b ? Math.round((new Date(`2026-${b}`) - new Date(`2026-${a}`)) / 86400000) + 1 : 1);
+// 明细表的格子只有「MM-DD」：结束早于开始就是跨年（如 12-19 → 01-03），结束日算到下一年。
+const mdDate = (md, y) => new Date(y, Number(md.slice(0, 2)) - 1, Number(md.slice(3)));
+const mdSpan = (a, b) => (b ? Math.round((mdDate(b, b < a ? 2027 : 2026) - mdDate(a, 2026)) / 86400000) + 1 : 1);
 
 // 事件类别：颜色只区分类别，图例里写明。
 const CATS = [["exam", "考试", ["Final", "考试周", "期末", "期中"]], ["course", "选课 / 开学", ["选课", "春季选课", "开学"]], ["paper", "论文作业", ["Essay 截止"]], ["break", "假期", ["Reading Week", "期中假"]], ["result", "出分", ["出分"]]];
@@ -49,16 +52,33 @@ function colCat(name) {
 }
 
 function Timeline({ route }) {
-  const state = useApi("/api/v3/timeline", SAMPLE_TIMELINE);
+  const state = useApi("/api/v3/timeline");
+  const [fresh, setFresh] = useState(null); // 同步成功后回读到的新快照
   const view = ["month", "country", "anomalies"].includes(route[0]) ? route[0] : "month";
   // user/timeline/<视图>/<搜索词>：⌘K 打开某所学校时带上校名缩写，进页面就筛好
-  return <Loadable state={state} name="用户时间线" big>{(tl) => <TimelineBoard key={route[1] || ""} tl={tl} view={view} initialQ={route[1] || ""} sample={state.isSample ? state.task : null} />}</Loadable>;
+  return <Loadable state={state} name="用户时间线" big>{(tl) => <TimelineBoard key={route[1] || ""} tl={fresh || tl} view={view} initialQ={route[1] || ""} onSynced={setFresh} />}</Loadable>;
 }
 
-function TimelineBoard({ tl, view, initialQ, sample }) {
+// 同步：只读重取飞书各地区明细表，全部成功才替换本地快照；失败时页面仍是上次成功的快照。成功后再 GET 一次回读核对。
+function useTimelineSync(tl, onSynced) {
+  const [s, set] = useState({ busy: false, note: "", error: "" });
+  async function run() {
+    set({ busy: true, note: "", error: "" });
+    try {
+      const synced = await apiSend("POST", "/api/v3/timeline/sync");
+      const back = await apiSend("GET", "/api/v3/timeline");
+      if (back.syncedAt !== synced.syncedAt) throw new Error("同步后回读到的快照时间不一致，请刷新页面核对");
+      onSynced(back);
+      set({ busy: false, note: `已同步并回读：${back.agenda.length} 条事件 · ${back.anomalies.length} 条异常 · ${back.syncedAt}`, error: "" });
+    } catch (e) { set({ busy: false, note: "", error: `同步失败：${e.message}。页面仍是上次成功的快照（${tl.syncedAt}）` }); }
+  }
+  return [s, run];
+}
+
+function TimelineBoard({ tl, view, initialQ, onSynced }) {
   const [q, setQ] = useState(initialQ);
   const [showSrc, setShowSrc] = useState(false);
-  const [sync, setSync] = useState(false);
+  const [sync, runSync] = useTimelineSync(tl, onSynced);
   const go = (v) => { location.hash = href("user", "timeline", v); };
   return (
     <>
@@ -71,10 +91,11 @@ function TimelineBoard({ tl, view, initialQ, sample }) {
         <label className="search-box"><PixelIcon name="search" /><input placeholder="搜索学校或事件，如 UQ / Final" value={q} onChange={(e) => setQ(e.target.value)} /></label>
         <label className="check-inline"><input type="checkbox" checked={showSrc} onChange={(e) => setShowSrc(e.target.checked)} />显示来源单元格</label>
         <span className="spacer" />
-        {sample && <SampleBadge task={sample} />}
-        {sync ? <div style={{ width: 200 }}><StepProgress label="同步飞书（只读）" /></div> : <Button onClick={() => setSync(true)}><PixelIcon name="refresh" />同步</Button>}
+        {sync.busy ? <div style={{ width: 200 }}><StepProgress label="同步飞书（只读）" /></div> : <Button onClick={runSync}><PixelIcon name="refresh" />同步</Button>}
       </div>
-      {view === "month" ? <MonthTimeline tl={tl} q={q} showSrc={showSrc} /> : view === "country" ? <CountryTable tl={tl} q={q} showSrc={showSrc} /> : <Anomalies tl={tl} />}
+      {sync.note && <p className="small ok-text tl-sync">{sync.note}</p>}
+      {sync.error && <p className="small risk-text tl-sync">{sync.error}</p>}
+      {view === "month" ? <MonthTimeline tl={tl} q={q} showSrc={showSrc} /> : view === "country" ? <CountryTable tl={tl} q={q} showSrc={showSrc} /> : <Anomalies tl={tl} q={q} />}
     </>
   );
 }
@@ -245,6 +266,8 @@ function CountryTable({ tl, q, showSrc }) {
   const catsHere = COL_CATS.filter(([k]) => nodes.some((n) => colCat(n) === k));
   const toggleCat = (k) => setShowCats((o) => { const n = new Set(o); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const dm = deliveryMonth().slice(5);
+  // 空格子分两种：原表这一格空白；或者原表写了，但日期不完整 / 有冲突，进了「异常待确认」（按「学校 + 列名」对上异常清单）。
+  const pendingKeys = useMemo(() => new Set(tl.anomalies.map((a) => `${a.school}|${a.issue.split("：")[0]}`)), [tl.anomalies]);
   return (
     <>
       <div className="toolbar">
@@ -254,7 +277,7 @@ function CountryTable({ tl, q, showSrc }) {
           </button>
         ))}
       </div>
-      {!tl.table[c] ? <Placeholder icon="timeline" title={`${tl.countries.find(([k]) => k === c)[1]} · 示例数据未包含`}>示例只放了澳洲和英国的明细；接入飞书后各国都会显示。</Placeholder> : (
+      {!tl.table[c] ? <Placeholder icon="timeline" title={`${tl.countries.find(([k]) => k === c)?.[1] || c} · 来源里没有这个国家的明细`}>飞书地区明细表里没有这一组学校。</Placeholder> : (
         <>
           <div className="toolbar">
             <span className="label">显示列</span>
@@ -272,11 +295,13 @@ function CountryTable({ tl, q, showSrc }) {
               <thead><tr><th className="tl-school">学校</th>{visible.map(([n, i, k]) => <th key={i}><span className={`ev-dot ev-${k}`} />{n}</th>)}</tr></thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.abbr}>
+                  <tr key={`${r.school}-${r.abbr}`}>
                     <th scope="row" className="tl-school"><strong>{r.school}</strong><span className="tnum small muted">{r.abbr}</span></th>
-                    {visible.map(([, i]) => {
+                    {visible.map(([n, i]) => {
                       const cell = r.cells[i];
-                      if (!cell) return <td key={i} className="tl-cell is-missing" title="原表这一格为空"><span>—</span></td>;
+                      if (!cell) return pendingKeys.has(`${r.abbr ? `${r.school} ${r.abbr}` : r.school}|${n}`)
+                        ? <td key={i} className="tl-cell is-pending" title="原表写了，但日期不完整或有冲突，见「异常待确认」"><a href={href("user", "timeline", "anomalies", r.abbr || r.school)}>待确认</a></td>
+                        : <td key={i} className="tl-cell is-missing" title="原表这一格空白"><span>—</span></td>;
                       const [from, rawTo, src, flag] = cell;
                       const to = rawTo && rawTo !== from ? rawTo : null; // 起止同一天按单日写
                       const inDm = from.startsWith(dm) || (to && to.startsWith(dm));
@@ -292,36 +317,37 @@ function CountryTable({ tl, q, showSrc }) {
               </tbody>
             </table>
           </div>
-          <div className="tl-legend small muted"><span><i className="lg-dm" />落在交付月（{dm} 月）</span><span>— 表示原表没写</span><span>推测、冲突的格子请到「异常待确认」处理</span></div>
+          <div className="tl-legend small muted"><span><i className="lg-dm" />落在交付月（{dm} 月）</span><span>— 原表这一格空白</span><span>「待确认」：原表写了但日期不完整或有冲突，点开看原文</span></div>
         </>
       )}
     </>
   );
 }
 
-function Anomalies({ tl }) {
-  const [pick, setPick] = useState({});
-  const [toast, showToast] = useToast();
+// 异常待确认：原文、来源单元格、标记都完整保留；长原文在框内换行、超长时框内滚动，不撑破页面。
+// 人工裁定（采用 A / B）还没有保存接口，这里只列证据，不提供会被误认为已保存的选择。
+function Anomalies({ tl, q }) {
+  const list = tl.anomalies.filter((a) => !q || `${a.school}${a.issue}`.toLowerCase().includes(q.toLowerCase()));
   return (
     <>
-      <p className="small muted">导入时发现的冲突和缺失。工作台不自行猜测；你选定后只写入工作台，不改飞书原表。</p>
-      <div className="anomaly-list">
-        {tl.anomalies.map((a, i) => (
-          <section key={i} className={`card anomaly${pick[i] ? " is-done" : ""}`}>
-            <div className="anomaly-main">
-              <strong>{a.school}</strong>
-              <span>{a.issue}</span>
-              <span className="tnum small muted">来源 {a.src}</span>
-            </div>
-            <div className="anomaly-opts">
-              <div><span className="label">写法 A</span><span className="tnum">{a.a}</span></div>
-              <div><span className="label">写法 B</span><span className="tnum">{a.b || "—"}</span></div>
-            </div>
-            <Segmented options={[["", "待定"], ["a", "采用 A"], ...(a.b ? [["b", "采用 B"]] : [["ok", "确认推测"]])]} value={pick[i] || ""} onChange={(v) => { setPick((o) => ({ ...o, [i]: v })); if (v) showToast("已记录你的选择（示例，未写入）"); }} />
-          </section>
-        ))}
-      </div>
-      {toast}
+      <p className="small muted">导入时发现日期不完整、多个时段、含限定条件或互相冲突的格子，共 {tl.anomalies.length} 条{q ? `，筛出 ${list.length} 条` : ""}。工作台不自行猜测，这些格子不参与推导主线需求；要修正请改飞书原表后点「同步」。人工裁定的保存接口还没有（见 V3 接口清单）。</p>
+      {!list.length ? <Placeholder icon="search" title="没有符合条件的异常">换个学校名或事件名试试。</Placeholder> : (
+        <div className="anomaly-list">
+          {list.map((a, i) => (
+            <section key={`${a.src}-${i}`} className="card anomaly">
+              <div className="anomaly-main">
+                <strong>{a.school}</strong>
+                <span>{a.issue}</span>
+                <span className="small muted">来源单元格 <span className="tnum">{a.src}</span>{a.flag && <> · 标记 <Tag tone={a.flag === "conflict" ? "red" : "amber"}>{a.flag}</Tag></>}</span>
+              </div>
+              <div className="anomaly-opts">
+                <div><span className="label">原文 A</span><pre className="anomaly-raw">{a.a || "（空）"}</pre></div>
+                <div><span className="label">原文 B</span><pre className="anomaly-raw">{a.b || "—"}</pre></div>
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
     </>
   );
 }
@@ -331,37 +357,57 @@ const AREAS = ["营销", "产品", "运营"];
 
 // user/strategy/<需求 id>：⌘K 打开某条主线需求时直接选中它
 function Strategy({ route = [] }) {
-  const state = useApi(`/api/v3/needs?month=${deliveryMonth()}`, SAMPLE_NEEDS);
-  return <Loadable state={state} name="主线需求" big>{(data) => <StrategyBoard key={route[0] || ""} data={data} initialSel={route[0]} sample={state.isSample ? state.task : null} />}</Loadable>;
+  const state = useApi(`/api/v3/needs?month=${deliveryMonth()}`);
+  return <Loadable state={state} name="主线需求" big>{(data) => <StrategyBoard key={route[0] || ""} initial={data} initialSel={route[0]} />}</Loadable>;
 }
 
-function StrategyBoard({ data, initialSel, sample }) {
-  const [needs, setNeeds] = useState(data.needs);
-  const [sel, setSel] = useState(data.needs.some((n) => n.id === initialSel) ? initialSel : data.needs[0]?.id);
-  const [toast, showToast] = useToast();
+const STATUS_TAG = { 已采纳: "green", 草稿: "amber", 待复核: "red" };
+const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+// 采纳和策略修改都只写工作台本地：预览 → 确认 → 回读。草稿里的策略目标是规则生成的一句话，采纳前要你确认。
+function StrategyBoard({ initial, initialSel }) {
+  const [data, setData] = useState(initial);
+  const { needs, month } = data;
+  const [sel, setSel] = useState(needs.some((n) => n.id === initialSel) ? initialSel : needs[0]?.id);
+  const [derive, setDerive] = useState({ busy: false, note: "", error: "" });
+  const adopt = useWriteFlow();
   const cur = needs.find((n) => n.id === sel) || needs[0];
-  const adopt = (id) => { setNeeds((o) => o.map((n) => n.id === id ? { ...n, status: "已采纳" } : n)); showToast("已采纳：现在可以拆解策略，促销方案也能关联这条需求（示例）"); };
   const adopted = needs.filter((n) => n.status === "已采纳").length;
+  const reload = async () => { const fresh = await apiSend("GET", `/api/v3/needs?month=${month}`); setData(fresh); return fresh; };
+  async function rederive() {
+    setDerive({ busy: true, note: "", error: "" });
+    try { const f = await reload(); setDerive({ busy: false, note: `已按当前时间线重新推导：${f.needs.length} 条 · ${f.needs.filter((n) => n.status === "已采纳").length} 已采纳 · ${f.needs.filter((n) => n.status === "待复核").length} 待复核`, error: "" }); }
+    catch (e) { setDerive({ busy: false, note: "", error: e.message }); }
+  }
+  const pick = (id) => { if (adopt.busy || adopt.phase === "unknown") return; setSel(id); adopt.reset(); };
+  const previewAdopt = () => adopt.preview(() => apiSend("POST", `/api/v3/needs/${encodeURIComponent(cur.id)}/preview`, { month }));
+  const confirmAdopt = () => adopt.confirm(
+    (pv) => apiSend("POST", `/api/v3/needs/${encodeURIComponent(cur.id)}/adopt`, { previewId: pv.previewId, confirm: true }),
+    async (receipt, pv) => { const f = await reload(); const n = f.needs.find((x) => x.id === pv.need.id); return n?.status === "已采纳" && sameJson(n.strategy, pv.need.strategy); },
+  );
+  const rereadAdopt = async () => { try { await reload(); adopt.resolve(); } catch (e) { setDerive({ busy: false, note: "", error: e.message }); } };
   return (
     <>
       <ol className="flow-chain">
-        {[["用户时间线", "事件与日期", href("user", "timeline")], ["主线需求", `${needs.length} 条 · ${adopted} 已采纳`, null], ["策略拆解", `${needs.filter((n) => n.strategy).length} 条已拆解`, null], ["营销行动", "价格 · 物料 · brief", href("marketing")]].map(([a, b, to], i) => (
+        {[["用户时间线", "事件与日期", href("user", "timeline")], ["主线需求", `${needs.length} 条 · ${adopted} 已采纳`, null], ["策略拆解", `${needs.filter((n) => n.strategy && Object.values(n.strategy.actions).flat().length).length} 条已拆解`, null], ["营销行动", "价格 · 物料 · brief", href("marketing")]].map(([a, b, to], i) => (
           <li key={a} className={i === 1 ? "is-here" : ""}>{to ? <a href={to}><b>{a}</b><span>{b}</span></a> : <span><b>{a}</b><span>{b}</span></span>}</li>
         ))}
       </ol>
       <div className="toolbar">
-        <span className="small muted">{data.month}</span>
+        <span className="small muted">{month} · 按「事件 → 需求」对照表从时间线推导，不调用模型</span>
         <span className="spacer" />
-        {sample && <SampleBadge task={sample} />}
-        <Button onClick={() => showToast("已按对照表重新推导：4 条，无变化（示例）")}><PixelIcon name="refresh" />重新推导</Button>
-        <Button><PixelIcon name="plus" />手写主线需求</Button>
+        {derive.note && <span className="small ok-text">{derive.note}</span>}
+        {derive.error && <span className="small risk-text">读取失败：{derive.error}</span>}
+        <Button onClick={rederive} disabled={derive.busy}><PixelIcon name="refresh" />{derive.busy ? "推导中" : "重新推导"}</Button>
+        <PendingButton task="V3-接口清单"><PixelIcon name="plus" />手写主线需求</PendingButton>
       </div>
+      {!needs.length ? <Placeholder icon="target" title={`${month} 没有推导出主线需求`}>时间线里这个月没有确定的考试、选课等事件，或者事件都在异常清单里待确认。</Placeholder> : (
       <div className="strategy-layout cols-3-9">
         <ol className="need-list">
           {needs.map((n) => (
             <li key={n.id}>
-              <button type="button" className={n.id === cur?.id ? "is-sel" : ""} onClick={() => setSel(n.id)}>
-                <span className="need-top"><strong>{n.seg} · {n.node}</strong><Tag tone={n.status === "已采纳" ? "green" : "amber"}>{n.status}</Tag></span>
+              <button type="button" className={n.id === cur?.id ? "is-sel" : ""} onClick={() => pick(n.id)}>
+                <span className="need-top"><strong>{n.seg} · {n.node}</strong><Tag tone={STATUS_TAG[n.status] || "neutral"}>{n.status}</Tag></span>
                 <span className="need-need">{n.need}</span>
                 <span className="need-meta tnum small muted">{n.when.replace(/\b20\d\d-/g, "")} · {n.schools} 校 · {n.strategy ? `${Object.values(n.strategy.actions).flat().length} 个行动` : "未拆解"}</span>
               </button>
@@ -381,42 +427,38 @@ function StrategyBoard({ data, initialSel, sample }) {
                 <div><span className="label">痛点</span><p>{cur.pain}</p></div>
                 <div><span className="label">学生的待办</span><p>{cur.todo}</p></div>
               </div>
-              {cur.status !== "已采纳" ? (
+              {cur.status !== "已采纳" && (
                 <div className="need-draft">
-                  <p>这条需求还是草稿。先确认它成立，再拆解策略。</p>
-                  <div className="row"><Button variant="primary" onClick={() => adopt(cur.id)}><PixelIcon name="check" />采纳</Button><button type="button" className="link-btn">丢弃</button></div>
+                  <p>{cur.status === "待复核" ? "采纳后时间线来源变了，这条需求要重新确认；确认前不计入交付月完成数。" : "这条需求还是草稿。先确认它成立，再拆解策略；采纳后促销方案才能关联它。"}</p>
+                  <div className="row"><Button variant="primary" onClick={previewAdopt} disabled={adopt.busy || adopt.phase === "unknown"}><PixelIcon name="eye" />{cur.status === "待复核" ? "重新采纳（预览）" : "预览采纳"}</Button></div>
                 </div>
-              ) : !cur.strategy ? (
-                <div className="need-draft"><p>已采纳，还没有拆解策略。</p><Button onClick={() => showToast("已生成拆解草稿（示例）")}><PixelIcon name="spark" />AI 起草拆解</Button></div>
-              ) : (
-                <>
-                  <div className="strategy-goal"><span className="label">策略目标</span><strong>{cur.strategy.goal}</strong></div>
-                  <div className="strategy-cols">
-                    {AREAS.map((area) => {
-                      const acts = cur.strategy.actions[area] || [];
-                      return (
-                        <div key={area} className="strategy-col">
-                          <h3>{area}<span className="tnum">{acts.length}</span></h3>
-                          {!acts.length ? <p className="small muted">暂无行动</p> : (
-                            <ol>{acts.map(([what, why]) => <li key={what}><strong>{what}</strong><span>为什么：{why}</span></li>)}</ol>
-                          )}
-                          <button type="button" className="link-btn"><PixelIcon name="plus" />加一条</button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="row strategy-foot">
-                    <span className="small muted">已关联：{cur.links || "—"}</span>
-                    <span className="spacer" />
-                    <Button onClick={() => showToast("已生成飞书文档预览（示例，未写入）")}><PixelIcon name="external" />预览导出飞书</Button>
-                  </div>
-                </>
+              )}
+              {/* 采纳成功后这条需求不再是草稿，预览框放在外面，「已采纳」结果才看得到 */}
+                  <WriteBox flow={adopt} title="采纳预览" confirmLabel="确认采纳" savedText="已采纳，回读核对一致" onConfirm={confirmAdopt} onRepreview={previewAdopt} onReread={rereadAdopt}>
+                    {(pv) => <dl className="kv">
+                      <dt>需求</dt><dd>{pv.need.seg} · {pv.need.node} · {pv.need.when}</dd>
+                      <dt>状态</dt><dd><span className="diff-old">{cur.status}</span> → <span className="diff-new">已采纳</span></dd>
+                      <dt>策略目标</dt><dd>{pv.need.strategy.goal}<span className="small muted">（{cur.strategy ? "沿用已存的策略" : "规则生成的草稿，采纳后可以改"}）</span></dd>
+                      <dt>行动</dt><dd>{Object.values(pv.need.strategy.actions).flat().length} 条</dd>
+                      <dt>写到哪里</dt><dd>工作台本地，不回写飞书</dd>
+                    </dl>}
+                  </WriteBox>
+              {cur.strategy && <StrategyEditor key={cur.id} need={cur} month={month} editable={cur.status === "已采纳"} reload={reload} />}
+              {cur.status === "已采纳" && (
+                <div className="strategy-foot">
+                  <span className="small muted">已关联：{cur.links || "—"}</span>
+                  <FeishuExport key={cur.id} what="策略" extra={{ month }}
+                    previewPath={`/api/v3/needs/${encodeURIComponent(cur.id)}/strategy/export-preview`}
+                    confirmPath={`/api/v3/needs/${encodeURIComponent(cur.id)}/strategy/export`}
+                    statusBase={`/api/v3/needs/${encodeURIComponent(cur.id)}/strategy/exports`} />
+                </div>
               )}
             </div>
             </div>
           </section>
         )}
       </div>
+      )}
       <details className="rule-box">
         <summary><PixelIcon name="right" />推导规则 · 事件 → 需求对照表（{data.map.length} 类，AI 起草，你确认后基本不动）</summary>
         <div className="table-wrap">
@@ -429,7 +471,78 @@ function StrategyBoard({ data, initialSel, sample }) {
           </table>
         </div>
       </details>
-      {toast}
     </>
+  );
+}
+
+
+// 策略：一句目标 + 营销 / 产品 / 运营 三组「做什么、为什么」。改动先预览，确认后回读核对。
+function StrategyEditor({ need, month, editable, reload }) {
+  const [edit, setEdit] = useState(false);
+  const fromNeed = () => ({ goal: need.strategy.goal, actions: Object.fromEntries(AREAS.map((a) => [a, need.strategy.actions[a] || []])) });
+  const [draft, setDraft] = useState(fromNeed);
+  const flow = useWriteFlow();
+  const change = (fn) => { setDraft((d) => fn(structuredClone(d))); flow.reset(); };
+  const dirty = !sameJson(draft, { goal: need.strategy.goal, actions: Object.fromEntries(AREAS.map((a) => [a, need.strategy.actions[a] || []])) });
+  const valid = draft.goal.trim() && AREAS.every((a) => draft.actions[a].every(([w, y]) => w.trim() && y.trim()));
+  const preview = () => flow.preview(() => apiSend("POST", `/api/v3/needs/${encodeURIComponent(need.id)}/preview`, { month, strategy: draft }));
+  const confirm = () => flow.confirm(
+    (pv) => apiSend("PATCH", `/api/v3/needs/${encodeURIComponent(need.id)}/strategy`, { previewId: pv.previewId, confirm: true }),
+    async (receipt, pv) => { const f = await reload(); const ok = sameJson(f.needs.find((x) => x.id === need.id)?.strategy, pv.need.strategy); if (ok) setEdit(false); return ok; },
+  );
+  const reread = async () => { await reload(); flow.resolve(); };
+  const box = (
+    <WriteBox flow={flow} title="策略修改预览" onConfirm={confirm} onRepreview={preview} onReread={reread}>
+      {(pv) => <dl className="kv">
+        <dt>需求</dt><dd>{need.seg} · {need.node}</dd>
+        <dt>策略目标</dt><dd>{pv.need.strategy.goal === need.strategy.goal ? pv.need.strategy.goal : <><span className="diff-old">{need.strategy.goal}</span><br /><span className="diff-new">{pv.need.strategy.goal}</span></>}</dd>
+        {AREAS.map((a) => <Fragment key={a}><dt>{a}</dt><dd>{(pv.need.strategy.actions[a] || []).length ? <ol className="plain-list">{pv.need.strategy.actions[a].map(([w, y], k) => <li key={k}>{w}（{y}）</li>)}</ol> : "暂无"}{(need.strategy.actions[a] || []).length !== (pv.need.strategy.actions[a] || []).length && <span className="small muted">（原 {(need.strategy.actions[a] || []).length} 条）</span>}</dd></Fragment>)}
+        <dt>写到哪里</dt><dd>工作台本地，不回写飞书</dd>
+      </dl>}
+    </WriteBox>
+  );
+  if (!edit) return (
+    <div className="strategy-view">
+      {box}
+      <div className="strategy-goal"><span className="label">策略目标</span><strong>{need.strategy.goal}</strong>{editable && <Button className="btn btn-xs" onClick={() => { flow.resolve(); setDraft(fromNeed()); setEdit(true); }}><PixelIcon name="edit" />编辑策略</Button>}</div>
+      <div className="strategy-cols">
+        {AREAS.map((area) => {
+          const acts = need.strategy.actions[area] || [];
+          return (
+            <div key={area} className="strategy-col">
+              <h3>{area}<span className="tnum">{acts.length}</span></h3>
+              {!acts.length ? <p className="small muted">暂无行动</p> : <ol>{acts.map(([what, why], k) => <li key={k}><strong>{what}</strong><span>为什么：{why}</span></li>)}</ol>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+  return (
+    <div className="strategy-edit">
+      <label className="strategy-goal-edit"><span className="label">策略目标</span><textarea value={draft.goal} onChange={(e) => change((d) => { d.goal = e.target.value; return d; })} /></label>
+      <div className="strategy-cols">
+        {AREAS.map((area) => (
+          <div key={area} className="strategy-col">
+            <h3>{area}<span className="tnum">{draft.actions[area].length}</span></h3>
+            <ol>{draft.actions[area].map(([what, why], k) => (
+              <li key={k} className="action-edit">
+                <input value={what} placeholder="做什么" onChange={(e) => change((d) => { d.actions[area][k][0] = e.target.value; return d; })} />
+                <input value={why} placeholder="为什么" onChange={(e) => change((d) => { d.actions[area][k][1] = e.target.value; return d; })} />
+                <button type="button" className="icon-btn" title="删掉这一条" onClick={() => change((d) => { d.actions[area].splice(k, 1); return d; })}><PixelIcon name="close" /></button>
+              </li>
+            ))}</ol>
+            <button type="button" className="link-btn" onClick={() => change((d) => { d.actions[area].push(["", ""]); return d; })}><PixelIcon name="plus" />加一条</button>
+          </div>
+        ))}
+      </div>
+      <div className="row">
+        <span className="small muted">{!valid ? "目标和每条行动的「做什么 / 为什么」都要填" : dirty ? "有改动，预览确认后才保存" : "没有改动"}</span>
+        <span className="spacer" />
+        <Button onClick={() => { if (!flow.busy && flow.phase !== "unknown") { setEdit(false); flow.reset(); setDraft(fromNeed()); } }}>放弃改动</Button>
+        <Button variant="primary" disabled={!dirty || !valid || flow.busy || flow.phase === "unknown"} onClick={preview}><PixelIcon name="eye" />预览保存策略</Button>
+      </div>
+      {box}
+    </div>
   );
 }
