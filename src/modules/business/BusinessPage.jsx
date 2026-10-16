@@ -1,13 +1,18 @@
-import { Card, PageHeader, Tag } from "../../ui/components.jsx";
+import { useApi } from "../../api.js";
+import { Card, Loadable, PageHeader, SampleBadge, Tag } from "../../ui/components.jsx";
+import { PixelIcon } from "../../ui/bitmap.jsx";
 import { LINES } from "../../constants.js";
+import { SAMPLE_REVENUE } from "../../samples/v3.js";
 
 const METRICS = ["本月", "年度累计", "同比", "环比"];
 
-// 经营策略：只占位，结构为三条业务线各一张指标卡。
+// 业务：上面是业务营收完成度（v3，从首页挪来，数据来自飞书多维表格）；下面三条业务线的指标卡仍是占位。
 export default function BusinessPage() {
   return (
     <>
-      <PageHeader title="经营策略" subtitle="三条业务线的月度、年度数据与同环比，快速定位进度与卡点" actions={<Tag tone="orange">待建设</Tag>} />
+      <PageHeader title="业务" subtitle="营收完成度，以及三条业务线的月度、年度数据与同环比" />
+      <RevenueCard />
+      <div className="section-head"><h2>业务线指标</h2><Tag tone="amber">待建设</Tag></div>
       <div className="grid-3">
         {LINES.map((line) => (
           <Card key={line} title={line}>
@@ -25,3 +30,46 @@ export default function BusinessPage() {
     </>
   );
 }
+
+const fmt = (n) => Math.round(n).toLocaleString("en-US");
+
+// 业务营收完成度：总计一行、业务线一行。竖线是时间进度；完成度不低于时间进度为绿，落后 15 个百分点以内为琥珀，再落后为红。
+function RevenueCard() {
+  const state = useApi("/api/v3/business/revenue", SAMPLE_REVENUE);
+  const r = state.data;
+  return (
+    <Card className="revenue" title={<><PixelIcon name="trend" /> 业务营收完成度</>}
+      extra={<>{state.isSample && <SampleBadge task={state.task} />}{r && <span className="small muted">{r.period}{r.timePct != null && ` · 时间进度 ${Math.round(r.timePct * 100)}%（竖线）`} · 更新 {r.updatedAt}</span>}</>}>
+      <Loadable state={state}>
+        {(data) => (
+          <div className="rev-groups">
+            {data.groups.map((g) => (
+              <div key={g.label} className="rev-row">
+                <span className="rev-group">{g.label}</span>
+                {g.items.map((it) => <RevenueItem key={it.key} item={it} timePct={data.timePct} />)}
+              </div>
+            ))}
+          </div>
+        )}
+      </Loadable>
+    </Card>
+  );
+}
+
+function RevenueItem({ item, timePct }) {
+  const pct = item.target ? item.current / item.target : 0;
+  const tone = timePct == null ? "neutral" : pct >= timePct ? "ok" : pct >= timePct - 0.15 ? "warn" : "risk";
+  const toneLabel = { ok: "跟上进度", warn: "略落后", risk: "落后", neutral: "" }[tone];
+  return (
+    <div className={`rev-item is-${tone}`}>
+      <div className="rev-head"><span className="rev-name">{item.name}</span>{toneLabel && <span className="rev-tone">{toneLabel}</span>}</div>
+      <span className="rev-pct">{Math.round(pct * 100)}%</span>
+      <div className="rev-bar" role="img" aria-label={`完成 ${Math.round(pct * 100)}%`}>
+        <i style={{ width: `${Math.min(pct, 1) * 100}%` }} />
+        {timePct != null && <b style={{ left: `${timePct * 100}%` }} title={`时间进度 ${Math.round(timePct * 100)}%`} />}
+      </div>
+      <div className="rev-nums tnum"><span className="rev-cur">当前 {fmt(item.current)}</span><span className="rev-sep" />目标 {fmt(item.target)}</div>
+    </div>
+  );
+}
+

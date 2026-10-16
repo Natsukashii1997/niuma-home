@@ -85,11 +85,11 @@ export default function ReportsPage({ route }) {
             </div>
             <div className="chat-layout">
               <aside className="chat-list" aria-label={`${activeKind}列表`}>
-                {list.length ? list.map(r => { const sum = summarize(r.body); return <a key={r.id} data-dither="" href={href("reports", r.id)} className={r === current ? "active" : ""}>
+                <div className="chat-list-inner">{list.length ? list.map(r => { const sum = summarize(r.body); return <a key={r.id} data-dither="" href={href("reports", r.id)} className={r === current ? "active" : ""}>
                   <strong className="tnum">{r.date}{r.kind === "日报" && <span className="report-wd"> {weekday(r.date)}</span>}</strong>
                   <span className="small report-sum">{sum.total ? <>{sum.total} 项{sum.pending ? <span className="signal"> · {sum.pending} 待处理</span> : ""}</> : <span className="muted">{cleanCell(r.title)}</span>}</span>
                   {r.warnings?.length > 0 && <span title={r.warnings.join("；")} tabIndex={0} aria-label={r.warnings.join("；")}><Tag tone="orange">周次提示</Tag></span>}
-                </a>; }) : <Empty>{listFailure ? `${activeKind}读取失败，请重试` : `还没有${activeKind}`}</Empty>}
+                </a>; }) : <Empty>{listFailure ? `${activeKind}读取失败，请重试` : `还没有${activeKind}`}</Empty>}</div>
               </aside>
               <section className="chat-panel">
                 {current ? <>

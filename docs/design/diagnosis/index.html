@@ -277,37 +277,43 @@
 </ol>
 
 <h2>7 · 执行结果（2026-10-16，分支 ui-v3）</h2>
-<div class="ok"><b>已完成</b>：工作台全部现有页面加需求共识全部新页面的 UI，都在正式代码里实现了。没有接口的部分先显示示例数据并标「示例」，接口要求写在 <code>docs/tasks/V3-接口清单.md</code>，由 Codex 实现。验证：
+<div class="ok"><b>已完成并验收</b>：首轮改版后，你逐页提了意见，又改了 3 轮，再做了一轮全站版式统一，都已验收。没有接口的部分显示示例数据并标「示例」，接口要求写在 <code>docs/tasks/V3-接口清单.md</code>，由 Codex 实现。验证：
 <ul>
-<li><code>npm test</code> 85 项全部通过；</li>
-<li>构建通过（输出到临时目录，不碰主工作区）；</li>
-<li>21 个路由截图，页面没有报错（控制台只有预期中的 501，即示例数据回退）；</li>
-<li>关键交互实测：知识库拖动、按规则整理、撤销；价格格子直接改价；营销战役节点勾选；画布拖拽（吸附 8px）；自言自语快捷键；Codex 预警详情；设置行内展开；Agent 知识库页签。</li>
+<li><code>npm test</code> 85 项全部通过；构建通过（输出到临时目录，不碰主工作区）；</li>
+<li>18 个页面 1440 宽截图，没有页面报错（控制台只有预期中的 501，即示例数据回退）；</li>
+<li>版式测量脚本逐页量过：同一行并排的板块底边差为 0，卡片标题栏只有 48px 一种。</li>
 </ul>
-按你的要求<b>不做手机端</b>，只按 1440 宽验证。</div>
+只做电脑端，只按 1440 宽验证。</div>
+<h3>验收轮次</h3>
+<ol>
+<li><b>第 1 轮 · 首页、营销、配色</b>：首页改为 Codex 重置大卡、待我处理、交付月、今日日程、用户之声词云、Agent；营销页签改为 营销战役 · 月度促销 · 价格记录 · 物料沉淀 · 设计 brief，方案录入与促销表合并为月度促销；加语义色（绿达成、红风险、蓝信息、琥珀待处理）。</li>
+<li><b>第 2 轮 · 图标、用户、Voice、项目</b>：图标换成 7×7 实心像素（C 方案）；用户时间线改为按月时间轴；主线需求并入用户策略；Voice 独立为侧栏模块；项目推进与带教重做。</li>
+<li><b>第 3 轮 · 知识库</b>：搜索、详情面板、健康检查。</li>
+<li><b>版式统一</b>：12 栏切分、并排等高、间距刻度、卡头 48px、控件 32/28px、图标视觉对齐、概况数字条统一组件、内容区全站同宽（规则见 <code>STYLE-GUIDE.md</code> 第 6 节，实现在 <code>src/styles-layout.css</code>）；营销战役顶部改为月底交付倒计时条；业务营收完成度从首页挪到业务页。</li>
+</ol>
 <h3>改前 / 改后</h3>
 <h4>首页</h4><div class="two"><figure><img src="shots/live-1440-home.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-home.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
-<h4>营销 · 方案 → 月度台账</h4><div class="two"><figure><img src="shots/live-1440-marketing_plans.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-marketing_plans.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
-<h4>营销 · 促销表</h4><div class="two"><figure><img src="shots/live-1440-marketing_promos.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-marketing_promos.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
+<h4>营销 · 月度促销（原方案 + 促销表）</h4><div class="two"><figure><img src="shots/live-1440-marketing_plans.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-marketing_plans.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
+<h4>营销 · 物料沉淀</h4><div class="two"><figure><img src="shots/live-1440-marketing_materials.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-marketing_materials.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
 <h4>Agent</h4><div class="two"><figure><img src="shots/live-1440-assistants.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-assistants.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
 <h4>日/周报</h4><div class="two"><figure><img src="shots/live-1440-reports.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-reports.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
 <h4>设置</h4><div class="two"><figure><img src="shots/live-1440-settings.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-settings.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
-<h4>营销 · 物料</h4><div class="two"><figure><img src="shots/live-1440-marketing_materials.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-marketing_materials.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
 <h3>新页面</h3>
-<div class="two"><figure><img src="shots/after-marketing_prices.png" alt=""><figcaption>价格（新）</figcaption></figure><figure><img src="shots/after-marketing_materials_refs.png" alt=""><figcaption>设计参考画布（新）</figcaption></figure><figure><img src="shots/after-marketing_brief.png" alt=""><figcaption>设计 brief（新）</figcaption></figure><figure><img src="shots/after-marketing_campaign.png" alt=""><figcaption>营销战役（新）</figcaption></figure><figure><img src="shots/after-user_timeline.png" alt=""><figcaption>用户时间线 · 按国家（新）</figcaption></figure><figure><img src="shots/after-user_timeline_agenda.png" alt=""><figcaption>用户时间线 · 按月议程（新）</figcaption></figure><figure><img src="shots/after-user_needs.png" alt=""><figcaption>主线需求（新）</figcaption></figure><figure><img src="shots/after-user_voice.png" alt=""><figcaption>留学之声（新）</figcaption></figure><figure><img src="shots/after-projects.png" alt=""><figcaption>项目推进（新）</figcaption></figure><figure><img src="shots/after-projects_mentor.png" alt=""><figcaption>管培带教（新）</figcaption></figure><figure><img src="shots/after-kb.png" alt=""><figcaption>知识库整理（新）</figcaption></figure></div>
+<div class="two"><figure><img src="shots/after-marketing_campaign.png" alt=""><figcaption>营销战役</figcaption></figure><figure><img src="shots/after-marketing_prices.png" alt=""><figcaption>价格记录</figcaption></figure><figure><img src="shots/after-marketing_brief.png" alt=""><figcaption>设计 brief</figcaption></figure><figure><img src="shots/after-business.png" alt=""><figcaption>业务 · 营收完成度</figcaption></figure><figure><img src="shots/after-user_timeline.png" alt=""><figcaption>用户时间线 · 按月时间轴</figcaption></figure><figure><img src="shots/after-user_timeline_country.png" alt=""><figcaption>用户时间线 · 明细表</figcaption></figure><figure><img src="shots/after-user_strategy.png" alt=""><figcaption>用户策略</figcaption></figure><figure><img src="shots/after-voice.png" alt=""><figcaption>Voice</figcaption></figure><figure><img src="shots/after-projects.png" alt=""><figcaption>项目推进</figcaption></figure><figure><img src="shots/after-projects_mentor.png" alt=""><figcaption>管培带教</figcaption></figure><figure><img src="shots/after-kb.png" alt=""><figcaption>知识库</figcaption></figure><figure><img src="shots/after-brand.png" alt=""><figcaption>品牌（占位）</figcaption></figure></div>
 <h3>还剩的问题</h3>
 <ul>
-<li><b>真实功能未接</b>：价格、物料（NAS）、brief、战役、时间线、需求、留学之声、项目、带教、知识库、自言自语、Codex 预警、Agent 知识库，都还是示例数据。接口按 <code>docs/tasks/V3-接口清单.md</code> 由 Codex 实现。</li>
+<li><b>真实功能未接</b>：营收完成度、价格、物料（NAS）、brief、战役、时间线、用户策略、Voice、项目、带教、知识库、自言自语、Codex 预警、Agent 知识库，都还是示例数据。接口按 <code>docs/tasks/V3-接口清单.md</code> 由 Codex 实现；营收完成度要等你提供飞书多维表格。</li>
 <li><b>NAS 访问方式没有实测</b>，Codex 实现前要先汇报。</li>
 <li><b>方案录入「粘贴后自动解析」没有自动化测到</b>（模拟剪贴板粘贴受限），需要你实际粘贴一次确认。</li>
-<li><b>用户策略</b>：按共识只放了说明占位，结构等单独讨论。</li>
-<li>原型 v3 的文件（<code>docs/design/index.html</code> 等）和 <code>T10-派单草稿.md</code> 已经被这次改版取代，留着做记录。</li>
+<li><b>日/周报</b>：页面没问题，原文档内容太杂，之后再整理。</li>
+<li><b>业务页</b>：三条业务线的月度 / 年度指标卡仍是占位。</li>
+<li>价格口径里的毛利底线和课时成本还是演示值（25%、440 元），需要真实值。</li>
+<li>原型 v3 的文件（<code>docs/design/index.html</code> 等）和 <code>T10-派单草稿.md</code> 已被取代，留作记录；<code>docs/design/icons-compare.html</code> 记录了图标选型（已选 C）。</li>
 </ul>
-<h3>需要你决定</h3>
+<h3>接下来</h3>
 <ol>
-<li>在开发预览（http://127.0.0.1:5296）里整体看一遍，确认是否通过。</li>
-<li>通过后，要不要在 <code>ui-v3</code> 分支提交（现在都还没提交）。</li>
-<li>价格口径里的毛利底线和课时成本（现在是演示值 25% 和 440 元），请给出真实值。</li>
+<li>Codex 按接口清单把示例数据换成真实接口。</li>
+<li>合并回 main、切换 5280，等你另行授权。</li>
 </ol>
 </main>
 <script>

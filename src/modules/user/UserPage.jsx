@@ -276,7 +276,7 @@ function StrategyBoard({ data, sample }) {
         <Button onClick={() => showToast("已按对照表重新推导：4 条，无变化（示例）")}><PixelIcon name="refresh" />重新推导</Button>
         <Button><PixelIcon name="plus" />手写一条需求</Button>
       </div>
-      <div className="strategy-layout">
+      <div className="strategy-layout cols-3-9">
         <ol className="need-list">
           {needs.map((n) => (
             <li key={n.id}>

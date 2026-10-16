@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
-import { Button, Loadable, Modal, PageHeader, SampleBadge, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Loadable, Modal, PageHeader, SampleBadge, StatStrip, Tag, useToast } from "../../ui/components.jsx";
 import { SAMPLE_KB } from "../../samples/v3.js";
 
 // 知识库整理（v3）：一棵可编辑的树 + 暂存区。拖动、多选、剪切粘贴、重命名、新建目录都先进暂存，可撤销；
@@ -207,16 +207,14 @@ function Organizer({ kb, sample }) {
 
   return (
     <div ref={box}>
-      <div className="kb-health" role="group" aria-label="健康检查">
-        <span className="kb-health-title"><PixelIcon name="alert" />健康检查</span>
-        {ISSUES.map(([k, label, why]) => {
+      <StatStrip items={[
+        { label: "健康检查", value: health.size, unit: " 项待看", foot: "点右边一项，左侧只看这类" },
+        ...ISSUES.map(([k, label, why]) => {
           const n = issueCount(k);
-          return <button key={k} type="button" className={`kb-health-item${issue === k ? " is-on" : ""}${n ? "" : " is-zero"}`} disabled={!n} title={why} onClick={() => setIssue(issue === k ? "" : k)}><b className="tnum">{n}</b>{label}</button>;
-        })}
-        <span className="spacer" />
-        <span className="small muted">点一项，左侧只看这类文档</span>
-      </div>
-      <div className="kb-layout">
+          return { label, value: n, foot: why, tone: n ? (k === "stale" ? "muted" : "warn") : "ok", active: issue === k, disabled: !n, onClick: () => setIssue(issue === k ? "" : k) };
+        }),
+      ]} />
+      <div className="kb-layout cols-4-4-4">
       <section className="card kb-tree-card">
         <div className="card-head">
           <h2><PixelIcon name="kb" />{kb.space}</h2>

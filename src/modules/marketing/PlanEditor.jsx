@@ -163,7 +163,7 @@ function PlanForm({ month, line, onSaved }) {
       {(loadError || error) && <p className="error" role="alert">{loadError || error}</p>}
       {(loadError || needsReload) && <Button onClick={() => window.location.reload()}>重新载入核对</Button>}
       {message && <p role="status">{message}</p>}
-      <div className="split">
+      <div className="split cols-5-7">
         <Card title="方案原文" extra={<Button onClick={() => parse()} disabled={locked || !rawText.trim()}>{busy === "parse" ? "解析中…" : "解析预览"}</Button>}>
           <textarea className="paste-box" aria-label="方案原文" value={rawText} disabled={locked}
             onChange={(event) => edit(event.target.value)} onPaste={paste}

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PixelIcon, TypeText } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Card, Loadable, PageHeader, Placeholder, SampleBadge, Segmented, Tabs, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Card, Loadable, PageHeader, Placeholder, SampleBadge, Segmented, StatStrip, Tabs, Tag, useToast } from "../../ui/components.jsx";
 import { SAMPLE_MENTOR, SAMPLE_PROJECTS } from "../../samples/v3.js";
 
 // 项目（v3）：项目推进按多维表格的标准流程模板；管培带教读两位管培生的日志，带教 Agent 只出草稿。
@@ -46,8 +46,10 @@ function ProjectBoard({ list, sample }) {
   const update = (i, patch) => setProjects((old) => old.map((x) => x.id !== sel ? x : { ...x, nodes: x.nodes.map((n, j) => j === i ? { ...n, ...patch } : n) }));
   const keep = (n) => filter === "all" || (filter === "gate" ? n.gate && !n.done : filter === "soon" ? !n.done && daysTo(n.due) !== null && daysTo(n.due) <= 2 : !n.done);
   return (
-    <div className="proj-layout">
-      <aside className="proj-list">
+    <div className="proj-layout cols-3-9">
+      <section className="card proj-list">
+        <div className="card-head"><h2><PixelIcon name="project" />项目<span className="tnum small muted">{projects.length}</span></h2>{sample && <SampleBadge task={sample} />}</div>
+        <div className="proj-items">
         {projects.map((x) => {
           const s = summary(x);
           return (
@@ -64,23 +66,18 @@ function ProjectBoard({ list, sample }) {
             </button>
           );
         })}
-        <Button><PixelIcon name="plus" />新建项目 · 套用模板</Button>
-        {sample && <SampleBadge task={sample} />}
-      </aside>
+        </div>
+        <div className="proj-list-foot"><Button><PixelIcon name="plus" />新建项目 · 套用模板</Button></div>
+      </section>
       {!p?.nodes ? <Placeholder icon="project" title="这个项目没有节点数据">已结项的项目只保留名称和模板。</Placeholder> : (
         <section className="proj-main">
-          <div className="proj-head">
-            <div>
-              <span className="label">项目推进 · 模板 {p.template}</span>
-              <h2>{p.name}<Tag tone={STATUS_TONE[p.status] || "neutral"}>{p.status}</Tag></h2>
-            </div>
-            <div className="proj-kpis">
-              <span><b className="tnum">{sum.done}<small>/{sum.total}</small></b>节点完成</span>
-              <span className={sum.gates ? "is-warn" : ""}><b className="tnum">{sum.gates}</b>等你审核</span>
-              <span className={sum.soon ? "is-risk" : ""}><b className="tnum">{sum.soon}</b>2 天内到期</span>
-              <span><b className="tnum">{sum.undated}</b>未设日期</span>
-            </div>
-          </div>
+          <StatStrip items={[
+            { label: `项目推进 · 模板 ${p.template}`, value: p.name, foot: <Tag tone={STATUS_TONE[p.status] || "neutral"}>{p.status}</Tag> },
+            { label: "节点完成", value: sum.done, unit: `/${sum.total}`, foot: `当前阶段：${p.phases[p.phase]}` },
+            { label: "等你审核", value: sum.gates, tone: sum.gates ? "warn" : "", foot: "门禁只提醒、不拦截" },
+            { label: "2 天内到期", value: sum.soon, tone: sum.soon ? "risk" : "", foot: sum.next?.due ? `下一个：${sum.next.due}` : "—" },
+            { label: "未设日期", value: sum.undated, tone: sum.undated ? "muted" : "", foot: "没日期的节点不提醒" },
+          ]} />
           <ol className="phase-steps">
             {p.phases.map((ph, i) => {
               const nodes = p.nodes.filter((n) => n.ph === ph);
@@ -172,14 +169,13 @@ function MentorBoard({ list, sample }) {
         <span className="small muted">读飞书日志 · 最近 30 天 · 带教 Agent 只出草稿，不自动发送</span>
         <Button><PixelIcon name="refresh" />刷新日志</Button>
       </div>
-      <div className="mentor-sum">
-        <span><b className="tnum">{p.logs.length}</b>篇日志</span>
-        <span className="is-risk"><b className="tnum">{count(p, "卡点")}</b>个卡点</span>
-        <span><b className="tnum">{count(p, "提问")}</b>次提问</span>
-        <span><b className="tnum">{p.logs[0]?.d || "—"}</b>最近一篇</span>
-        <span><b className="tnum">{p.qa}</b>条 Q&A 可引用</span>
-      </div>
-      <div className="mentor-layout">
+      <StatStrip items={[
+        { label: "日志", value: p.logs.length, unit: " 篇", foot: "最近 30 天" },
+        { label: "卡点", value: count(p, "卡点"), tone: count(p, "卡点") ? "risk" : "", foot: "日志里标了「卡点」的" },
+        { label: "提问", value: count(p, "提问"), foot: "日志里标了「提问」的" },
+        { label: "最近一篇", value: p.logs[0]?.d || "—", foot: p.history.length ? `已有 ${p.history.length} 周带教记录` : "还没有带教记录" },
+      ]} />
+      <div className="mentor-layout cols-6-6">
         <Card title={<><PixelIcon name="reports" />{p.name} · 日志</>} extra={<button type="button" className="link-btn">加载更早</button>}>
           <ol className="logs">{p.logs.map((l) => <li key={l.d} className={l.flag === "卡点" ? "is-block" : ""}><span className="tnum small muted">{l.d}</span><i /><span>{l.t}{l.flag && <> <Tag tone={FLAG_TONE[l.flag] || "neutral"}>{l.flag}</Tag></>}</span></li>)}</ol>
         </Card>
@@ -189,6 +185,7 @@ function MentorBoard({ list, sample }) {
           <div className="coach-block"><h4><PixelIcon name="search" />建议追问<span className="spacer" /><button type="button" className="link-btn" onClick={() => setAsked(true)}><PixelIcon name="spark" />再生成</button></h4>
             <ul>{p.asks.map((a) => <li key={a}>{a}<button type="button" className="icon-btn" title="复制" onClick={() => showToast("已复制追问")}><PixelIcon name="copy" /></button></li>)}</ul>
             {asked && <p className="small"><TypeText text="补一问：这周哪件事你最想让我拍板？" /></p>}
+            <p className="small muted"><PixelIcon name="link" /> 可引用 Q&A 合集 · {p.qa} 条相关</p>
           </div>
           <div className="coach-block"><h4><PixelIcon name="send" />反馈草稿</h4><div className="ai-box"><TypeText key={p.name} text={p.feedback} /></div>
             <div className="row"><Button className="btn btn-xs" onClick={() => showToast("已复制反馈草稿，去飞书发送")}><PixelIcon name="copy" />复制</Button></div></div>

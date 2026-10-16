@@ -3,11 +3,11 @@ import { href } from "../../router.js";
 import { Card, Loadable, SampleBadge, StatusMark } from "../../ui/components.jsx";
 import { BitAvatar, FlipNumber, PixelIcon } from "../../ui/bitmap.jsx";
 import { LINES, deliveryMonth, daysToDeadline, shortMonth } from "../../constants.js";
-import { SAMPLE_MONTH, SAMPLE_REVENUE, SAMPLE_TODO, SAMPLE_VOICE } from "../../samples/v3.js";
+import { SAMPLE_MONTH, SAMPLE_TODO, SAMPLE_VOICE } from "../../samples/v3.js";
 import { CodexCard } from "./CodexStrip.jsx";
 import { VoiceCloud } from "../voice/VoicePage.jsx";
 
-// 首页（v3）：业务营收完成度 → Codex 重置 + 待我处理 → 交付月 + 今日日程 → 用户之声 + Agent。
+// 首页（v3）：Codex 重置 + 待我处理 → 交付月 + 今日日程 → 用户之声 + Agent。业务营收完成度在「业务」页。
 // 工作节奏是本月准备下月，月底前交付。
 
 const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -45,7 +45,6 @@ export default function HomePage() {
         <a className="btn btn-primary" href={href("marketing", "plans")}><PixelIcon name="grid" /> {shortMonth(month)}促销</a>
       </header>
       <div className="home-grid">
-        <RevenueCard />
         <CodexCard className="col-8" />
         <TodoCard />
         <DeliveryCard month={month} plans={plans} />
@@ -54,48 +53,6 @@ export default function HomePage() {
         <AgentsCard />
       </div>
     </>
-  );
-}
-
-const fmt = (n) => Math.round(n).toLocaleString("en-US");
-
-// 业务营收完成度：总计一行、业务线一行。竖线是时间进度；完成度不低于时间进度为绿，落后 15 个百分点以内为琥珀，再落后为红。
-function RevenueCard() {
-  const state = useApi("/api/v3/home/revenue", SAMPLE_REVENUE);
-  const r = state.data;
-  return (
-    <Card className="col-12 revenue" title={<><PixelIcon name="trend" /> 业务营收完成度</>}
-      extra={<>{state.isSample && <SampleBadge task={state.task} />}{r && <span className="small muted">{r.period}{r.timePct != null && ` · 时间进度 ${Math.round(r.timePct * 100)}%（竖线）`} · 更新 {r.updatedAt}</span>}</>}>
-      <Loadable state={state}>
-        {(data) => (
-          <div className="rev-groups">
-            {data.groups.map((g) => (
-              <div key={g.label} className="rev-row">
-                <span className="rev-group">{g.label}</span>
-                {g.items.map((it) => <RevenueItem key={it.key} item={it} timePct={data.timePct} />)}
-              </div>
-            ))}
-          </div>
-        )}
-      </Loadable>
-    </Card>
-  );
-}
-
-function RevenueItem({ item, timePct }) {
-  const pct = item.target ? item.current / item.target : 0;
-  const tone = timePct == null ? "neutral" : pct >= timePct ? "ok" : pct >= timePct - 0.15 ? "warn" : "risk";
-  const toneLabel = { ok: "跟上进度", warn: "略落后", risk: "落后", neutral: "" }[tone];
-  return (
-    <div className={`rev-item is-${tone}`}>
-      <div className="rev-head"><span className="rev-name">{item.name}</span>{toneLabel && <span className="rev-tone">{toneLabel}</span>}</div>
-      <span className="rev-pct">{Math.round(pct * 100)}%</span>
-      <div className="rev-bar" role="img" aria-label={`完成 ${Math.round(pct * 100)}%`}>
-        <i style={{ width: `${Math.min(pct, 1) * 100}%` }} />
-        {timePct != null && <b style={{ left: `${timePct * 100}%` }} title={`时间进度 ${Math.round(timePct * 100)}%`} />}
-      </div>
-      <div className="rev-nums tnum"><span className="rev-cur">当前 {fmt(item.current)}</span><span className="rev-sep" />目标 {fmt(item.target)}</div>
-    </div>
   );
 }
 

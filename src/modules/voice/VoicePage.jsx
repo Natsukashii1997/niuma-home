@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PixelIcon, TypeText } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Card, Loadable, PageHeader, SampleBadge, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Card, Loadable, PageHeader, SampleBadge, StatStrip, Tag, useToast } from "../../ui/components.jsx";
 import { SAMPLE_VOICE } from "../../samples/v3.js";
 
 // Voice · 留学之声（v3，侧栏独立模块）：留学生最近在讨论什么。基于本机运行的 AIHOT 引擎，免费英文信源；
@@ -15,8 +15,9 @@ export default function VoicePage() {
   const state = useApi("/api/v3/voice", SAMPLE_VOICE);
   return (
     <>
-      <PageHeader title="Voice" subtitle="留学之声：留学生最近在讨论什么。只看多数人的共性——同一人或同一矩阵只算一个来源，独立来源 ≥ 5 才上榜。" />
-      <Loadable state={state}>{(v) => <VoiceBoard v={v} sample={state.isSample ? state.task : null} />}</Loadable>
+      <PageHeader title="Voice" subtitle="留学之声：留学生最近在讨论什么。只看多数人的共性——同一人或同一矩阵只算一个来源，独立来源 ≥ 5 才上榜。"
+        actions={state.data && <>{state.isSample && <SampleBadge task={state.task} />}<span className="small muted">本机运行 · 上次抓取 {state.data.updatedAt} · 下次 {state.data.nextAt}</span></>} />
+      <Loadable state={state}>{(v) => <VoiceBoard v={v} />}</Loadable>
     </>
   );
 }
@@ -39,7 +40,7 @@ export function VoiceCloud({ cloud, size = 1, onPick }) {
   );
 }
 
-function VoiceBoard({ v, sample }) {
+function VoiceBoard({ v }) {
   const [scope, setScope] = useState("");
   const [kind, setKind] = useState("");
   const [word, setWord] = useState("");
@@ -55,15 +56,13 @@ function VoiceBoard({ v, sample }) {
   const s = v.stats;
   return (
     <>
-      <div className="voice-kpis">
-        <div className="vk"><span className="label">今日上榜话题</span><b>{s.topics}</b><span className="small muted">新增 {s.newTopics} · 急升 {s.surge}</span></div>
-        <div className="vk"><span className="label">独立来源 · 48 小时</span><b>{s.participants}</b><span className="small muted">个案已过滤 {s.filtered}</span></div>
-        <div className="vk"><span className="label">信源</span><b>{s.sourceCount}</b><span className="small muted">{s.sources} · 免费</span></div>
-        <div className="vk"><span className="label">本月模型费用</span><b>¥{v.budget.used.toFixed(2)}<small> / {v.budget.limit}</small></b>
-          <span className="vk-bar"><i style={{ width: `${(v.budget.used / v.budget.limit) * 100}%` }} /></span><span className="small muted">超预算自动停（分 / 时 / 天三级）</span></div>
-        <div className="vk vk-meta">{sample && <SampleBadge task={sample} />}<span className="small muted">本机运行 · 上次抓取 {v.updatedAt} · 下次 {v.nextAt}</span></div>
-      </div>
-      <div className="voice-top">
+      <StatStrip items={[
+        { label: "今日上榜话题", value: s.topics, foot: `新增 ${s.newTopics} · 急升 ${s.surge}` },
+        { label: "独立来源 · 48 小时", value: s.participants, foot: `个案已过滤 ${s.filtered}` },
+        { label: "信源", value: s.sourceCount, foot: `${s.sources} · 免费` },
+        { label: "本月模型费用", value: `¥${v.budget.used.toFixed(2)}`, unit: ` / ${v.budget.limit}`, foot: <><span className="stat-bar"><i style={{ width: `${(v.budget.used / v.budget.limit) * 100}%` }} /></span>超预算自动停</> },
+      ]} />
+      <div className="voice-top cols-6-6">
         <Card title={<><PixelIcon name="voice" />大家在说什么</>} extra={word ? <button type="button" className="link-btn" onClick={() => setWord("")}>清除「{word}」</button> : <span className="small muted">点一个词，下面的热榜只看相关话题</span>}>
           <VoiceCloud cloud={v.cloud} size={1.1} onPick={setWord} />
         </Card>
@@ -85,7 +84,7 @@ function VoiceBoard({ v, sample }) {
         <span className="small muted">{list.length} 个话题</span>
       </div>
       {!list.length ? <p className="empty">没有符合条件的话题</p> : (
-        <div className="voice-layout">
+        <div className="voice-layout cols-6-6">
           <ol className="hot-list">
             {list.map((t, i) => (
               <li key={t.id}>

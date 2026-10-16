@@ -168,3 +168,18 @@ export function StatusMark({ state, label }) {
 export function Placeholder({ icon = "clock", title, children }) {
   return <div className="empty placeholder"><PixelIcon name={icon} size={32} /><strong>{title}</strong>{children && <p>{children}</p>}</div>;
 }
+
+// 概况数字条（v2.2）：等宽格、左对齐，标签 → 数字 → 说明；item 带 onClick 时整格是按钮（如健康检查筛选）。
+export function StatStrip({ items }) {
+  return (
+    <div className="stat-strip">
+      {items.map((it) => {
+        const cls = `stat${it.tone ? ` is-${it.tone}` : ""}${it.active ? " is-on" : ""}`;
+        const body = <><span className="stat-label">{it.label}</span><span className="stat-value">{it.value}{it.unit && <small>{it.unit}</small>}</span><span className="stat-foot">{it.foot}</span></>;
+        return it.onClick
+          ? <button key={it.label} type="button" className={cls} onClick={it.onClick} disabled={it.disabled} title={it.title}>{body}</button>
+          : <div key={it.label} className={cls}>{body}</div>;
+      })}
+    </div>
+  );
+}
