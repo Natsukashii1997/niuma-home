@@ -873,5 +873,7 @@
 - 验证：测试 246/0，构建通过；一次性克隆在 5298 验证发布、回滚、端口拦截、kill -9 后约 29 秒自动拉起；正式 5280 首页与快照逐字节一致，主要接口 200，仅留学之声未配置返回 503（与切换前一致，未设置 `WORKDESK_VOICE_SNAPSHOT`）；数据库 integrity_check 通过，原 7 张表行数与切换前一致，新增 V3 表。切换前备份在 `~/Library/Application Support/NiumaHome/backups/`。
 - 截图（`docs/handoff/本地应用/`）：`快照服务-首页.png`、`正式5280-首页.png`；图标预览 `docs/design/牛马之家图标/应用图标-预览.png`。
 - 以后改完代码要上线：在主工作区提交后执行 `bash scripts/release-app.sh`。开发目录的改动不影响正在用的版本。
-- 待用户：Safari 打开 http://127.0.0.1:5280 →「文件 → 添加到程序坞」，名称「牛马之家」。
+- 应用本体（10-17 补充，用户要求直接装好）：Safari「添加到程序坞」只能由用户手动操作，改为原生窗口壳 `desktop/macos/NiumaHome.swift`（WKWebView 加载 5280；本站链接留在窗口内，外部链接和新窗口交给默认浏览器；补齐确认框、文件选择、下载到「下载」文件夹、编辑菜单和 ⌘R 重新载入；服务没起来时显示说明页）。`scripts/build-mac-app.sh` 编译并安装到 `~/Applications/牛马之家.app`，图标 `desktop/macos/AppIcon-1024.png` 由 `scripts/make-icons.mjs` 生成（圆角底板 824、四周透明 100）。
+- 应用实测（测试版应用指向隔离服务和本地测试页）：页面渲染、导航、中文输入、编辑菜单全选、确认框（返回确定）、文件选择框（弹出与取消）、下载（落到「下载」文件夹）、复制到剪贴板、外部链接（应用窗口不跳走）均通过。
+- 注意：应用窗口的 localStorage 与浏览器分开，原先在浏览器里记住的页面状态（筛选、分组等）不会带过来。
 - 范围外发现：`src/modules/business/BusinessPage.jsx` 末尾多一个空行（合并时 `git diff --check` 提示，ui-v3 原有），未处理。
