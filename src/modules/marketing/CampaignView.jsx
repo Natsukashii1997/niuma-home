@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FlipNumber, PixelIcon } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Card, Loadable, NodeCheck, PendingButton, PhaseSteps, Segmented, Tag } from "../../ui/components.jsx";
+import { Button, Card, Loadable, NodeCheck, PhaseSteps, Segmented, Tag } from "../../ui/components.jsx";
 import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { deliveryMonth, deliverySteps } from "../../constants.js";
 
@@ -14,22 +14,29 @@ const DAY = 86400000;
 
 const parseDay = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
 const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || "") && !Number.isNaN(parseDay(s).getTime());
+const dayText = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// 新开战役默认放在下个月：下月 1 日到月底
+const nextMonth = () => { const n = new Date(); return { start: dayText(new Date(n.getFullYear(), n.getMonth() + 1, 1)), end: dayText(new Date(n.getFullYear(), n.getMonth() + 2, 0)) }; };
 
 export default function CampaignView() {
   const state = useApi("/api/v3/campaigns/current");
   const [fresh, setFresh] = useState(null);
-  const [notice, setNotice] = useState(""); // 保存后页面按回读结果重建，结果提示放在外层
-  const saved = (back, text = "") => { setFresh(back); setNotice(text); };
-  return <Loadable state={state} name="营销战役" big>{(c) => { const cur = fresh || c; return <><SavedNote text={notice} onClose={() => setNotice("")} /><Campaign key={`${cur.id}-${JSON.stringify(cur).length}`} c={cur} onSaved={saved} onEdit={() => setNotice("")} /></>; }}</Loadable>;
+  const [ver, setVer] = useState(0); // 每次按回读结果重建页面
+  // 保存后页面按回读结果重建，结果提示放在外层；at = "review" 时显示在复盘卡片里（在页面底部，放顶上看不到）。
+  const [notice, setNotice] = useState({ text: "", at: "" });
+  const saved = (back, text = "", at = "") => { setFresh(back); setVer((v) => v + 1); setNotice({ text, at }); };
+  const clear = () => setNotice({ text: "", at: "" });
+  return <Loadable state={state} name="营销战役" big>{(c) => { const cur = fresh || c; return <><SavedNote text={notice.at ? "" : notice.text} onClose={clear} /><Campaign key={`${cur.id}-${ver}`} c={cur} onSaved={saved} onEdit={clear} reviewNote={notice.at === "review" ? notice.text : ""} /></>; }}</Loadable>;
 }
 
-function Campaign({ c, onSaved, onEdit }) {
+function Campaign({ c, onSaved, onEdit, reviewNote }) {
   const isTemplate = c.id === "template";
   const [phases, setPhases] = useState(c.phases);
   const [routine, setRoutine] = useState(c.routine);
-  const [form, setForm] = useState({ name: "", desc: "", start: "", end: "" });
+  const [form, setForm] = useState(() => ({ name: "", desc: "", ...nextMonth() }));
   const [what, setWhat] = useState(""); // 预览里写清楚改了什么
   const flow = useWriteFlow();
+  const archive = useWriteFlow();
   const nodes = phases.flatMap((p) => p.nodes);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -63,6 +70,19 @@ function Campaign({ c, onSaved, onEdit }) {
   // 结果不明或预览失效：丢掉本地改动，以接口为准重新读取。
   const reread = async () => { const back = await apiSend("GET", "/api/v3/campaigns/current"); flow.resolve(); onSaved({ ...back }); };
   const cancel = () => { flow.reset(); setPhases(c.phases); setRoutine(c.routine); };
+  const previewArchive = () => { onEdit(); archive.preview(() => apiSend("POST", "/api/v3/campaigns/current/archive-preview")); };
+  const confirmArchive = () => archive.confirm(
+    (pv) => apiSend("POST", "/api/v3/campaigns/current/archive", { previewId: pv.previewId, confirm: true }),
+    async (receipt, pv) => {
+      const [back, hist] = await Promise.all([apiSend("GET", "/api/v3/campaigns/current"), apiSend("GET", "/api/v3/campaigns/history")]);
+      const kept = hist.items.find((x) => x.id === pv.value.id);
+      const { archivedAt, ...rest } = kept || {};
+      const ok = back.id === "template" && Boolean(kept) && JSON.stringify(rest) === JSON.stringify(pv.value);
+      if (ok) onSaved(back, `已把「${pv.value.name}」归档为历史，回读核对一致；现在可以按模板新开一场`);
+      return ok;
+    },
+  );
+  const rereadArchive = async () => { const back = await apiSend("GET", "/api/v3/campaigns/current"); archive.resolve(); onSaved({ ...back }); };
   const formOk = form.name.trim() && form.desc.trim() && isDay(form.start) && isDay(form.end) && form.end >= form.start;
   return (
     <>
@@ -73,8 +93,17 @@ function Campaign({ c, onSaved, onEdit }) {
         {isTemplate ? <Tag tone="frame">模板 · 未创建战役</Tag> : <span className="mono small muted">{c.start} → {c.end.slice(5)}</span>}
         {c.desc && <span className="small">{c.desc}</span>}
         <span className="spacer" />
-        {!isTemplate && <PendingButton task="V3-接口清单"><PixelIcon name="plus" />新开战役</PendingButton>}
+        {!isTemplate && <Button onClick={previewArchive} disabled={locked || archive.busy || archive.phase === "unknown"}><PixelIcon name="plus" />新开战役</Button>}
       </div>
+      <WriteBox flow={archive} title="新开战役预览" confirmLabel="确认归档并新开" onConfirm={confirmArchive} onRepreview={previewArchive} onReread={rereadArchive}>
+        {(pv) => { const all = pv.value.phases.flatMap((p) => p.nodes); return <dl className="kv">
+          <dt>归档</dt><dd>{pv.value.name} · <span className="tnum">{pv.value.start} → {pv.value.end}</span></dd>
+          <dt>进度</dt><dd className="tnum">{all.filter((n) => n.done).length}/{all.length} 个节点已完成</dd>
+          <dt>复盘</dt><dd>{pv.value.review ? `${pv.value.review.length} 字，随战役一起归档` : <span className="warn-text">还没写复盘；归档后不能再改</span>}</dd>
+          <dt>之后</dt><dd>这场战役进「历史战役」只读可查；页面回到按模板创建，日期默认下个月</dd>
+          <dt>写到哪里</dt><dd>工作台本地，不回写飞书</dd>
+        </dl>; }}
+      </WriteBox>
       <DeadlineBar />
       {isTemplate && (
         <section className="card campaign-create">
@@ -156,11 +185,69 @@ function Campaign({ c, onSaved, onEdit }) {
           <Card title={<><PixelIcon name="calendar" />挂在哪些月</>}>
             {!c.months.length ? <p className="small muted">还没有创建战役，没有关联月份。</p> : <ul className="list month-hooks">{c.months.map((m) => <li key={m}><div className="month-hook-top"><span className="tnum">{m}</span><a className="link" href={href("marketing", "plans", m)}>月度促销<PixelIcon name="right" /></a></div></li>)}</ul>}
           </Card>
+          <CampaignHistory />
           <Card title={<><PixelIcon name="archive" />复盘</>}>
-            <textarea className="review-box" disabled placeholder="复盘的保存接口还没有（见 V3 接口清单），先写在飞书文档里。" />
+            <CampaignReview c={c} isTemplate={isTemplate} note={reviewNote} onSaved={onSaved} onEdit={onEdit} />
           </Card>
         </div>
       </div>
+    </>
+  );
+}
+
+// 历史战役：「新开战役」时归档的旧战役，只读。
+function CampaignHistory() {
+  const state = useApi("/api/v3/campaigns/history");
+  const items = state.data?.items || [];
+  if (state.loading || (!state.error && !items.length)) return null;
+  return (
+    <Card title={<><PixelIcon name="archive" />历史战役<span className="tnum small muted">{items.length}</span></>}>
+      {state.error ? <p className="small risk-text">读取失败：{state.error}</p> : (
+        <ul className="list campaign-history">{items.map((c) => { const all = c.phases.flatMap((p) => p.nodes); return (
+          <li key={c.id}><details>
+            <summary><strong>{c.name}</strong><span className="tnum small muted">{c.start} → {c.end.slice(5)}</span></summary>
+            <p className="small muted tnum">{all.filter((n) => n.done).length}/{all.length} 个节点已完成 · 归档于 {c.archivedAt.slice(0, 10)}</p>
+            {c.review ? <pre className="pre">{c.review}</pre> : <p className="small muted">没有写复盘</p>}
+          </details></li>
+        ); })}</ul>
+      )}
+    </Card>
+  );
+}
+
+// 复盘：一段文字，存在战役记录里（工作台本地）。改完预览确认，回读整条战役一致才算保存。
+function CampaignReview({ c, isTemplate, note, onSaved, onEdit }) {
+  const [text, setText] = useState(c.review || "");
+  const flow = useWriteFlow();
+  const locked = flow.busy || flow.phase === "unknown";
+  const dirty = text !== (c.review || "");
+  const preview = () => { onEdit(); flow.preview(() => apiSend("POST", "/api/v3/campaigns/current/preview", { review: text })); };
+  const confirm = () => flow.confirm(
+    (pv) => apiSend("PATCH", "/api/v3/campaigns/current", { previewId: pv.previewId, confirm: true }),
+    async (receipt, pv) => {
+      const back = await apiSend("GET", "/api/v3/campaigns/current");
+      const ok = JSON.stringify(back) === JSON.stringify(pv.value);
+      if (ok) onSaved(back, "复盘已保存，回读核对一致", "review");
+      return ok;
+    },
+  );
+  const reread = async () => { const back = await apiSend("GET", "/api/v3/campaigns/current"); flow.resolve(); onSaved({ ...back }); };
+  if (isTemplate) return <textarea className="review-box" disabled placeholder="创建战役后才能写复盘。" />;
+  return (
+    <>
+      <SavedNote text={note} onClose={onEdit} />
+      <textarea className="review-box" value={text} maxLength={20000} disabled={locked} placeholder="这次战役做成了什么、哪里没做到、下次要改什么"
+        onChange={(e) => { setText(e.target.value); flow.reset(); }} />
+      <div className="row"><span className="small muted tnum">{text.length} 字{dirty ? " · 有改动，预览确认后才保存" : c.review ? " · 已保存" : ""}</span><span className="spacer" />
+        <Button variant="primary" disabled={!dirty || locked} onClick={preview}><PixelIcon name="eye" />预览保存复盘</Button></div>
+      <WriteBox flow={flow} title="复盘保存预览" onConfirm={confirm} onRepreview={preview} onReread={reread}>
+        {(pv) => <dl className="kv">
+          <dt>战役</dt><dd>{pv.value.name}</dd>
+          <dt>字数</dt><dd className="tnum">{c.review ? <><span className="diff-old">{c.review.length}</span> → </> : null}<span className="diff-new">{pv.value.review.length}</span></dd>
+          <dt>内容</dt><dd><pre className="pre">{pv.value.review || "（清空复盘）"}</pre></dd>
+          <dt>写到哪里</dt><dd>工作台本地，不回写飞书</dd>
+        </dl>}
+      </WriteBox>
     </>
   );
 }

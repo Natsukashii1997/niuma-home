@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { getSettings } from './db.mjs';
-import { getRecord, putRecord, createLocalChanges, fingerprint } from './local-records.mjs';
+import { getRecord, putRecord, listRecords, createLocalChanges, fingerprint } from './local-records.mjs';
 import { failure, validMonth } from './v3-common.mjs';
 
 const execute = promisify(execFile);
@@ -126,13 +126,15 @@ function validateCampaign(value) {
       const previous = nodeValues.get(node.n); if (previous && fingerprint(previous) !== fingerprint(node)) fail('跨阶段的同一节点内容不一致'); nodeValues.set(node.n, node);
     }
   }
-  if (Object.keys(value).some(k => !['id', 'name', 'start', 'end', 'months', 'desc', 'phases', 'routine'].includes(k))) fail('战役包含不支持的字段');
+  if (value.review !== undefined && !text(value.review, 20000)) fail('复盘须为 20000 字以内的文字');
+  if (Object.keys(value).some(k => !['id', 'name', 'start', 'end', 'months', 'desc', 'phases', 'routine', 'review'].includes(k))) fail('战役包含不支持的字段');
 }
 
 export function createCampaignService(db, options = {}) {
   const now = options.now || Date.now;
   const source = createMarketingSourceReader(db, { kind: 'campaign-template', tableKey: 'campaign_table_id', defaultTable: CAMPAIGN_TABLE, fields: CAMPAIGN_FIELDS, ...options, validate: campaignTemplate });
   const changes = createLocalChanges(db, { now });
+  const archives = new Map();
   const template = async () => {
     const data = await source();
     return { id: 'template', name: '营销战役模板（未实例化）', start: '', end: '', months: [], desc: '来自飞书营销战役模板；尚未创建真实战役，日期、负责人和物料决定待填写', phases: campaignTemplate(data.rows), routine: [] };
@@ -141,8 +143,9 @@ export function createCampaignService(db, options = {}) {
     template,
     current: () => getRecord(db, 'campaign', 'current') || template(),
     async preview(body) {
-      if (!plain(body) || Object.keys(body).some(k => !['name', 'start', 'end', 'months', 'desc', 'phases', 'routine'].includes(k))) fail('战役预览内容无效');
+      if (!plain(body) || Object.keys(body).some(k => !['name', 'start', 'end', 'months', 'desc', 'phases', 'routine', 'review'].includes(k))) fail('战役预览内容无效');
       const current = getRecord(db, 'campaign', 'current'), base = current || await template();
+      if (body.review !== undefined && !current) fail('请先创建战役，再写复盘');
       const value = { ...base, ...structuredClone(body), id: current?.id || randomUUID() };
       if (body.months === undefined && (body.start !== undefined || body.end !== undefined || !current)) value.months = isDay(value.start) && isDay(value.end) ? monthsBetween(value.start, value.end) : [];
       // 模板分类与名称保持原样，写入只修改节点状态、负责人和日期。
@@ -158,5 +161,31 @@ export function createCampaignService(db, options = {}) {
       } });
     },
     confirm: body => changes.confirm('campaign', 'current', body),
+    // 新开战役：当前战役整条归档为历史（只读），当前位置清空，页面回到「按模板创建」。归档和清空在同一个事务里。
+    history: () => ({ items: listRecords(db, 'campaign-archive').sort((a, b) => b.archivedAt.localeCompare(a.archivedAt)) }),
+    archivePreview() {
+      const current = getRecord(db, 'campaign', 'current');
+      if (!current) fail('还没有创建战役，不需要新开');
+      for (const [id, p] of archives) if (p.expires <= now()) archives.delete(id);
+      const previewId = randomUUID(), expires = now() + 600_000;
+      archives.set(previewId, { before: fingerprint(current), id: current.id, expires });
+      return { previewId, expiresAt: new Date(expires).toISOString(), value: current };
+    },
+    archiveConfirm(body) {
+      if (body?.confirm !== true || typeof body.previewId !== 'string') fail('请先预览，再明确确认');
+      const p = archives.get(body.previewId);
+      if (!p || p.expires <= now()) throw failure(409, '预览已失效，请重新预览');
+      if (p.receipt) return structuredClone(p.receipt);
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const current = getRecord(db, 'campaign', 'current');
+        if (fingerprint(current) !== p.before) throw failure(409, '战役已变化，请重新预览');
+        const archived = { ...current, archivedAt: new Date(now()).toISOString() };
+        const back = putRecord(db, 'campaign-archive', current.id, archived, now());
+        db.prepare("DELETE FROM v3_documents WHERE kind='campaign' AND id='current'").run();
+        if (fingerprint(back) !== fingerprint(archived) || getRecord(db, 'campaign', 'current') !== null) throw failure(500, '归档后回读不一致，已回滚');
+        db.exec('COMMIT'); p.receipt = { archived: back }; return structuredClone(p.receipt);
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    },
   };
 }

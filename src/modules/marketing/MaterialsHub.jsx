@@ -8,6 +8,7 @@ import Thumb from "../../ui/Thumb.jsx";
 import { deliveryMonth } from "../../constants.js";
 import { SAMPLE_NAS } from "../../samples/v3.js";
 import MaterialsView from "./MaterialsView.jsx";
+import { DigiworldImport } from "./DigiworldImport.jsx";
 
 // 物料（v3）：原件在公司 NAS，工作台只读扫描、本地只存缩略图。
 // 页签：物料墙（产品物料，类型 × 月份）· 营销物料（朋友圈，按场景）· 设计参考（画布）· 本地物料（原 T03，NAS 不可用时的兜底）。
@@ -141,6 +142,7 @@ function Canvas({ data, onSaved, onEdit }) {
   const [sel, setSel] = useState(null);
   const [tag, setTag] = useState("");
   const [zoom, setZoom] = useState(1);
+  const [importing, setImporting] = useState(false);
   const [toast, showToast] = useToast();
   const flow = useWriteFlow();
   const wrap = useRef(null), drag = useRef(null);
@@ -161,6 +163,13 @@ function Canvas({ data, onSaved, onEdit }) {
       setSel(id);
     };
     reader.readAsDataURL(file);
+  };
+  // 从数码世界加进来的图：排在现有参考项下面新起一行（每行 6 张），和粘贴的图一样先不保存。
+  const addImported = (list) => {
+    const top = items.length ? Math.max(...items.map((i) => i.y)) + 320 : 40;
+    const stamp = Date.now();
+    setItems((old) => [...old, ...list.map((x, k) => ({ id: `dw${stamp}${k}`, x: 40 + (k % 6) * 200, y: top + Math.floor(k / 6) * 320, w: 180, imageDataUrl: x.dataUrl, title: x.title, tags: x.tags, source: x.source }))]);
+    showToast(`已把 ${list.length} 张图加到画布，点「预览保存」确认后才写入`);
   };
   useEffect(() => {
     const paste = (e) => { const f = [...(e.clipboardData?.files || [])][0]; if (f) { e.preventDefault(); addImage(f); } };
@@ -206,7 +215,7 @@ function Canvas({ data, onSaved, onEdit }) {
         <span className="spacer" />
         <span className="small muted"><kbd>⌘V</kbd> 粘贴截图 · 拖入图片 · 拖动卡片移动（吸附 8px）</span>
         <label className="btn"><PixelIcon name="upload" />上传<input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => { addImage(e.target.files[0]); e.target.value = ""; }} /></label>
-        <PendingButton task="V3-接口清单"><PixelIcon name="star" />从数码世界收藏导入</PendingButton>
+        <Button onClick={() => setImporting(true)} disabled={locked}><PixelIcon name="star" />从数码世界收藏导入</Button>
         <Button variant="primary" disabled={!dirty || locked} onClick={preview}><PixelIcon name="eye" />预览保存</Button>
       </div>
       {dirty && flow.phase === "idle" && <p className="small warn-text">画布有改动还没保存（新图片 {added} 张）；点「预览保存」确认后才写入。</p>}
@@ -242,6 +251,7 @@ function Canvas({ data, onSaved, onEdit }) {
           <button type="button" onClick={() => setZoom((z) => Math.min(1.5, z + 0.25))} aria-label="放大">+</button>
         </div>
       </div>
+      {importing && <DigiworldImport open onClose={() => setImporting(false)} items={items} onAdd={addImported} />}{/* 每次打开重新挂载：重新读取收藏、重新按默认分组勾选 */}
       {toast}
     </>
   );

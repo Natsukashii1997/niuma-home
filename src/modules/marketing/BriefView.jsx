@@ -4,6 +4,7 @@ import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Button, Loadable, MonthSwitch, SampleBadge, StatusMark, Tag, useToast } from "../../ui/components.jsx";
 import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
+import { BriefAttachments } from "./BriefAttachments.jsx";
 import { FeishuExport } from "../../ui/feishu-export.jsx";
 import Thumb from "../../ui/Thumb.jsx";
 import { deliveryMonth } from "../../constants.js";
@@ -114,7 +115,7 @@ function Brief({ brief, month, setMonth, onSaved, onEdit }) {
               <RowsTable cols={t.cols} rows={draft[key]} onChange={(fn) => edit((d) => fn(d[key]))} />
             </section>
           )).slice(2)}
-          {show(7) && <section>{head(7)}<div className="dashed-drop"><PixelIcon name="upload" />附件上传接口还没有（见 V3 接口清单）；导出时这一节为空。</div></section>}
+          {show(7) && <section>{head(7)}<BriefAttachments month={month} /></section>}
           {!all && (
             <div className="doc-pager">
               <Button disabled={sec === 1} onClick={() => setSec(sec - 1)}><PixelIcon name="left" />{sec > 1 ? SECTIONS[sec - 2] : "上一节"}</Button>

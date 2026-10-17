@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { failure, requireMonth } from './v3-common.mjs';
-import { listRecords } from './local-records.mjs';
+import { manualNeedRecords } from './manual-needs.mjs';
 
 // 本批规则来自 V3 派单指定的 SAMPLE_NEEDS.map；ok=false 保留待确认含义。
 export const EVENT_NEED_MAP = [
@@ -64,7 +64,7 @@ export function createNeedsService(db, timeline, { now = Date.now } = {}) {
   async function derived(month, refresh = false) {
     requireMonth(month);
     const rows = deriveNeeds(await timeline({ refresh }), month);
-    const manual = listRecords(db, 'selftalk-need').filter(item => item.month === month && item.need);
+    const manual = manualNeedRecords(db).filter(item => item.month === month && item.need);
     return [...rows, ...manual.map(item => ({ need: item.need, fingerprint: hash(item) }))];
   }
   return {

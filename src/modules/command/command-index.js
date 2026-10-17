@@ -80,7 +80,7 @@ export function buildSchools(tl, today) {
 
 export function buildNeeds(data) {
   return (data?.needs || []).map((n) => ({
-    id: `need:${n.id}`, kind: "need", title: `${n.seg} · ${n.node}`, sub: `${n.when} · ${n.schools} 校 · ${n.status}`,
+    id: `need:${n.id}`, kind: "need", title: `${n.seg} · ${n.node}`, sub: `${n.when} · ${n.schools ? `${n.schools} 校 · ` : ""}${n.status}`,
     keys: `${n.need} ${n.pain}`, icon: "target", go: "用户策略",
     href: href("user", "strategy", n.id), preview: { kind: "need", need: n },
   }));

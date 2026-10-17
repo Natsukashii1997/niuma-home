@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { getSettings } from './db.mjs';
-import { createLocalChanges, fingerprint, getRecord } from './local-records.mjs';
+import { randomUUID } from 'node:crypto';
+import { createLocalChanges, fingerprint, getRecord, listRecords } from './local-records.mjs';
 import { failure, saveSnapshot } from './v3-common.mjs';
 
 const execute = promisify(execFile);
@@ -139,31 +140,58 @@ export function createProjectService(db, { readSource = readProjectSource, now =
   const changes = createLocalChanges(db, { now });
   const receipts = new Map();
   const identity = () => fingerprint(config());
-  const key = id => `${identity()}:${id}`;
+  // 本地项目（编号 local-…）只存工作台：按某个飞书项目的阶段和节点生成，节点改动同样存 project-state，但不随飞书来源配置变化。
+  const LOCAL = 'local-project', isLocal = id => id.startsWith('local-');
+  const key = id => isLocal(id) ? `local:${id}` : `${identity()}:${id}`;
+  const locals = () => listRecords(db, LOCAL).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const creations = new Map();
   function apply(project, saved) {
     const record = saved || getRecord(db, 'project-state', key(project.id));
     const overlay = n => ({ ...n, ...(record?.overrides[n.id] || {}), ...(record?.overrides[n.id]?.dueDate !== undefined ? { due: record.overrides[n.id].dueDate.slice(5) } : {}) });
     return { ...project, nodes: project.nodes.map(n => { const kids = n.childNodes?.map(overlay); return { ...overlay(n), ...(kids ? { childNodes: kids, kids: kids.map(k => [k.t, k.done]) } : {}) }; }) };
   }
   return {
-    list: async options => (await read(options)).map(project => apply(project)),
+    list: async options => [...(await read(options)), ...locals()].map(project => apply(project)),
+    async createPreview(body) {
+      if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some(k => !['name', 'basedOn'].includes(k))) throw failure(400, '新建项目内容无效');
+      const name = typeof body.name === 'string' ? body.name.trim() : '';
+      if (!name || name.length > 100) throw failure(400, '请填写 100 字以内的项目名称');
+      const source = await read(), base = source.find(p => p.id === body.basedOn);
+      if (!base) throw failure(400, '请选择一个飞书项目作为模板');
+      const taken = () => [...source, ...locals()].some(p => p.name === name);
+      if (taken()) throw failure(400, '已有同名项目');
+      const id = `local-${randomUUID()}`; let n = 0;
+      const blank = node => { const { childNodes, kids, ...rest } = node; return { ...rest, id: `${id}-n${++n}`, owner: '—', done: false, statusKnown: true, due: '', dueDate: '', gateReady: false }; };
+      const nodes = base.nodes.map(node => { const top = blank(node), children = (node.childNodes || []).map(blank); return children.length ? { ...top, kids: children.map(k => [k.t, false]), childNodes: children } : top; });
+      const value = { id, name, template: '项目推进', status: '推进中', phase: -1, phases: base.phases, nodes, local: true, basedOn: { id: base.id, name: base.name }, createdAt: new Date(now()).toISOString() };
+      const preview = changes.preview(LOCAL, id, value, { validate: (v, current) => { if (current || locals().some(p => p.name === name)) throw failure(409, '已有同名项目，请重新预览'); } });
+      for (const [k, c] of creations) if (c.expires <= now()) creations.delete(k);
+      creations.set(preview.previewId, { id, expires: Date.parse(preview.expiresAt) });
+      return preview;
+    },
+    createConfirm(body) {
+      if (body?.confirm !== true || typeof body.previewId !== 'string') throw failure(400, '请先预览，再明确确认');
+      const c = creations.get(body.previewId);
+      if (!c) throw failure(409, '预览已失效，请重新预览');
+      return apply(changes.confirm(LOCAL, c.id, body));
+    },
     async preview(id, body) {
-      const project = (await read()).find(p => p.id === id);
+      const project = isLocal(id) ? getRecord(db, LOCAL, id) : (await read()).find(p => p.id === id);
       if (!project) throw failure(404, '项目不存在');
       if (!body || typeof body.nodeId !== 'string' || !project.nodes.flatMap(n => [n, ...(n.childNodes || [])]).some(n => n.id === body.nodeId)) throw failure(400, '请选择有效项目节点');
       const patch = {};
       if ('done' in body) { if (typeof body.done !== 'boolean') throw failure(400, '完成状态须为布尔值'); patch.done = body.done; patch.statusKnown = true; }
       if ('due' in body) { if (body.due !== '' && !validDate(body.due)) throw failure(400, '截止日期须为完整 YYYY-MM-DD'); patch.dueDate = body.due; }
       if (!Object.keys(patch).length) throw failure(400, '没有可保存的节点变更');
-      const sourceIdentity = identity(), recordKey = key(id), sourceHash = fingerprint(project);
+      const sourceIdentity = isLocal(id) ? 'local' : identity(), recordKey = key(id), sourceHash = fingerprint(project);
       const current = getRecord(db, 'project-state', recordKey);
       const value = { sourceIdentity, projectId: id, overrides: { ...current?.overrides, [body.nodeId]: { ...current?.overrides?.[body.nodeId], ...patch } } };
       return changes.preview('project-state', recordKey, value, { validate: () => {
-        if (identity() !== sourceIdentity || fingerprint(latestProjects?.find(p => p.id === id)) !== sourceHash) throw failure(409, '项目来源或节点已变化，请重新预览');
+        if (isLocal(id) ? fingerprint(getRecord(db, LOCAL, id)) !== sourceHash : identity() !== sourceIdentity || fingerprint(latestProjects?.find(p => p.id === id)) !== sourceHash) throw failure(409, '项目来源或节点已变化，请重新预览');
       } });
     },
     async confirm(id, body) {
-      const projects = await read();
+      const projects = isLocal(id) ? locals() : await read();
       const committed = changes.confirm('project-state', key(id), body);
       if (receipts.has(body.previewId)) return structuredClone(receipts.get(body.previewId));
       const project = projects.find(p => p.id === id);

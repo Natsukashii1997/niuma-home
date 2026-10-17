@@ -2,6 +2,7 @@ import { createLocalChanges, getRecord, fingerprint } from './local-records.mjs'
 import { acceptedMarketingNeeds, availablePriceMatrices } from './price.mjs';
 import { requireMonth, failure, beijingText } from './v3-common.mjs';
 import { createFeishuExporter, literalMarkdown, markdownTable } from './feishu-export.mjs';
+import { attachmentMarkdownLine, createBriefAttachments } from './brief-attachments.mjs';
 
 const SECTIONS = ['项目背景与目标', '目标受众', '项目时间线', '详细文案与框架', '交付物清单与规格', '负责人与审批', '附件'];
 const editable = ['title', 'background', 'audience', 'timeline', 'items', 'specs', 'owners', 'status'];
@@ -64,7 +65,8 @@ function validateBrief(value) {
 const markdownText = literalMarkdown;
 const tableMarkdown = markdownTable;
 
-export function briefMarkdown(brief) {
+// 附件节只写文件名清单，文件本身不上传飞书。
+export function briefMarkdown(brief, attachments = []) {
   const content = [
     [markdownText(brief.background.text), ...brief.background.goals.map(g => `- ${markdownText(g)}`)].join('\n\n'),
     tableMarkdown(['物料', '面向人群', '当前状态与待办'], brief.audience),
@@ -72,7 +74,7 @@ export function briefMarkdown(brief) {
     brief.items.map(it => `### ${markdownText(it.title)}\n\n${it.kind === 'skip' ? markdownText(it.note) : [it.priceFrom ? `来源：${markdownText(it.priceFrom)}` : '', it.blocks ? tableMarkdown(['涉及板块', '内容', '说明'], it.blocks) : it.cells.map((c, i) => `${i + 1}. ${markdownText(c)}`).join('\n'), ...(it.refs || []).map(r => `参考：${markdownText(r.title)}`), it.reuse ? `沿用：${it.reuse.month} ${markdownText(it.reuse.title)}` : ''].filter(Boolean).join('\n\n')}`).join('\n\n'),
     tableMarkdown(['物料', '比例', '尺寸', '格式'], brief.specs),
     tableMarkdown(['角色', '负责人', '状态'], brief.owners),
-    '',
+    attachments.map(a => `- ${markdownText(attachmentMarkdownLine(a))}`).join('\n'),
   ];
   return `# ${markdownText(brief.title)}\n\n${SECTIONS.map((title, i) => `## ${i + 1}. ${title}\n\n${content[i]}`).join('\n\n')}\n`;
 }
@@ -81,6 +83,7 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
   const changes = createLocalChanges(db, { now });
   const exporter = createFeishuExporter(db, { now, ...exportOptions });
   const previewViews = new Map();
+  const attachments = createBriefAttachments(db, { now });
   function read(month) {
     const base = generatedBrief(db, month), stored = getRecord(db, 'brief', month);
     if (!stored) return base;
@@ -89,10 +92,11 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
   const exportContent = month => () => {
     const brief = read(month);
     validateBrief(brief);
-    return { title: brief.title, sections: SECTIONS, markdown: briefMarkdown(brief) };
+    return { title: brief.title, sections: SECTIONS, markdown: briefMarkdown(brief, attachments.list(month).items) };
   };
   return {
     read,
+    attachments,
     preview(month, body) {
       requireMonth(month);
       if (!plain(body) || !keys(body, ['patch']) || !plain(body.patch) || !keys(body.patch, editable) || !Object.keys(body.patch).length) fail('请提交要修改的 brief 字段 patch');

@@ -29,9 +29,24 @@ export function routes(db, options = {}) {
     route('GET', '/api/v3/campaigns/current', handle(() => campaign.current())),
     route('POST', '/api/v3/campaigns/current/preview', handle(async req => campaign.preview(await body(req)))),
     route('PATCH', '/api/v3/campaigns/current', handle(async req => campaign.confirm(await body(req)))),
+    route('GET', '/api/v3/campaigns/history', handle(() => campaign.history())),
+    route('POST', '/api/v3/campaigns/current/archive-preview', handle(() => campaign.archivePreview())),
+    route('POST', '/api/v3/campaigns/current/archive', handle(async req => campaign.archiveConfirm(await body(req)))),
     route('GET', '/api/v3/briefs/:month', handle((req, { params }) => briefs.read(params.month))),
     route('POST', '/api/v3/briefs/:month/preview', handle(async (req, { params }) => briefs.preview(params.month, await body(req)))),
     route('PUT', '/api/v3/briefs/:month', handle(async (req, { params }) => briefs.confirm(params.month, await body(req)))),
+    route('GET', '/api/v3/briefs/:month/attachments', handle((req, { params }) => briefs.attachments.list(params.month))),
+    route('POST', '/api/v3/briefs/:month/attachments/preview', handle(async (req, { params }) => briefs.attachments.preview(params.month, await body(req)))),
+    route('POST', '/api/v3/briefs/:month/attachments/confirm', handle(async (req, { params }) => briefs.attachments.confirm(params.month, await body(req)))),
+    route('POST', '/api/v3/briefs/:month/attachments/:id/remove-preview', handle((req, { params }) => briefs.attachments.removePreview(params.month, params.id))),
+    route('GET', '/api/v3/briefs/:month/attachments/:id/file', (req, res, { params, url }) => {
+      try {
+        const { record, bytes } = briefs.attachments.file(params.month, params.id);
+        const inline = record.type.startsWith('image/') && url.searchParams.get('download') !== '1';
+        res.writeHead(200, { 'content-type': record.type, 'content-length': bytes.length, 'x-content-type-options': 'nosniff', 'cache-control': 'no-store', 'content-disposition': `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(record.name)}` });
+        res.end(bytes);
+      } catch (error) { json(res, error.status || 500, { error: error.status ? error.message : '附件读取失败' }); }
+    }),
     route('POST', '/api/v3/briefs/:month/export-preview', handle(async (req, { params }) => briefs.exportPreview(params.month, await body(req)))),
     route('POST', '/api/v3/briefs/:month/export', handle(async (req, { params }) => briefs.exportConfirm(params.month, await body(req)))),
     route('GET', '/api/v3/briefs/:month/exports/:operationId', handle((req, { params }) => briefs.exportStatus(params.month, params.operationId))),

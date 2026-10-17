@@ -2,9 +2,10 @@ import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Loadable, MonthSwitch, PageHeader, PendingButton, Placeholder, Segmented, Tabs, Tag } from "../../ui/components.jsx";
-import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
+import { Button, Loadable, MonthSwitch, PageHeader, Placeholder, Segmented, Tabs, Tag } from "../../ui/components.jsx";
+import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { FeishuExport } from "../../ui/feishu-export.jsx";
+import { ManualNeedForm } from "./ManualNeedForm.jsx";
 import { deliveryMonth } from "../../constants.js";
 
 // 用户（v3）：时间线 → 用户策略（主线需求是策略的起点）。Voice 已独立成侧栏模块。
@@ -87,7 +88,7 @@ function TimelineBoard({ tl, view, initialQ, onSynced }) {
         <span className="small muted">{tl.source} · 同步于 {tl.syncedAt}</span>
       </div>
       <div className="toolbar">
-        <Segmented options={[["month", "按月 · 时间轴"], ["country", "按国家 · 明细表"], ["anomalies", `异常待确认 ${tl.anomalies.length}`]]} value={view} onChange={go} />
+        <Segmented options={[["month", "按月 · 时间轴"], ["country", "按国家 · 明细表"], ["anomalies", `异常待确认 ${tl.anomalies.filter((a) => !a.ruling).length}`]]} value={view} onChange={go} />
         <label className="search-box"><PixelIcon name="search" /><input placeholder="搜索学校或事件，如 UQ / Final" value={q} onChange={(e) => setQ(e.target.value)} /></label>
         <label className="check-inline"><input type="checkbox" checked={showSrc} onChange={(e) => setShowSrc(e.target.checked)} />显示来源单元格</label>
         <span className="spacer" />
@@ -95,7 +96,7 @@ function TimelineBoard({ tl, view, initialQ, onSynced }) {
       </div>
       {sync.note && <p className="small ok-text tl-sync">{sync.note}</p>}
       {sync.error && <p className="small risk-text tl-sync">{sync.error}</p>}
-      {view === "month" ? <MonthTimeline tl={tl} q={q} showSrc={showSrc} /> : view === "country" ? <CountryTable tl={tl} q={q} showSrc={showSrc} /> : <Anomalies tl={tl} q={q} />}
+      {view === "month" ? <MonthTimeline tl={tl} q={q} showSrc={showSrc} /> : view === "country" ? <CountryTable tl={tl} q={q} showSrc={showSrc} /> : <Anomalies tl={tl} q={q} onSaved={onSynced} />}
     </>
   );
 }
@@ -166,7 +167,7 @@ function MonthTimeline({ tl, q, showSrc }) {
                   <div className="gantt-track" style={{ ...cols, gridTemplateRows: `repeat(${rows.length}, 28px)` }}>
                     {Array.from({ length: nDays }, (_, i) => { const wd = new Date(y, m - 1, i + 1).getDay(); return <i key={`bg${i}`} className={`gantt-bg${wd === 0 || wd === 6 ? " is-wkd" : ""}${i + 1 === todayIdx ? " is-today" : ""}`} style={{ gridColumn: i + 1, gridRow: `1 / ${rows.length + 1}` }} />; })}
                     {rows.flatMap((items, lane) => items.flatMap(({ e, s, end, side, cols: n, when }, k) => {
-                      const tip = `${e.school} · ${e.type}\n${e.from}${e.to ? ` → ${e.to}（${span(e.from, e.to)} 天）` : "（单日）"}\n来源：${e.src}${e.flag === "conflict" ? "\n冲突待确认" : e.flag === "guess" ? "\n推测，待确认" : ""}`;
+                      const tip = `${e.school} · ${e.type}\n${e.from}${e.to ? ` → ${e.to}（${span(e.from, e.to)} 天）` : "（单日）"}\n来源：${e.src}${e.flag === "conflict" ? "\n冲突待确认" : e.flag === "guess" ? "\n推测，待确认" : e.ruled ? "\n人工裁定（工作台）" : ""}`;
                       const text = <><b>{e.type}</b><em className="tnum">{when}</em>{e.flag === "guess" && <i className="gantt-guess">推测</i>}</>;
                       const bar = side === "single" ? [s, s + n] : [s, end];
                       return [
@@ -245,7 +246,7 @@ function MonthList({ list, first, showSrc }) {
               <td className="tnum">{e.from < first ? <span className="muted">上月开始</span> : `${md(e.from)} 周${WD[d.getDay()]}`}</td>
               <td>{e.c}</td>
               <td><strong>{e.school}</strong></td>
-              <td><span className={`ev-dot ev-${catOf(e.type)}`} />{e.type}{e.flag === "conflict" && <Tag tone="red">冲突待确认</Tag>}{e.flag === "guess" && <Tag tone="amber">推测</Tag>}</td>
+              <td><span className={`ev-dot ev-${catOf(e.type)}`} />{e.type}{e.flag === "conflict" && <Tag tone="red">冲突待确认</Tag>}{e.flag === "guess" && <Tag tone="amber">推测</Tag>}{e.ruled && <Tag tone="frame">人工裁定</Tag>}</td>
               <td className="r">{md(e.from)}{e.to ? ` → ${md(e.to)}` : ""}</td>
               <td className="r">{e.to ? `${span(e.from, e.to)} 天` : "单日"}</td>
               {showSrc && <td className="tnum small muted">{e.src}</td>}
@@ -267,7 +268,10 @@ function CountryTable({ tl, q, showSrc }) {
   const toggleCat = (k) => setShowCats((o) => { const n = new Set(o); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const dm = deliveryMonth().slice(5);
   // 空格子分两种：原表这一格空白；或者原表写了，但日期不完整 / 有冲突，进了「异常待确认」（按「学校 + 列名」对上异常清单）。
-  const pendingKeys = useMemo(() => new Set(tl.anomalies.map((a) => `${a.school}|${a.issue.split("：")[0]}`)), [tl.anomalies]);
+  // 裁定为「不采用」的格子单独标出；已裁定采用的格子已有日期，不再算待确认。
+  const cellKey = (a) => `${a.school}|${a.issue.split("：")[0]}`;
+  const pendingKeys = useMemo(() => new Set(tl.anomalies.filter((a) => !a.ruling).map(cellKey)), [tl.anomalies]);
+  const excludedKeys = useMemo(() => new Set(tl.anomalies.filter((a) => a.ruling?.decision === "exclude").map(cellKey)), [tl.anomalies]);
   return (
     <>
       <div className="toolbar">
@@ -299,8 +303,10 @@ function CountryTable({ tl, q, showSrc }) {
                     <th scope="row" className="tl-school"><strong>{r.school}</strong><span className="tnum small muted">{r.abbr}</span></th>
                     {visible.map(([n, i]) => {
                       const cell = r.cells[i];
-                      if (!cell) return pendingKeys.has(`${r.abbr ? `${r.school} ${r.abbr}` : r.school}|${n}`)
+                      const k = `${r.abbr ? `${r.school} ${r.abbr}` : r.school}|${n}`;
+                      if (!cell) return pendingKeys.has(k)
                         ? <td key={i} className="tl-cell is-pending" title="原表写了，但日期不完整或有冲突，见「异常待确认」"><a href={href("user", "timeline", "anomalies", r.abbr || r.school)}>待确认</a></td>
+                        : excludedKeys.has(k) ? <td key={i} className="tl-cell is-missing" title="原表写了，人工裁定为不采用"><a href={href("user", "timeline", "anomalies", r.abbr || r.school)}>不采用</a></td>
                         : <td key={i} className="tl-cell is-missing" title="原表这一格空白"><span>—</span></td>;
                       const [from, rawTo, src, flag] = cell;
                       const to = rawTo && rawTo !== from ? rawTo : null; // 起止同一天按单日写
@@ -308,7 +314,7 @@ function CountryTable({ tl, q, showSrc }) {
                       return (
                         <td key={i} className={`tl-cell${flag ? ` is-${flag}` : ""}${inDm ? " is-dm" : ""}`} title={`来源：${src}`}>
                           <span className="tnum">{from}{to && <> → {to}</>}</span>
-                          <small>{to ? `${mdSpan(from, to)} 天` : "单日"}{flag === "guess" && <Tag tone="amber">推测</Tag>}{flag === "conflict" && <Tag tone="red">冲突</Tag>}{showSrc && <span className="tnum"> · {src}</span>}</small>
+                          <small>{to ? `${mdSpan(from, to)} 天` : "单日"}{flag === "guess" && <Tag tone="amber">推测</Tag>}{flag === "conflict" && <Tag tone="red">冲突</Tag>}{flag === "ruled" && <Tag tone="frame">人工裁定</Tag>}{showSrc && <span className="tnum"> · {src}</span>}</small>
                         </td>
                       );
                     })}
@@ -317,7 +323,7 @@ function CountryTable({ tl, q, showSrc }) {
               </tbody>
             </table>
           </div>
-          <div className="tl-legend small muted"><span><i className="lg-dm" />落在交付月（{dm} 月）</span><span>— 原表这一格空白</span><span>「待确认」：原表写了但日期不完整或有冲突，点开看原文</span></div>
+          <div className="tl-legend small muted"><span><i className="lg-dm" />落在交付月（{dm} 月）</span><span>— 原表这一格空白</span><span>「待确认」：原表写了但日期不完整或有冲突，点开看原文</span><span>「人工裁定」：在工作台裁定的日期，不改飞书</span></div>
         </>
       )}
     </>
@@ -325,30 +331,117 @@ function CountryTable({ tl, q, showSrc }) {
 }
 
 // 异常待确认：原文、来源单元格、标记都完整保留；长原文在框内换行、超长时框内滚动，不撑破页面。
-// 人工裁定（采用 A / B）还没有保存接口，这里只列证据，不提供会被误认为已保存的选择。
-function Anomalies({ tl, q }) {
-  const list = tl.anomalies.filter((a) => !q || `${a.school}${a.issue}`.toLowerCase().includes(q.toLowerCase()));
+// 日期类异常可以人工裁定（采用解析出的日期 / 手填 / 不采用），只存工作台、不改飞书；裁定后这一格按裁定值参与主线需求推导。
+// 飞书原格一改（重新同步后原文变了），旧裁定自动失效，这条回到待确认。校名类异常没有日期格，仍请改飞书原表。
+const RULE_SHOW = [["open", "待确认"], ["ruled", "已裁定"], ["all", "全部"]];
+function Anomalies({ tl, q, onSaved }) {
+  const [show, setShow] = useState("all");
+  const open = tl.anomalies.filter((a) => !a.ruling).length;
+  const list = tl.anomalies.filter((a) => (!q || `${a.school}${a.issue}`.toLowerCase().includes(q.toLowerCase())) && (show === "all" || (show === "ruled") === Boolean(a.ruling)));
+  const oldSnapshot = tl.anomalies.length > 0 && !tl.anomalies.some((a) => a.cell);
+  const reread = async () => { const back = await apiSend("GET", "/api/v3/timeline"); onSaved(back); return back; };
   return (
     <>
-      <p className="small muted">导入时发现日期不完整、多个时段、含限定条件或互相冲突的格子，共 {tl.anomalies.length} 条{q ? `，筛出 ${list.length} 条` : ""}。工作台不自行猜测，这些格子不参与推导主线需求；要修正请改飞书原表后点「同步」。人工裁定的保存接口还没有（见 V3 接口清单）。</p>
+      <p className="small muted">导入时发现日期不完整、多个时段、含限定条件或互相冲突的格子，共 {tl.anomalies.length} 条，{open} 条待确认{q ? `，筛出 ${list.length} 条` : ""}。工作台不自行猜测：没裁定的格子不参与推导主线需求。日期类异常可以在这里人工裁定（只存工作台，不改飞书）；也可以改飞书原表后点「同步」。</p>
+      {oldSnapshot && <p className="small warn-text">当前快照是旧格式，没有记录单元格位置；点上面的「同步」重新读取（只读）后才能裁定。</p>}
+      {tl.rulings?.stale > 0 && <p className="small warn-text">有 {tl.rulings.stale} 条裁定对应的飞书原格已经改过，已自动失效，这些格子回到待确认。</p>}
+      <div className="toolbar"><Segmented options={RULE_SHOW.map(([k, label]) => [k, `${label} ${k === "open" ? open : k === "ruled" ? tl.anomalies.length - open : tl.anomalies.length}`])} value={show} onChange={setShow} /></div>
       {!list.length ? <Placeholder icon="search" title="没有符合条件的异常">换个学校名或事件名试试。</Placeholder> : (
         <div className="anomaly-list">
-          {list.map((a, i) => (
-            <section key={`${a.src}-${i}`} className="card anomaly">
-              <div className="anomaly-main">
-                <strong>{a.school}</strong>
-                <span>{a.issue}</span>
-                <span className="small muted">来源单元格 <span className="tnum">{a.src}</span>{a.flag && <> · 标记 <Tag tone={a.flag === "conflict" ? "red" : "amber"}>{a.flag}</Tag></>}</span>
-              </div>
-              <div className="anomaly-opts">
-                <div><span className="label">原文 A</span><pre className="anomaly-raw">{a.a || "（空）"}</pre></div>
-                <div><span className="label">原文 B</span><pre className="anomaly-raw">{a.b || "—"}</pre></div>
-              </div>
-            </section>
-          ))}
+          {list.map((a, i) => <AnomalyCard key={a.key || `${a.src}-${i}`} a={a} reread={reread} />)}
         </div>
       )}
     </>
+  );
+}
+
+const DECISION_TEXT = { adopt: "采用", manual: "手填日期", exclude: "不采用" };
+const cellName = (a, i) => (a.cell?.cells.length > 1 ? (i ? "B" : "A") : "原文");
+function rulingText(a, r) {
+  if (r.decision === "exclude") return "不采用：这一格不参与推导";
+  return `${r.decision === "adopt" ? `采用${cellName(a, r.cell)}` : `手填（写在${cellName(a, r.cell)}格）`}：${r.from} → ${r.to}`;
+}
+
+function AnomalyCard({ a, reread }) {
+  const cells = a.cell?.cells || [];
+  const [pick, setPick] = useState(""); // "adopt:0" / "adopt:1" / "manual" / "exclude"
+  const [days, setDays] = useState({ from: "", to: "" });
+  const [note, setNote] = useState("");
+  const flow = useWriteFlow();
+  const locked = flow.busy || flow.phase === "unknown";
+  const choose = (v) => { setPick(v); flow.reset(); };
+  const body = () => {
+    if (pick === "clear") return { decision: "clear" };
+    const [decision, cell] = pick.split(":");
+    return { decision, cell: Number(cell || 0), ...(decision === "manual" && days), ...(note.trim() && { note: note.trim() }) };
+  };
+  const dayOk = (v) => /^20\d{2}-\d{2}-\d{2}$/.test(v);
+  const ready = pick && (pick !== "manual" || (dayOk(days.from) && dayOk(days.to) && days.to >= days.from));
+  const preview = (b = body()) => flow.preview(() => apiSend("POST", `/api/v3/timeline/anomalies/${encodeURIComponent(a.key)}/preview`, b));
+  const confirm = () => flow.confirm(
+    (pv) => apiSend("POST", "/api/v3/timeline/anomalies/confirm", { previewId: pv.previewId, confirm: true }),
+    async (receipt, pv) => {
+      const back = await reread(); const now = back.anomalies.find((x) => x.key === a.key);
+      if (!now) return "已保存，但重新读取后这条异常不在快照里了（原表可能已改）";
+      if (pv.value.decision === "clear") return !now.ruling;
+      return Boolean(now.ruling) && ["decision", "cell", "from", "to", "note"].every((k) => now.ruling[k] === pv.value[k]);
+    },
+  );
+  const resolve = async () => { await reread(); flow.resolve(); };
+  return (
+    <section className={`card anomaly${a.ruling ? " is-done" : ""}`}>
+      <div className="anomaly-main">
+        <strong>{a.school}</strong>
+        <span>{a.issue}</span>
+        <span className="small muted">来源单元格 <span className="tnum">{a.src}</span>{a.flag && <> · 标记 <Tag tone={a.flag === "conflict" ? "red" : "amber"}>{a.flag}</Tag></>}</span>
+      </div>
+      <div className="anomaly-opts">
+        <div><span className="label">原文 A</span><pre className="anomaly-raw">{a.a || "（空）"}</pre></div>
+        <div><span className="label">原文 B</span><pre className="anomaly-raw">{a.b || "—"}</pre></div>
+      </div>
+      <div className="anomaly-rule">
+        {a.ruling ? (
+          <div className="row">
+            <Tag tone="green">已裁定</Tag><span>{rulingText(a, a.ruling)}</span>
+            {a.ruling.note && <span className="small muted">备注：{a.ruling.note}</span>}
+            <span className="spacer" />
+            <Button className="btn btn-xs" disabled={locked} onClick={() => { setPick("clear"); preview({ decision: "clear" }); }}>撤销裁定</Button>
+          </div>
+        ) : !a.cell ? (
+          <p className="small muted">这条没有可裁定的日期格（校名类异常或旧快照）。校名请改飞书原表后同步。</p>
+        ) : (
+          <>
+            <div className="row rule-opts">
+              <span className="label">裁定</span>
+              {cells.map((c, i) => c.from && (
+                <button key={i} type="button" className={`chip${pick === `adopt:${i}` ? " is-on" : ""}`} disabled={locked} onClick={() => choose(`adopt:${i}`)}>
+                  采用{cellName(a, i)} <span className="tnum">{c.from.slice(5)} → {c.to.slice(5)}</span>
+                </button>
+              ))}
+              <button type="button" className={`chip${pick === "manual" ? " is-on" : ""}`} disabled={locked} onClick={() => choose("manual")}>手填日期</button>
+              <button type="button" className={`chip${pick === "exclude" ? " is-on" : ""}`} disabled={locked} onClick={() => choose("exclude")}>不采用</button>
+              {pick === "manual" && <>
+                <input className="rule-day" value={days.from} placeholder="开始 YYYY-MM-DD" disabled={locked} onChange={(e) => { setDays({ ...days, from: e.target.value.trim() }); flow.reset(); }} />
+                <input className="rule-day" value={days.to} placeholder="结束 YYYY-MM-DD" disabled={locked} onChange={(e) => { setDays({ ...days, to: e.target.value.trim() }); flow.reset(); }} />
+              </>}
+              {pick && <input className="rule-note" value={note} maxLength={500} placeholder="备注（可选），如：官网校历确认" disabled={locked} onChange={(e) => { setNote(e.target.value); flow.reset(); }} />}
+              <span className="spacer" />
+              <Button variant="primary" className="btn btn-xs" disabled={!ready || locked || pick === "clear"} onClick={() => preview()}><PixelIcon name="eye" />预览裁定</Button>
+            </div>
+            {pick === "manual" && cells.length > 1 && <p className="small muted">手填的日期写在 A 格；B 格仍不参与推导。</p>}
+          </>
+        )}
+        <WriteBox flow={flow} title={pick === "clear" ? "撤销裁定预览" : "裁定预览"} confirmLabel={pick === "clear" ? "确认撤销" : "确认裁定"} savedText={pick === "clear" ? "已撤销裁定，回读核对一致；这一格回到待确认" : "已裁定，回读核对一致"} onConfirm={confirm} onRepreview={() => preview(pick === "clear" ? { decision: "clear" } : body())} onReread={resolve}>
+          {(pv) => <dl className="kv">
+            <dt>格子</dt><dd>{a.school} · {a.cell?.header || a.issue.split("：")[0]} · <span className="tnum">{a.src}</span></dd>
+            <dt>裁定</dt><dd>{pv.value.decision === "clear" ? <><span className="diff-old">{a.ruling && rulingText(a, a.ruling)}</span> → <span className="diff-new">撤销，回到待确认</span></> : <span className="diff-new">{rulingText(a, pv.value)}</span>}</dd>
+            {pv.value.note && <><dt>备注</dt><dd>{pv.value.note}</dd></>}
+            <dt>影响</dt><dd>{pv.value.decision === "clear" || pv.value.decision === "exclude" ? "这一格不参与主线需求推导" : "这一格按裁定日期参与主线需求推导；已采纳的相关需求会变成「待复核」"}</dd>
+            <dt>写到哪里</dt><dd>工作台本地，不改飞书原表；原格内容变了裁定自动失效</dd>
+          </dl>}
+        </WriteBox>
+      </div>
+    </section>
   );
 }
 
@@ -370,7 +463,10 @@ function StrategyBoard({ initial, initialSel }) {
   const { needs, month } = data;
   const [sel, setSel] = useState(needs.some((n) => n.id === initialSel) ? initialSel : needs[0]?.id);
   const [derive, setDerive] = useState({ busy: false, note: "", error: "" });
+  const [writing, setWriting] = useState(false);
+  const [note, setNote] = useState(""); // 添加草稿后表单关闭，结果放在外层
   const adopt = useWriteFlow();
+  const remove = useWriteFlow();
   const cur = needs.find((n) => n.id === sel) || needs[0];
   const adopted = needs.filter((n) => n.status === "已采纳").length;
   const reload = async () => { const fresh = await apiSend("GET", `/api/v3/needs?month=${month}`); setData(fresh); return fresh; };
@@ -379,13 +475,28 @@ function StrategyBoard({ initial, initialSel }) {
     try { const f = await reload(); setDerive({ busy: false, note: `已按当前时间线重新推导：${f.needs.length} 条 · ${f.needs.filter((n) => n.status === "已采纳").length} 已采纳 · ${f.needs.filter((n) => n.status === "待复核").length} 待复核`, error: "" }); }
     catch (e) { setDerive({ busy: false, note: "", error: e.message }); }
   }
-  const pick = (id) => { if (adopt.busy || adopt.phase === "unknown") return; setSel(id); adopt.reset(); };
+  const pick = (id) => { if ([adopt, remove].some((f) => f.busy || f.phase === "unknown")) return; setSel(id); adopt.reset(); remove.reset(); };
   const previewAdopt = () => adopt.preview(() => apiSend("POST", `/api/v3/needs/${encodeURIComponent(cur.id)}/preview`, { month }));
   const confirmAdopt = () => adopt.confirm(
     (pv) => apiSend("POST", `/api/v3/needs/${encodeURIComponent(cur.id)}/adopt`, { previewId: pv.previewId, confirm: true }),
     async (receipt, pv) => { const f = await reload(); const n = f.needs.find((x) => x.id === pv.need.id); return n?.status === "已采纳" && sameJson(n.strategy, pv.need.strategy); },
   );
   const rereadAdopt = async () => { try { await reload(); adopt.resolve(); } catch (e) { setDerive({ busy: false, note: "", error: e.message }); } };
+  // 手写 / Voice 转来的草稿（编号 manual-…）没采纳前可以删；采纳后不能删。
+  const removable = cur && /^manual-/.test(cur.id) && cur.status === "草稿";
+  const previewRemove = () => remove.preview(() => apiSend("POST", `/api/v3/manual-needs/${encodeURIComponent(cur.id.slice(7))}/remove-preview`));
+  const confirmRemove = () => remove.confirm(
+    (pv) => apiSend("POST", "/api/v3/manual-needs/confirm", { previewId: pv.previewId, confirm: true }),
+    async (receipt, pv) => { const f = await reload(); return !f.needs.some((x) => x.id === pv.value.need.id); },
+  );
+  const rereadRemove = async () => { try { await reload(); remove.resolve(); } catch (e) { setDerive({ busy: false, note: "", error: e.message }); } };
+  // 添加草稿：回读到的需求和预览完全一致才算保存，然后选中它。
+  const added = async (need) => {
+    const f = await reload(); const n = f.needs.find((x) => x.id === need.id);
+    if (!sameJson(n, need)) return false;
+    setSel(need.id); adopt.reset(); remove.reset(); setWriting(false); setNote(`已添加需求草稿「${need.need}」，回读核对一致`);
+    return true;
+  };
   return (
     <>
       <ol className="flow-chain">
@@ -399,8 +510,10 @@ function StrategyBoard({ initial, initialSel }) {
         {derive.note && <span className="small ok-text">{derive.note}</span>}
         {derive.error && <span className="small risk-text">读取失败：{derive.error}</span>}
         <Button onClick={rederive} disabled={derive.busy}><PixelIcon name="refresh" />{derive.busy ? "推导中" : "重新推导"}</Button>
-        <PendingButton task="V3-接口清单"><PixelIcon name="plus" />手写主线需求</PendingButton>
+        <Button onClick={() => { setWriting(true); setNote(""); }} disabled={writing}><PixelIcon name="plus" />手写主线需求</Button>
       </div>
+      <SavedNote text={note} onClose={() => setNote("")} />
+      {writing && <ManualNeedForm month={month} onSaved={added} onReread={reload} onClose={() => setWriting(false)} />}
       {!needs.length ? <Placeholder icon="target" title={`${month} 没有推导出主线需求`}>时间线里这个月没有确定的考试、选课等事件，或者事件都在异常清单里待确认。</Placeholder> : (
       <div className="strategy-layout cols-3-9">
         <ol className="need-list">
@@ -409,7 +522,7 @@ function StrategyBoard({ initial, initialSel }) {
               <button type="button" className={n.id === cur?.id ? "is-sel" : ""} onClick={() => pick(n.id)}>
                 <span className="need-top"><strong>{n.seg} · {n.node}</strong><Tag tone={STATUS_TAG[n.status] || "neutral"}>{n.status}</Tag></span>
                 <span className="need-need">{n.need}</span>
-                <span className="need-meta tnum small muted">{n.when.replace(/\b20\d\d-/g, "")} · {n.schools} 校 · {n.strategy ? `${Object.values(n.strategy.actions).flat().length} 个行动` : "未拆解"}</span>
+                <span className="need-meta tnum small muted">{n.when.replace(/\b20\d\d-/g, "")} · {n.schools ? `${n.schools} 校 · ` : ""}{n.strategy ? `${Object.values(n.strategy.actions).flat().length} 个行动` : "未拆解"}</span>
               </button>
             </li>
           ))}
@@ -430,9 +543,17 @@ function StrategyBoard({ initial, initialSel }) {
               {cur.status !== "已采纳" && (
                 <div className="need-draft">
                   <p>{cur.status === "待复核" ? "采纳后时间线来源变了，这条需求要重新确认；确认前不计入交付月完成数。" : "这条需求还是草稿。先确认它成立，再拆解策略；采纳后促销方案才能关联它。"}</p>
-                  <div className="row"><Button variant="primary" onClick={previewAdopt} disabled={adopt.busy || adopt.phase === "unknown"}><PixelIcon name="eye" />{cur.status === "待复核" ? "重新采纳（预览）" : "预览采纳"}</Button></div>
+                  <div className="row"><Button variant="primary" onClick={previewAdopt} disabled={adopt.busy || adopt.phase === "unknown"}><PixelIcon name="eye" />{cur.status === "待复核" ? "重新采纳（预览）" : "预览采纳"}</Button>
+                    {removable && <Button onClick={previewRemove} disabled={remove.busy || remove.phase === "unknown"}><PixelIcon name="close" />删除这条草稿</Button>}</div>
                 </div>
               )}
+              <WriteBox flow={remove} title="删除草稿预览" confirmLabel="确认删除" savedText="已删除这条需求草稿，回读核对不在列表里了" onConfirm={confirmRemove} onRepreview={previewRemove} onReread={rereadRemove}>
+                {(pv) => <dl className="kv">
+                  <dt>删除</dt><dd>{pv.value.need.seg} · {pv.value.need.node} · {pv.value.need.need}</dd>
+                  <dt>来源</dt><dd>{pv.value.need.source}</dd>
+                  <dt>写到哪里</dt><dd>只删工作台本地的草稿，不影响飞书和其他需求</dd>
+                </dl>}
+              </WriteBox>
               {/* 采纳成功后这条需求不再是草稿，预览框放在外面，「已采纳」结果才看得到 */}
                   <WriteBox flow={adopt} title="采纳预览" confirmLabel="确认采纳" savedText="已采纳，回读核对一致" onConfirm={confirmAdopt} onRepreview={previewAdopt} onReread={rereadAdopt}>
                     {(pv) => <dl className="kv">

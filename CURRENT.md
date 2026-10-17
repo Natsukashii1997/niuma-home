@@ -615,3 +615,110 @@
 - 截图：重拍了价格、业务、SKU 档案、首页、Voice、知识库，都在 `docs/handoff/V3-UI/`。
 - 服务：5295 核对进程、工作目录和数据目录无误后，用原配置重启，已采用新后端。
 - 遗留：没有接口的按钮（异常裁定、手写需求、Voice 转需求、新建项目、新开战役、复盘、brief 附件、数码世界导入、NAS）仍显示待实现。真实飞书写入和模型调用仍需用户确认具体预览后首次执行。
+
+### 待实现补齐 · 第 1 批 · 2026-10-17 · Claude（前后端，待用户验收）
+
+- 范围：手写主线需求、Voice 话题转主线需求草稿、战役复盘保存。用户已确认分三批做，NAS 相关暂缓。
+- 改动文件：
+  - `server/manual-needs.mjs`（新增）：手写和 Voice 草稿的预览、确认、删除。只能删没采纳的草稿；Voice 来源由后端按榜单写入，同月同话题不重复转；
+  - `server/needs.mjs`、`server/price.mjs`：需求列表和价格关联同时读自言自语草稿和手写草稿；
+  - `server/routes/user.mjs`、`server/routes/workspace.mjs`：注册 `/api/v3/manual-needs*`，并把 Voice 读取器传进去；
+  - `server/campaigns.mjs`：战役记录增加 `review` 字段，必须先创建战役；
+  - `src/modules/user/ManualNeedForm.jsx`（新增）、`UserPage.jsx`：手写需求表单和删除草稿；需求没有校数时不显示「0 校」；
+  - `src/modules/voice/VoicePage.jsx`：话题详情可转草稿；已转过的话题显示链接，不能重复转；
+  - `src/modules/marketing/CampaignView.jsx`：复盘卡片可保存，结果显示在卡片里；页面改为每次保存后按版本重建；
+  - `src/modules/command/*`：命令面板里手写需求不显示「0 校」；
+  - `src/styles-v3.css`：表单的两条样式；
+  - `docs/tasks/V3-接口清单.md`：记录新接口。
+- 测试：`WORKDESK_DATA_DIR=$(mktemp -d) npm test` 237 通过 / 0 失败（新增 `tests/v3-manual-needs.test.mjs` 4 项，`v3-marketing` 加复盘 1 项）；构建通过；`git diff --check` 通过。
+- 浏览器：一次性副本库（API 5297、页面 5298，1440 宽）13 项全部通过，其中 9 项实际、4 项模拟（409、网络中断）。
+  - Voice 话题来自合成快照，标题带「（合成）」，因为真实试运行榜单为空。
+  - 结果：`docs/handoff/V3-UI/待实现补齐/交互验证.json`，脚本是同目录 `交互验证.py`。
+  - 运行方式：`uv run --with playwright`，`CHROMIUM` 指向本机已缓存的无头 Chromium。
+- 截图：`docs/handoff/V3-UI/待实现补齐/批1-*.png`，共 11 张。
+- 服务：验收服务已停。5295 核对进程、工作目录和数据目录后，按原配置重启。
+- 范围外发现：Voice「近 7 天热度走势」里，两个话题数值相同时右侧标签重叠（合成数据下出现），没有改。
+- 遗留：第 2 批（时间线异常裁定、新建项目、新开战役）、第 3 批（brief 附件、数码世界收藏导入）未开始。
+
+### 待实现补齐 · 第 2 批 · 2026-10-17 · Claude（前后端，待用户验收）
+
+- 范围：时间线异常人工裁定、新建本地项目、新开战役。按推荐做法：都只写工作台，不改飞书。
+- 改动文件：
+  - `server/timeline.mjs`：日期类异常增加 `cell` 定位信息，只增不改；
+  - `server/timeline-rulings.mjs`（新增）：裁定的预览、确认、撤销，以及把裁定叠加到时间线上。裁定按原文指纹对应，原格一改自动失效；
+  - `server/routes/user.mjs`：页面、需求推导、首页待办改读叠加裁定后的时间线，注册裁定接口；
+  - `server/price.mjs`：价格关联的需求核对也叠加裁定，和需求列表保持一致；
+  - `server/home-todo.mjs`：已裁定的异常不再计入「待确认」；
+  - `server/projects.mjs`、`server/routes/projects.mjs`：本地项目（`local-…`）按飞书项目结构生成，节点改动照常预览确认；
+  - `server/campaigns.mjs`、`server/routes/v3-marketing.mjs`：战役归档、清空当前在同一个事务里，新增历史接口；
+  - `src/modules/user/UserPage.jsx`：异常卡片可以裁定，支持采用、手填、不采用、撤销；明细表和时间轴标「人工裁定」；「不采用」的格子显示「不采用」；
+  - `src/modules/projects/ProjectsPage.jsx`：新建项目表单，本地项目标「本地」；
+  - `src/modules/marketing/CampaignView.jsx`：「新开战役」走归档预览，增加「历史战役」卡片；创建表单的日期默认下个月；
+  - `src/styles-v3.css`：裁定栏、新建项目、历史战役的样式；
+  - `tests/v3-pending-batch2.test.mjs`（新增，5 项）；`tests/v3-batch1.test.mjs` 时间线形状断言加上 `rulings`；
+  - `docs/tasks/V3-接口清单.md`：记录新接口。
+- 测试：`WORKDESK_DATA_DIR=$(mktemp -d) npm test` 242 通过 / 0 失败；构建通过；`git diff --check` 通过。
+- 浏览器：干净副本上先只读同步时间线，再把两批合并重跑，25 项全部通过，其中 6 项为模拟（409、网络中断）。
+  - 结果：`docs/handoff/V3-UI/待实现补齐/交互验证.json`；
+  - 截图：`批2-*.png`，共 9 张。
+- 服务：验收服务已停。5295 核对进程、工作目录和数据目录后，按原配置重启。
+- 注意：5295 数据目录里的时间线快照是旧格式，异常页会提示「点同步后才能裁定」。同步是只读读取飞书。
+- 与推荐不一致之处：
+  - 同一学期两格冲突时，手填日期写在 A 格，B 格不参与推导；
+  - 校名类异常没有日期格，不能在工作台裁定，仍请改飞书原表。
+- 遗留：
+  - 本地项目和历史战役暂不支持删除；
+  - 第 3 批（brief 附件、数码世界收藏导入）未开始。
+
+### 待实现补齐 · 第 3 批 · 2026-10-17 · Claude（brief 附件已实现；数码世界导入只做了只读调查）
+
+- 改动文件：
+  - `server/brief-attachments.mjs`（新增）：附件的预览、确认、删除和读取。
+    - 校验扩展名和文件头是否一致，同一文件不重复上传；
+    - 先写文件再写记录，记录写失败会删掉刚写的文件。
+  - `server/briefs.mjs`：导出时第 7 节写附件文件名清单；没有附件时和原来一样为空。
+  - `server/routes/v3-marketing.mjs`：附件接口，包括文件下载（文件名按 RFC 5987 编码）。
+  - `src/modules/marketing/BriefAttachments.jsx`（新增）、`BriefView.jsx`：第 7 节可以选择或拖入文件，列表里能打开、下载、删除。
+  - `src/styles-v3.css`：附件列表和拖放区的样式。
+  - `tests/v3-pending-batch3.test.mjs`（新增，2 项）。
+  - `docs/tasks/V3-接口清单.md`：记录新接口。
+  - `docs/handoff/V3-UI/待实现补齐/数码世界收藏-只读调查.md`：调查结论与导入做法选项。
+- 测试：`WORKDESK_DATA_DIR=$(mktemp -d) npm test` 244 通过 / 0 失败；构建通过；`git diff --check` 通过。
+- 浏览器：三批在干净副本上合并重跑，31 项全部通过。
+  - 附件 6 项，其中 1 项模拟网络中断；附件用的是合成的 png 和 pdf。
+  - 截图：`批3-*.png`，共 4 张。
+- 服务：验收服务已停。5295 核对进程、工作目录和数据目录后，按原配置重启。
+- 遗留：
+  - 「从数码世界收藏导入」按钮仍显示待实现，等用户在调查文档里选定做法；
+  - NAS 原图和「在 brief 中沿用」按用户要求暂缓。
+
+### 待实现补齐 · 第 3 批补充 · 数码世界收藏导入 · 2026-10-17 · Claude（待用户验收）
+
+- 用户确认采用推荐做法：只读，用户勾选，不做 AI 判断；数码世界的收藏按钮不用改。
+- 改动文件：
+  - `server/digiworld.mjs`（新增）：只读 `state.json`，校验 sha256 和 `schema === 1`。
+    - 图片路径必须属于这条笔记，打开文件不跟随符号链接；
+    - 图文取全部图片，视频只取封面。
+  - `server/routes/references.mjs`：收藏列表和收藏图片两个只读接口；「已导入」按画布里已保存参考项的来源判断。
+  - `src/modules/marketing/DigiworldImport.jsx`（新增）：导入弹窗，可以勾选、按分类筛选，标「已导入」或「已在画布，未保存」，有原帖链接。
+  - `src/modules/marketing/MaterialsHub.jsx`：按钮换成真实入口；勾选的图排在画布下方新起一行，仍要「预览保存」确认后才写入。
+  - `src/styles-v3.css`：弹窗列表样式。
+  - `tests/v3-digiworld.test.mjs`（新增，2 项，用合成的收藏目录）。
+  - `docs/tasks/V3-接口清单.md`、`docs/handoff/V3-UI/待实现补齐/数码世界收藏-只读调查.md`：补记结论。
+- 测试：`WORKDESK_DATA_DIR=$(mktemp -d) npm test` 246 通过 / 0 失败；构建通过；`git diff --check` 通过。
+- 浏览器：全部场景在干净副本上重跑，37 项全部通过。
+  - 数码世界导入 6 项：读的是真实收藏，只读；写入只进副本库。其中 1 项模拟校验失败。
+  - 截图：`批3-数码世界导入-*.png`，共 5 张。
+- 服务：验收服务已停。5295 核对进程、工作目录和数据目录后，按原配置重启；经 5296 回读，收藏接口可用（revision 77，6 条）。
+- 遗留：只剩 NAS 打开原图和「在 brief 中沿用」两个按钮，按用户要求暂缓。三批改动都还没提交。
+
+### 待实现补齐 · 收尾 · 2026-10-17 · Claude（用户已验收第 3 批，同意提交）
+
+- 用户约定：数码世界收藏桌面上「设计参考」分组里的收藏，默认导入工作台。
+  - `server/digiworld.mjs`：读取桌面分组（`desk.groups`、`noteGroupMap`），返回 `groups` 和每条笔记的 `group`；接口另返回 `defaultGroup`。
+  - `DigiworldImport.jsx`：默认筛到「设计参考」，并勾选其中还没导入的；筛选改成按分组；分组为空或还没建时写明怎么用。
+  - `MaterialsHub.jsx`：修了一个问题，弹窗关掉再打开会先用旧数据初始化勾选。现在改为每次打开重新挂载弹窗。
+- 测试：246 通过 / 0 失败；构建通过；`git diff --check` 通过。
+- 浏览器：全新副本上完整重跑，39/39 通过。默认勾选用模拟分组验证，因为真实的「设计参考」分组目前是空的。
+- 服务：5295 按原配置重启，经 5296 回读能看到默认分组。
+- 遗留：只剩 NAS 打开原图和「在 brief 中沿用」，按用户要求暂缓。

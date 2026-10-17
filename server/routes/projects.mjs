@@ -12,6 +12,9 @@ export function createProjectServices(db, options = {}) {
 export function projectRoutes({ projects, mentor, kb }) {
   return [
     route('GET', '/api/v3/projects', handleV3(() => projects.list())),
+    // 新建本地项目：路径与 /api/v3/projects/:id 分开，避免被当成项目编号。
+    route('POST', '/api/v3/local-projects/preview', handleV3(async req => projects.createPreview(await body(req)))),
+    route('POST', '/api/v3/local-projects/confirm', handleV3(async req => projects.createConfirm(await body(req)))),
     route('POST', '/api/v3/projects/sync', handleV3(() => projects.list({ refresh: true }))),
     route('POST', '/api/v3/projects/:id/preview', handleV3(async (req, { params }) => projects.preview(params.id, await body(req)))),
     route('PATCH', '/api/v3/projects/:id', handleV3(async (req, { params }) => projects.confirm(params.id, await body(req)))),

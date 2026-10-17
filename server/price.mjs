@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { getSettings } from './db.mjs';
 import { getRecord, listRecords, createLocalChanges, fingerprint } from './local-records.mjs';
 import { deriveNeeds } from './needs.mjs';
+import { manualNeedRecords } from './manual-needs.mjs';
+import { withRulings } from './timeline-rulings.mjs';
 import { failure } from './v3-common.mjs';
 import { createMarketingSourceReader, marketingFailure, marketingSource, multiValues, isDay } from './campaigns.mjs';
 import { V3_DEFAULTS } from './v3-settings.mjs';
@@ -35,16 +37,17 @@ export function acceptedMarketingNeeds(db, month) {
   const saved = snapshot ? JSON.parse(snapshot.payload) : null;
   // 来源必须来自成功快照自身。旧裸快照没有身份，只兼容已知默认来源。
   const wrapped = saved && (Object.hasOwn(saved, 'identity') || Object.hasOwn(saved, 'value'));
-  const timeline = wrapped ? saved.identity === identity ? saved.value : null : identity === defaultIdentity ? saved : null;
-  const manual = new Map(listRecords(db, 'selftalk-need').filter(item => item.need?.id).map(item => [item.need.id, item]));
+  const base = wrapped ? saved.identity === identity ? saved.value : null : identity === defaultIdentity ? saved : null;
+  const timeline = base && withRulings(db, base); // 与需求列表一致：叠加人工裁定
+  const manual = new Map(manualNeedRecords(db).filter(item => item.need?.id).map(item => [item.need.id, item]));
   const derived = new Map();
   return rows.flatMap(row => {
     const need = JSON.parse(row.payload);
     if (need.status !== '已采纳') return [];
-    const selftalk = manual.get(row.id);
-    if (selftalk) {
-      if (selftalk.month !== row.month || fingerprint(selftalk) !== row.source_fingerprint) return [];
-    } else if (timeline && !row.id.startsWith('selftalk-')) {
+    const local = manual.get(row.id);
+    if (local) {
+      if (local.month !== row.month || fingerprint(local) !== row.source_fingerprint) return [];
+    } else if (timeline && !/^(selftalk|manual)-/.test(row.id)) {
       if (!derived.has(row.month)) derived.set(row.month, deriveNeeds(timeline, row.month));
       if (!derived.get(row.month).some(n => n.need.id === row.id && n.fingerprint === row.source_fingerprint)) return [];
     } else return [];

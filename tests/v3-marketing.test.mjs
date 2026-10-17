@@ -141,6 +141,28 @@ test('模板实例只在本地预览确认后生成，物料决定持久化，�
   assert.equal((await request('POST', '/api/v3/campaigns/current/preview', { routine: [['价格图', 'invented']] })).status, 400);
 });
 
+test('战役复盘只在已创建战役上预览确认后保存，节点改动不会冲掉复盘', async t => {
+  const { request, db } = await setup(t);
+  assert.equal((await request('POST', '/api/v3/campaigns/current/preview', { review: '没有战役时不能写' })).status, 400);
+  const created = await request('POST', '/api/v3/campaigns/current/preview', { name: '复盘战役', start: '2026-10-01', end: '2026-11-30', desc: '目标' });
+  await request('PATCH', '/api/v3/campaigns/current', { previewId: created.body.previewId, confirm: true });
+  const p = await request('POST', '/api/v3/campaigns/current/preview', { review: '报名比预期多两成；海报晚了三天' });
+  assert.equal(p.status, 200); assert.equal(getRecord(db, 'campaign', 'current').review, undefined);
+  const saved = await request('PATCH', '/api/v3/campaigns/current', { previewId: p.body.previewId, confirm: true });
+  assert.equal(saved.body.review, '报名比预期多两成；海报晚了三天');
+  assert.deepEqual((await request('GET', '/api/v3/campaigns/current')).body, saved.body);
+  const phases = structuredClone(saved.body.phases); phases[0].nodes[0].done = true;
+  const edited = await request('POST', '/api/v3/campaigns/current/preview', { phases });
+  assert.equal(edited.body.value.review, saved.body.review);
+  assert.equal((await request('POST', '/api/v3/campaigns/current/preview', { review: 'x'.repeat(20001) })).status, 400);
+  assert.equal((await request('POST', '/api/v3/campaigns/current/preview', { review: 42 })).status, 400);
+  // 两个预览基于同一版本：先确认的生效，后一个按记录已变化拒绝
+  const a = await request('POST', '/api/v3/campaigns/current/preview', { review: '甲' }), b = await request('POST', '/api/v3/campaigns/current/preview', { review: '乙' });
+  assert.equal((await request('PATCH', '/api/v3/campaigns/current', { previewId: a.body.previewId, confirm: true })).status, 200);
+  assert.equal((await request('PATCH', '/api/v3/campaigns/current', { previewId: b.body.previewId, confirm: true })).status, 409);
+  assert.equal(getRecord(db, 'campaign', 'current').review, '甲');
+});
+
 test('brief只带入已采纳需求和正式保存价格；缺价格仍完整返回七节', async t => {
   const { request, db } = await setup(t);
   adopted(db, { id: 'draft', status: '草稿', goal: '不能带入' });

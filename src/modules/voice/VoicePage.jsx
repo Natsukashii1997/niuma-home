@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { PixelIcon, TypeText } from "../../ui/bitmap.jsx";
-import { useApi } from "../../api.js";
+import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Card, Loadable, PageHeader, PendingButton, Placeholder, StatStrip, Tag } from "../../ui/components.jsx";
+import { Button, Card, Loadable, PageHeader, Placeholder, StatStrip, Tag } from "../../ui/components.jsx";
+import { SavedNote } from "../../ui/write-flow.jsx";
+import { ManualNeedForm } from "../user/ManualNeedForm.jsx";
+import { deliveryMonth } from "../../constants.js";
 
 // Voice · 留学之声（v3，侧栏独立模块）：留学生最近在讨论什么。基于本机运行的 AIHOT 引擎，免费英文信源；
 // 只看多数人的共性——同一人 / 同一矩阵只算一个来源，独立来源 ≥ 5 才上榜。
@@ -66,12 +69,27 @@ function VoiceBoard({ v }) {
   const [kind, setKind] = useState("");
   const [word, setWord] = useState("");
   const [sel, setSel] = useState(v.hot[0]?.id);
+  // 转为主线需求草稿：写进交付月；已经转过的话题直接链到那条草稿，不重复转。
+  const month = deliveryMonth();
+  const drafts = useApi("/api/v3/manual-needs");
+  const [records, setRecords] = useState(null); // 保存后用回读到的记录，不再等重新读取
+  const [converting, setConverting] = useState("");
+  const [note, setNote] = useState("");
   const tags = [...new Set(v.hot.flatMap((t) => t.tags))];
   const countries = tags.filter((t) => COUNTRY.includes(t));
   const schools = tags.filter((t) => !COUNTRY.includes(t));
   const kinds = [...new Set(v.hot.map((t) => t.kind))];
   const list = v.hot.filter((t) => (!scope || t.tags.includes(scope)) && (!kind || t.kind === kind) && (!word || `${t.title}${t.summary}`.includes(word)));
   const cur = list.find((t) => t.id === sel) || list[0];
+  const draft = cur && (records || drafts.data?.records || []).find((r) => r.month === month && r.voice?.id === cur.id);
+  const converted = async (need) => {
+    const back = await apiSend("GET", "/api/v3/manual-needs");
+    const r = back.records.find((x) => x.need.id === need.id);
+    if (!r || JSON.stringify(r.need) !== JSON.stringify(need)) return false;
+    setRecords(back.records); setConverting(""); setNote(`已转为 ${month} 主线需求草稿，回读核对一致`);
+    return true;
+  };
+  const rereadDrafts = async () => setRecords((await apiSend("GET", "/api/v3/manual-needs")).records);
   const delta = (t) => (t.spark?.length >= 2 ? t.spark.at(-1) - t.spark.at(-2) : 0);
   const rising = [...v.hot].sort((a, b) => delta(b) - delta(a)).slice(0, 3);
   const s = v.stats;
@@ -111,7 +129,7 @@ function VoiceBoard({ v }) {
           <ol className="hot-list">
             {list.map((t, i) => (
               <li key={t.id}>
-                <button type="button" className={t.id === cur?.id ? "is-sel" : ""} onClick={() => setSel(t.id)}>
+                <button type="button" className={t.id === cur?.id ? "is-sel" : ""} onClick={() => { setSel(t.id); setNote(""); }}>
                   <span className={`rank tnum${i === 0 ? " is-top" : ""}`}>{String(i + 1).padStart(2, "0")}</span>
                   <span className="hot-main">
                     <strong>{t.title}</strong>
@@ -141,7 +159,12 @@ function VoiceBoard({ v }) {
                 <ul className="src-list">{(cur.sources || []).map(([t, src]) => <li key={t}><q>{t}</q><span className="tnum small muted">{src}</span></li>)}</ul>
                 <div className="label">关联主线需求</div>
                 {cur.need ? <a className="chip" href={href("user", "strategy")}><PixelIcon name="link" />{cur.need}</a> : <span className="small muted">还没有对应的主线需求</span>}
-                <div className="row"><PendingButton task="V3-接口清单"><PixelIcon name="plus" />转为主线需求草稿</PendingButton></div>
+                <SavedNote text={note} onClose={() => setNote("")} />
+                {draft ? <a className="chip" href={href("user", "strategy", draft.need.id)}><PixelIcon name="link" />已转为 {month} 主线需求草稿：{draft.need.need}</a>
+                  : converting === cur.id ? <ManualNeedForm key={cur.id} embedded month={month} voiceId={cur.id} title="转为主线需求草稿"
+                    initial={{ seg: cur.tags.join(" · ").slice(0, 50), node: "Voice 话题", need: cur.title.slice(0, 500), pain: cur.summary.slice(0, 500) }}
+                    onSaved={converted} onReread={rereadDrafts} onClose={() => setConverting("")} />
+                  : <div className="row"><Button onClick={() => { setConverting(cur.id); setNote(""); }} disabled={!drafts.data && !records} title={drafts.error ? `读取已转草稿失败：${drafts.error}` : undefined}><PixelIcon name="plus" />转为主线需求草稿</Button>{drafts.error && <span className="small risk-text">读取已转草稿失败，暂不能转</span>}</div>}
               </div>
             </section>
           )}

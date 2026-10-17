@@ -71,7 +71,8 @@ function eventType(header) {
 export function parseTimeline(sheets, syncedAt, year = 2026) {
   const result = { source: '飞书《2026海外大学时间线》· 地区明细表', syncedAt, stage: '本科', countries: [], terms: {}, nodes: {}, table: {}, agenda: [], anomalies: [] };
   const labels = new Map();
-  const anomaly = (school, issue, a, src, b = '') => result.anomalies.push({ school, issue, a, b, src });
+  // 日期类异常另带 cell（国家、表格行与列、事件类型、各单元格解析出的日期），供人工裁定定位；校名类异常没有。
+  const anomaly = (school, issue, a, src, b = '', cell) => result.anomalies.push({ school, issue, a, b, src, ...(cell && { cell }) });
   for (const sheet of sheets) {
     let country, headers, slots;
     for (const row of sheet.rows) {
@@ -117,7 +118,9 @@ export function parseTimeline(sheets, syncedAt, year = 2026) {
           parsed.flag = 'conflict'; parsed.issue = '日期早于同一行此前的下半年开学日期，保留原值待确认';
         }
         if (parsed.from && rawSchool === 'UCB' && !parsed.flag) { parsed.flag = 'guess'; parsed.issue = '校名尚待确认'; }
-        if (parsed.issue) anomaly(display, `${headers[col]}：${parsed.issue}`, raw, src);
+        const at = { code, row: result.table[code].length, c: name, type, header: headers[col].trim() };
+        const here = { src, slot: slots[col], ...(parsed.from && { from: parsed.from, to: parsed.to }) };
+        if (parsed.issue) anomaly(display, `${headers[col]}：${parsed.issue}`, raw, src, '', { ...at, cells: [here] });
         if (!parsed.from) continue;
         record.cells[slots[col]] = [parsed.from.slice(5), parsed.to.slice(5), src, ...(parsed.flag ? [parsed.flag] : [])];
         // 精确年份来自原格或文档年份；每条议程保持完整起止。源中疑似冲突不参与需求推导。
@@ -129,7 +132,7 @@ export function parseTimeline(sheets, syncedAt, year = 2026) {
           if (previous && (previous.event.from !== event.from || previous.event.to !== event.to)) {
             previous.event.flag = event.flag = 'conflict';
             record.cells[previous.slot][3] = record.cells[slots[col]][3] = 'conflict';
-            anomaly(display, '同一显式学期的开学日期冲突', previous.raw, `${previous.event.src} / ${src}`, raw);
+            anomaly(display, '同一显式学期的开学日期冲突', previous.raw, `${previous.event.src} / ${src}`, raw, { ...at, cells: [{ src: previous.event.src, slot: previous.slot, from: previous.event.from, to: previous.event.to }, here] });
           } else if (!previous) semesterStarts.set(key, { event, slot: slots[col], raw });
         }
         result.agenda.push(event);

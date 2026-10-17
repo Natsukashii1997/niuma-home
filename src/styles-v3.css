@@ -559,7 +559,7 @@ label.btn { cursor: pointer; }
 .search-box { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 var(--s2); border: var(--border) solid var(--line); background: var(--panel); min-width: 300px; }
 .search-box:focus-within { border-color: var(--text); }
 .search-box input { flex: 1; border: 0; background: none; font: inherit; font-size: 13px; outline: none; }
-.tl-cell .tnum, .anomaly .tnum, .gantt .tnum, .need-meta.tnum { text-align: left; }
+.tl-cell .tnum, .anomaly .tnum, .gantt .tnum, .need-meta.tnum, .brief-file-main .tnum { text-align: left; }
 .tl-intro { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s4); margin: 0 0 var(--s4); font-size: 12px; color: var(--muted); }
 .tl-intro p { margin: 0; }
 .tl-intro > span { flex-shrink: 0; }
@@ -985,6 +985,11 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .anomaly { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); align-items: start; }
 .anomaly-main { min-width: 0; overflow-wrap: anywhere; }
 .anomaly-opts > div { min-width: 0; }
+.anomaly-rule { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--s2); padding-top: var(--s2); border-top: 1px dashed var(--line); }
+.anomaly-rule .row { flex-wrap: wrap; gap: var(--s2); }
+.rule-day { width: 150px; height: var(--ctl); padding: 0 var(--s2); border: var(--border) solid var(--line); background: var(--panel); font: 13px var(--font-mono); }
+.rule-note { flex: 1 1 220px; min-width: 180px; height: var(--ctl); padding: 0 var(--s2); border: var(--border) solid var(--line); background: var(--panel); font: inherit; font-size: 13px; }
+.rule-day:focus, .rule-note:focus { outline: none; border-color: var(--text); }
 .anomaly-raw { margin: 0; max-height: 168px; overflow: auto; padding: var(--s1) var(--s2); background: var(--panel-soft); border: 1px solid var(--line); font: 12px/1.6 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
 .tl-cell.is-pending { background: var(--warn-soft); }
 .tl-cell.is-pending a { font-size: 12px; color: var(--warn); text-decoration: underline; text-underline-offset: 3px; }
@@ -1006,10 +1011,13 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .delivery-steps.is-state { display: flex; align-items: center; padding: var(--s4); }
 
 /* ---------- 营销战役（V3 接线）：模板态的创建表单、节点负责人输入 ---------- */
-.campaign-create { margin-bottom: var(--gap); }
+.campaign-create, .manual-need { margin-bottom: var(--gap); }
+.manual-need.is-embedded { margin: var(--s2) 0 0; padding-top: var(--s3); border-top: var(--border) dashed var(--line); }
+.manual-need.is-embedded > .label { display: flex; align-items: center; gap: var(--s1); margin-bottom: var(--s2); }
 .create-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--s3); margin-bottom: var(--s3); }
 .create-grid label { display: flex; flex-direction: column; gap: var(--s1); }
 .create-grid .is-wide { grid-column: 1 / -1; }
+.create-grid .span-2 { grid-column: span 2; }
 .create-grid input { height: var(--ctl); padding: 0 var(--s2); border: var(--border) solid var(--line); background: var(--panel); font: inherit; font-size: 13px; }
 .create-grid input:focus { outline: none; border-color: var(--text); }
 .node-list .node-owner-input { width: 100%; padding: 1px var(--s1); border: 1px solid transparent; background: none; font: inherit; font-size: 12px; color: var(--text); }
@@ -1066,3 +1074,33 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .kb-source-note { margin: 0 0 var(--gap); }
 .kb-dir-doc { display: flex; flex-direction: column; gap: var(--s2); padding-top: var(--s2); border-top: 1px solid var(--line); }
 .kb-tip.is-error { border-left-color: var(--warn); }
+
+/* 新建本地项目（项目列表卡片里） */
+.proj-new { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3) var(--s4); border-bottom: 1px dashed var(--line); }
+.proj-new label { display: flex; flex-direction: column; gap: var(--s1); }
+.proj-new input, .proj-new select { height: var(--ctl); padding: 0 var(--s2); border: var(--border) solid var(--line); background: var(--panel); font: inherit; font-size: 13px; }
+.proj-new input:focus, .proj-new select:focus { outline: none; border-color: var(--text); }
+.proj-new .row { flex-wrap: wrap; gap: var(--s2); }
+.campaign-history summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2); cursor: pointer; }
+.campaign-history details > p, .campaign-history details > pre { margin: var(--s1) 0 0; }
+/* brief 附件 */
+.brief-files { display: flex; flex-direction: column; gap: var(--s2); }
+.brief-file-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: var(--border) solid var(--line); }
+.brief-file-list li { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); }
+.brief-file-list li + li { border-top: 1px solid var(--line); }
+.brief-file-list img, .brief-file-icon { flex: none; width: 56px; height: 40px; object-fit: cover; border: 1px solid var(--line); background: var(--panel-soft); display: grid; place-items: center; }
+.brief-file-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+.dashed-drop.is-live { cursor: pointer; color: var(--text); }
+.dashed-drop.is-live:hover, .dashed-drop.is-live:focus-visible, .dashed-drop.is-over { border-color: var(--text); outline: none; }
+.dashed-drop.is-live[aria-disabled="true"] { cursor: default; color: var(--muted); }
+/* 从数码世界收藏导入 */
+.dw-list { list-style: none; margin: var(--s2) 0 0; padding: 0; border: var(--border) solid var(--line); }
+.dw-list li { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); }
+.dw-list li + li { border-top: 1px solid var(--line); }
+.dw-list li.is-on { background: var(--panel-soft); }
+.dw-list li.is-done { color: var(--muted); }
+.dw-list label { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--s3); cursor: pointer; }
+.dw-list img, .dw-noimg { flex: none; width: 64px; height: 64px; object-fit: cover; border: 1px solid var(--line); background: var(--panel-soft); display: grid; place-items: center; }
+.dw-main { min-width: 0; display: flex; flex-direction: column; gap: var(--s1); overflow-wrap: anywhere; }
+.modal-foot { align-items: center; }
+.modal-foot .spacer { flex: 1; }

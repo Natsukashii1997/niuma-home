@@ -2,8 +2,8 @@ import { useState } from "react";
 import { PixelIcon, StepProgress, TypeText } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Card, Loadable, NodeCheck, PageHeader, PendingButton, PhaseSteps, Placeholder, Segmented, StatStrip, Tabs, Tag, useToast } from "../../ui/components.jsx";
-import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
+import { Button, Card, Loadable, NodeCheck, PageHeader, PhaseSteps, Placeholder, Segmented, StatStrip, Tabs, Tag, useToast } from "../../ui/components.jsx";
+import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { isoWeek, localDate } from "../../constants.js";
 import { nodeState, projectSummary } from "./project-view.js";
 
@@ -33,6 +33,8 @@ function ProjectBoard({ initial }) {
   const [filter, setFilter] = useState("all");
   const [sync, setSync] = useState({ busy: false, error: "" });
   const [edit, setEdit] = useState(null); // { nodeId, done?, due? }：正在预览的那一处改动
+  const [creating, setCreating] = useState(false);
+  const [note, setNote] = useState(""); // 新建后表单关闭，结果放在外层
   const flow = useWriteFlow();
   const p = projects.find((x) => x.id === sel) || projects[0];
   const today = localDate();
@@ -81,7 +83,15 @@ function ProjectBoard({ initial }) {
     <div className="proj-layout cols-3-9">
       <section className="card proj-list">
         <div className="card-head"><h2><PixelIcon name="project" />项目<span className="tnum small muted">{projects.length}</span></h2>
-          <div className="card-extra"><Button onClick={refresh} disabled={sync.busy}><PixelIcon name="refresh" />{sync.busy ? "读取中" : "重新读取"}</Button><PendingButton task="V3-接口清单">新建项目</PendingButton></div></div>
+          <div className="card-extra"><Button onClick={refresh} disabled={sync.busy}><PixelIcon name="refresh" />{sync.busy ? "读取中" : "重新读取"}</Button><Button onClick={() => { setCreating(true); setNote(""); }} disabled={creating}><PixelIcon name="plus" />新建项目</Button></div></div>
+        <SavedNote text={note} onClose={() => setNote("")} />
+        {creating && <NewProject projects={projects} onClose={() => setCreating(false)} onReread={async () => setProjects(await apiSend("GET", "/api/v3/projects"))}
+          onSaved={async (pv) => {
+            const list = await apiSend("GET", "/api/v3/projects"); const got = list.find((x) => x.id === pv.value.id);
+            if (!got || JSON.stringify(got) !== JSON.stringify(pv.value)) return false;
+            setProjects(list); setSel(got.id); flow.reset(); setCreating(false); setNote(`已新建本地项目「${got.name}」，回读核对一致`);
+            return true;
+          }} />}
         {sync.busy && <div className="proj-sync"><StepProgress label="只读同步飞书项目表" /></div>}
         {sync.error && <p className="proj-sync risk-text small">读取失败：{sync.error}（页面仍显示上次读到的内容）</p>}
         <div className="proj-items">
@@ -90,7 +100,7 @@ function ProjectBoard({ initial }) {
             return (
               <button key={x.id} type="button" className={`proj-card${x.id === p.id ? " active" : ""}`} onClick={() => { setSel(x.id); flow.reset(); }}>
                 <span className="proj-card-top"><strong>{x.name}</strong><Tag tone={STATUS_TONE[x.status] || "neutral"}>{x.status}</Tag></span>
-                <span className="small muted">模板：{x.template}</span>
+                <span className="small muted">模板：{x.template}{x.local && <> · <Tag tone="frame">本地</Tag> 按「{x.basedOn.name}」生成</>}</span>
                 <span className="proj-bar"><i style={{ width: `${s.total ? (s.done / s.total) * 100 : 0}%` }} /></span>
                 <span className="proj-card-meta small"><span className="tnum">{s.done}/{s.total} 已完成</span>{s.unknown > 0 && <span className="muted">{s.unknown} 未填写</span>}{s.gates > 0 && <span className="warn-text">待审 {s.gates}</span>}{s.soon > 0 && <span className="risk-text">2 天内 {s.soon}</span>}</span>
                 {s.next && <span className="proj-next small">下一个：{s.next.t}{s.next.dueDate ? ` · ${s.next.dueDate}` : ""}</span>}
@@ -169,6 +179,37 @@ function ProjectBoard({ initial }) {
           })}
         </section>
       </section>
+    </div>
+  );
+}
+
+// 新建项目：只存工作台，不在飞书项目表新建。按选中的飞书项目复制阶段和节点（含子项），全部未完成、没有负责人和日期。
+function NewProject({ projects, onSaved, onReread, onClose }) {
+  const sources = projects.filter((x) => !x.local);
+  const [name, setName] = useState("");
+  const [basedOn, setBasedOn] = useState(sources[0]?.id || "");
+  const flow = useWriteFlow();
+  const locked = flow.busy || flow.phase === "unknown";
+  const ok = name.trim() && basedOn;
+  const preview = () => flow.preview(() => apiSend("POST", "/api/v3/local-projects/preview", { name: name.trim(), basedOn }));
+  const confirm = () => flow.confirm((pv) => apiSend("POST", "/api/v3/local-projects/confirm", { previewId: pv.previewId, confirm: true }), (receipt, pv) => onSaved(pv));
+  const reread = async () => { await onReread(); flow.resolve(); };
+  if (!sources.length) return <div className="proj-new"><p className="small muted">飞书项目表里没有可用作模板的项目，暂时不能新建。</p><Button onClick={onClose}>关闭</Button></div>;
+  return (
+    <div className="proj-new">
+      <label><span className="label">项目名称</span><input value={name} maxLength={100} disabled={locked} placeholder="如：T2 价格方案复盘" onChange={(e) => { setName(e.target.value); flow.reset(); }} /></label>
+      <label><span className="label">按哪个项目的阶段和节点生成</span>
+        <select value={basedOn} disabled={locked} onChange={(e) => { setBasedOn(e.target.value); flow.reset(); }}>{sources.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+      <div className="row"><span className="small muted">只存工作台，不回写飞书</span><span className="spacer" /><Button onClick={onClose} disabled={locked}>取消</Button><Button variant="primary" disabled={!ok || locked} onClick={preview}><PixelIcon name="eye" />预览新建</Button></div>
+      <WriteBox flow={flow} title="新建项目预览" confirmLabel="确认新建" onConfirm={confirm} onRepreview={preview} onReread={reread}>
+        {(pv) => <dl className="kv">
+          <dt>名称</dt><dd>{pv.value.name}</dd>
+          <dt>模板</dt><dd>按「{pv.value.basedOn.name}」的结构</dd>
+          <dt>阶段</dt><dd>{pv.value.phases.join(" → ")}</dd>
+          <dt>节点</dt><dd className="tnum">{pv.value.nodes.length} 个，子项 {pv.value.nodes.reduce((n, x) => n + (x.childNodes?.length || 0), 0)} 个；全部未完成，没有负责人和日期</dd>
+          <dt>写到哪里</dt><dd>工作台本地，标「本地」；不在飞书项目表新建</dd>
+        </dl>}
+      </WriteBox>
     </div>
   );
 }

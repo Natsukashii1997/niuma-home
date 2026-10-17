@@ -176,7 +176,7 @@ function Preview({ item, onClose }) {
     head = "主线需求 · 预览";
     body = <dl className="kv">
       <dt>时间窗</dt><dd className="tnum">{x.when}</dd>
-      <dt>学校</dt><dd>{x.schools} 校</dd>
+      <dt>学校</dt><dd>{x.schools ? `${x.schools} 校` : "—"}</dd>
       <dt>需求</dt><dd>{x.need}</dd>
       <dt>痛点</dt><dd>{x.pain}</dd>
       <dt>状态</dt><dd><Tag tone={x.status === "已采纳" ? "green" : "amber"}>{x.status}</Tag></dd>

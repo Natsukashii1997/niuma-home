@@ -58,7 +58,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
   } });
   const codexReset = createCodexResetReader(v3Options.codex);
   const voice = createVoiceReader(db, v3Options.voice);
-  const userServices = createUserServices(db, { ...v3Options, timeline: { ...v3Options.timeline, onSource: event => recordSource(db, 'timeline', event) } });
+  const userServices = createUserServices(db, { ...v3Options, voiceReader: voice, timeline: { ...v3Options.timeline, onSource: event => recordSource(db, 'timeline', event) } });
   const projectServices = createProjectServices(db, v3Options);
   const todo = createTodoReader(db, { ...userServices, projects: projectServices.projects, ...v3Options.todo });
   const reportHandler = (detail) => async (req, res, { params, url }) => {
