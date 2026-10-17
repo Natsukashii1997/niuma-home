@@ -762,6 +762,7 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .countdown b { min-width: 62px; padding: var(--s1) var(--s2); background: var(--text); color: var(--panel); font-family: var(--font-pixel); font-weight: 400; font-size: 40px; line-height: 1; text-align: center; }
 .countdown em { font-style: normal; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--muted); }
 .countdown i { padding-top: var(--s3); font-family: var(--font-pixel); font-style: normal; font-size: 24px; color: var(--signal); }
+.countdown.is-unknown i { color: var(--muted); } /* 未公布：同款数字块填 --，冒号不用信号橙 */
 
 /* ---------- 自言自语抽屉 ---------- */
 .selftalk { position: fixed; z-index: 8; top: 34px; right: 0; bottom: 0; width: 400px; display: flex; flex-direction: column; background: var(--panel); border-left: var(--border) solid var(--text); }

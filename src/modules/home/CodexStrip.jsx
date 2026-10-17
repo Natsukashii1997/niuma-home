@@ -4,7 +4,7 @@ import { useApi } from "../../api.js";
 import { Loadable, Modal, SampleBadge, Tag } from "../../ui/components.jsx";
 
 // Codex 重置预警（v3）：窗口条下方一行 + 首页大卡；有新信号时高亮。数据源 aihot.news。
-// 定时检查和机械邪龙兽推送目前都没启用（nextCheck 为 null、pushed 为 false）：页面照实写「未启用」，不写成已经在跑；下次重置时间未公布时写「未知」，不显示倒计时。
+// 定时检查和机械邪龙兽推送目前都没启用（nextCheck 为 null、pushed 为 false）：页面照实写「未启用」，不写成已经在跑；下次重置时间未公布时倒计时块显示 --，不倒计时。
 const STAGES = ["预告", "确认", "修正", "撤回"];
 const STAGE_TONE = { 预告: "blue", 确认: "green", 修正: "amber", 撤回: "red" };
 
@@ -91,7 +91,16 @@ export function CodexCard({ className = "" }) {
         <div className="codex-count">
           <span className="label">下次重置 · 北京时间</span>
           <strong>{c.label.replace(/^北京时间\s*/, "")}</strong>
-          {!c.next ? <span className="small muted">时间未知：官方还没公布，不显示倒计时</span> : cd.past ? <span className="codex-past">已到重置时间</span> : (
+          {!c.next ? (
+            <>
+              <div className="countdown is-unknown" aria-label="下次重置时间未公布，不倒计时">
+                <span><b>--</b><em>DAYS</em></span><i>:</i>
+                <span><b>--</b><em>HRS</em></span><i>:</i>
+                <span><b>--</b><em>MIN</em></span>
+              </div>
+              <span className="small muted">官方还没公布，不倒计时</span>
+            </>
+          ) : cd.past ? <span className="codex-past">已到重置时间</span> : (
             <div className="countdown" aria-label={`剩 ${cd.d} 天 ${cd.h} 小时 ${cd.mi} 分`}>
               <span><b>{pad(cd.d)}</b><em>DAYS</em></span><i>:</i>
               <span><b>{pad(cd.h)}</b><em>HRS</em></span><i>:</i>
