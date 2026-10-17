@@ -754,7 +754,7 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .codex-zh { margin: 0; line-height: 1.7; color: var(--text-2); }
 .codex-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-top: auto; }
 .codex-stages { display: flex; gap: var(--s1); }
-.codex-count { display: flex; flex-direction: column; justify-content: center; gap: var(--s2); padding: var(--s4) var(--s4); border-left: 1px solid var(--line); background: var(--panel-soft); }
+.codex-count { display: flex; flex-direction: column; justify-content: center; gap: var(--s2); padding: var(--s4) var(--s4); border-left: 1px solid var(--line); background-color: var(--panel-soft); background-image: radial-gradient(circle, var(--line) 1px, transparent 1.2px); background-size: 6px 6px; } /* 网点底：二次评审曾去掉，用户 10-17 要求恢复 */
 .codex-count strong { font-size: 14px; }
 .codex-past, .codex-strip .codex-cd.is-past { font-weight: 600; color: var(--ok); }
 .countdown { display: flex; align-items: flex-start; gap: var(--s1); }
