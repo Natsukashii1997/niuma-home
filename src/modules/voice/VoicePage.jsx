@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PixelIcon, TypeText } from "../../ui/bitmap.jsx";
+import { DotMatrix, PixelIcon, TypeText } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Button, Card, Loadable, PageHeader, Placeholder, StatStrip, Tag } from "../../ui/components.jsx";
@@ -180,23 +180,21 @@ function VoiceBoard({ v }) {
 function Spark({ data }) {
   if (!data.length) return <span className="spark" aria-hidden="true" />;
   const max = Math.max(1, ...data);
-  return <span className="spark" aria-hidden="true">{data.map((d, i) => <i key={i} style={{ height: `${Math.max(2, (d / max) * 22)}px` }} className={i === data.length - 1 ? "is-last" : ""} />)}</span>;
+  // 每天一列 4 颗方点，按比例点亮；最后一天用橙色
+  return (
+    <span className="spark" aria-hidden="true">
+      {data.map((d, i) => {
+        const on = d > 0 ? Math.max(1, Math.round((d / max) * 4)) : 0;
+        return <b key={i} className={i === data.length - 1 ? "is-last" : ""}>{[0, 1, 2, 3].map((r) => <i key={r} className={r < on ? "on" : undefined} />)}</b>;
+      })}
+    </span>
+  );
 }
 
-// 单个话题的 7 天柱状图，每根柱子标数值和日期；日期取接口的 sparkDates，没有就不写日期。
+// 单个话题的 7 天点阵柱：从左到右、自下而上逐点点亮，最后一天橙色；柱顶标数值，柱底标日期（取接口的 sparkDates，没有就不写）。
 function DayBars({ data, dates }) {
-  const max = Math.max(1, ...data);
-  return (
-    <div className="day-bars">
-      {data.map((d, i) => (
-        <div key={i} className={i === data.length - 1 ? "is-last" : ""}>
-          <span className="tnum">{d}</span>
-          <i style={{ height: `${Math.max(3, (d / max) * 64)}px` }} />
-          <em className="tnum">{dates?.[i] ? String(dates[i]).slice(5, 10) : ""}</em>
-        </div>
-      ))}
-    </div>
-  );
+  const cols = data.map((d, i) => ({ value: d, label: dates?.[i] ? String(dates[i]).slice(5, 10) : "", hint: dates?.[i] ? String(dates[i]).slice(0, 10) : `第 ${i + 1} 天` }));
+  return <div className="day-bars"><DotMatrix data={cols} rows={8} highlight={data.length - 1} showValues /></div>;
 }
 
 function TrendChart({ topics }) {
@@ -204,12 +202,13 @@ function TrendChart({ topics }) {
   // 热度是 0–100，刻度固定，不随当天最大值变（P2-9）
   const x = (i) => L + (i * (W - L - R)) / 6, y = (val) => T + (1 - val / 100) * (H - T - B);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="trend-chart" role="img" aria-label="话题热度趋势">
+    <svg viewBox={`0 0 ${W} ${H}`} className="trend-chart" role="img" aria-label="话题热度趋势" shapeRendering="crispEdges">
       {[0, 25, 50, 75, 100].map((v) => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} className="grid-line" /><text x={L - 8} y={y(v) + 4} textAnchor="end" className="axis">{v}</text></g>)}
       {(topics[0]?.sparkDates || []).map((l, i) => <text key={l} x={x(i)} y={H - 6} textAnchor="middle" className="axis">{String(l).slice(5, 10)}</text>)}
       {topics.map((t, k) => (
         <g key={t.id} className={k === 0 ? "series is-top" : "series"}>
           <polyline points={t.spark.map((val, i) => `${x(i)},${y(val)}`).join(" ")} />
+          {t.spark.map((val, i) => <rect key={i} x={x(i) - 4} y={y(val) - 4} width="8" height="8" className="pt" />)}
           <text x={W - R + 10} y={y(t.spark.at(-1)) + 4} className="end-label">{t.title.length > 16 ? `${t.title.slice(0, 16)}…` : t.title} · {t.heat}</text>
         </g>
       ))}

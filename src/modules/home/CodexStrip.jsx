@@ -69,7 +69,7 @@ export function CodexCard({ className = "" }) {
   );
   const nextCheck = c.nextCheck && !/未安排/.test(c.nextCheck) ? c.nextCheck : null;
   return (
-    <section className={`card ${className}`}>
+    <section className={`card ${className}`} data-dither="">
       <div className="card-head">
         <h2><PixelIcon name="alert" /> Codex 重置预警</h2>
         <div className="card-extra">

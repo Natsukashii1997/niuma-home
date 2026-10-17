@@ -149,19 +149,17 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .rev-name { font-weight: 600; }
 .rev-tone { padding: 0 var(--s1); font-size: 11px; line-height: 18px; }
 .rev-pct { font-size: 24px; font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
-.rev-bar { position: relative; height: 10px; background: var(--accent-soft); }
-.rev-bar i { position: absolute; inset: 0 auto 0 0; background: var(--text-2); }
-.rev-bar b { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); }
+.rev-bar { height: 12px; color: var(--text-2); } /* PixelBar：20 格逐格点亮，竖线是时间进度 */
 .rev-nums { display: flex; align-items: center; gap: var(--s2); font-size: 13px; color: var(--muted); }
 .rev-cur { color: var(--text); } /* 颜色只留在进度条和状态标签上（P2-12） */
 .rev-sep { width: 1px; height: 12px; background: var(--line); }
-.rev-item.is-ok .rev-bar i { background: var(--ok); }
+.rev-item.is-ok .rev-bar { color: var(--ok); }
 .rev-item.is-ok .rev-tone { color: var(--ok); }
 .rev-item.is-ok .rev-tone { background: var(--ok-soft); }
-.rev-item.is-warn .rev-bar i { background: var(--warn); }
+.rev-item.is-warn .rev-bar { color: var(--warn); }
 .rev-item.is-warn .rev-tone { color: var(--warn); }
 .rev-item.is-warn .rev-tone { background: var(--warn-soft); }
-.rev-item.is-risk .rev-bar i { background: var(--risk); }
+.rev-item.is-risk .rev-bar { color: var(--risk); }
 .rev-item.is-risk .rev-tone { color: var(--risk); }
 .rev-item.is-risk .rev-tone { background: var(--risk-soft); }
 
@@ -243,9 +241,10 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .unit-chart .axis { font: 11px var(--font-mono); fill: var(--muted); }
 .unit-chart .axis.is-hot { fill: var(--text); font-weight: 600; }
 .unit-chart .cross { stroke: var(--text); stroke-dasharray: 3 3; }
-.unit-chart .series polyline { fill: none; stroke: var(--line); stroke-width: 1; }
-.unit-chart .series.is-base polyline { stroke: var(--text); stroke-width: 2.5; }
-.unit-chart .series.is-focus polyline { stroke: var(--signal); stroke-width: 2; }
+.unit-chart .series polyline { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 2 4; } /* 非重点方案画点线 */
+.unit-chart svg { shape-rendering: crispEdges; }
+.unit-chart .series.is-base polyline { stroke: var(--text); stroke-width: 2.5; stroke-dasharray: none; }
+.unit-chart .series.is-focus polyline { stroke: var(--signal); stroke-width: 2; stroke-dasharray: none; }
 .unit-chart .mk { fill: var(--line); }
 .unit-chart .series.is-base .mk, .unit-legend .is-base .mk { fill: var(--text); }
 .unit-chart .series.is-focus .mk, .unit-legend .is-focus .mk { fill: var(--signal); }
@@ -710,26 +709,25 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .trend.is-up { color: var(--text); }
 .trend.is-down { color: var(--muted); font-weight: 400; }
 .spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 22px; }
-.spark i { width: 4px; background: var(--text-2); }
-.spark i.is-last { background: var(--signal); }
+.spark b { display: flex; flex-direction: column-reverse; gap: 2px; }
+.spark i { display: block; width: 4px; height: 4px; background: var(--line); }
+.spark i.on { background: var(--text-2); }
+.spark b.is-last i.on { background: var(--signal); }
 .voice-title { margin: 0; font-size: 18px; line-height: 1.45; }
 .voice-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
 .voice-facts span { display: flex; flex-direction: column-reverse; gap: 2px; padding: var(--s2) var(--s2); background: var(--panel); font-size: 11px; color: var(--muted); }
 .voice-facts b { font-size: 14px; color: var(--text); text-align: left; }
-.day-bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--s2); align-items: end; height: 100px; }
-.day-bars div { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; height: 100%; }
-.day-bars span { font-size: 11px; color: var(--text-2); }
-.day-bars i { width: 100%; max-width: 28px; background: var(--text-2); }
-.day-bars .is-last i { background: var(--signal); }
-.day-bars em { font-style: normal; font-size: 11px; color: var(--muted); }
+.day-bars .dot-matrix-labels.is-values span { color: var(--text-2); } /* 7 天点阵柱（DotMatrix），柱顶数值 */
 .src-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s2); }
 .src-list li { display: flex; flex-direction: column; gap: 2px; padding: var(--s2) var(--s2); background: var(--panel-soft); border-left: 3px solid var(--line); font-size: 13px; }
 .src-list q { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
 .trend-chart { display: block; width: 100%; height: auto; }
 .trend-chart .grid-line { stroke: var(--line); }
 .trend-chart .axis { font: 11px var(--font-mono); fill: var(--muted); }
-.trend-chart .series polyline { fill: none; stroke: var(--muted); stroke-width: 1.5; }
-.trend-chart .series.is-top polyline { stroke: var(--signal); stroke-width: 2.5; }
+.trend-chart .series polyline { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 2 4; }
+.trend-chart .series.is-top polyline { stroke: var(--signal); stroke-width: 2; stroke-dasharray: none; }
+.trend-chart .pt { fill: var(--muted); } /* 方点标出每天的值 */
+.trend-chart .series.is-top .pt { fill: var(--signal); }
 .trend-chart .end-label { font: 12px var(--font-sans); fill: var(--text-2); }
 
 /* ---------- Codex 预警横条 ---------- */
@@ -794,8 +792,7 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 /* ---------- 项目 ---------- */
 .proj-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: var(--gap); align-items: start; }
 .proj-card-top { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); }
-.proj-bar { display: block; height: 6px; background: var(--accent-soft); }
-.proj-bar i { display: block; height: 100%; background: var(--ok); }
+.proj-bar { height: 8px; color: var(--ok); } /* PixelBar */
 .proj-card-meta { display: flex; gap: var(--s2); }
 .proj-next { display: inline-flex; align-items: center; gap: var(--s1); color: var(--text-2); }
 .proj-main { min-width: 0; }
@@ -873,11 +870,13 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 /* 列表 + 详情：两栏框等高，较短一栏的内容吸顶 */
 .need-detail-inner, .proj-items { position: sticky; top: var(--sticky-top); }
 /* 加载：卡片里是 3 行网点骨架（无字区域）；整页级用按帧加载 */
-.state-loading { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s1) 0; }
-.state-loading i { height: 10px; background-image: var(--dither-1); }
-.state-loading i:nth-child(2) { width: 80%; }
-.state-loading i:nth-child(3) { width: 55%; }
+.state-loading { max-width: 320px; padding: var(--s1) 0; }
 .state-loading.is-big { max-width: 320px; padding: var(--s4) 0; }
+/* 方案录入「解析预览」空态的装饰骨架条（不是加载） */
+.parse-empty .state-loading { display: flex; flex-direction: column; gap: var(--s2); max-width: none; }
+.parse-empty .state-loading i { height: 10px; background-image: var(--dither-1); }
+.parse-empty .state-loading i:nth-child(2) { width: 80%; }
+.parse-empty .state-loading i:nth-child(3) { width: 55%; }
 /* 报错：哪份数据 + 原因 + 重新读取 */
 .state-error { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); background: var(--panel); border: var(--border) solid var(--line); border-left: 4px solid var(--risk); }
 .state-error strong { color: var(--risk); white-space: nowrap; }
@@ -1010,6 +1009,7 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .voice-issue.is-unavailable { border-left-color: var(--warn); background: var(--warn-soft); }
 .voice-issue.is-error { border-left-color: var(--risk); background: var(--risk-soft); }
 .delivery-steps.is-state { display: flex; align-items: center; padding: var(--s4); }
+.delivery-steps.is-state > * { flex: 1; } /* 让加载条撑开，否则宽度塌成 0、看起来是空白 */
 
 /* ---------- 营销战役（V3 接线）：模板态的创建表单、节点负责人输入 ---------- */
 .campaign-create, .manual-need { margin-bottom: var(--gap); }

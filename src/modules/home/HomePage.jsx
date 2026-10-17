@@ -65,7 +65,7 @@ function DeliveryCard({ month, plans }) {
   const done = steps.filter((s) => s.state === "done").length;
   const campaign = state.data?.campaign;
   return (
-    <section className="card delivery col-8">
+    <section className="card delivery col-8" data-dither="">
       <div className="delivery-main">
         <span className="label">交付月 · {month}{state.isSample && <SampleBadge task={state.task} />}</span>
         <div className="delivery-days"><FlipNumber value={left} /><small>天</small></div>
@@ -97,7 +97,7 @@ const daysUntil = (due) => { const t = new Date(); const m = /^(?:(\d{4})-)?(\d{
 function TodoCard() {
   const state = useApi("/api/v3/home/todo");
   return (
-    <Card className="col-4" title={<><PixelIcon name="alert" /> 待我处理</>} extra={state.isSample ? <SampleBadge task={state.task} /> : null}>
+    <Card className="col-4" dither title={<><PixelIcon name="alert" /> 待我处理</>} extra={state.isSample ? <SampleBadge task={state.task} /> : null}>
       <Loadable state={state} name="待我处理">
         {(items) => !items.length ? <p className="muted">没有待处理的事</p> : (
           <ul className="list todo-list">
@@ -120,7 +120,7 @@ function TodayCard({ now }) {
   const state = useApi("/api/calendar/today");
   const minutes = now.getHours() * 60 + now.getMinutes();
   return (
-    <Card className="col-4" title={<><PixelIcon name="calendar" /> 今日日程</>} extra={<a className="link" href="https://www.feishu.cn/calendar/" target="_blank" rel="noreferrer">飞书<PixelIcon name="external" /></a>}>
+    <Card className="col-4" dither title={<><PixelIcon name="calendar" /> 今日日程</>} extra={<a className="link" href="https://www.feishu.cn/calendar/" target="_blank" rel="noreferrer">飞书<PixelIcon name="external" /></a>}>
       <Loadable state={state} name="今日日程">
         {(events) => {
           if (!events.length) return <p className="muted">今天没有日程</p>;
@@ -148,7 +148,7 @@ function AgentsCard() {
   const state = useApi("/api/assistants");
   const start = (a, text) => { handOffDraft(a.id, text); location.hash = href("assistants", String(a.id)); };
   return (
-    <Card className="col-4" title={<><PixelIcon name="agent" /> Agent</>} extra={<a className="link" href={href("assistants")}>全部<PixelIcon name="right" /></a>}>
+    <Card className="col-4" dither title={<><PixelIcon name="agent" /> Agent</>} extra={<a className="link" href={href("assistants")}>全部<PixelIcon name="right" /></a>}>
       <Loadable state={state} name="Agent 列表">
         {(list) => (
           <div className="agent-card">
@@ -182,7 +182,7 @@ function VoiceCard() {
   const state = useApi("/api/v3/voice");
   const issue = voiceIssue(state);
   return (
-    <Card className="col-8" title={<><PixelIcon name="voice" /> 留学之声</>}
+    <Card className="col-8" dither title={<><PixelIcon name="voice" /> 留学之声</>}
       extra={<a className="link" href={href("voice")}>Voice<PixelIcon name="right" /></a>}>
       {issue ? <div className={`voice-issue is-${issue.kind}`}><strong>{issue.title}</strong><span className="small">{issue.text}</span></div> : <Loadable state={state} name="留学之声">
         {(v) => {

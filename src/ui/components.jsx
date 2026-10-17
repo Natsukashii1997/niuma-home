@@ -120,9 +120,8 @@ export function PendingButton({ task, variant = "default", children }) {
 // 统一处理 useApi 的加载中 / 出错状态；正常时渲染 children(data)
 // 加载：卡片里用 3 行网点骨架（无字区域）；整页级（big）用按帧加载⑥。报错：写明哪份数据、原因，并给「重新读取」。
 export function Loadable({ state, name = "", big = false, children }) {
-  if (state.loading) return big
-    ? <div className="state-loading is-big" role="status"><StepProgress label={`读取${name || "数据"}`} /></div>
-    : <div className="state-loading" role="status" aria-label={`正在读取${name}`}><i /><i /><i /></div>;
+  // 加载一律用 20 格按帧加载（⑥），小卡片里也一样，不再用静态骨架条
+  if (state.loading) return <div className={`state-loading${big ? " is-big" : ""}`} role="status"><StepProgress label={`读取${name || "数据"}`} /></div>;
   if (state.error) return (
     <div className="state-error" role="alert">
       <strong>{name ? `${name}读取失败` : "读取失败"}</strong>

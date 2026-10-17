@@ -274,6 +274,13 @@ textarea.paste-box::placeholder { color: var(--muted); }
 .dot-matrix-readout { min-height: 16px; }
 
 /* ④ 网点比例条 */
+/* ⑥ PixelBar：N 格像素进度条，颜色取 currentColor，b 是时间进度竖线 */
+.pixel-bar { position: relative; display: grid; grid-template-columns: repeat(var(--cells), minmax(0, 1fr)); gap: 2px; height: 10px; }
+.pixel-bar i { background: var(--accent-soft); }
+.pixel-bar i.on { background: currentColor; }
+.pixel-bar i.hot { background: var(--signal); }
+.pixel-bar b { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); }
+.dot-matrix-labels.is-values span { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
 .dither-bar { display: block; height: 10px; background-image: var(--dither-1); border: 1px solid var(--line); }
 .dither-bar-fill { display: block; height: 100%; background-image: var(--dither-ink-3); }
 

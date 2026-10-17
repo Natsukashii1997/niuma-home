@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PixelIcon, StepProgress, TypeText } from "../../ui/bitmap.jsx";
+import { PixelBar, PixelIcon, StepProgress, TypeText } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Button, Card, Loadable, NodeCheck, PageHeader, PhaseSteps, Placeholder, Segmented, StatStrip, Tabs, Tag, useToast } from "../../ui/components.jsx";
@@ -101,7 +101,7 @@ function ProjectBoard({ initial }) {
               <button key={x.id} type="button" className={`proj-card${x.id === p.id ? " active" : ""}`} onClick={() => { setSel(x.id); flow.reset(); }}>
                 <span className="proj-card-top"><strong>{x.name}</strong><Tag tone={STATUS_TONE[x.status] || "neutral"}>{x.status}</Tag></span>
                 <span className="small muted">模板：{x.template}{x.local && <> · <Tag tone="frame">本地</Tag> 按「{x.basedOn.name}」生成</>}</span>
-                <span className="proj-bar"><i style={{ width: `${s.total ? (s.done / s.total) * 100 : 0}%` }} /></span>
+                <PixelBar className="proj-bar" value={s.total ? s.done / s.total : 0} label={`已完成 ${s.done}/${s.total}`} />
                 <span className="proj-card-meta small"><span className="tnum">{s.done}/{s.total} 已完成</span>{s.unknown > 0 && <span className="muted">{s.unknown} 未填写</span>}{s.gates > 0 && <span className="warn-text">待审 {s.gates}</span>}{s.soon > 0 && <span className="risk-text">2 天内 {s.soon}</span>}</span>
                 {s.next && <span className="proj-next small">下一个：{s.next.t}{s.next.dueDate ? ` · ${s.next.dueDate}` : ""}</span>}
               </button>

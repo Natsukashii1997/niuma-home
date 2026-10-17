@@ -1,6 +1,6 @@
 import { useApi } from "../../api.js";
 import { Card, Loadable, PageHeader, Placeholder, SampleBadge, Tag } from "../../ui/components.jsx";
-import { PixelIcon } from "../../ui/bitmap.jsx";
+import { PixelBar, PixelIcon } from "../../ui/bitmap.jsx";
 import { LINES } from "../../constants.js";
 
 // 业务线名称统一用全称（与月度促销一致），不用接口返回的简称。
@@ -57,10 +57,7 @@ function RevenueItem({ item, timePct }) {
     <div className={`rev-item is-${tone}`}>
       <div className="rev-head"><span className="rev-name">{LINE_NAME[item.key] || item.name}</span>{toneLabel && <span className="rev-tone">{toneLabel}</span>}</div>
       <span className="rev-pct">{Math.round(pct * 100)}%</span>
-      <div className="rev-bar" role="img" aria-label={`完成 ${Math.round(pct * 100)}%`}>
-        <i style={{ width: `${Math.min(pct, 1) * 100}%` }} />
-        {timePct != null && <b style={{ left: `${timePct * 100}%` }} title={`时间进度 ${Math.round(timePct * 100)}%`} />}
-      </div>
+      <PixelBar className="rev-bar" value={pct} marker={timePct} label={`完成 ${Math.round(pct * 100)}%${timePct != null ? `，时间进度 ${Math.round(timePct * 100)}%` : ""}`} />
       <div className="rev-nums tnum" title={`当前 ${fmt(item.current)} · 目标 ${fmt(item.target)}`}><span className="rev-cur">当前 {wan(item.current)}</span><span className="rev-sep" />目标 {wan(item.target)}</div>
     </div>
   );

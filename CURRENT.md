@@ -884,3 +884,8 @@
 - 验证：测试 246/0，构建通过，`git diff --check` 通过；隔离服务截图 `docs/handoff/本地应用/重置预警-未公布.png`，无页面报错。
 - 范围外发现：390px 窄屏下这张卡片整体挤压（标题换行、左栏被挤掉），有倒计时时也一样，未处理。
 - 10-17 追加：用户要求恢复右侧「下次重置」区的网点底。网点是二次评审（`daa1607`，P1-2「点阵压字」）时去掉的，现按原版参数恢复到 `.codex-count`（6px 间距、`--line` 色）；截图已更新为带网点的版本。
+
+### 像素风核查与修复 · 2026-10-17 · Claude（用户确认三批，颜色保留）
+- 依据数码世界收藏「6种像素风高级交互」的 Get 笔记，核查与修复记录在 `docs/design/像素风核查-2026-10-17.md`。
+- 改动：`src/ui/bitmap.jsx`（新增 PixelBar，DotMatrix 支持柱顶数值）、`src/ui/components.jsx`（加载统一用按帧加载）、`src/modules/home/HomePage.jsx` 和 `CodexStrip.jsx`（卡片悬停网点）、`src/modules/business/BusinessPage.jsx`、`src/modules/projects/ProjectsPage.jsx`、`src/modules/voice/VoicePage.jsx`（图表点阵化）、`src/styles.css` 和 `src/styles-v3.css`。
+- 验证：测试 246/0，构建通过，`git diff --check` 通过；隔离服务截图 6 张，见 `docs/handoff/像素风核查/`，没有页面报错。

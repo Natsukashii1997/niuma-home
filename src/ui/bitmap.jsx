@@ -108,7 +108,7 @@ export function FlipNumber({ value, className = "" }) {
 /* ---------- ② 点阵亮起 ---------- */
 
 // data: [{ label, value, hint? }]。从左到右、自下而上逐点点亮，最新亮起的一批为橙色；highlight 列常亮橙色。
-export function DotMatrix({ data, rows = 10, highlight = -1, unit = "" }) {
+export function DotMatrix({ data, rows = 10, highlight = -1, unit = "", showValues = false }) {
   const reduced = useReducedMotion();
   const max = Math.max(1, ...data.map((d) => d.value));
   const filled = data.map((d) => (d.value > 0 ? Math.max(1, Math.round((d.value / max) * rows)) : 0));
@@ -128,6 +128,11 @@ export function DotMatrix({ data, rows = 10, highlight = -1, unit = "" }) {
   let order = 0;
   return (
     <div className="dot-matrix" onPointerLeave={() => setHover(-1)}>
+      {showValues && (
+        <div className="dot-matrix-labels is-values" style={{ "--cols": data.length }}>
+          {data.map((d, col) => <span key={d.label + col} className={col === highlight || col === hover ? "hot" : undefined}>{d.value}</span>)}
+        </div>
+      )}
       <div className="dot-matrix-grid" style={{ "--cols": data.length, "--rows": rows }}>
         {data.map((d, col) => {
           const dots = [];
@@ -153,6 +158,28 @@ export function DotMatrix({ data, rows = 10, highlight = -1, unit = "" }) {
         {hover >= 0 ? `${data[hover].hint || data[hover].label} · ${data[hover].value}${unit}` : " "}
       </div>
     </div>
+  );
+}
+
+/* ---------- ⑥ 像素格进度条：完成度拆成 N 格，进场按帧逐格点亮；marker 是时间进度竖线 ---------- */
+
+export function PixelBar({ value, cells = 20, marker = null, className = "", label = "" }) {
+  const reduced = useReducedMotion();
+  const target = Math.round(Math.max(0, Math.min(1, value || 0)) * cells);
+  const [lit, setLit] = useState(prefersReducedMotion() ? target : 0);
+  useEffect(() => {
+    if (reduced) { setLit(target); return undefined; }
+    setLit(0);
+    return frames((frame) => {
+      setLit(Math.min(target, frame * 2));
+      if (frame * 2 >= target) return false;
+    });
+  }, [target, reduced]);
+  return (
+    <span className={`pixel-bar ${className}`} role="img" aria-label={label || `${Math.round((value || 0) * 100)}%`} style={{ "--cells": cells }}>
+      {Array.from({ length: cells }, (_, i) => <i key={i} className={i < lit ? (i === lit - 1 && lit < target ? "on hot" : "on") : undefined} />)}
+      {marker != null && <b style={{ left: `${Math.max(0, Math.min(1, marker)) * 100}%` }} />}
+    </span>
   );
 }
 
