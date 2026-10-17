@@ -860,3 +860,18 @@
 - 备份与证据：`/Users/nat/Documents/ChatGPT/个人/work/work-desk-backups/20261016-075640-T09`，含原未提交文件、旧 dist、数据库与图片备份、前后接口哈希、测试／构建日志、首页状态检查、release-record.json 和正式像素首页.jpg。独立只读复核确认主分支、构建采用、PID、真实数据及原未提交内容保护均通过。
 - 边界：本轮为用户要求的正式采用及 Codex 工程核查，Claude 验收和用户最终体验验收仍待完成；未伪造这两项结论。当前入口为 http://127.0.0.1:5280/#/home 。旧隔离预览 5292 保留，不自动关闭或删除其数据。
 - 回退路径：若需要恢复旧界面，可使用该备份中 dist-before/index.html 原子替换正式入口；旧资源已保留，后端和真实数据无须回退。本轮没有执行回退。
+
+### 本地应用 · 2026-10-17 · Claude（用户已确认四批计划）
+- 做法同数码世界：Safari「添加到程序坞」网页应用 + launchd 常驻服务 + 固定代码快照。
+- 改动文件：
+  - `scripts/make-icons.mjs`：由 `public/favicon.svg` 整数倍放大生成 `public/icons/` 下 192、512、apple-touch 三张 PNG；
+  - `public/manifest.webmanifest`、`index.html`：网页应用清单、apple-touch-icon、主题色；
+  - `server/index.mjs`：补 `.png`、`.webmanifest` 文件类型；
+  - `scripts/release-app.sh`：备份真实库 → `git archive` 取 server、fixtures → 构建 dist → 快照放 `~/Library/Application Support/NiumaHome/releases/<快照名>`，由后台程序「牛马之家服务.app」里的 node 运行，launchd 标签 `cn.niuma-home.server`（开机运行、异常退出自动拉起，日志在 `data/daemon-logs/`）；`--use <快照名>` 回滚；端口被别的进程占用时中止。
+- 合并：主工作区先原样提交未提交的需求记录（`8f443a3`），再合并 ui-v3（`e424fac`）；CURRENT.md 以 ui-v3 为准并在末尾补入主工作区独有原文，原 HANDOFF.md 改名为 `HANDOFF-新增需求梳理.md`。
+- 正式切换：停掉 10-15 手动启动的 5280 进程，发布快照 `nm-20261017-125246-392e54e`。首次启动时 macOS 要求「牛马之家服务」访问文稿文件夹，用户已允许。
+- 验证：测试 246/0，构建通过；一次性克隆在 5298 验证发布、回滚、端口拦截、kill -9 后约 29 秒自动拉起；正式 5280 首页与快照逐字节一致，主要接口 200，仅留学之声未配置返回 503（与切换前一致，未设置 `WORKDESK_VOICE_SNAPSHOT`）；数据库 integrity_check 通过，原 7 张表行数与切换前一致，新增 V3 表。切换前备份在 `~/Library/Application Support/NiumaHome/backups/`。
+- 截图（`docs/handoff/本地应用/`）：`快照服务-首页.png`、`正式5280-首页.png`；图标预览 `docs/design/牛马之家图标/应用图标-预览.png`。
+- 以后改完代码要上线：在主工作区提交后执行 `bash scripts/release-app.sh`。开发目录的改动不影响正在用的版本。
+- 待用户：Safari 打开 http://127.0.0.1:5280 →「文件 → 添加到程序坞」，名称「牛马之家」。
+- 范围外发现：`src/modules/business/BusinessPage.jsx` 末尾多一个空行（合并时 `git diff --check` 提示，ui-v3 原有），未处理。
