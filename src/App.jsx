@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRoute, href } from "./router.js";
-import { PixelIcon, dissolve, prefersReducedMotion } from "./ui/bitmap.jsx";
+import { BrandMark, PixelIcon, dissolve, prefersReducedMotion } from "./ui/bitmap.jsx";
 import HomePage from "./modules/home/HomePage.jsx";
 import MarketingPage from "./modules/marketing/MarketingPage.jsx";
 import UserPage from "./modules/user/UserPage.jsx";
@@ -100,7 +100,7 @@ export default function App() {
     <div className={`app${drawer ? " drawer-open" : ""}`}>
       <header className="chrome">
         <span className="chrome-dots" aria-hidden="true"><i /><i /><i /></span>
-        <span className="chrome-path">work-desk / <b>{current.label}</b>{route.slice(1, 2).map((p) => ` / ${p}`)}</span>
+        <span className="chrome-path">niuma-home / <b>{current.label}</b>{route.slice(1, 2).map((p) => ` / ${p}`)}</span>
         <SelfTalkButton open={drawer} onToggle={() => setDrawer((v) => !v)} />
         <span className="chrome-time">{now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
       </header>
@@ -108,8 +108,8 @@ export default function App() {
       <div className="layout">
         <nav className="sidebar" aria-label="模块">
           <div className="brand">
-            <span className="brand-mark" aria-hidden="true">W</span>
-            <span className="brand-name"><strong>工作台</strong><span className="label">work desk</span></span>
+            <BrandMark />
+            <span className="brand-name"><strong>牛马之家</strong><span className="label">niuma home</span></span>
           </div>
           {GROUPS.map((g) => (
             <div key={g.label} className="nav-group">

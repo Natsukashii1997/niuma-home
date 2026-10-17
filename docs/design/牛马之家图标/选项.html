@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>牛马之家 · 图标候选</title>
+<style>
+  @font-face { font-family: "Geist Pixel"; src: url("../../../src/assets/fonts/GeistPixel-Square.woff2") format("woff2"); }
+  @font-face { font-family: "Geist Mono"; src: url("../../../src/assets/fonts/GeistMono-Variable.woff2") format("woff2"); }
+  :root { --bg: #EDEEF1; --panel: #FBFBFC; --text: #0D0E10; --muted: #686D76; --line: #D5D8DE; --signal: #FF4F1F; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 32px; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, "PingFang SC", sans-serif; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .sub { margin: 0 0 24px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+  .opt { background: var(--panel); border: 2px solid var(--line); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .opt h2 { margin: 0; font-size: 15px; display: flex; gap: 8px; align-items: baseline; }
+  .opt h2 b { font-family: "Geist Pixel", monospace; color: var(--signal); font-size: 18px; }
+  .big { display: grid; place-items: center; background: var(--bg); padding: 12px 0; }
+  .big svg { width: 160px; height: 160px; }
+  .side { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); }
+  .side svg { width: 28px; height: 28px; flex: none; }
+  .side .name { display: flex; flex-direction: column; line-height: 1.2; }
+  .side strong { font-size: 15px; font-weight: 600; }
+  .side span { font: 11px "Geist Mono", monospace; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+  .sizes { display: flex; align-items: end; gap: 12px; color: var(--muted); font-size: 12px; }
+  .sizes div { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .note { margin: 0; color: var(--muted); font-size: 13px; }
+  svg { shape-rendering: crispEdges; image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<h1>牛马之家 · 图标候选</h1>
+<p class="sub">16×16 像素，配色沿用现有的墨色、信号橙和白；侧栏里按真实尺寸 28px 显示，另附浏览器标签页 16 / 32px。</p>
+<div class="grid" id="grid"></div>
+<script>
+// 每个图标是 16 行 × 16 列：. 墨色底  W 白  O 信号橙  G 灰  L 浅灰  K 墨色（压在白上）
+const C = { ".": "#0D0E10", K: "#0D0E10", W: "#FBFBFC", O: "#FF4F1F", G: "#686D76", L: "#C9CDD4" };
+const OPTIONS = [
+  { name: "困困牛", note: "正脸牛头，眯眯眼、橙色鼻子挂鼻环：上班第三个小时的状态。", rows: [
+    "................",
+    ".WW..........WW.",
+    ".WW..........WW.",
+    "..WW........WW..",
+    "...WWWWWWWWWW...",
+    "..WWWWWWWWWWWW..",
+    ".GWWWWWWWWWWWWG.",
+    ".GWKKKWWWWKKKWG.",
+    "..WWWWWWWWWWWW..",
+    "..WWWWWWWWWWWW..",
+    "...WOOOOOOOOW...",
+    "...OOKOOOOKOO...",
+    "...OOOOOOOOOO...",
+    "....OOOOOOOO....",
+    "......W..W......",
+    ".......WW.......",
+  ] },
+  { name: "挂牌马", note: "侧脸马头，竖耳朵、橙色鬃毛，脖子上挂着工牌：有编号的那匹马。", rows: [
+    "................",
+    ".....W..........",
+    ".....WW.........",
+    "....OWWW........",
+    "...OOWWWW.......",
+    "...OOWKWWW......",
+    "..OOOWWWWWW.....",
+    "..OOWWWWWWWW....",
+    "..OOWWWWWWWWW...",
+    "..OOWWWW.WWWWW..",
+    ".OOOWWW...WWWKW.",
+    ".OOWWWW....WWWW.",
+    ".OOWWWW.....WW..",
+    ".OOWWWWG........",
+    "..OWWWW.OOOO....",
+    "..WWWWW.OWWO....",
+  ] },
+  { name: "加班小屋", note: "屋顶两边长出牛角，窗户的灯一直亮着橙色：家就是工位。", rows: [
+    "................",
+    ".W............W.",
+    ".WW....WW....WW.",
+    "..WW..WWWW..WW..",
+    "...WWWWWWWWWW...",
+    "..WWWWWWWWWWWW..",
+    ".WWWWWWWWWWWWWW.",
+    "..LLLLLLLLLLLL..",
+    "..LLLLLLLLLLLL..",
+    "..LOOOLLLLKKKL..",
+    "..LOWOLLLLKKKL..",
+    "..LOOOLLLLKKKL..",
+    "..LLLLLLLLKOKL..",
+    "..LLLLLLLLKKKL..",
+    "..LLLLLLLLKKKL..",
+    "WWWWWWWWWWWWWWWW",
+  ] },
+  { name: "低电量牛", note: "长了牛角和四条腿的电池，只剩一格橙色的电：周四下午的电量。", rows: [
+    "................",
+    "................",
+    "..W..........W..",
+    "..WW........WW..",
+    "...WW......WW...",
+    "..WWWWWWWWWWWW..",
+    "..W..........W..",
+    "..W.OO.......WW.",
+    "..W.OO.......WW.",
+    "..W.OO.......WW.",
+    "..W..........W..",
+    "..WWWWWWWWWWWW..",
+    "................",
+    "...W..W..W..W...",
+    "...W..W..W..W...",
+    "................",
+  ] },
+  { name: "「牛」字徽章", note: "像素字「牛」，头顶一对橙色牛角：最简单，小尺寸最清楚。", rows: [
+    "................",
+    "..OO........OO..",
+    "...OO......OO...",
+    "....OO....OO....",
+    "................",
+    "...W...W........",
+    "..WWWWWWWWWW....",
+    ".......W........",
+    ".......W........",
+    ".WWWWWWWWWWWWWW.",
+    ".......W........",
+    ".......W........",
+    ".......W........",
+    ".......W........",
+    ".......W........",
+    "................",
+  ] },
+];
+function svg(rows) {
+  const rects = rows.flatMap((r, y) => [...r].map((c, x) => c === "." ? "" : `<rect x="${x}" y="${y}" width="1" height="1" fill="${C[c]}"/>`)).join("");
+  return `<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><rect width="16" height="16" fill="${C["."]}"/>${rects}</svg>`;
+}
+document.getElementById("grid").innerHTML = OPTIONS.map((o, i) => `
+  <section class="opt">
+    <h2><b>${i + 1}</b>${o.name}</h2>
+    <div class="big">${svg(o.rows)}</div>
+    <div class="side">${svg(o.rows)}<span class="name"><strong>牛马之家</strong><span>niuma home</span></span></div>
+    <div class="sizes"><div>${svg(o.rows).replace("<svg ", '<svg width="32" height="32" ')}32px</div><div>${svg(o.rows).replace("<svg ", '<svg width="16" height="16" ')}16px</div></div>
+    <p class="note">${o.note}</p>
+  </section>`).join("");
+</script>
+</body>
+</html>

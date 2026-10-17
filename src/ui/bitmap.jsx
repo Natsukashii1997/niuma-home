@@ -250,6 +250,19 @@ export function PixelIcon({ name, size = 14, className = "" }) {
 /* ---------- 1-bit 头像 ---------- */
 
 // 由名称生成左右对称的 5×5 黑白像素头像，外围留 1 格边。
+// 品牌标「牛马之家 · 低电量牛」：16×16，长了牛角和四条腿的电池，只剩一格橙色的电。浏览器标签页图标 public/favicon.svg 用同一张图。
+const BRAND_WHITE = "M2 2h1v1h-1zM13 2h1v1h-1zM2 3h2v1h-2zM12 3h2v1h-2zM3 4h2v1h-2zM11 4h2v1h-2zM2 5h12v1h-12zM2 6h1v1h-1zM13 6h1v1h-1zM2 7h1v1h-1zM13 7h2v1h-2zM2 8h1v1h-1zM13 8h2v1h-2zM2 9h1v1h-1zM13 9h2v1h-2zM2 10h1v1h-1zM13 10h1v1h-1zM2 11h12v1h-12zM3 13h1v1h-1zM6 13h1v1h-1zM9 13h1v1h-1zM12 13h1v1h-1zM3 14h1v1h-1zM6 14h1v1h-1zM9 14h1v1h-1zM12 14h1v1h-1z";
+const BRAND_ORANGE = "M4 7h2v1h-2zM4 8h2v1h-2zM4 9h2v1h-2z";
+export function BrandMark({ size = 28, className = "" }) {
+  return (
+    <svg className={`brand-mark ${className}`} width={size} height={size} viewBox="0 0 16 16" shapeRendering="crispEdges" aria-hidden="true">
+      <rect width="16" height="16" fill="var(--text)" />
+      <path d={BRAND_WHITE} fill="var(--panel)" />
+      <path d={BRAND_ORANGE} fill="var(--signal)" />
+    </svg>
+  );
+}
+
 export function BitAvatar({ seed, size = 28 }) {
   let h = 2166136261;
   for (const ch of String(seed)) h = Math.imul(h ^ ch.codePointAt(0), 16777619) >>> 0;
