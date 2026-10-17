@@ -1,28 +1,46 @@
 import { useEffect, useRef, useState } from "react";
 import { useRoute, href } from "./router.js";
-import { PixelIcon, dissolve, prefersReducedMotion } from "./ui/bitmap.jsx";
+import { BrandMark, PixelIcon, dissolve, prefersReducedMotion } from "./ui/bitmap.jsx";
 import HomePage from "./modules/home/HomePage.jsx";
 import MarketingPage from "./modules/marketing/MarketingPage.jsx";
+import UserPage from "./modules/user/UserPage.jsx";
+import VoicePage from "./modules/voice/VoicePage.jsx";
 import BrandPage from "./modules/brand/BrandPage.jsx";
 import BusinessPage from "./modules/business/BusinessPage.jsx";
+import ProjectsPage from "./modules/projects/ProjectsPage.jsx";
+import KnowledgePage from "./modules/kb/KnowledgePage.jsx";
 import AssistantsPage from "./modules/assistants/AssistantsPage.jsx";
 import ReportsPage from "./modules/reports/ReportsPage.jsx";
 import SettingsPage from "./modules/settings/SettingsPage.jsx";
+import { SelfTalkDrawer, SelfTalkButton } from "./modules/selftalk/SelfTalk.jsx";
+import { CodexStrip } from "./modules/home/CodexStrip.jsx";
+import { CommandPalette } from "./modules/command/CommandPalette.jsx";
+import { StatusBar } from "./modules/statusbar/StatusBar.jsx";
 
-// 新增模块：在这里登记一项（icon 为 src/ui/bitmap.jsx 中的像素图标名），并在 src/modules/<key>/ 下建页面。
-const MODULES = [
-  { key: "home", label: "首页", icon: "home", Page: HomePage },
-  { key: "marketing", label: "营销", icon: "marketing", Page: MarketingPage },
-  { key: "brand", label: "品牌", icon: "brand", Page: BrandPage },
-  { key: "business", label: "业务", icon: "business", Page: BusinessPage },
-  { key: "assistants", label: "Agent", icon: "agent", Page: AssistantsPage },
-  { key: "reports", label: "日/周报", icon: "reports", Page: ReportsPage },
+// 新增模块：在这里登记一项（icon 为 src/ui/icons7.js 中的图标名），并在 src/modules/<key>/ 下建页面。
+// 分组：「工作」是本人的主线业务，「协作与工具」是项目、知识与辅助。
+const GROUPS = [
+  { label: "工作", items: [
+    { key: "home", label: "首页", icon: "home", Page: HomePage },
+    { key: "marketing", label: "营销", icon: "marketing", Page: MarketingPage },
+    { key: "user", label: "用户", icon: "user", Page: UserPage },
+    { key: "voice", label: "Voice", icon: "voice", Page: VoicePage },
+    { key: "brand", label: "品牌", icon: "brand", Page: BrandPage },
+    { key: "business", label: "业务", icon: "business", Page: BusinessPage },
+  ] },
+  { label: "协作与工具", items: [
+    { key: "projects", label: "项目", icon: "project", Page: ProjectsPage },
+    { key: "kb", label: "知识库", icon: "kb", Page: KnowledgePage },
+    { key: "assistants", label: "Agent", icon: "agent", Page: AssistantsPage },
+    { key: "reports", label: "日/周报", icon: "reports", Page: ReportsPage },
+  ] },
 ];
+const MODULES = GROUPS.flatMap((g) => g.items);
 const SETTINGS = { key: "settings", label: "设置", icon: "settings", Page: SettingsPage };
 
 const moduleOf = (key) => (key === "settings" ? SETTINGS : MODULES.find((m) => m.key === key) || MODULES[0]);
 
-// 同一模块内换子页直接切换；换模块时用像素溶解（③）。
+// 同一模块内换子页直接切换；换模块时用像素溶解（③，v3 缩短为 3 帧）。
 function useDisplayedRoute(route) {
   const routeKey = route.join("/");
   const [shown, setShown] = useState(route);
@@ -51,42 +69,65 @@ function useClock() {
   return now;
 }
 
+function NavLink({ item, current }) {
+  const active = item.key === current.key;
+  return (
+    <a href={href(item.key)} className={active ? "active" : ""} aria-current={active ? "page" : undefined} title={item.label}>
+      <PixelIcon name={item.icon} />
+      <span className="nav-label">{item.label}</span>
+    </a>
+  );
+}
+
 export default function App() {
   const route = useRoute();
   const { shown, canvas, area } = useDisplayedRoute(route);
   const current = moduleOf(route[0]);
   const displayed = moduleOf(shown[0]);
   const now = useClock();
+  const [drawer, setDrawer] = useState(false);
+  const [command, setCommand] = useState(false); // ⌘K 命令面板
   const { Page } = displayed;
+  useEffect(() => {
+    const key = (e) => {
+      if (e.key === "Escape") setDrawer(false);
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "k") { e.preventDefault(); setCommand((v) => !v); }
+    };
+    addEventListener("keydown", key);
+    return () => removeEventListener("keydown", key);
+  }, []);
   return (
-    <div className="app">
+    <div className={`app${drawer ? " drawer-open" : ""}`}>
       <header className="chrome">
         <span className="chrome-dots" aria-hidden="true"><i /><i /><i /></span>
-        <span className="chrome-path">work-desk / <b>{current.key}</b>{route.slice(1, 2).map((p) => ` / ${p}`)}</span>
-        <span>{now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
+        <span className="chrome-path">niuma-home / <b>{current.label}</b>{route.slice(1, 2).map((p) => ` / ${p}`)}</span>
+        <SelfTalkButton open={drawer} onToggle={() => setDrawer((v) => !v)} />
+        <span className="chrome-time">{now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
       </header>
+      <CodexStrip />
       <div className="layout">
         <nav className="sidebar" aria-label="模块">
           <div className="brand">
-            <span className="brand-mark" aria-hidden="true">W</span>
-            <span className="brand-name"><strong>工作台</strong><span className="label">work desk</span></span>
+            <BrandMark />
+            <span className="brand-name"><strong>牛马之家</strong><span className="label">niuma home</span></span>
           </div>
-          {MODULES.map(({ key, label, icon }) => (
-            <a key={key} href={href(key)} className={key === current.key ? "active" : ""} aria-current={key === current.key ? "page" : undefined} title={label}>
-              <PixelIcon name={icon} />
-              {label}
-            </a>
+          {GROUPS.map((g) => (
+            <div key={g.label} className="nav-group">
+              <span className="nav-group-label">{g.label}</span>
+              {g.items.map((item) => <NavLink key={item.key} item={item} current={current} />)}
+            </div>
           ))}
           <div className="spacer" />
-          <a href={href("settings")} className={current.key === "settings" ? "active" : ""} aria-label="设置" title="设置" aria-current={current.key === "settings" ? "page" : undefined}>
-            <PixelIcon name="settings" />设置
-          </a>
+          <NavLink item={SETTINGS} current={current} />
           <div className="sidebar-foot label">local · 127.0.0.1</div>
         </nav>
         <main className="main" ref={area}>
           {displayed.key === "settings" ? <SettingsPage /> : <Page route={shown.slice(1)} />}
         </main>
+        <SelfTalkDrawer open={drawer} onClose={() => setDrawer(false)} />
       </div>
+      <StatusBar onCommand={() => setCommand(true)} />
+      <CommandPalette open={command} onClose={() => setCommand(false)} />
       <canvas ref={canvas} className="dissolve-canvas" aria-hidden="true" />
     </div>
   );

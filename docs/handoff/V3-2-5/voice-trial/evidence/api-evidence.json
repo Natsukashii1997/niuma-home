@@ -1,0 +1,71 @@
+[
+  {
+    "path": "/health",
+    "status": 200,
+    "body": {
+      "ok": true,
+      "mode": "free-manual-trial"
+    }
+  },
+  {
+    "path": "/api/v1/hot-topics",
+    "status": 200,
+    "body": {
+      "schemaVersion": 1,
+      "count": 0,
+      "items": []
+    }
+  },
+  {
+    "path": "/api/site/hot",
+    "status": 200,
+    "body": {
+      "computedAt": null,
+      "windowHours": 48,
+      "entries": []
+    }
+  },
+  {
+    "path": "/api/v1/items",
+    "status": 200,
+    "body": {
+      "schemaVersion": 1,
+      "query": {
+        "mode": "selected",
+        "category": null,
+        "window": "7d",
+        "q": null,
+        "by": "timeline",
+        "ordering": "timelineDesc"
+      },
+      "items": [],
+      "page": {
+        "count": 0,
+        "hasMore": false,
+        "nextCursor": null
+      }
+    }
+  },
+  {
+    "path": "/api/v1/dailies/latest",
+    "status": 404,
+    "body": {
+      "type": "/problems/not-found",
+      "title": "Not found",
+      "status": 404,
+      "detail": "No daily report has been published yet.",
+      "code": "not_found",
+      "requestId": "req-5"
+    }
+  },
+  {
+    "path": "/api/v1/items",
+    "method": "POST",
+    "status": 405
+  },
+  {
+    "path": "/api/admin/sources",
+    "method": "GET",
+    "status": 404
+  }
+]

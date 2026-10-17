@@ -2,6 +2,18 @@ import { json, readJson, route } from "../http.mjs";
 import { getSettings, saveSetting } from "../db.mjs";
 import { createReportReader, reportDocumentUrl } from "../reports.mjs";
 import { createCalendarReader } from "../calendar.mjs";
+import { createCodexResetReader } from "../codex-reset.mjs";
+import { createUserServices, userRoutes, handleV3 } from "./user.mjs";
+import { deliveryRoutes } from "./delivery.mjs";
+import { recordSource, sourceStatus, reportIdentity } from "../source-status.mjs";
+import { createSettingsChanges, V3_SETTING_KEYS } from "../v3-settings.mjs";
+import { routes as selftalkRoutes } from "./selftalk.mjs";
+import { routes as referenceRoutes } from "./references.mjs";
+import { createProjectServices, projectRoutes } from "./projects.mjs";
+import { routes as marketingRoutes } from "./v3-marketing.mjs";
+import { createTodoReader } from "../home-todo.mjs";
+import { demoRevenue } from "../demo-revenue.mjs";
+import { createVoiceReader } from "../voice.mjs";
 
 const invalid = (message) => { throw Object.assign(new Error(message), { status: 400 }); };
 
@@ -31,9 +43,24 @@ function settingValue(key, value) {
 }
 
 // 首页、日报周报、日历、配置
-export function routes(db, reportOptions, calendarOptions) {
+export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
+  const settingsChanges = createSettingsChanges(db, v3Options.settings);
   const calendar = createCalendarReader(calendarOptions);
-  const reports = createReportReader(() => getSettings(db), reportOptions);
+  const reports = createReportReader(() => getSettings(db), { ...reportOptions, onSource: event => {
+    const settings = getSettings(db);
+    const roles = event.single && (!event.ok || event.kinds?.includes('周报')) ? ['daily', 'weekly'] : [event.role];
+    for (const role of roles) {
+      const identity = reportIdentity(role === 'daily' ? settings.report_doc_url : settings.weekly_doc_url || settings.report_doc_url);
+      if (identity !== event.url) continue;
+      recordSource(db, role, { identity, attemptAt: event.attemptAt, at: event.ok ? event.fetchedAt : undefined, error: event.ok ? undefined : event.error });
+    }
+    reportOptions?.onSource?.(event);
+  } });
+  const codexReset = createCodexResetReader(v3Options.codex);
+  const voice = createVoiceReader(db, v3Options.voice);
+  const userServices = createUserServices(db, { ...v3Options, voiceReader: voice, timeline: { ...v3Options.timeline, onSource: event => recordSource(db, 'timeline', event) } });
+  const projectServices = createProjectServices(db, v3Options);
+  const todo = createTodoReader(db, { ...userServices, projects: projectServices.projects, ...v3Options.todo });
   const reportHandler = (detail) => async (req, res, { params, url }) => {
     try {
       return json(res, 200, await reports({ refresh: url.searchParams.get("refresh") === "1", withSources: url.searchParams.get("withSources") === "1", ...(detail ? { id: params.id } : {}) }));
@@ -42,6 +69,22 @@ export function routes(db, reportOptions, calendarOptions) {
     }
   };
   return [
+    route("GET", "/api/v3/status", handleV3(() => sourceStatus(db, { implemented:['daily','weekly','timeline','kb', ...(voice.identity() ? ['voice'] : [])], voiceIdentity:voice.identity() }))),
+    route('GET', '/api/v3/voice', async (req,res) => {
+      try { json(res,200,await voice()); }
+      catch(error) { json(res,error.status||500,{error:error.status?error.message:'留学之声读取失败',code:error.code||'VOICE_READ_FAILED'}); }
+    }),
+    route("GET", "/api/v3/settings", handleV3(() => settingsChanges.read())),
+    route("POST", "/api/settings/:key/preview", handleV3(async (req, { params }) => settingsChanges.preview(params.key, await readJson(req)))),
+    route("GET", "/api/v3/codex-reset", handleV3(() => codexReset())),
+    ...userRoutes(userServices),
+    route('GET', '/api/v3/home/todo', handleV3((req, { url }) => todo(url.searchParams.get('month') || undefined))),
+    route('GET', '/api/v3/business/revenue', (req, res) => { res.setHeader('x-workdesk-data-origin', 'demo'); json(res, 200, { ...demoRevenue(), origin: 'demo', task: '演示数据（待正式营收表）' }); }),
+    ...deliveryRoutes(userServices.needs, db),
+    ...projectRoutes(projectServices),
+    ...marketingRoutes(db, v3Options),
+    ...selftalkRoutes(db, v3Options.selftalk),
+    ...referenceRoutes(db, v3Options.refs),
     route("GET", "/api/calendar/today", async (req, res) => {
       try { return json(res, 200, await calendar()); }
       catch (error) { return json(res, error.status || 502, { error: error.status ? error.message : "飞书日历读取失败，请稍后重新打开首页" }); }
@@ -62,6 +105,7 @@ export function routes(db, reportOptions, calendarOptions) {
       try {
         let body;
         try { body = await readJson(req); } catch { invalid("请求内容不是有效的 JSON"); }
+        if (V3_SETTING_KEYS.has(key)) return json(res, 200, settingsChanges.confirm(key, body));
         const value = settingValue(key, body?.value);
         return json(res, 200, saveSetting(db, key, value));
       } catch (error) {

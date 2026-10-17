@@ -1,0 +1,85 @@
+[
+  {
+    "source": "College Confidential",
+    "url": "https://talk.collegeconfidential.com/latest.rss",
+    "discoveredFrom": "https://talk.collegeconfidential.com/c/international-students/55",
+    "discoveryMethod": "HTML link rel=alternate type=application/rss+xml",
+    "checkedAt": "2026-10-16T13:09:19.161297+00:00",
+    "http": 200,
+    "contentType": "application/rss+xml; charset=utf-8",
+    "curlExit": 0,
+    "items": 30,
+    "authorPresent": 30,
+    "distinctAuthorCount": 28,
+    "readScope": "single GET; response payload only; no pagination attempted",
+    "datePresent": 30,
+    "dateExamples": [
+      "Fri, 16 Oct 2026 11:07:52 +0000",
+      "Fri, 16 Oct 2026 05:22:08 +0000"
+    ],
+    "allItemsHaveTitle": true,
+    "allItemsHaveLink": true,
+    "descriptionPresent": 30,
+    "atomNavigationLinks": [
+      {
+        "href": "https://talk.collegeconfidential.com/latest.rss",
+        "rel": "self",
+        "type": "application/rss+xml"
+      }
+    ],
+    "authorsAre": "public account handles, not verified student identities; site includes parents and other roles",
+    "payloadSha256": "3a0ccd8d18be000db163df0a75168c50f6ac858903b1c8410e834e7286953a15",
+    "contentNotPersisted": true,
+    "paginationStatus": "No rel=next in returned RSS; latest window only, full-history completeness unverified"
+  },
+  {
+    "source": "College Confidential",
+    "url": "https://talk.collegeconfidential.com/c/international-students/55.rss",
+    "discoveredFrom": "https://talk.collegeconfidential.com/c/international-students/55",
+    "discoveryMethod": "HTML link rel=alternate type=application/rss+xml",
+    "checkedAt": "2026-10-16T13:09:20.965812+00:00",
+    "http": 200,
+    "contentType": "application/rss+xml; charset=utf-8",
+    "curlExit": 0,
+    "items": 25,
+    "authorPresent": 25,
+    "distinctAuthorCount": 23,
+    "readScope": "single GET; response payload only; no pagination attempted",
+    "datePresent": 25,
+    "dateExamples": [
+      "Mon, 27 Apr 2026 17:23:44 +0000",
+      "Wed, 15 Apr 2026 11:05:11 +0000"
+    ],
+    "allItemsHaveTitle": true,
+    "allItemsHaveLink": true,
+    "descriptionPresent": 25,
+    "atomNavigationLinks": [
+      {
+        "href": "https://talk.collegeconfidential.com/c/international-students/55.rss",
+        "rel": "self",
+        "type": "application/rss+xml"
+      }
+    ],
+    "authorsAre": "public account handles, not verified student identities; site includes parents and other roles",
+    "payloadSha256": "7868e89e4b7fa5645c01234e6ce65ea78f458e551614145bbcd113c3887a7fd5",
+    "contentNotPersisted": true,
+    "paginationStatus": "No rel=next in returned RSS; latest window only, full-history completeness unverified"
+  },
+  {
+    "source": "The Student Room",
+    "url": "https://www.thestudentroom.co.uk/forum.php/",
+    "http": 403,
+    "items": null,
+    "authorPresent": null,
+    "distinctAuthorCount": null,
+    "feedUrl": null,
+    "status": "official RSS URL not discovered; direct public HTML denied; stopped without bypass",
+    "webIndexReadable": true,
+    "webIndexCrawlNote": "web open reports crawled last week; not live GET verification",
+    "readScope": "one direct GET of official forum page; TLS failed attempt before curl; no alternate blocked routes or guessed RSS",
+    "reportRecordedAt": "2026-10-16T13:09:23.763265+00:00",
+    "checkedAt": null,
+    "checkedAtPrecision": "exact request timestamp not captured; before reportRecordedAt in same verification run",
+    "checkedDate": "2026-10-16"
+  }
+]

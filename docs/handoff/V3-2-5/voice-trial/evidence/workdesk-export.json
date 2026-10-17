@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "engine": {
+    "commit": "c8704e5313e6b051560365226b3919d7e0ada5ea",
+    "modelCallsEnabled": false,
+    "paidCollectorsEnabled": false,
+    "schedulesEnabled": false
+  },
+  "checkedAt": "2026-10-16T13:01:02.869Z",
+  "budget": {
+    "used": 0,
+    "limit": 10
+  },
+  "data": {
+    "updatedAt": "2026-10-16 21:01",
+    "nextAt": null,
+    "stats": {
+      "topics": null,
+      "newTopics": null,
+      "surge": null,
+      "participants": null,
+      "filtered": null,
+      "sourceCount": null,
+      "sources": ""
+    },
+    "hot": [],
+    "cloud": [],
+    "daily": ""
+  },
+  "checks": {
+    "paidRequests": 0,
+    "modelRequests": 0,
+    "scheduledJobs": 0,
+    "sourceReads": {
+      "attempted": 3,
+      "successful": 0,
+      "complete": false,
+      "errors": [
+        {
+          "source": "reddit-studyabroad",
+          "url": "https://www.reddit.com/r/studyAbroad/new/.rss",
+          "reason": "curl: (35) Recv failure: Connection reset by peer"
+        },
+        {
+          "source": "reddit-uniuk",
+          "url": "https://www.reddit.com/r/UniUK/new/.rss",
+          "reason": "curl: (35) Recv failure: Connection reset by peer"
+        },
+        {
+          "source": "academia-international",
+          "url": "https://academia.stackexchange.com/feeds/tag/international-students",
+          "reason": "HTTP 403"
+        }
+      ]
+    },
+    "database": {
+      "checkedAt": "2026-10-16T13:12:25.372Z",
+      "modelCallsEnabled": false,
+      "collectEnabled": false,
+      "counts": {
+        "migrations": 60,
+        "sources": 0,
+        "enabled_sources": 0,
+        "articles": 0,
+        "stories": 0,
+        "publications": 0,
+        "provider_attempts": 0,
+        "provider_receipts": 0,
+        "hot_rankings": 0,
+        "pgboss_schemas": 0
+      }
+    },
+    "backgroundRead": {
+      "source": "UKVI",
+      "sourceType": "policy-background",
+      "url": "https://www.gov.uk/government/organisations/uk-visas-and-immigration.atom",
+      "checkedAt": "2026-10-16T13:05:46.310Z",
+      "officialFetcher": "packages/backend/src/sources/rss.ts#fetchRss",
+      "ok": true,
+      "candidates": 20,
+      "dated": 20,
+      "authorsPresent": 0,
+      "notModified": false,
+      "responseUrl": "https://www.gov.uk/government/organisations/uk-visas-and-immigration.atom"
+    },
+    "publicApi": [
+      {
+        "path": "/health",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/hot-topics",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/site/hot",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/items",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/dailies/latest",
+        "method": "GET",
+        "status": 404
+      },
+      {
+        "path": "/api/v1/items",
+        "method": "POST",
+        "status": 405
+      },
+      {
+        "path": "/api/admin/sources",
+        "method": "GET",
+        "status": 404
+      }
+    ],
+    "qualification": "unknown: all student discussion reads failed; policy background is not student evidence",
+    "budgetScope": "isolated manual trial only; zero provider attempts, no cost-generating entry points; this is not a production monthly budget guard"
+  }
+}

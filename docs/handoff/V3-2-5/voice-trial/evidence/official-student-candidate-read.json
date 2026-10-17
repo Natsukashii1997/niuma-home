@@ -1,0 +1,16 @@
+{
+  "source": "College Confidential international students",
+  "sourceType": "student-discussion-candidate",
+  "url": "https://talk.collegeconfidential.com/c/international-students/55.rss",
+  "checkedAt": "2026-10-16T13:10:59.885Z",
+  "officialFetcher": "packages/backend/src/sources/rss.ts#fetchRss",
+  "ok": true,
+  "candidates": 25,
+  "dated": 25,
+  "authorsPresent": 25,
+  "distinctAuthorAccounts": 23,
+  "within48Hours": 0,
+  "latestPublishedAt": "2026-04-27T17:23:44.000Z",
+  "notModified": false,
+  "responseUrl": "https://talk.collegeconfidential.com/c/international-students/55.rss"
+}

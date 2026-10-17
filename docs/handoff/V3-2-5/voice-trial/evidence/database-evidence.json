@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-10-16T13:12:25.372Z",
+  "modelCallsEnabled": false,
+  "collectEnabled": false,
+  "counts": {
+    "migrations": 60,
+    "sources": 0,
+    "enabled_sources": 0,
+    "articles": 0,
+    "stories": 0,
+    "publications": 0,
+    "provider_attempts": 0,
+    "provider_receipts": 0,
+    "hot_rankings": 0,
+    "pgboss_schemas": 0
+  }
+}

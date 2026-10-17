@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>工作台 UI 诊断</title>
+<style>
+  :root { --ink: #0D0E10; --muted: #6B7079; --line: #D5D8DE; --soft: #F3F4F6; --bg: #FBFBFC; --signal: #FF4F1F; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.7 -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; }
+  main { max-width: 1120px; margin: 0 auto; padding: 48px 24px 120px; }
+  h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  h2 { font-size: 22px; margin: 64px 0 14px; padding-top: 18px; border-top: 2px solid var(--ink); }
+  h3 { font-size: 17px; margin: 34px 0 10px; }
+  p, li { max-width: 76ch; }
+  .sub { color: var(--muted); margin: 0 0 28px; }
+  .grade { display: inline-block; padding: 0 8px; font-size: 12px; font-weight: 600; border: 1.5px solid var(--ink); vertical-align: 3px; margin-left: 6px; white-space: nowrap; }
+  .grade.re { background: var(--ink); color: #fff; }
+  .grade.new { border-style: dashed; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { font-size: 12px; color: var(--muted); font-weight: 500; background: var(--soft); }
+  td.n { width: 28px; color: var(--muted); }
+  .brief { display: grid; grid-template-columns: 120px 1fr; gap: 4px 16px; padding: 12px 16px; background: var(--soft); margin: 8px 0 14px; font-size: 14px; }
+  .brief b { color: var(--muted); font-weight: 500; }
+  figure { margin: 14px 0 20px; }
+  figure img { display: block; width: 100%; border: 1px solid var(--line); }
+  figcaption { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .shots { display: grid; grid-template-columns: 3fr 1fr; gap: 16px; align-items: start; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .dirs { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; margin: 12px 0 20px; }
+  .dir { border: 1.5px solid var(--ink); background: #fff; }
+  .dir svg { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--line); }
+  .dir .t { padding: 10px 14px 14px; font-size: 14px; }
+  .dir .t b { display: block; font-size: 15px; margin-bottom: 4px; }
+  .dir.rec { outline: 3px solid var(--signal); outline-offset: -1px; }
+  .chosen { color: var(--signal); font-size: 12px; font-weight: 600; margin-left: 6px; }
+  .note { border-left: 4px solid var(--signal); padding: 10px 14px; background: #fff; margin: 12px 0; font-size: 14px; }
+  .ok { border-left: 4px solid var(--ink); padding: 10px 14px; background: #fff; margin: 12px 0; font-size: 14px; }
+  .icons { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-end; padding: 16px; }
+  .icons figure { margin: 0; text-align: center; font-size: 12px; color: var(--muted); }
+  .icons svg { display: block; margin: 0 auto 6px; }
+  code { font: 13px ui-monospace, Menlo, monospace; background: var(--soft); padding: 0 4px; }
+  .map { border: 1.5px solid var(--ink); background: #fff; }
+  .map svg { display: block; width: 100%; height: auto; }
+  @media (max-width: 760px) { .shots, .two { grid-template-columns: 1fr; } .brief { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>工作台 UI 诊断报告 · 全量版</h1>
+<p class="sub">2026-10-16 · 基线是正式版 5280（main <code>c3fa737</code>，已合并 T09 位图风）· 范围是工作台全部现有页面，加上需求共识里的全部新功能 · 依据 REQUIREMENTS.md、STYLE-GUIDE v2、需求共识 2026-10-15、你 10-16 的 6 条意见和价格表</p>
+
+<div class="ok"><b>诊断结论：已完成，可以进入执行。</b>正式版 10 个页面都按 1440 和 390 两个宽度截图核对过，需求共识的 13 个新功能页按原型 v3 复核过，也梳理了数据之间的关联。以下内容都已定：
+<ul>
+<li>第 8 节的 7 个方向，按你的要求全部采用推荐；</li>
+<li>我原本没给推荐的 2 项，取值写在第 8 节；</li>
+<li>执行方式：<b>所有 UI 由我在正式代码里完成</b>，接口没实现的地方先显示示例数据，再由 Codex 接上真实功能。</li>
+</ul></div>
+
+<h2>0 · 全部页面定级</h2>
+<table>
+  <tr><th>模块</th><th>页面</th><th>定级</th><th>一句话</th></tr>
+  <tr><td rowspan="3">全局</td><td>信息架构 / 导航</td><td><span class="grade re">重设计</span></td><td>新功能要长在 5280 的结构上，不另起一套</td></tr>
+  <tr><td>图标、字体、网点、动效</td><td><span class="grade re">重设计</span></td><td>图标全部重画成 16px；像素字体只用于主数字；网点不压文字；溶解动效缩短</td></tr>
+  <tr><td>手机端外框</td><td><span class="grade re">重设计</span></td><td>60px 的侧边图标栏改为底部导航；表格在手机上改成卡片</td></tr>
+  <tr><td>首页</td><td>首页</td><td><span class="grade">打磨</span></td><td>主角从「本月方案录入」改成「下月交付」；指标卡去掉误导；点阵缩小；日报要渲染</td></tr>
+  <tr><td rowspan="9">营销</td><td>方案（卡片墙）</td><td><span class="grade re">重设计</span></td><td>升级成「月度台账」：一行一个月，方案、价格、物料、brief 的状态一眼看全</td></tr>
+  <tr><td>方案录入</td><td><span class="grade">打磨</span></td><td>粘贴后自动解析；禁用的按钮状态不清；没有上月对照</td></tr>
+  <tr><td>促销表</td><td><span class="grade">打磨（偏重）</span></td><td>变化格网点压字、长文本、手机不可用、不能复制</td></tr>
+  <tr><td>价格 <span class="grade new">新</span></td><td><span class="grade re">重设计</span></td><td>档位 × 方案矩阵，可以直接在格子里改</td></tr>
+  <tr><td>物料（列表、详情、跨月对比）</td><td><span class="grade re">重设计</span></td><td>和 NAS 物料墙合并成一页：按类型 × 月份</td></tr>
+  <tr><td>设计 brief <span class="grade new">新</span></td><td><span class="grade">打磨</span></td><td>原型方向对；编辑效率、文档太长、段落导航要加强</td></tr>
+  <tr><td>营销战役 <span class="grade new">新</span></td><td><span class="grade">打磨</span></td><td>节点表对；「节点说明待补」的提示太吵，三选一要和物料页联动</td></tr>
+  <tr><td>设计参考 <span class="grade new">新</span></td><td><span class="grade">打磨</span></td><td>画布方向对；放进物料页做一个页签，支持直接粘贴和拖入图片</td></tr>
+  <tr><td>（原型）月度总览</td><td><span class="grade re">合并</span></td><td>并进「方案 · 月度台账」和首页主卡，不再单独成页</td></tr>
+  <tr><td rowspan="4">用户 <span class="grade new">新</span></td><td>用户时间线</td><td><span class="grade re">重设计</span></td><td>明细表加议程，严谨、可追溯</td></tr>
+  <tr><td>主线需求</td><td><span class="grade">打磨</span></td><td>卡片太占地方，改成紧凑表格，加上和促销、物料的关联</td></tr>
+  <tr><td>用户策略</td><td><span class="grade">占位</span></td><td>结构延后讨论；先放一个说明清楚的空状态</td></tr>
+  <tr><td>留学之声</td><td><span class="grade">打磨</span></td><td>热榜对；去掉费用指标卡（移到设置），加上「来源可信度」</td></tr>
+  <tr><td rowspan="2">项目 <span class="grade new">新</span></td><td>项目推进</td><td><span class="grade">打磨</span></td><td>节点表要能就地勾选和改日期，空说明折叠起来</td></tr>
+  <tr><td>管培带教</td><td><span class="grade">打磨</span></td><td>左边日志、右边带教的结构对；日志要渲染，卡点要能直接追问</td></tr>
+  <tr><td>知识库 <span class="grade new">新</span></td><td>知识库整理</td><td><span class="grade re">重设计</span></td><td>一棵可编辑的树加暂存区，支持拖动、多选、键盘和撤销</td></tr>
+  <tr><td>Agent</td><td>助手对话、知识库</td><td><span class="grade">打磨</span></td><td>模型选择占了对话区头部，强度说明是英文；加知识库页签</td></tr>
+  <tr><td>日/周报</td><td>日报、周报</td><td><span class="grade re">重设计</span></td><td>Markdown 原样显示（<code>\##</code>、管道符表格），基本读不了；改成渲染后的事项表，可以按状态和 T 线筛选</td></tr>
+  <tr><td>设置</td><td>设置</td><td><span class="grade">打磨</span></td><td>每一项都占一张大卡，4 项就占了 1600px；改成紧凑的行内编辑，并加上新数据源</td></tr>
+  <tr><td>品牌、业务</td><td>占位页</td><td><span class="grade">打磨</span></td><td>品牌入口并进设置；业务保留为「经营策略」占位（REQUIREMENTS 已确认）</td></tr>
+  <tr><td>全局浮层</td><td>自言自语、Codex 预警</td><td><span class="grade">打磨</span></td><td>抽屉的操作太重，改为悬停才出现；预警卡太大，首页改成一行横条，点开看详情</td></tr>
+</table>
+
+<h2>1 · 底层逻辑关联</h2>
+<p>工作台的数据靠两样东西串起来：<b>「月份」</b>和<b>「SKU」</b>。现在的问题是这条链在 UI 上是断开的：每页各看各的，看不出一个月的方案、价格、物料、brief 是不是齐了。改版的核心就是让这条链在界面上连起来。</p>
+<div class="map"><svg viewBox="0 0 1060 360" font-family="-apple-system,PingFang SC,sans-serif" font-size="13">
+  <rect width="1060" height="360" fill="#fff"/>
+  <g stroke="#000" stroke-width="1.5" fill="#fff">
+    <rect x="20" y="30" width="150" height="54"/><rect x="20" y="120" width="150" height="54"/><rect x="20" y="210" width="150" height="54"/>
+    <rect x="230" y="120" width="150" height="54" stroke-width="3"/>
+    <rect x="450" y="30" width="150" height="54"/><rect x="450" y="120" width="150" height="54"/><rect x="450" y="210" width="150" height="54"/>
+    <rect x="670" y="30" width="150" height="54"/><rect x="670" y="120" width="150" height="54"/><rect x="670" y="210" width="150" height="54"/>
+    <rect x="890" y="120" width="150" height="54" stroke-width="3"/>
+    <rect x="450" y="292" width="150" height="48" stroke-dasharray="4 3"/><rect x="670" y="292" width="150" height="48" stroke-dasharray="4 3"/><rect x="890" y="292" width="150" height="48" stroke-dasharray="4 3"/>
+  </g>
+  <g fill="#000">
+    <text x="32" y="54" font-weight="700">用户时间线</text><text x="32" y="72" fill="#666" font-size="11">学校 × 事件 × 起止日期</text>
+    <text x="32" y="144" font-weight="700">留学之声</text><text x="32" y="162" fill="#666" font-size="11">共性话题，用来修正需求</text>
+    <text x="32" y="234" font-weight="700">自言自语</text><text x="32" y="252" fill="#666" font-size="11">转成需求或待办</text>
+    <text x="242" y="144" font-weight="700">主线需求（月）</text><text x="242" y="162" fill="#666" font-size="11">已采纳才可关联</text>
+    <text x="462" y="54" font-weight="700">方案原文 → 促销表</text><text x="462" y="72" fill="#666" font-size="11">月 × 业务线 × SKU 四列政策</text>
+    <text x="462" y="144" font-weight="700">价格方案</text><text x="462" y="162" fill="#666" font-size="11">SKU × 课时档 × 方案</text>
+    <text x="462" y="234" font-weight="700">营销战役</text><text x="462" y="252" fill="#666" font-size="11">跨月，三选一</text>
+    <text x="682" y="54" font-weight="700">设计 brief（月）</text><text x="682" y="72" fill="#666" font-size="11">自动带入需求和价格</text>
+    <text x="682" y="144" font-weight="700">物料（NAS）</text><text x="682" y="162" fill="#666" font-size="11">类型 × 月份</text>
+    <text x="682" y="234" font-weight="700">设计参考</text><text x="682" y="252" fill="#666" font-size="11">给 brief 挑参考图</text>
+    <text x="902" y="144" font-weight="700">月度台账</text><text x="902" y="162" fill="#666" font-size="11">月底前交付下个月</text>
+    <text x="462" y="320" fill="#666">日报 / 周报（T 线）</text><text x="682" y="320" fill="#666">项目推进 / 带教</text><text x="902" y="320" fill="#666">首页：今天 + 下月</text>
+  </g>
+  <g stroke="#000" stroke-width="1.3" fill="none" marker-end="url(#a)">
+    <path d="M170 57 L230 135"/><path d="M170 147 L230 147"/><path d="M170 237 L230 160"/>
+    <path d="M380 140 L450 62"/><path d="M380 147 L450 147"/><path d="M380 155 L450 235"/>
+    <path d="M600 147 L670 62"/><path d="M600 57 L670 57"/><path d="M600 237 L670 155"/><path d="M745 210 L745 84" stroke-dasharray="3 3"/>
+    <path d="M820 57 L890 135"/><path d="M820 147 L890 147"/><path d="M600 64 L890 140" stroke-dasharray="3 3"/>
+    <path d="M600 316 L670 316"/><path d="M820 316 L890 316"/><path d="M965 174 L965 292"/>
+  </g>
+  <defs><marker id="a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8z" fill="#000"/></marker></defs>
+</svg></div>
+<h3>逻辑层面的问题，会直接决定 UI 怎么改</h3>
+<table>
+  <tr><th></th><th>问题</th><th>后果</th><th>改法（UI 层面）</th></tr>
+  <tr><td class="n">L1</td><td><b>月份语义错位</b>：首页和方案页都盯着「本月」，但你的工作是「本月准备下月，月底前交付」</td><td>10 月显示「0/3 未录入、促销 0 ▼7」，像出了问题，其实正常；真正该盯的 11 月却没人提醒</td><td>全局引入「交付月 = 下个月」：首页主卡、月度台账、价格、brief 默认都定位到交付月，同时可以切换月份</td></tr>
+  <tr><td class="n">L2</td><td><b>价格信息有两份</b>：促销表的「正价」是文字（如「¥4300（赠课版）」），新签和续费里还写着赠课阶梯；价格方案又是一张结构化矩阵</td><td>两边迟早对不上，查价格要翻两处</td><td>价格以「价格方案」为准；促销表的价格格子显示方案名，可以点开看矩阵；赠课阶梯在价格页做成「赠送课时」方案</td></tr>
+  <tr><td class="n">L3</td><td><b>SKU 没有主表</b>：SKU 是文本加别名，物料用 JSON 存 SKU 名；同名 SKU 在两条业务线是两个东西</td><td>价格档位、物料关联、筛选都容易错位</td><td>UI 上 SKU 一律显示成「业务线 · SKU」，用统一的 SKU 选择器（Codex 实现 SKU 主表）</td></tr>
+  <tr><td class="n">L4</td><td><b>物料类型没配置</b>，设置里还是示例；共识已经定了类型（价格图、试听、选课、活动、三宫格、九宫格）</td><td>物料筛选和跨月对比没法用</td><td>物料页直接用共识的类型；设置里预填，你可以改</td></tr>
+  <tr><td class="n">L5</td><td><b>日报里的「T 线」</b>（T 线-双11 战役、T 线-产品）其实就是项目和战役，但日报是一大段 Markdown 文字</td><td>项目进度要靠你人工从日报里提取</td><td>日报渲染成事项表，T 线做成筛选标签，并能跳到对应的项目或战役（自动匹配由 Codex 做）</td></tr>
+  <tr><td class="n">L6</td><td><b>文案助手不认识 brief</b>，助手和 brief 是两个孤岛</td><td>写 brief 时要来回复制</td><td>brief 右侧常驻助手，带着当前段落和知识库</td></tr>
+</table>
+
+<h2>2 · 全局</h2>
+<h3>G1 信息架构 <span class="grade re">重设计</span><span class="chosen">已定：A</span></h3>
+<table>
+  <tr><th>侧栏</th><th>页签</th><th>说明</th></tr>
+  <tr><td>首页</td><td>—</td><td>今天和下月交付</td></tr>
+  <tr><td>营销</td><td>方案（月度台账）· 促销表 · 价格 · 物料 · brief · 战役</td><td>原来的三个页签保留，后面追加三个；设计参考作为物料里的一个页签</td></tr>
+  <tr><td>用户</td><td>时间线 · 主线需求 · 策略 · 留学之声</td><td>新增模块</td></tr>
+  <tr><td>品牌</td><td>—</td><td>保留侧栏位置，页面里加一个快捷入口，链接改在设置里配</td></tr>
+  <tr><td>业务</td><td>—</td><td>经营策略占位（REQUIREMENTS 已确认）</td></tr>
+  <tr><td>项目</td><td>项目推进 · 管培带教</td><td>新增</td></tr>
+  <tr><td>知识库</td><td>—</td><td>新增</td></tr>
+  <tr><td>Agent · 日/周报 · 设置</td><td>—</td><td>保留</td></tr>
+</table>
+<p>侧栏分两组：「工作」是首页、营销、用户、品牌、业务；「协作与工具」是项目、知识库、Agent、日/周报。自言自语和 Codex 预警挂在窗口条上。</p>
+
+<h3>G2 视觉语言：保留位图风的气质，把像素用对地方</h3>
+<table>
+  <tr><th></th><th>现状</th><th>改为</th><th>理由</th></tr>
+  <tr><td class="n">1</td><td>7×7 图标放大到 14px</td><td><b>16×16 网格、每格 1px</b>，全部重画，包括侧栏、按钮、状态、空状态里的图标；斜线用 1px 阶梯，视觉重量统一</td><td>精致，小尺寸也认得出</td></tr>
+  <tr><td class="n">2</td><td>Geist Pixel 用在所有数字上</td><td><b>只用于每张卡 1 个主数字</b>和倒计时；表格和价格用 Geist Mono 等宽、右对齐</td><td>核对数字时不会看错</td></tr>
+  <tr><td class="n">3</td><td>网点底上压文字</td><td>网点只用在<b>不放文字的区域</b>：进度条、比例条、空状态底纹、悬停反馈；状态用左侧色条加角标表达</td><td>可读性</td></tr>
+  <tr><td class="n">4</td><td>每次切换模块溶解 6 帧，约 400ms</td><td><b>缩短为 3 帧，约 200ms</b>：盖住和揭开各 1.5 帧</td><td>保留你确认过的风格，同时不拖慢高频切换</td></tr>
+  <tr><td class="n">5</td><td>橙色只用于强调，规则对</td><td>不变；「需要你处理」统一用橙色，「已完成」用墨色，「信息」用灰色</td><td>状态语义一致</td></tr>
+  <tr><td class="n">6</td><td>卡片一律 2px 边框</td><td>主要容器保留 2px；容器里的分组改用 1px 线和留白</td><td>减少「框套框」</td></tr>
+</table>
+<div class="dirs">
+  <div class="dir rec"><div class="icons" id="iconA"></div><div class="t"><b>图标采用 A · 16×16 网格<span class="chosen">已定</span></b>左边是实际尺寸，右边放大 3 倍。所有图标统一画进 <code>src/ui/bitmap.jsx</code> 的新网格。</div></div>
+</div>
+
+<h3>G3 效率原则（每一页都按这条验收）</h3>
+<p><b>少一步</b>：能就地编辑就不弹窗。<b>批量</b>：多选后一次操作。<b>键盘</b>：<code>/</code> 搜索、<code>⌘K</code> 跳转、<code>⌘Z</code> 撤销。<b>默认值对</b>：默认就落在交付月。<b>写回之前先暂存</b>：写飞书、写 NAS 都要先预览再确认。</p>
+
+<h3>G4 手机端 <span class="grade re">重设计</span></h3>
+<p>以「看」为主：底部 5 格导航（首页、营销、用户、项目、更多）；指标卡排成 2×2；表格改成卡片列表；编辑类操作（价格矩阵、知识库整理、画布）在手机上只能看，并提示「在电脑上编辑」。</p>
+
+<h2>3 · 现有页面</h2>
+<h3>首页 <span class="grade">打磨</span></h3>
+<div class="brief"><b>给谁用</b><span>常浩，每天打开的第一屏</span><b>主角</b><span>下月交付还差什么、今天要做什么</span><b>最常做的 3 件事</b><span>① 看今天的日程和待我处理 ② 发现下月缺口，直接点进去补 ③ 扫一眼最新日报</span></div>
+<div class="shots"><figure><img src="shots/live-1440-home.png" alt=""><figcaption>现状 1440</figcaption></figure><figure><img src="shots/live-390-home.png" alt=""><figcaption>现状 390</figcaption></figure></div>
+<table>
+  <tr><th></th><th>问题</th><th>怎么改</th></tr>
+  <tr><td class="n">1</td><td>主卡盯「本月方案 0/3」（L1）</td><td>主卡改成「11 月交付 · 剩 15 天」，下面是 6 个环节的进度；本月方案的录入状态放进环节里</td></tr>
+  <tr><td class="n">2</td><td>「本月促销 SKU 0 ▼7」误导</td><td>改成「11 月价格方案 x 套」；没有数据时显示最近有数据的月份，不显示下降箭头</td></tr>
+  <tr><td class="n">3</td><td>促销点阵占 2/3 宽，大多数月份是 0</td><td>缩成一条 12 格的迷你条，右边列出「最近变动」的具体 SKU</td></tr>
+  <tr><td class="n">4</td><td>日报是原样的 Markdown</td><td>渲染后列前 3 条事项，带状态标签</td></tr>
+  <tr><td class="n">5</td><td>没有「待我处理」</td><td>新增一张卡：门禁审核、破底线待确认、时间线异常、主线需求草稿，都可以点进去</td></tr>
+  <tr><td class="n">6</td><td>Codex 预警放进去会很占地方</td><td>做成窗口条下方的一行横条（原话摘要、北京时间、倒计时），点开看详情；只有出现新信号时才高亮</td></tr>
+  <tr><td class="n">7</td><td>390 上 4 张卡竖着堆</td><td>排成 2×2，日程提到前面</td></tr>
+</table>
+
+<h3>营销 · 方案 → 月度台账 <span class="grade re">重设计</span></h3>
+<div class="brief"><b>给谁用</b><span>常浩，每月备货</span><b>主角</b><span>每个月交付齐了没有</span><b>最常做的 3 件事</b><span>① 看交付月还差什么 ② 粘贴录入某条业务线的方案 ③ 回看往月原文</span><b>信息层级</b><span>行是月份，交付月置顶并高亮；列是 3 条业务线的方案状态，然后是价格、物料、brief、战役；格子里用符号表示状态，点格子直接进入对应页面</span><b>不放什么</b><span>不放说明大字，不放空卡片</span></div>
+<figure><img src="shots/live-1440-marketing_plans.png" alt=""><figcaption>现状：卡片墙，每月 3 张，要逐张看</figcaption></figure>
+
+<h3>营销 · 方案录入 <span class="grade">打磨</span></h3>
+<figure><img src="shots/live-1440-plan-editor.png" alt=""><figcaption>现状</figcaption></figure>
+<table>
+  <tr><th></th><th>问题</th><th>怎么改</th></tr>
+  <tr><td class="n">1</td><td>要先粘贴，再点「解析预览」</td><td>粘贴后自动解析（规则解析，不调用 AI），省一步</td></tr>
+  <tr><td class="n">2</td><td>「复制原文」「确认入库」禁用时看起来像普通按钮</td><td>禁用态用虚线框加灰字；可以入库时，「确认入库」变成唯一的主按钮</td></tr>
+  <tr><td class="n">3</td><td>看不到上月同一业务线的政策</td><td>解析预览里每行显示「上月 → 本月」，新增、变化、删除分别标出</td></tr>
+  <tr><td class="n">4</td><td>两栏等宽，预览区很空</td><td>左边原文 40%，右边预览 60%</td></tr>
+</table>
+
+<h3>营销 · 促销表 <span class="grade">打磨（偏重）</span></h3>
+<div class="shots"><figure><img src="shots/live-1440-marketing_promos.png" alt=""><figcaption>现状 1440</figcaption></figure><figure><img src="shots/live-390-marketing_promos.png" alt=""><figcaption>现状 390</figcaption></figure></div>
+<table>
+  <tr><th></th><th>问题</th><th>怎么改</th></tr>
+  <tr><td class="n">1</td><td>变化格网点压字</td><td>白底，左侧 3px 橙线，加「改」角标；点开看「上月 → 本月」，旧值加删除线</td></tr>
+  <tr><td class="n">2</td><td>长政策撑高行</td><td>默认显示 2 行，点开展开</td></tr>
+  <tr><td class="n">3</td><td>分组字段的列重复</td><td>按哪个字段分组就隐藏哪一列</td></tr>
+  <tr><td class="n">4</td><td>筛选散</td><td>合并成一行筛选栏</td></tr>
+  <tr><td class="n">5</td><td>不能复制给业务</td><td>行、分组都可以复制成飞书友好的文本</td></tr>
+  <tr><td class="n">6</td><td>价格是文字（L2）</td><td>「正价」格子显示关联的价格方案名，点开看矩阵</td></tr>
+  <tr><td class="n">7</td><td>手机上不可用</td><td>改成卡片列表</td></tr>
+</table>
+
+<h3>营销 · 物料（列表、详情、跨月对比）<span class="grade re">重设计</span></h3>
+<figure><img src="shots/live-1440-marketing_materials.png" alt=""><figcaption>现状：空状态，类型没配置</figcaption></figure>
+<div class="brief"><b>主角</b><span>每种物料每个月长什么样</span><b>最常做的 3 件事</b><span>① 看交付月还缺哪些 ② 翻往月同类物料 ③ 选一张沿用到 brief</span><b>信息层级</b><span>页签：物料墙（类型 × 月份）· 营销物料（按场景）· 设计参考（画布）；原来的「新建物料」和图片上传保留，作为 NAS 不可用时的兜底</span></div>
+
+<h3>Agent <span class="grade">打磨</span></h3>
+<figure><img src="shots/live-1440-assistants.png" alt=""><figcaption>现状</figcaption></figure>
+<table>
+  <tr><th></th><th>问题</th><th>怎么改</th></tr>
+  <tr><td class="n">1</td><td>模型和强度选择常驻在对话区头部，强度说明是英文</td><td>收进头部的一个「模型 · 强度」小按钮，点开再选；说明翻成中文</td></tr>
+  <tr><td class="n">2</td><td>没有知识库</td><td>头部加页签：对话 · 知识库</td></tr>
+  <tr><td class="n">3</td><td>空对话只有一句提示</td><td>给 3 条常用开场，点了直接填进输入框</td></tr>
+</table>
+
+<h3>日/周报 <span class="grade re">重设计</span></h3>
+<figure><img src="shots/live-1440-reports.png" alt=""><figcaption>现状：Markdown 原样显示，表格变成管道符文字；列表里标题和日期重复</figcaption></figure>
+<div class="brief"><b>主角</b><span>今天和这周各条线的事项状态</span><b>最常做的 3 件事</b><span>① 看今天有哪些事、卡在哪 ② 按 T 线看某个项目的进展 ③ 复制一段</span><b>信息层级</b><span>左边是日期列表（只显示日期和事项数，卡点数标橙）；右边是渲染后的事项表：事项、状态标签、涉及人、出处、T 线，可以按状态或 T 线筛选；沟通记录这类其他段落按正常排版显示</span></div>
+
+<h3>设置 <span class="grade">打磨</span></h3>
+<figure><img src="shots/live-1440-settings.png" alt=""><figcaption>现状：4 项占了 1600px；输入框和「已保存的值」重复显示</figcaption></figure>
+<p>改为分组列表：数据源、营销、用户、推送与预算、入口。每行显示「名称 · 当前值 · 状态 · 编辑」，点编辑就地展开，预览后保存。</p>
+
+<h2>4 · 新功能页面</h2>
+<h3>价格 <span class="grade re">重设计</span><span class="chosen">已定：A 矩阵 + 顶部单价曲线</span></h3>
+<div class="brief"><b>给谁用</b><span>常浩，负责定价和测算</span><b>主角</b><span>同一个 SKU 的「课时档 × 价格方案」，以及相对基准方案的差价</span><b>最常做的 3 件事</b><span>① 跨方案看同一档的差价 ② 新增或调整一套方案（直接改格子）③ 看单价阶梯合不合理</span><b>信息层级</b><span>SKU 页签 → 顶部是单价曲线的小图（一套方案一条线，悬停对齐）→ 主体是矩阵（总价是大字，课时单价、折扣、差价是小字）→ 底线和校验提示</span><b>口径</b><span>课时单价 = 总价 ÷（课时 + 赠送），这是主值，与共识 Q22 一致；同时显示付费单价 = 总价 ÷ 课时，对应你表里的写法</span></div>
+
+<h3>用户时间线 <span class="grade re">重设计</span><span class="chosen">已定：按国家用明细表，按月用议程</span></h3>
+<div class="brief"><b>主角</b><span>准确的「学校 · 事件 · 起止日期」</span><b>信息层级</b><span>顶部是全局搜索和筛选（国家、事件类型、学期）。「按国家」是清洗后的明细表，结构和飞书原表一致，冲突和推测的格子单独标出，点开看源单元格。「按月」是议程，按周分组，每条写全，跨周的事件在每周开头注明仍在进行。「异常清单」是一个页签，显示待确认的条数</span><b>不放什么</b><span>不用点阵代替日期，不截断文字，不用颜色区分国家（国家写文字）</span></div>
+
+<h3>知识库整理 <span class="grade re">重设计</span><span class="chosen">已定：可编辑树 + 暂存区 + 规则批量</span></h3>
+<div class="brief"><b>主角</b><span>比飞书更快地把文档放到对的位置</span><b>交互</b><span>多选（⇧ 和 ⌘）、拖动、⌘X/⌘V、F2 重命名、⌘⇧N 新建目录、⌘Z 撤销；原位置留一个灰色虚影；底部是暂存条，写明「N 项变更 · 预览并同步」；右侧是规则批量面板</span></div>
+
+<h3>其余新页面（打磨，按原型 v3 修正）</h3>
+<table>
+  <tr><th>页面</th><th>保留</th><th>修正</th></tr>
+  <tr><td>设计 brief</td><td>7 节骨架、来源标记、参考图和沿用两栏、右侧助手</td><td>左侧目录固定，一次只展开一节；九宫格 P1–P9 可以直接在格子里编辑；导出前先预览</td></tr>
+  <tr><td>营销战役</td><td>按阶段的节点表、门禁只提醒、常规物料三选一</td><td>「节点说明待补」改成每节点一个小灰点，不再整行写字；节点能就地勾选和改日期</td></tr>
+  <tr><td>主线需求</td><td>草稿要采纳、对照表</td><td>卡片改成紧凑表格（客群、节点、需求、痛点、待办、关联），采纳按钮放在行尾</td></tr>
+  <tr><td>用户策略</td><td>—</td><td>先放空状态，说明「结构待深入讨论」并附参考文档链接</td></tr>
+  <tr><td>留学之声</td><td>热榜、话题详情、三级视角、日报和趋势</td><td>去掉费用指标卡（移到设置）；每条加上「独立来源数 / 信源构成」；趋势用折线，不用点阵</td></tr>
+  <tr><td>设计参考</td><td>自由画布、白描边、错位网点做悬浮效果</td><td>支持直接粘贴（⌘V）和拖入图片；放进物料页做一个页签</td></tr>
+  <tr><td>项目推进 · 带教</td><td>阶段条、门禁、日志加带教</td><td>节点就地编辑；日志按 Markdown 渲染；卡点旁边有「生成追问」按钮</td></tr>
+  <tr><td>自言自语</td><td>抽屉、AI 周汇总、转为需求或待办</td><td>操作改为悬停才显示，加键盘操作（J/K 上下、S 标记、E 归档）</td></tr>
+</table>
+
+<h2>5 · 执行计划</h2>
+<table>
+  <tr><th>阶段</th><th>内容</th><th>验证</th></tr>
+  <tr><td>0 基础</td><td>16px 图标全部重画；字体和网点规则；溶解缩短为 3 帧；新的侧栏和路由；手机底部导航；公共组件（筛选栏、弹窗、抽屉、Markdown 渲染、示例数据标记）</td><td>全部现有页面在 1440 和 390 下回归截图</td></tr>
+  <tr><td>1 现有页面</td><td>首页、月度台账、方案录入、促销表、Agent、日/周报、设置</td><td>每页改前改后截图对比，最多 3 轮</td></tr>
+  <tr><td>2 营销新页</td><td>价格矩阵、物料墙与设计参考、brief、战役</td><td>同上</td></tr>
+  <tr><td>3 用户、项目、知识库</td><td>时间线、主线需求、策略占位、留学之声、项目、带教、知识库整理、自言自语、Codex 预警</td><td>同上</td></tr>
+</table>
+<ul>
+  <li><b>分支</b>：从 main 新建 <code>ui-v3</code>，在这个 worktree 里开发。预览和测试都用隔离数据目录和新端口，不碰主工作区和 5280，不 push。</li>
+  <li><b>分工</b>：所有 UI，包括页面、组件、交互和示例数据，都由我写在 <code>src/</code> 里。功能接口暂时返回 501，页面会自动显示「示例」数据；之后由 Codex 按我写的接口说明实现。我会同步更新 AGENTS.md 的分工。</li>
+  <li><b>不改什么</b>：现有的功能逻辑和数据都不改；新增依赖会先问你，目前计划不新增，Markdown 渲染用自己写的轻量解析。</li>
+</ul>
+
+<h2>6 · 已定事项</h2>
+<ol>
+  <li>信息架构 A；图标 A（16px）；价格 A 加单价曲线；时间线明细表加议程；知识库可编辑树加规则；打磨清单照做（都是推荐项）。</li>
+  <li><b>溶解动效</b>（原本没给推荐，我来定）：缩短为 3 帧，约 200ms，保留但不拖慢操作。</li>
+  <li><b>课时单价口径</b>（原本没给推荐，我来定）：主值按含赠送算（共识 Q22），同时显示付费单价。你表里「每课时单价」的写法对应付费单价。</li>
+</ol>
+
+<h2>7 · 执行结果（2026-10-16，分支 ui-v3）</h2>
+<div class="ok"><b>已完成并验收</b>：首轮改版后，你逐页提了意见，又改了 3 轮，再做了一轮全站版式统一，都已验收。没有接口的部分显示示例数据并标「示例」，接口要求写在 <code>docs/tasks/V3-接口清单.md</code>，由 Codex 实现。验证：
+<ul>
+<li><code>npm test</code> 85 项全部通过；构建通过（输出到临时目录，不碰主工作区）；</li>
+<li>18 个页面 1440 宽截图，没有页面报错（控制台只有预期中的 501，即示例数据回退）；</li>
+<li>版式测量脚本逐页量过：同一行并排的板块底边差为 0，卡片标题栏只有 48px 一种。</li>
+</ul>
+只做电脑端，只按 1440 宽验证。</div>
+<h3>验收轮次</h3>
+<ol>
+<li><b>第 1 轮 · 首页、营销、配色</b>：首页改为 Codex 重置大卡、待我处理、交付月、今日日程、用户之声词云、Agent；营销页签改为 营销战役 · 月度促销 · 价格记录 · 物料沉淀 · 设计 brief，方案录入与促销表合并为月度促销；加语义色（绿达成、红风险、蓝信息、琥珀待处理）。</li>
+<li><b>第 2 轮 · 图标、用户、Voice、项目</b>：图标换成 7×7 实心像素（C 方案）；用户时间线改为按月时间轴；主线需求并入用户策略；Voice 独立为侧栏模块；项目推进与带教重做。</li>
+<li><b>第 3 轮 · 知识库</b>：搜索、详情面板、健康检查。</li>
+<li><b>版式统一</b>：12 栏切分、并排等高、间距刻度、卡头 48px、控件 32/28px、图标视觉对齐、概况数字条统一组件、内容区全站同宽（规则见 <code>STYLE-GUIDE.md</code> 第 6 节，实现在 <code>src/styles-layout.css</code>）；营销战役顶部改为月底交付倒计时条；业务营收完成度从首页挪到业务页。</li>
+</ol>
+<h3>改前 / 改后</h3>
+<h4>首页</h4><div class="two"><figure><img src="shots/live-1440-home.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-home.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
+<h4>营销 · 月度促销（原方案 + 促销表）</h4><div class="two"><figure><img src="shots/live-1440-marketing_plans.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-marketing_plans.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
+<h4>营销 · 物料沉淀</h4><div class="two"><figure><img src="shots/live-1440-marketing_materials.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-marketing_materials.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
+<h4>Agent</h4><div class="two"><figure><img src="shots/live-1440-assistants.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-assistants.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
+<h4>日/周报</h4><div class="two"><figure><img src="shots/live-1440-reports.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-reports.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
+<h4>设置</h4><div class="two"><figure><img src="shots/live-1440-settings.png" alt=""><figcaption>改前 · 正式版 5280</figcaption></figure><figure><img src="shots/after-settings.png" alt=""><figcaption>改后 · ui-v3</figcaption></figure></div>
+<h3>新页面</h3>
+<div class="two"><figure><img src="shots/after-marketing_campaign.png" alt=""><figcaption>营销战役</figcaption></figure><figure><img src="shots/after-marketing_prices.png" alt=""><figcaption>价格记录</figcaption></figure><figure><img src="shots/after-marketing_brief.png" alt=""><figcaption>设计 brief</figcaption></figure><figure><img src="shots/after-business.png" alt=""><figcaption>业务 · 营收完成度</figcaption></figure><figure><img src="shots/after-user_timeline.png" alt=""><figcaption>用户时间线 · 按月时间轴</figcaption></figure><figure><img src="shots/after-user_timeline_country.png" alt=""><figcaption>用户时间线 · 明细表</figcaption></figure><figure><img src="shots/after-user_strategy.png" alt=""><figcaption>用户策略</figcaption></figure><figure><img src="shots/after-voice.png" alt=""><figcaption>Voice</figcaption></figure><figure><img src="shots/after-projects.png" alt=""><figcaption>项目推进</figcaption></figure><figure><img src="shots/after-projects_mentor.png" alt=""><figcaption>管培带教</figcaption></figure><figure><img src="shots/after-kb.png" alt=""><figcaption>知识库</figcaption></figure><figure><img src="shots/after-brand.png" alt=""><figcaption>品牌（占位）</figcaption></figure></div>
+<h3>还剩的问题</h3>
+<ul>
+<li><b>真实功能未接</b>：营收完成度、价格、物料（NAS）、brief、战役、时间线、用户策略、Voice、项目、带教、知识库、自言自语、Codex 预警、Agent 知识库，都还是示例数据。接口按 <code>docs/tasks/V3-接口清单.md</code> 由 Codex 实现；营收完成度要等你提供飞书多维表格。</li>
+<li><b>NAS 访问方式没有实测</b>，Codex 实现前要先汇报。</li>
+<li><b>方案录入「粘贴后自动解析」没有自动化测到</b>（模拟剪贴板粘贴受限），需要你实际粘贴一次确认。</li>
+<li><b>日/周报</b>：页面没问题，原文档内容太杂，之后再整理。</li>
+<li><b>业务页</b>：三条业务线的月度 / 年度指标卡仍是占位。</li>
+<li>价格口径里的毛利底线和课时成本还是演示值（25%、440 元），需要真实值。</li>
+<li>原型 v3 的文件（<code>docs/design/index.html</code> 等）和 <code>T10-派单草稿.md</code> 已被取代，留作记录；<code>docs/design/icons-compare.html</code> 记录了图标选型（已选 C）。</li>
+</ul>
+<h3>接下来</h3>
+<ol>
+<li>Codex 按接口清单把示例数据换成真实接口。</li>
+<li>合并回 main、切换 5280，等你另行授权。</li>
+</ol>
+</main>
+<script>
+  const A = {
+    首页: ["................",".......##.......","......#..#......",".....#....#.....","....#......#....","...#........#...","..#..........#..",".##..........##.","..#..........#..","..#...####...#..","..#...#..#...#..","..#...#..#...#..","..#...#..#...#..","..#...#..#...#..","..############..","................"],
+    营销: ["................","............#...","..........###...","........##..#...","..#####.#...#...","..#...#.#...#...","..#...#.#...#...","..#####.#...#...","...#.#..##..#...","...#.#....###...","...#.#......#...","...###..........","................","................","................","................"],
+    价格: ["................","........######..",".......#......#.","......#..##...#.",".....#...##...#.","....#.........#.","...#.........#..","..#.........#...",".#.........#....","..#.......#.....","...#.....#......","....#...#.......",".....#.#........","......#.........","................","................"],
+  };
+  const svg = (rows, px) => { let r = ""; rows.forEach((row, y) => [...row].forEach((c, x) => { if (c === "#") r += `<rect x="${x}" y="${y}" width="1" height="1"/>`; })); return `<svg width="${px}" height="${px}" viewBox="0 0 ${rows.length} ${rows.length}" shape-rendering="crispEdges" fill="#0D0E10">${r}</svg>`; };
+  document.getElementById("iconA").innerHTML = Object.entries(A).map(([k, rows]) => `<figure>${svg(rows, 16)}${svg(rows, 48)}${k}</figure>`).join("");
+</script>
+</body>
+</html>

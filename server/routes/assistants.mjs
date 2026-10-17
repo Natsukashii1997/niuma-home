@@ -1,6 +1,8 @@
 import { json, route, readJson } from "../http.mjs";
 import { listAssistants, getAssistant, saveAssistant, importAssistants, bindAssistantThread, assistantDirectory } from "../db.mjs";
 import { codex } from "../codex.mjs";
+import { composeKnowledgeInstructions } from "../assistant-knowledge.mjs";
+import { routes as knowledgeRoutes } from "./assistant-knowledge.mjs";
 
 export function routes(db, client = codex) {
   const sending = new Set();
@@ -41,6 +43,7 @@ export function routes(db, client = codex) {
     json(res, previous ? 200 : 201, saveAssistant(db, value, previous?.id));
   };
   return [
+    ...knowledgeRoutes(db),
     route("GET", "/api/assistants", (req, res) => json(res, 200, listAssistants(db))),
     route("POST", "/api/assistants", (req, res) => edit(req, res)),
     route("PATCH", "/api/assistants/:id", (req, res, { params }) => {
@@ -78,7 +81,7 @@ export function routes(db, client = codex) {
         const current = getAssistant(db, value.id);
         let threadId = current.codexThreadId;
         if (!threadId) {
-          threadId = await client.create({ cwd: assistantDirectory(db, current.id), name: current.name, instructions: current.instructions });
+          threadId = await client.create({ cwd: assistantDirectory(db, current.id), name: current.name, instructions: composeKnowledgeInstructions(db, current.id, current.instructions) });
           threadId = bindAssistantThread(db, current.id, threadId).codexThreadId;
         }
         await client.send(threadId, text.trim(), emit, controller.signal, { model: current.model, effort: current.effort });

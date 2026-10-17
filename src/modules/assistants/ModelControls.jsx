@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { apiSend } from "../../api.js";
 import { Button } from "../../ui/components.jsx";
 
+// 强度说明来自 Codex（英文），界面上用中文短说明，原文放在悬停提示里。
+const EFFORT_ZH = { minimal: "最快", low: "快速", medium: "均衡", high: "深入推理", xhigh: "最深推理" };
+
 export default function ModelControls({ assistant, busy, version, reloadAssistants, onBlocked }) {
   const [models, setModels] = useState(null), [listError, setListError] = useState("");
   const [choice, setChoice] = useState({ model: assistant.model, effort: assistant.effort });
@@ -67,7 +70,7 @@ export default function ModelControls({ assistant, busy, version, reloadAssistan
       <label className="material-field">强度<select aria-label="强度" value={choice.effort ?? ""} disabled={busy || saving || uncertain || !selected} onChange={(e) => save({ model: choice.model, effort: e.target.value || null })}>
         <option value="">{selected ? `模型默认（${selected.defaultEffort}）` : choice.model ? "等待模型列表" : "跟随默认"}</option>
         {choice.effort && !selected?.efforts.some((e) => e.value === choice.effort) && <option value={choice.effort}>{choice.effort}（已保存）</option>}
-        {selected?.efforts.map((e) => <option key={e.value} value={e.value} title={e.description}>{e.value} · {e.description}</option>)}
+        {selected?.efforts.map((e) => <option key={e.value} value={e.value} title={e.description}>{EFFORT_ZH[e.value] ? `${e.value} · ${EFFORT_ZH[e.value]}` : e.value}</option>)}
       </select></label>
       <span className="muted small" role="status">{runtimeError ? `生效值读取失败：${runtimeError}` : runtime === undefined ? "正在读取生效值…" : runtime === null ? "跟随 Codex 默认" : `当前生效：${runtime.model} · ${runtime.effort ?? "默认"}`}</span>
       {runtimeError && <Button disabled={busy} onClick={() => setRuntimeRetry((n) => n + 1)}>重读生效值</Button>}

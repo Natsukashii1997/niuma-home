@@ -1,0 +1,241 @@
+[
+  {
+    "path": "/api/v3/status",
+    "status": 200,
+    "ms": 13,
+    "origin": null,
+    "keys": [
+      "checkedAt",
+      "sources"
+    ],
+    "sources": {
+      "daily": {
+        "state": "never"
+      },
+      "weekly": {
+        "state": "never"
+      },
+      "timeline": {
+        "state": "ok",
+        "at": "2026-10-16 20:46"
+      },
+      "kb": {
+        "state": "never"
+      },
+      "nas": {
+        "state": "off"
+      },
+      "voice": {
+        "state": "off"
+      }
+    }
+  },
+  {
+    "path": "/api/v3/projects",
+    "status": 200,
+    "ms": 1663,
+    "origin": null,
+    "count": 1
+  },
+  {
+    "path": "/api/v3/mentor",
+    "status": 200,
+    "ms": 2963,
+    "origin": null,
+    "count": 2
+  },
+  {
+    "path": "/api/v3/campaigns/current",
+    "status": 200,
+    "ms": 577,
+    "origin": null,
+    "keys": [
+      "id",
+      "name",
+      "start",
+      "end",
+      "months",
+      "desc",
+      "phases",
+      "routine"
+    ]
+  },
+  {
+    "path": "/api/v3/price/skus",
+    "status": 501,
+    "ms": 560,
+    "origin": "demo",
+    "count": 2
+  },
+  {
+    "path": "/api/v3/price/schemes?sku=uni-lite",
+    "status": 501,
+    "ms": 2,
+    "origin": "demo",
+    "keys": [
+      "sku",
+      "floorMargin",
+      "costPerHour",
+      "schemes",
+      "origin",
+      "task"
+    ]
+  },
+  {
+    "path": "/api/v3/refs",
+    "status": 200,
+    "ms": 1,
+    "origin": null,
+    "keys": [
+      "zones",
+      "items"
+    ]
+  },
+  {
+    "path": "/api/v3/briefs/2026-11",
+    "status": 200,
+    "ms": 3,
+    "origin": null,
+    "keys": [
+      "month",
+      "title",
+      "version",
+      "editedAt",
+      "background",
+      "audience",
+      "timeline",
+      "items",
+      "specs",
+      "owners",
+      "status"
+    ]
+  },
+  {
+    "path": "/api/v3/selftalk",
+    "status": 200,
+    "ms": 2048,
+    "origin": null,
+    "keys": [
+      "pulledAt",
+      "digest",
+      "items"
+    ],
+    "items": 64,
+    "digestGenerated": false
+  },
+  {
+    "path": "/api/v3/home/todo",
+    "status": 200,
+    "ms": 1867,
+    "origin": null,
+    "count": 2
+  },
+  {
+    "path": "/api/v3/months/2026-11",
+    "status": 200,
+    "ms": 2,
+    "origin": null,
+    "keys": [
+      "month",
+      "campaign",
+      "steps"
+    ],
+    "steps": [
+      {
+        "key": "needs",
+        "label": "主线需求",
+        "state": "todo",
+        "meta": "12 条 · 0 条已采纳",
+        "href": "#/user/strategy"
+      },
+      {
+        "key": "prices",
+        "label": "价格方案",
+        "state": "todo",
+        "meta": "0 套已存有效方案 · 成本/毛利仍为演示口径",
+        "href": "#/marketing/prices"
+      },
+      {
+        "key": "materials",
+        "label": "物料交付",
+        "state": "pending",
+        "meta": "",
+        "note": "NAS 尚未接入",
+        "href": "#/marketing/materials"
+      },
+      {
+        "key": "brief",
+        "label": "设计 brief",
+        "state": "todo",
+        "meta": "尚未保存",
+        "href": "#/marketing/brief"
+      },
+      {
+        "key": "campaign",
+        "label": "营销战役",
+        "state": "todo",
+        "meta": "该月尚未创建战役",
+        "href": "#/marketing/campaign"
+      }
+    ]
+  },
+  {
+    "path": "/api/reports",
+    "status": 200,
+    "ms": 5494,
+    "origin": null,
+    "count": 150
+  },
+  {
+    "path": "/api/v3/kb/tree",
+    "status": 200,
+    "ms": 22954,
+    "origin": null,
+    "keys": [
+      "space",
+      "readAt",
+      "tree",
+      "docs",
+      "rules",
+      "scopeNote",
+      "limitations"
+    ],
+    "docs": 76,
+    "sourceError": null,
+    "errors": 4
+  },
+  {
+    "path": "/api/v3/status",
+    "status": 200,
+    "ms": 2,
+    "origin": null,
+    "keys": [
+      "checkedAt",
+      "sources"
+    ],
+    "sources": {
+      "daily": {
+        "state": "ok",
+        "at": "2026-10-16 20:48"
+      },
+      "weekly": {
+        "state": "ok",
+        "at": "2026-10-16 20:48"
+      },
+      "timeline": {
+        "state": "ok",
+        "at": "2026-10-16 20:48"
+      },
+      "kb": {
+        "state": "ok",
+        "at": "2026-10-16 20:48"
+      },
+      "nas": {
+        "state": "off"
+      },
+      "voice": {
+        "state": "off"
+      }
+    }
+  }
+]

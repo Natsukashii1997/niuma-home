@@ -1,0 +1,53 @@
+# 第 1 批 · 2026-10-17
+$ WORKDESK_DATA_DIR=$(mktemp -d) npm test
+ℹ tests 237
+ℹ pass 237
+ℹ fail 0
+$ npx vite build --outDir "$(mktemp -d)"
+✓ built（通过）
+$ git diff --check
+通过
+
+# 第 2 批 · 2026-10-17
+$ WORKDESK_DATA_DIR=$(mktemp -d) npm test
+ℹ tests 242
+ℹ pass 242
+ℹ fail 0
+$ npx vite build --outDir "$(mktemp -d)"
+✓ built（通过）
+$ git diff --check
+通过
+浏览器：两批合并在干净副本上重跑，25/25 通过（交互验证.json）
+
+# 第 3 批 · 2026-10-17
+$ WORKDESK_DATA_DIR=$(mktemp -d) npm test
+ℹ tests 244
+ℹ pass 244
+ℹ fail 0
+$ npx vite build --outDir "$(mktemp -d)"
+✓ built（通过）
+$ git diff --check
+通过
+浏览器：三批合并在干净副本上重跑，31/31 通过（交互验证.json）
+
+# 第 3 批 · 数码世界导入 · 2026-10-17
+$ WORKDESK_DATA_DIR=$(mktemp -d) npm test
+ℹ tests 246
+ℹ pass 246
+ℹ fail 0
+$ npx vite build --outDir "$(mktemp -d)"
+✓ built（通过）
+$ git diff --check
+通过
+浏览器：全部场景在干净副本上重跑，37/37 通过（交互验证.json）
+
+# 默认导入「设计参考」分组 · 2026-10-17（最终）
+$ WORKDESK_DATA_DIR=$(mktemp -d) npm test
+ℹ tests 246
+ℹ pass 246
+ℹ fail 0
+$ npx vite build --outDir "$(mktemp -d)"
+✓ built（通过）
+$ git diff --check
+通过
+浏览器：全新副本上完整重跑，39/39 通过（交互验证.json）

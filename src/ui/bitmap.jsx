@@ -1,6 +1,7 @@
 // 位图风基础件。规范见 docs/STYLE-GUIDE.md「位图风」：动效一律按帧跳变（约 15 帧/秒），不用缓动、弹簧、模糊；
 // 像素只用于数字、图标、点阵图、抖动网点、1-bit 头像和方块光标。系统开启「减少动态效果」时直接显示终态。
 import { useEffect, useRef, useState } from "react";
+import { ICONS7 } from "./icons7.js";
 
 export const FRAME = 1000 / 15;
 
@@ -43,6 +44,7 @@ export function installBitmap() {
   const root = document.documentElement.style;
   [2, 4, 6, 8].forEach((t, i) => root.setProperty(`--dither-${i + 1}`, ditherTile(t, "#C9CCD3")));
   [4, 8, 12, 16].forEach((t, i) => root.setProperty(`--dither-ink-${i + 1}`, ditherTile(t, "#0D0E10")));
+  [4, 8].forEach((t, i) => root.setProperty(`--dither-signal-${i + 1}`, ditherTile(t, "#FF4F1F")));
 
   const running = new WeakMap();
   const step = (el, target) => {
@@ -231,39 +233,15 @@ export function StepProgress({ progress = null, done = false, error = "", label 
   );
 }
 
-/* ---------- 7×7 像素图标 ---------- */
+/* ---------- 7×7 实心像素图标（v2.2） ---------- */
 
-const ICONS = {
-  upload: ["...#...", "..###..", ".#.#.#.", "...#...", "#..#..#", "#.....#", "#######"],
-  external: ["...####", ".....##", "....#.#", "#..#..#", "#.#....", "#......", "#####.."],
-  home: ["...#...", "..###..", ".#####.", "#######", ".#...#.", ".#.#.#.", ".#.#.#."],
-  marketing: [".....#.", "...###.", "####.#.", "#..#.#.", "####.#.", ".#.###.", ".#...#."],
-  brand: ["...#...", "...#...", "..###..", "#######", "..###..", "...#...", "...#..."],
-  business: ["......#", "....#.#", "....#.#", "..#.#.#", "..#.#.#", "#.#.#.#", "#######"],
-  agent: ["...#...", ".#####.", "#.....#", "#.#.#.#", "#.....#", ".#####.", ".#...#."],
-  reports: ["#####..", "#...##.", "#.....#", "#.###.#", "#.....#", "#.###.#", "#######"],
-  settings: ["..#.#..", ".#####.", "##...##", ".#...#.", "##...##", ".#####.", "..#.#.."],
-  calendar: [".#...#.", "#######", "#.....#", "#.#.#.#", "#.....#", "#.#.#.#", "#######"],
-  plus: ["...#...", "...#...", "...#...", "#######", "...#...", "...#...", "...#..."],
-  close: ["#.....#", ".#...#.", "..#.#..", "...#...", "..#.#..", ".#...#.", "#.....#"],
-  check: [".......", "......#", ".....#.", "#...#..", ".#.#...", "..#....", "......."],
-  left: ["...#...", "..#....", ".#.....", "#######", ".#.....", "..#....", "...#..."],
-  right: ["...#...", "....#..", ".....#.", "#######", ".....#.", "....#..", "...#..."],
-  down: [".......", "#.....#", ".#...#.", "..#.#..", "...#...", ".......", "......."],
-  refresh: [".####..", "#....#.", "#......", "#...###", "#....#.", "#....#.", ".####.."],
-  copy: ["####...", "#..#...", "#.####.", "#.#..#.", "###..#.", "..#..#.", "..####."],
-  send: ["#......", "##.....", "#.##...", "#...##.", "#.##...", "##.....", "#......"],
-  download: ["...#...", "...#...", "...#...", "#.###.#", "#..#..#", "#.....#", "#######"],
-  image: ["#######", "#.....#", "#.##..#", "#.##..#", "#....##", "#.#####", "#######"],
-  alert: ["...#...", "..#.#..", "..#.#..", ".#.#.#.", ".#...#.", "#..#..#", "#######"],
-  search: [".###...", "#...#..", "#...#..", "#...#..", ".###...", "....##.", ".....##"],
-};
-
+// 图标稿在 ./icons7.js。只按 14px 或 28px 渲染（每格 2 / 4 个屏幕像素），避免缩放后发虚；size > 20 时用大号。
 export function PixelIcon({ name, size = 14, className = "" }) {
-  const rows = ICONS[name];
+  const rows = ICONS7[name];
   if (!rows) return null;
+  const px = size > 20 ? 28 : 14;
   return (
-    <svg className={`pixel-icon ${className}`} width={size} height={size} viewBox="0 0 7 7" shapeRendering="crispEdges" fill="currentColor" aria-hidden="true">
+    <svg className={`pixel-icon ${className}`} width={px} height={px} viewBox="0 0 7 7" shapeRendering="crispEdges" fill="currentColor" aria-hidden="true">
       {rows.flatMap((row, y) => [...row].map((c, x) => (c === "#" ? <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" /> : null)))}
     </svg>
   );
@@ -272,6 +250,19 @@ export function PixelIcon({ name, size = 14, className = "" }) {
 /* ---------- 1-bit 头像 ---------- */
 
 // 由名称生成左右对称的 5×5 黑白像素头像，外围留 1 格边。
+// 品牌标「牛马之家 · 低电量牛」：16×16，长了牛角和四条腿的电池，只剩一格橙色的电。浏览器标签页图标 public/favicon.svg 用同一张图。
+const BRAND_WHITE = "M2 2h1v1h-1zM13 2h1v1h-1zM2 3h2v1h-2zM12 3h2v1h-2zM3 4h2v1h-2zM11 4h2v1h-2zM2 5h12v1h-12zM2 6h1v1h-1zM13 6h1v1h-1zM2 7h1v1h-1zM13 7h2v1h-2zM2 8h1v1h-1zM13 8h2v1h-2zM2 9h1v1h-1zM13 9h2v1h-2zM2 10h1v1h-1zM13 10h1v1h-1zM2 11h12v1h-12zM3 13h1v1h-1zM6 13h1v1h-1zM9 13h1v1h-1zM12 13h1v1h-1zM3 14h1v1h-1zM6 14h1v1h-1zM9 14h1v1h-1zM12 14h1v1h-1z";
+const BRAND_ORANGE = "M4 7h2v1h-2zM4 8h2v1h-2zM4 9h2v1h-2z";
+export function BrandMark({ size = 28, className = "" }) {
+  return (
+    <svg className={`brand-mark ${className}`} width={size} height={size} viewBox="0 0 16 16" shapeRendering="crispEdges" aria-hidden="true">
+      <rect width="16" height="16" fill="var(--text)" />
+      <path d={BRAND_WHITE} fill="var(--panel)" />
+      <path d={BRAND_ORANGE} fill="var(--signal)" />
+    </svg>
+  );
+}
+
 export function BitAvatar({ seed, size = 28 }) {
   let h = 2166136261;
   for (const ch of String(seed)) h = Math.imul(h ^ ch.codePointAt(0), 16777619) >>> 0;
@@ -294,7 +285,7 @@ export function BitAvatar({ seed, size = 28 }) {
 
 /* ---------- ③ 像素溶解转场 ---------- */
 
-// 在 area 可见范围上覆盖 16px 方格：前 3 帧按随机顺序盖住旧页面，调用 swap 换成新页面，后 3 帧按另一组随机顺序揭开。约 400ms。
+// 在 area 可见范围上覆盖 16px 方格，随机顺序盖住旧页面后换页再揭开，共 3 帧，约 200ms。
 export function dissolve(canvas, area, swap) {
   if (prefersReducedMotion()) { swap(); return () => {}; }
   const box = area.getBoundingClientRect();
@@ -314,17 +305,17 @@ export function dissolve(canvas, area, swap) {
     for (let i = list.length - 1; i > 0; i -= 1) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
     return list;
   };
-  const cover = shuffled(), reveal = shuffled(), third = Math.ceil(count / 3);
+  const cover = shuffled(), half = Math.ceil(count / 2);
   const cell = (i, fill) => {
     const x = (i % cols) * size, y = Math.floor(i / cols) * size;
     if (fill) ctx.fillRect(x, y, size, size); else ctx.clearRect(x, y, size, size);
   };
+  // v3：3 帧（约 200ms）。第 1 帧盖住一半，第 2 帧盖满并换页，第 3 帧整体揭开。
   const stop = frames((frame) => {
-    if (prefersReducedMotion()) { if (frame <= 3) swap(); canvas.style.display = "none"; return false; }
-    if (frame <= 3) cover.slice((frame - 1) * third, frame * third).forEach((i) => cell(i, true));
-    if (frame === 3) swap();
-    if (frame >= 4 && frame <= 6) reveal.slice((frame - 4) * third, (frame - 3) * third).forEach((i) => cell(i, false));
-    if (frame === 6) { canvas.style.display = "none"; return false; }
+    if (prefersReducedMotion()) { if (frame <= 2) swap(); canvas.style.display = "none"; return false; }
+    if (frame === 1) cover.slice(0, half).forEach((i) => cell(i, true));
+    if (frame === 2) { cover.slice(half).forEach((i) => cell(i, true)); swap(); }
+    if (frame === 3) { canvas.style.display = "none"; return false; }
   });
   return () => { stop(); canvas.style.display = "none"; };
 }

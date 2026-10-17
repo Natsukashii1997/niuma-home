@@ -6,12 +6,13 @@ import { json, match } from "./http.mjs";
 import * as marketing from "./routes/marketing.mjs";
 import * as assistants from "./routes/assistants.mjs";
 import * as workspace from "./routes/workspace.mjs";
+import * as v3 from "./routes/v3.mjs";
 
 const port = Number(process.env.PORT || 5280);
 const dist = path.resolve("dist");
-const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml" };
+const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json" };
 const db = openDb();
-const routes = [marketing, assistants, workspace].flatMap((m) => m.routes(db));
+const routes = [marketing, assistants, workspace, v3].flatMap((m) => m.routes(db));
 
 // 带扩展名的路径按 dist 内文件返回，其余一律返回 index.html（前端路由）。
 async function serveStatic(res, urlPath) {

@@ -1,0 +1,63 @@
+{
+  "checked": [
+    "daily",
+    "weekly",
+    "timeline",
+    "kb"
+  ],
+  "preserved": true,
+  "before": {
+    "checkedAt": "2026-10-16 20:48",
+    "sources": {
+      "daily": {
+        "state": "ok",
+        "at": "2026-10-16 20:48"
+      },
+      "weekly": {
+        "state": "ok",
+        "at": "2026-10-16 20:48"
+      },
+      "timeline": {
+        "state": "ok",
+        "at": "2026-10-16 20:48"
+      },
+      "kb": {
+        "state": "ok",
+        "at": "2026-10-16 20:48"
+      },
+      "nas": {
+        "state": "off"
+      },
+      "voice": {
+        "state": "off"
+      }
+    }
+  },
+  "after": {
+    "checkedAt": "2026-10-16 21:04",
+    "sources": {
+      "daily": {
+        "state": "ok",
+        "at": "2026-10-16 20:48"
+      },
+      "weekly": {
+        "state": "ok",
+        "at": "2026-10-16 20:48"
+      },
+      "timeline": {
+        "state": "ok",
+        "at": "2026-10-16 20:48"
+      },
+      "kb": {
+        "state": "ok",
+        "at": "2026-10-16 20:48"
+      },
+      "nas": {
+        "state": "off"
+      },
+      "voice": {
+        "state": "never"
+      }
+    }
+  }
+}

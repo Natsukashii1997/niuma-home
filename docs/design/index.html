@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>工作台 · 位图风原型 v3</title>
+<link rel="stylesheet" href="proto.css?v=8">
+</head>
+<body>
+<div class="app">
+  <header class="chrome">
+    <span class="chrome-dots"><i></i><i></i><i></i></span>
+    <span class="chrome-path" id="chrome-path">work-desk</span>
+    <span class="proto-badge">PROTOTYPE · 假数据</span>
+    <button class="chrome-btn" id="selftalk-toggle" type="button" aria-controls="selftalk" aria-expanded="false">
+      <span data-icon="chat"></span>自言自语<b class="chrome-count num">3</b>
+    </button>
+    <span class="chrome-time num" id="chrome-time">--:--</span>
+  </header>
+  <div class="layout">
+    <nav class="sidebar" id="sidebar" aria-label="模块"></nav>
+    <main class="main" id="main"></main>
+    <aside class="selftalk" id="selftalk" aria-label="自言自语" hidden></aside>
+  </div>
+</div>
+<canvas class="dissolve-canvas" id="dissolve"></canvas>
+<dialog class="modal" id="modal"></dialog>
+<script src="core.js?v=8"></script>
+<script src="data.js?v=8"></script>
+<script src="pages-home.js?v=8"></script>
+<script src="pages-month.js?v=8"></script>
+<script src="pages-insight.js?v=8"></script>
+<script src="pages-more.js?v=8"></script>
+<script src="app.js?v=8"></script>
+</body>
+</html>

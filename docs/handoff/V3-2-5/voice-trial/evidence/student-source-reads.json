@@ -1,0 +1,24 @@
+[
+  {
+    "source": "reddit-studyabroad",
+    "url": "https://www.reddit.com/r/studyAbroad/new/.rss",
+    "http": "000 ",
+    "error": "curl: (35) Recv failure: Connection reset by peer\n",
+    "checkedAt": "2026-10-16T13:01:02.869131+00:00"
+  },
+  {
+    "source": "reddit-uniuk",
+    "url": "https://www.reddit.com/r/UniUK/new/.rss",
+    "http": "000 ",
+    "error": "curl: (35) Recv failure: Connection reset by peer\n",
+    "checkedAt": "2026-10-16T13:01:02.869906+00:00"
+  },
+  {
+    "source": "academia-international",
+    "url": "https://academia.stackexchange.com/feeds/tag/international-students",
+    "http": "403 text/html; charset=UTF-8",
+    "error": "",
+    "checkedAt": "2026-10-16T13:01:03.640669+00:00",
+    "parse": "not XML"
+  }
+]

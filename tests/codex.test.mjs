@@ -116,8 +116,10 @@ test("进程按需复用；新会话组装说明与硬权限，不覆盖默认�
   assert.equal(params.cwd, cwd); assert.equal(params.sandbox, "read-only"); assert.equal(params.approvalPolicy, "never");
   assert.deepEqual(params.environments, []); assert.deepEqual(params.dynamicTools, []);
   assert.deepEqual(params.config.mcp_servers, { 'server.with.dot': { enabled: false } });
+  assert.equal(params.config.web_search, 'disabled');
   assert.match(params.developerInstructions, /回复以验收开头/); assert.equal(params.model, undefined);
   assert.ok(launchArgs.includes("features.shell_tool=false")); assert.ok(launchArgs.includes("features.hooks=false"));
+  assert.ok(launchArgs.includes('web_search="disabled"'));
   await client.readThread("thread-1"); assert.equal(children.length, 1);
 });
 

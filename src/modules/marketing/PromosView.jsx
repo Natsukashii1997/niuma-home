@@ -2,16 +2,19 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import { createPortal } from "react-dom";
 import { PixelIcon } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
+import { href } from "../../router.js";
 import { Button, Empty, FilterBar, Loadable, Segmented, Select } from "../../ui/components.jsx";
 import { PROMO_FIELDS } from "../../constants.js";
 import { buildPromoView, normalizePromoView, readPromoView, writePromoView } from "./promo-view.js";
 
 const GROUPS = [["sku", "按 SKU"], ["line", "按业务线"], ["month", "按月份"]];
 const LONG = new Set(["newDeal", "renewal"]);
+// 定宽列；新签、续费两列不写宽度，平分剩余（二次评审 P2-5）
+const COL_W = { month: 88, line: 88, sku: 120, trial: 88, price: 168 };
 
 export default function PromosView() {
   const state = useApi("/api/promos");
-  return <Loadable state={state}>{(rows) => <PromoTable rows={rows} />}</Loadable>;
+  return <Loadable state={state} name="方案汇总">{(rows) => <PromoTable rows={rows} />}</Loadable>;
 }
 
 function PromoTable({ rows }) {
@@ -22,6 +25,15 @@ function PromoTable({ rows }) {
   useEffect(() => { writePromoView(view); }, [view]);
   const set = (key) => (value) => setView((old) => normalizePromoView({ ...old, filter: { ...old.filter, [key]: value } }, rows));
   const uniq = (key, source = rows) => [...new Set(source.map((row) => row[key]))];
+  // v3：按哪个字段分组，就隐藏哪一列（按 SKU 分组时业务线和 SKU 都在组名里）。
+  const hidden = new Set(group === "month" ? ["month"] : group === "line" ? ["line"] : ["line", "sku"]);
+  const BASE = [["month", "月份"], ["line", "业务线"], ["sku", "SKU"]].filter(([k]) => !hidden.has(k));
+  const [copied, setCopied] = useState("");
+  async function copyRows(key, items) {
+    const text = items.map((r) => `${r.month} ${r.line} · ${r.sku}\n${PROMO_FIELDS.map(([f, l]) => `${l}：${r[f]}`).join("\n")}`).join("\n\n");
+    try { await navigator.clipboard.writeText(text); setCopied(key); setTimeout(() => setCopied(""), 1800); }
+    catch { setCopied("error"); }
+  }
   const allExpanded = groups.every((item) => !collapsed.has(item.key));
   const allCollapsed = groups.every((item) => collapsed.has(item.key));
   function toggle(key) {
@@ -40,15 +52,19 @@ function PromoTable({ rows }) {
         <Select label="业务线" value={filter.line} options={uniq("line")} onChange={set("line")} />
         <Select label="SKU" value={filter.sku} options={uniq("sku", rows.filter((row) => !filter.line || row.line === filter.line))} onChange={set("sku")} />
         <span className="legend"><i className="changed-dot" /> 与上一个有数据的月份不同</span>
+        <span className="spacer" />
+        <Button disabled={!groups.length || allExpanded} onClick={() => setCollapsed(new Set())}>全部展开</Button>
+        <Button disabled={!groups.length || allCollapsed} onClick={() => setCollapsed(new Set(groups.map((item) => item.key)))}>全部折叠</Button>
       </FilterBar>
       {!groups.length ? <Empty>没有符合条件的记录</Empty> : (
         <div className="table-wrap promo-table-wrap" role="region" aria-label="促销表" tabIndex={0}>
           <table className="grid promo-table">
-            <thead><tr><th>月份</th><th>业务线</th><th>SKU</th>{PROMO_FIELDS.map(([, label]) => <th key={label}>{label}</th>)}</tr></thead>
+            <colgroup>{BASE.map(([k]) => <col key={k} style={{ width: COL_W[k] }} />)}{PROMO_FIELDS.map(([f]) => <col key={f} style={{ width: COL_W[f] }} />)}<col style={{ width: 40 }} /></colgroup>
+            <thead><tr>{BASE.map(([k, l]) => <th key={k}>{l}</th>)}{PROMO_FIELDS.map(([, label]) => <th key={label}>{label}</th>)}<th aria-label="操作" /></tr></thead>
             {groups.map(({ key, name, rows: items, latestChange }) => (
               <tbody key={key}>
                 <tr className="group-row">
-                  <td colSpan={3 + PROMO_FIELDS.length} onClick={() => toggle(key)}>
+                  <td colSpan={BASE.length + PROMO_FIELDS.length + 1} onClick={() => toggle(key)}>
                     <div className="promo-group">
                       <button type="button" className="promo-group-toggle" data-dither="" aria-expanded={!collapsed.has(key)} aria-label={`${collapsed.has(key) ? "展开" : "折叠"} ${name}`}>
                         {collapsed.has(key) ? <PixelIcon name="right" size={16} /> : <PixelIcon name="down" size={16} />}
@@ -56,16 +72,17 @@ function PromoTable({ rows }) {
                         {group === "sku" && <span className="muted small">{latestChange ? `最近变化：${latestChange}` : "暂无变化记录"}</span>}
                       </button>
                       <div className="row" onClick={(event) => event.stopPropagation()}>
-                        <Button disabled={allExpanded} onClick={() => setCollapsed(new Set())}>全部展开</Button>
-                        <Button disabled={allCollapsed} onClick={() => setCollapsed(new Set(groups.map((item) => item.key)))}>全部折叠</Button>
+                        {group === "sku" && <a className="link link-btn" href={href("marketing", "sku", items[0].line, items[0].sku)}>SKU 档案<PixelIcon name="right" /></a>}
+                        <Button onClick={() => copyRows(key, items)}><PixelIcon name="copy" />{copied === key ? "已复制本组" : "复制本组"}</Button>
                       </div>
                     </div>
                   </td>
                 </tr>
                 {!collapsed.has(key) && items.map((row) => (
                   <tr key={JSON.stringify([row.month, row.line, row.sku])}>
-                    <td className="nowrap">{row.month}</td><td className="nowrap">{row.line}</td><td className="nowrap">{row.sku}</td>
+                    {BASE.map(([k]) => <td key={k} className={k === "sku" ? "nowrap promo-sku" : "nowrap"}>{k === "sku" ? <a className="sku-link" href={href("marketing", "sku", row.line, row.sku)} title="打开 SKU 档案">{row.sku}</a> : row[k]}</td>)}
                     {PROMO_FIELDS.map(([field]) => <PromoCell key={field} value={row[field]} field={field} previous={previous.get(row)} />)}
+                    <td className="promo-actions"><button type="button" className="icon-btn" title="复制这一行" onClick={() => copyRows(JSON.stringify([row.month, row.line, row.sku]), [row])}><PixelIcon name={copied === JSON.stringify([row.month, row.line, row.sku]) ? "check" : "copy"} /></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -79,6 +96,8 @@ function PromoTable({ rows }) {
 
 function PromoCell({ value, field, previous }) {
   const [anchor, setAnchor] = useState(null);
+  const [open, setOpen] = useState(false);
+  const long = LONG.has(field) && String(value).length > 40;
   const timer = useRef(null);
   const id = useId();
   const changed = previous && previous[field] !== value;
@@ -94,7 +113,8 @@ function PromoCell({ value, field, previous }) {
     <td className={`${changed ? "changed promo-changed" : ""} ${LONG.has(field) ? "long" : ""}`}
       tabIndex={changed ? 0 : undefined} aria-describedby={anchor ? id : undefined}
       onMouseEnter={show} onMouseLeave={closeSoon} onFocus={show} onBlur={closeSoon}>
-      {value}
+      {long ? <button type="button" className={`promo-long${open ? " is-open" : ""}`} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <span className={open ? undefined : "clamp-2"}>{value}</span><span className="promo-more">{open ? "收起" : "展开"}</span></button> : value}
       {anchor && createPortal(<PreviousValue id={id} anchor={anchor} text={`${previous.month}：${previous[field]}`}
         onClose={() => setAnchor(null)} onEnter={cancelClose} onLeave={closeSoon} />, document.body)}
     </td>

@@ -1,0 +1,13 @@
+{
+  "source": "UKVI",
+  "sourceType": "policy-background",
+  "url": "https://www.gov.uk/government/organisations/uk-visas-and-immigration.atom",
+  "checkedAt": "2026-10-16T13:05:46.310Z",
+  "officialFetcher": "packages/backend/src/sources/rss.ts#fetchRss",
+  "ok": true,
+  "candidates": 20,
+  "dated": 20,
+  "authorsPresent": 0,
+  "notModified": false,
+  "responseUrl": "https://www.gov.uk/government/organisations/uk-visas-and-immigration.atom"
+}

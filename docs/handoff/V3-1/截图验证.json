@@ -1,0 +1,173 @@
+[
+  {
+    "page": "首页",
+    "url": "http://127.0.0.1:5296/#/home",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "horizontalOverflow": false,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/home/todo",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/months/2026-11",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/voice",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      }
+    ],
+    "batchAreaSampleBadge": false,
+    "file": "首页.png",
+    "codexSampleBadge": false
+  },
+  {
+    "page": "用户时间线-按月",
+    "url": "http://127.0.0.1:5296/#/user/timeline/month",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "horizontalOverflow": false,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      }
+    ],
+    "batchAreaSampleBadge": false,
+    "file": "用户时间线-按月.png",
+    "sourceShown": true
+  },
+  {
+    "page": "用户时间线-明细表",
+    "url": "http://127.0.0.1:5296/#/user/timeline/country",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "horizontalOverflow": false,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      }
+    ],
+    "batchAreaSampleBadge": false,
+    "file": "用户时间线-明细表.png",
+    "sourceShown": true
+  },
+  {
+    "page": "用户时间线-异常",
+    "url": "http://127.0.0.1:5296/#/user/timeline/anomalies",
+    "viewportWidth": 1440,
+    "documentWidth": 5172,
+    "horizontalOverflow": true,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/timeline",
+        "status": 200
+      }
+    ],
+    "batchAreaSampleBadge": false,
+    "file": "用户时间线-异常.png",
+    "sourceShown": true
+  },
+  {
+    "page": "用户策略",
+    "url": "http://127.0.0.1:5296/#/user/strategy",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "horizontalOverflow": false,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/needs?month=2026-11",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      }
+    ],
+    "batchAreaSampleBadge": false,
+    "file": "用户策略.png"
+  },
+  {
+    "page": "营销战役-倒计时",
+    "url": "http://127.0.0.1:5296/#/marketing/campaign",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "horizontalOverflow": false,
+    "fullPage": true,
+    "errors": [],
+    "api": [
+      {
+        "path": "/api/v3/selftalk",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/campaigns/current",
+        "status": 501
+      },
+      {
+        "path": "/api/v3/codex-reset",
+        "status": 200
+      },
+      {
+        "path": "/api/v3/months/2026-11",
+        "status": 200
+      }
+    ],
+    "batchAreaSampleBadge": false,
+    "file": "营销战役-倒计时.png",
+    "bodySampleExpected": true
+  }
+]

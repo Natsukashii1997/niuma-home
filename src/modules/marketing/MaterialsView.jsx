@@ -8,7 +8,7 @@ import MaterialDetail from "./MaterialDetail.jsx";
 
 export default function MaterialsView() {
   const state = useApi("/api/materials");
-  return <Loadable state={state}>{(items) => <MaterialWorkspace initialItems={items} />}</Loadable>;
+  return <Loadable state={state} name="本地物料" big>{(items) => <MaterialWorkspace initialItems={items} />}</Loadable>;
 }
 
 function MaterialWorkspace({ initialItems }) {

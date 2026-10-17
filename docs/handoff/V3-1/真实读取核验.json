@@ -1,0 +1,138 @@
+{
+  "preview": {
+    "web": "http://127.0.0.1:5296",
+    "api": "http://127.0.0.1:5295",
+    "dataDir": "/tmp/workdesk-ui-v3.6nAf"
+  },
+  "timeline": {
+    "status": 200,
+    "source": "飞书《2026海外大学时间线》· 地区明细表",
+    "syncedAt": "2026-10-16 15:20",
+    "agenda": 975,
+    "flagged": 137,
+    "anomalies": 330,
+    "allAgendaHaveFullDatesAndSource": true,
+    "uqFinal": [
+      {
+        "from": "2026-11-07",
+        "to": "2026-11-21",
+        "c": "澳洲",
+        "school": "昆士兰大学 UQ",
+        "type": "Final",
+        "src": "澳大利亚 新西兰!T7"
+      }
+    ],
+    "sameSemesterConflicts": [
+      {
+        "from": "2026-05-04",
+        "to": "2026-05-04",
+        "c": "新加坡",
+        "school": "新加坡理工大学 SIT",
+        "type": "开学",
+        "src": "香港 澳门 新加坡 马来西亚!I19",
+        "flag": "conflict"
+      },
+      {
+        "from": "2026-08-31",
+        "to": "2026-08-31",
+        "c": "新加坡",
+        "school": "新加坡理工大学 SIT",
+        "type": "开学",
+        "src": "香港 澳门 新加坡 马来西亚!Q19",
+        "flag": "conflict"
+      }
+    ],
+    "schools": 77
+  },
+  "needs": {
+    "month": "2026-11",
+    "count": 12,
+    "adopted": 0
+  },
+  "month": {
+    "month": "2026-11",
+    "campaign": null,
+    "steps": [
+      {
+        "key": "needs",
+        "label": "主线需求",
+        "state": "todo",
+        "meta": "12 条 · 0 条已采纳",
+        "href": "#/user/strategy"
+      },
+      {
+        "key": "prices",
+        "label": "价格方案",
+        "state": "todo",
+        "meta": "未接入 · 第 3 批",
+        "href": "#/marketing/prices"
+      },
+      {
+        "key": "materials",
+        "label": "物料交付",
+        "state": "todo",
+        "meta": "NAS 未接入 · 第 4 批",
+        "href": "#/marketing/materials"
+      },
+      {
+        "key": "brief",
+        "label": "设计 brief",
+        "state": "todo",
+        "meta": "未接入 · 第 3 批",
+        "href": "#/marketing/brief"
+      },
+      {
+        "key": "campaign",
+        "label": "营销战役",
+        "state": "todo",
+        "meta": "未接入 · 第 3 批",
+        "href": "#/marketing/campaign"
+      }
+    ]
+  },
+  "codex": {
+    "stage": "确认",
+    "next": null,
+    "label": "下次重置时间未公布",
+    "quote": "Done and dusted",
+    "quoteZh": "搞定收工",
+    "author": "thsottiaux",
+    "posted": "2026-10-15 14:28",
+    "checked": "2026-10-16 12:30",
+    "isNew": true,
+    "nextCheck": "未安排定时检查（本批仅按需读取）",
+    "pushed": false,
+    "history": [
+      {
+        "stage": "确认",
+        "time": "2026-10-15 12:55",
+        "text": "The reports of my reset button being lost are greatly exaggerated\n\nDay 10/ Reset"
+      },
+      {
+        "stage": "确认",
+        "time": "2026-10-13 13:06",
+        "text": "What would you like with your side of reset? It's done."
+      },
+      {
+        "stage": "预告",
+        "time": "2026-10-13 09:03",
+        "text": "Global reset landing by EOD PST time. Enjoy"
+      },
+      {
+        "stage": "预告",
+        "time": "2026-10-13 09:03",
+        "text": "Day 8/ Reset"
+      },
+      {
+        "stage": "确认",
+        "time": "2026-10-11 12:01",
+        "text": "Put the reset in the bag. All propagated."
+      },
+      {
+        "stage": "预告",
+        "time": "2026-10-11 06:16",
+        "text": "Global reset by EOD. May the tokens do good things for you."
+      }
+    ]
+  }
+}
