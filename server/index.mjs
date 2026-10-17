@@ -10,7 +10,7 @@ import * as v3 from "./routes/v3.mjs";
 
 const port = Number(process.env.PORT || 5280);
 const dist = path.resolve("dist");
-const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml" };
+const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json" };
 const db = openDb();
 const routes = [marketing, assistants, workspace, v3].flatMap((m) => m.routes(db));
 
