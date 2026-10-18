@@ -1343,3 +1343,6 @@
 - 业务页（`BusinessPage.jsx`）：「总进度」加第 4 块「总转化率」，四块等宽（`.rev-row.cols-4`）；大号百分比（40px，用户要求比其他三块大）+ 「上月 x.x%」（数字信号橙），无进度条和状态标签。数据是演示值（`fixtures/v3-demo-revenue.json` 新增 `conv` 项 34.8% / 上月 36.1%），接口形状写进 `docs/API.md`「业务 · 营收完成度」。
 - 验证：`npm test` 388 通过 / 0 失败；5294→5290 隔离后端截图（只发 GET）：`docs/handoff/V4/品牌筛选一行-1440.png`、`品牌筛选一行-390.png`、`Codex横条已重置-1440.png`、`业务总转化率-1440.png`；品牌页 390 宽 `scrollWidth` = 390。
 - 范围外发现：业务页营收卡在 390 宽本来就横向溢出（改前 `scrollWidth` 499，改后 484），各块被挤成竖排文字。
+- 发布（用户同意）：main 从 `038060a` 快进到 `93dd9e6`（含 29802d6 与总转化率放大），主工作区 `npm test` 388 项全部通过；`bash scripts/release-app.sh` 切换到 `nm-20261018-214722-93dd9e6`；数据库备份 `work-desk-20261018-214723-before-nm-20261018-214722-93dd9e6.db`；保留策略清理了最老的快照 `nm-20261018-143233-f7d763f`。
+- 回读（只读，脚本拦截写请求，0 条被拦）：首页与快照 `dist/index.html` 逐字节一致；`/api/v3/status`、`/api/v3/codex-reset`、`/api/v3/brand`、`/api/v3/business/revenue` 均 200，营收接口含 `conv` 总转化率 0.348 / 上月 0.361；线上品牌页筛选一行、说明一行、统计条变矮，Codex 横条为「Codex 重置：上次重置 … 下次重置时间未公开」，底栏版本 93dd9e6；品牌页 390 宽 `scrollWidth` = 390。截图 `docs/handoff/V4/线上5280-品牌与Codex横条.png`、`线上5280-业务总转化率.png`。
+- 回滚：`bash scripts/release-app.sh --use nm-20261018-210353-c0b667f`。
