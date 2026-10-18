@@ -8,7 +8,7 @@ import { match, json } from '../server/http.mjs';
 import { routes } from '../server/routes/v3-marketing.mjs';
 import { getRecord, putRecord, fingerprint } from '../server/local-records.mjs';
 import { campaignTemplate, createCampaignService, readMarketingTable, CAMPAIGN_FIELDS, MARKETING_BASE } from '../server/campaigns.mjs';
-import { createPriceService, PRICE_SKU_FIELDS, acceptedMarketingNeeds } from '../server/price.mjs';
+import { acceptedMarketingNeeds } from '../server/price.mjs';
 import { deriveNeeds } from '../server/needs.mjs';
 import { saveSnapshot } from '../server/v3-common.mjs';
 import { TIMELINE_SOURCE, REGION_SHEETS, createTimelineReader } from '../server/timeline.mjs';
@@ -74,24 +74,47 @@ test('营销真实模板拆多值、保留普通子项并提升门禁，不生�
   const cycle = templateRows(); cycle[1].父记录 = [{ id: 'c' }]; assert.throws(() => campaignTemplate(cycle), /循环/);
 });
 
-test('产品目录真实名称与促销表一致；仅两Lite演示矩阵标明来源，不污染业务记录', async t => {
-  const { request, db } = await setup(t);
-  for (const line of ['大学辅导', '国际课程']) savePromo(db, { month: '2026-11', line, sku: '灵活学Lite', trial: '', price: '', newDeal: '', renewal: '' });
+test('价格记录固定4张表：两张Lite为演示矩阵，安心学Max与竞赛课时卡为空表；不读飞书、不写业务记录', async t => {
+  const { request, db, counts } = await setup(t);
   const list = await request('GET', '/api/v3/price/skus');
-  assert.equal(list.status, 200); assert.equal(list.origin, 'demo'); assert.equal(list.body.length, 2); assert.ok(list.body.every(s => s.origin === 'demo'));
-  for (const sku of list.body) {
-    assert.equal(sku.name, '灵活学Lite'); assert.ok(db.prepare('SELECT 1 FROM promos WHERE line=? AND sku=?').get(sku.line, sku.name));
-    assert.equal(sku.unitOrig, 990); assert.deepEqual(sku.tiers, [5, 10, 20, 30, 50, 100, 150, 200]);
+  assert.equal(list.status, 200); assert.equal(list.origin, 'demo');
+  assert.deepEqual(list.body.map(s => [s.id, s.line, s.name, s.label, s.origin]), [
+    ['uni-lite', '大学辅导', '灵活学Lite', '灵活学Lite', 'demo'], ['uni-max', '大学辅导', '安心学Max', '安心学Max', 'empty'],
+    ['intl-lite', '国际课程', '灵活学Lite', '课时卡', 'demo'], ['intl-comp', '国际课程', '竞赛课时卡', '竞赛课时卡', 'empty'],
+  ]);
+  assert.ok(list.body.every(s => JSON.stringify(s.tiers) === '[5,10,20,30,50,100,150,200]'));
+  for (const sku of list.body.filter(s => s.origin === 'demo')) {
+    assert.equal(sku.unitOrig, 990);
     const matrix = await request('GET', `/api/v3/price/schemes?sku=${sku.id}`);
     assert.equal(matrix.status, 200); assert.equal(matrix.origin, 'demo'); assert.equal(matrix.body.origin, 'demo'); assert.equal(matrix.body.sku, sku.id);
     assert.equal(matrix.body.floorMargin, .25); assert.equal(matrix.body.costPerHour, 440);
   }
+  for (const sku of list.body.filter(s => s.origin === 'empty')) {
+    assert.equal(sku.unitOrig, null);
+    const matrix = await request('GET', `/api/v3/price/schemes?sku=${sku.id}`);
+    assert.equal(matrix.status, 200); assert.equal(matrix.origin, null); assert.deepEqual(matrix.body.schemes, []); assert.equal(matrix.body.origin, 'empty');
+  }
+  assert.equal(counts().priceReads, 0);
   assert.equal(db.prepare("SELECT count(*) AS n FROM v3_documents WHERE kind='price-schemes'").get().n, 0);
   assert.equal(db.prepare('SELECT count(*) AS n FROM v3_needs').get().n, 0);
   assert.equal((await request('GET', '/api/v3/price/schemes')).status, 400);
   assert.equal((await request('GET', '/api/v3/price/schemes?sku=unknown')).status, 404);
   saveSetting(db, 'price_cost_per_hour', 'bad');
   const invalid = await request('GET', '/api/v3/price/schemes?sku=uni-lite'); assert.equal(invalid.status, 503); assert.equal(invalid.body.code, 'PRICE_SETTINGS_UNCONFIGURED');
+});
+
+test('空表填满后才能保存：缺格子指出方案和档数，保存后回读为本地记录', async t => {
+  const { request, db } = await setup(t), previewPath = '/api/v3/price/schemes/preview?sku=uni-max';
+  saveSetting(db, 'price_floor_margin', '.25'); saveSetting(db, 'price_cost_per_hour', '440');
+  const value = normal(); value.schemes[0].prices = [6000, null];
+  const blank = await request('POST', previewPath, value); assert.equal(blank.status, 400); assert.match(blank.body.error, /「已核对价格」还有 1 档总价没填/);
+  const noOrig = normal(); noOrig.unitOrig = null; assert.match((await request('POST', previewPath, noOrig)).body.error, /原价/);
+  assert.equal((await request('POST', previewPath, { ...normal(), schemes: [] })).status, 400);
+  const p = await request('POST', previewPath, normal()); assert.equal(p.status, 200); assert.equal(getRecord(db, 'price-schemes', 'uni-max'), null);
+  assert.equal((await request('PUT', '/api/v3/price/schemes?sku=uni-max', { previewId: p.body.previewId, confirm: true })).status, 200);
+  const back = await request('GET', '/api/v3/price/schemes?sku=uni-max'); assert.equal(back.body.origin, 'local'); assert.deepEqual(back.body.schemes, normal().schemes);
+  const sku = (await request('GET', '/api/v3/price/skus')).body.find(s => s.id === 'uni-max');
+  assert.deepEqual([sku.origin, sku.unitOrig, sku.tiers], ['local', 990, [5, 10]]);
 });
 
 test('价格先预览后确认、破底线包含赠课成本、完整档位校验和已采纳需求关联', async t => {
@@ -113,7 +136,7 @@ test('价格先预览后确认、破底线包含赠课成本、完整档位校�
   const live = await request('GET', endpoint); assert.equal(live.body.origin, 'local'); assert.equal(live.body.schemes[0].needId, 'need1');
 });
 
-test('价格确认重新检查成本、需求状态、来源配置和预览过期；数据库失败回滚', async t => {
+test('价格确认重新检查成本、需求状态和预览过期；数据库失败回滚', async t => {
   const { request, db, advance } = await setup(t), previewPath = '/api/v3/price/schemes/preview?sku=uni-lite';
   const preview = async value => (await request('POST', previewPath, value)).body;
   const confirm = p => request('PUT', '/api/v3/price/schemes?sku=uni-lite', { previewId: p.previewId, confirm: true });
@@ -121,8 +144,7 @@ test('价格确认重新检查成本、需求状态、来源配置和预览过�
   const expired = await preview(normal()); advance(600001); assert.equal((await confirm(expired)).status, 409);
   adopted(db); const value = normal(); value.schemes[0].kind = '活动'; value.schemes[0].needId = 'need1';
   const linked = await preview(value); adopted(db, { status: '待复核' }); assert.equal((await confirm(linked)).status, 400);
-  const source = await preview(normal()); saveSetting(db, 'price_sku_table_id', 'tblOther'); assert.equal((await confirm(source)).status, 409);
-  saveSetting(db, 'price_sku_table_id', 'tblwaujJdrNHoVea'); const failed = await preview(normal());
+  const failed = await preview(normal());
   db.exec("CREATE TRIGGER reject_price BEFORE INSERT ON v3_documents WHEN NEW.kind='price-schemes' BEGIN SELECT RAISE(ABORT,'test fault'); END;");
   assert.equal((await confirm(failed)).status, 500); assert.equal(getRecord(db, 'price-schemes', 'uni-lite'), null);
 });
@@ -215,15 +237,6 @@ test('自言自语派生需求按完整来源指纹核对，支持已采纳项�
   assert.equal(acceptedMarketingNeeds(db, '2026-11').length, 0);
 });
 
-test('来源缓存按配置identity失效，读取失败不回旧配置成功', async t => {
-  const { db, options, counts, failSource } = await setup(t);
-  const service = createPriceService(db, options.price);
-  await Promise.all([service.skus(), service.skus()]); assert.equal(counts().priceReads, 1);
-  const before = getRecord(db, 'marketing-source', 'price-catalog');
-  saveSetting(db, 'price_sku_table_id', 'tblNewSource'); failSource(); await assert.rejects(service.skus());
-  assert.deepEqual(getRecord(db, 'marketing-source', 'price-catalog'), before); assert.equal(counts().priceReads, 2);
-});
-
 test('时间线来源配置变更不能借旧快照接受需求；已采纳自言自语来源保持独立', async t => {
   const { db } = await setup(t);
   const timeline = { stage: '本科', agenda: [{ c: '澳洲', school: '昆士兰大学 UQ', type: 'Final', from: '2026-11-07', to: '2026-11-21', src: '澳洲!B2' }] };
@@ -276,13 +289,8 @@ test('旧裸时间线快照仅兼容默认来源，不以失败尝试身份给�
   assert.equal(acceptedMarketingNeeds(db).length, 1);
 });
 
-test('价格和新战役预览绑定来源行指纹，同配置的新同步不允许旧预览确认', async t => {
+test('新战役预览绑定来源行指纹，同配置的新同步不允许旧预览确认', async t => {
   const { db, request } = await setup(t);
-  const price = await request('POST', '/api/v3/price/schemes/preview?sku=uni-lite', normal());
-  const catalog = getRecord(db, 'marketing-source', 'price-catalog'); catalog.rows[0].SKU名称 = '已更名'; putRecord(db, 'marketing-source', 'price-catalog', catalog);
-  assert.equal((await request('PUT', '/api/v3/price/schemes?sku=uni-lite', { previewId: price.body.previewId, confirm: true })).status, 409);
-  db.prepare("DELETE FROM v3_documents WHERE kind='marketing-source' AND id='price-catalog'").run();
-  assert.equal((await request('PUT', '/api/v3/price/schemes?sku=uni-lite', { previewId: price.body.previewId, confirm: true })).status, 409);
   const campaign = await request('POST', '/api/v3/campaigns/current/preview', { name: '新战役', start: '2026-10-01', end: '2026-11-30', desc: '目标' });
   const source = getRecord(db, 'marketing-source', 'campaign-template'); source.rows[0].任务事项 = '已改名'; putRecord(db, 'marketing-source', 'campaign-template', source);
   assert.equal((await request('PATCH', '/api/v3/campaigns/current', { previewId: campaign.body.previewId, confirm: true })).status, 409);
@@ -298,5 +306,4 @@ test('飞书读取使用codex/user，固定字段投影和完整分页，拒绝b
   const result = await readMarketingTable(source, CAMPAIGN_FIELDS, { run }); assert.equal(result.rows[0].任务事项, '立项'); assert.equal(calls, 1);
   await assert.rejects(readMarketingTable(source, CAMPAIGN_FIELDS, { run: async (...args) => { const raw = await run(...args); const body = JSON.parse(raw.stdout); body.identity = 'bot'; return { stdout: JSON.stringify(body) }; } }), /不完整/);
   await assert.rejects(readMarketingTable(source, CAMPAIGN_FIELDS, { run: async (...args) => { const raw = await run(...args); const body = JSON.parse(raw.stdout); body.data.has_more = true; return { stdout: JSON.stringify(body) }; } }), /分页不完整/);
-  assert.equal(PRICE_SKU_FIELDS.includes('SKU名称'), true);
 });
