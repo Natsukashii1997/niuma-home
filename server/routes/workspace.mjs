@@ -48,7 +48,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     validate: (key, value) => V3_SETTING_KEYS.has(key) ? validateV3Setting(key, value) : settingValue(key, value),
   });
   const calendar = createCalendarReader(calendarOptions);
-  const reports = createReportReader(() => getSettings(db), { ...reportOptions, onSource: event => {
+  const reports = createReportReader(() => getSettings(db), { staleWhileRevalidate: true, ...reportOptions, onSource: event => {
     const settings = getSettings(db);
     const roles = event.single && (!event.ok || event.kinds?.includes('周报')) ? ['daily', 'weekly'] : [event.role];
     for (const role of roles) {

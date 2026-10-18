@@ -1301,3 +1301,13 @@
 - 发布：`bash scripts/release-app.sh` 成功，切换到 `nm-20261018-175402-ea9af72`；数据库备份 `backups/work-desk-20261018-175403-before-nm-20261018-175402-ea9af72.db`；保留策略清理了最老的快照 `nm-20261017-131531-e714d6c`。
 - 回读（只读，脚本拦截写请求）：首页与快照逐字节一致；`/api/v3/business/revenue` 分组为「总进度 / 业务线」；`/api/assistants` 四个预设不变；线上截图核对 Codex 横条橙色高亮恢复、首页 Agent 新图标、业务墨色进度条、甘特考试柔和红。截图 `docs/handoff/V4/线上5280-精致度调整-首页.png`。
 - 回滚：`bash scripts/release-app.sh --use nm-20261018-163515-348113c`（上一版）。
+
+### V4 · 2026-10-18 · 第二轮细节（进行中；A、B 完成，C 做了一半；已提交，未发布）
+
+- 用户确认的三个推荐：① 底栏只放数据源总状态（正常 / N 个来源异常，点开看各来源时间）+ 交付月倒计时 + ⌘K + 版本号；② Agent 删除只限自建 / 导入，预设不可删，软删除可恢复；③ 日期用浏览器自带日期选择器（`type="date"`），套位图风输入框样式。
+- 已完成：
+  - A：营销战役「节点清单」表头加墨色底线并与列对齐（项目页共用）；Brief「全部展开」移到目录第一项；`.card-head` 标题不再被挤成竖排（全站）；用户策略「策略拆解」可点，跳到下方详情的策略（`#need-strategy`）；业务线进度条按线配色（大学红 #C23B30、国际课程绿、申诉蓝，总进度仍墨色）；甘特「今天」改为当前时刻的一条贯穿信号橙竖线（`.gantt-now`），去掉整列浅橙底。
+  - B：知识库目录树（原来每次现读飞书约 25 秒）与日报（约 5 秒）改为先返回上次结果、过期后台刷新（`createConfiguredReader` / `createReportReader` 新增 `staleWhileRevalidate`，只在生产路由打开；目录树服务重启后用 `v3_snapshots` 里的快照）；手动刷新和写入前读取仍现读。新增 `tests/stale-while-revalidate.test.mjs`。
+  - C（部分）：底栏按 ① 重排（`StatusBar.jsx`，版本号由 `vite.config.js` 构建时注入 `__APP_VERSION__`）；Agent 删除按 ② 实现：接口 `/api/v3/local-assistants`（`?deleted=true`、`/:id/remove-preview`、`DELETE /:id`、`/:id/restore-preview`、`/:id/restore`），`/api/assistants` 不再返回已删除的，已删除的不能编辑和发消息；前端复用 `soft-delete.jsx`（对话区头部「删除」、左栏「已删除的助手」）。补测试。
+- 未做（交接给新会话）：C 日期选择器；D 首页 Codex 板块方块光标逐字输出；E 品牌数据草稿；用户新提：时间线国家排序改为 美国、英国、香港、澳洲、加拿大、新加坡、新西兰、澳门。
+- 验证：`npm test` 384 通过 / 0 失败；A 批用 5293 预览（接口转线上 5280，Playwright 拦截非 GET）截图核对通过；底栏与 Agent 删除前端**尚未截图核对**。

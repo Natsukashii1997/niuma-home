@@ -112,13 +112,25 @@ export function projectView(source) {
 }
 
 // 只缓存完整读取；失败不会退回旧来源或旧快照伪装成功。
-export function createConfiguredReader(db, kind, config, read, { now = Date.now, ttl = 300_000, onSource } = {}) {
+// staleWhileRevalidate：有旧结果（含服务重启前存下的快照）时先返回旧结果，过期的话后台再读一次；写入前的读取仍传 refresh 现读。
+export function createConfiguredReader(db, kind, config, read, { now = Date.now, ttl = 300_000, onSource, staleWhileRevalidate = false } = {}) {
   let cache, inflight, failed;
+  if (staleWhileRevalidate) {
+    const row = db.prepare('SELECT payload, updated_at FROM v3_snapshots WHERE kind=?').get(kind);
+    try { const saved = row && JSON.parse(row.payload); if (saved?.identity && saved.value) cache = { identity: saved.identity, at: Date.parse(row.updated_at) || 0, value: saved.value }; } catch { cache = undefined; }
+  }
   return async ({ refresh = false } = {}) => {
     const cfg = config(), identity = fingerprint(cfg), at = now();
+    if (!refresh && staleWhileRevalidate && cache?.identity === identity) {
+      if (at - cache.at >= ttl && inflight?.identity !== identity) start(cfg, identity, at).catch(() => {});
+      return structuredClone(cache.value);
+    }
     if (!refresh && failed?.identity === identity && at < failed.until) throw failed.error;
     if (!refresh && cache?.identity === identity && at - cache.at < ttl) return structuredClone(cache.value);
     if (inflight?.identity === identity) return structuredClone(await inflight.promise);
+    return structuredClone(await start(cfg, identity, at));
+  };
+  function start(cfg, identity, at) {
     const promise = (async () => {
       try {
         const value = await read(cfg);
@@ -133,8 +145,8 @@ export function createConfiguredReader(db, kind, config, read, { now = Date.now,
       } finally { if (inflight?.identity === identity) inflight = null; }
     })();
     inflight = { identity, promise };
-    return structuredClone(await promise);
-  };
+    return promise;
+  }
 }
 
 export function createProjectService(db, { readSource = readProjectSource, now = Date.now, ...options } = {}) {

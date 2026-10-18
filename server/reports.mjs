@@ -59,7 +59,8 @@ export function mergeReports(groups) {
 }
 
 // 缓存完整解析结果，按本次来源角色筛选，避免单/双文档切换时复用错误列表。
-export function createReportReader(getConfig, { readDocument = readReportDocument, now = Date.now, onSource = () => {} } = {}) {
+// staleWhileRevalidate：超过十分钟的旧结果先返回，后台再读一次（打开日报不再等飞书）；手动刷新仍现读。
+export function createReportReader(getConfig, { readDocument = readReportDocument, now = Date.now, onSource = () => {}, staleWhileRevalidate = false } = {}) {
   const entries = new Map();
   let lastAttempt = 0;
   const config = () => {
@@ -81,10 +82,12 @@ export function createReportReader(getConfig, { readDocument = readReportDocumen
   const read = async (url, refresh) => {
     if (!entries.has(url)) entries.set(url, { generation: 0 });
     const entry = entries.get(url);
-    if (!refresh && entry.pending) return entry.pending;
+    if (!refresh && entry.pending && !(staleWhileRevalidate && entry.cache)) return entry.pending;
     if (!refresh && entry.cache && now() - entry.cache.time < 600000) return entry.cache;
+    const stale = !refresh && staleWhileRevalidate && entry.cache;
+    if (stale && entry.pending) return entry.cache;
     const generation = ++entry.generation;
-    entry.cache = undefined;
+    if (!stale) entry.cache = undefined;
     const request = (async () => {
       const content = await readDocument(url);
       const result = { ...parseReportDocument(content), nonempty: !!content.trim(), time: now() };
@@ -92,8 +95,9 @@ export function createReportReader(getConfig, { readDocument = readReportDocumen
       return result;
     })();
     entry.pending = request;
-    try { return await request; }
-    finally { if (entry.generation === generation) entry.pending = undefined; }
+    const settle = request.finally(() => { if (entry.generation === generation) entry.pending = undefined; });
+    if (stale) { settle.catch(() => {}); return stale; }
+    return await settle;
   };
   const select = (parsed, role, single) => {
     const rows = single ? parsed.reports : parsed.reports.filter(r => r.kind === (role === "daily" ? "日报" : "周报"));

@@ -186,6 +186,7 @@ function MonthTimeline({ tl, q, showSrc }) {
               ); })}
             </div>
           ))}
+          {todayIdx > 0 && <i className="gantt-now" aria-hidden="true" title="现在" style={{ "--now": (todayIdx - 1 + (now.getHours() * 60 + now.getMinutes()) / 1440) / nDays }} />}
         </section>
       )}
       {list.length > 0 && <MonthList list={list} first={first} showSrc={showSrc} />}
@@ -500,8 +501,10 @@ function StrategyBoard({ initial, initialSel }) {
   return (
     <>
       <ol className="flow-chain">
-        {[["用户时间线", "事件与日期", href("user", "timeline")], ["主线需求", `${needs.length} 条 · ${adopted} 已采纳`, null], ["策略拆解", `${needs.filter((n) => n.strategy && Object.values(n.strategy.actions).flat().length).length} 条已拆解`, null], ["营销行动", "价格 · 物料 · brief", href("marketing")]].map(([a, b, to], i) => (
-          <li key={a} className={i === 1 ? "is-here" : ""}>{to ? <a href={to}><b>{a}</b><span>{b}</span></a> : <span><b>{a}</b><span>{b}</span></span>}</li>
+        {[["用户时间线", "事件与日期", href("user", "timeline")], ["主线需求", `${needs.length} 条 · ${adopted} 已采纳`, null], ["策略拆解", `${needs.filter((n) => n.strategy && Object.values(n.strategy.actions).flat().length).length} 条已拆解`, "#need-strategy"], ["营销行动", "价格 · 物料 · brief", href("marketing")]].map(([a, b, to], i) => (
+          <li key={a} className={i === 1 ? "is-here" : ""}>{to === "#need-strategy"
+            ? <button type="button" title="当前这条需求的策略目标和行动拆解，在下方详情里" onClick={() => (document.getElementById("need-strategy") || document.querySelector(".need-detail"))?.scrollIntoView({ block: "start" })}><b>{a}</b><span>{b}</span></button>
+            : to ? <a href={to}><b>{a}</b><span>{b}</span></a> : <span><b>{a}</b><span>{b}</span></span>}</li>
         ))}
       </ol>
       <div className="toolbar">
@@ -623,7 +626,7 @@ function StrategyEditor({ need, month, editable, reload }) {
     </WriteBox>
   );
   if (!edit) return (
-    <div className="strategy-view">
+    <div className="strategy-view" id="need-strategy">
       {box}
       <div className="strategy-goal"><span className="label">策略目标</span><strong>{need.strategy.goal}</strong>{editable && <Button className="btn btn-xs" onClick={() => { flow.resolve(); setDraft(fromNeed()); setEdit(true); }}><PixelIcon name="edit" />编辑策略</Button>}</div>
       <div className="strategy-cols">

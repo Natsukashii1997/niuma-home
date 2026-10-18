@@ -7,7 +7,7 @@ import { createKnowledgeTreeService } from '../knowledge-tree.mjs';
 
 async function body(req) { try { return await readJson(req); } catch { throw failure(400, '请求内容不是有效 JSON'); } }
 export function createProjectServices(db, options = {}) {
-  return { projects: createProjectService(db, options.projects), mentor: createMentorService(db, options.mentor), kb: createKnowledgeTreeService(db, options.kb) };
+  return { projects: createProjectService(db, options.projects), mentor: createMentorService(db, options.mentor), kb: createKnowledgeTreeService(db, { staleWhileRevalidate: true, ...options.kb }) };
 }
 export function projectRoutes({ projects, mentor, kb }) {
   return [

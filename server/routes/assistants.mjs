@@ -3,10 +3,28 @@ import { listAssistants, getAssistant, saveAssistant, importAssistants, bindAssi
 import { codex } from "../codex.mjs";
 import { composeKnowledgeInstructions } from "../assistant-knowledge.mjs";
 import { routes as knowledgeRoutes } from "./assistant-knowledge.mjs";
+import { handleV3 } from "./user.mjs";
+import { failure } from "../v3-common.mjs";
+import { createLocalDeletions, deletionFailure, deletionState } from "../local-deletions.mjs";
+
+async function body(req) { try { return await readJson(req); } catch { throw failure(400, "请求内容不是有效 JSON"); } }
 
 export function routes(db, client = codex) {
   const sending = new Set();
   const assistant = (id) => /^\d+$/.test(id) && getAssistant(db, id);
+  // 删除助手（用户 2026-10-18）：只能删自建和导入的，四个预设不能删；软删除可恢复，对话记录原样保留。
+  const isDeleted = (id) => !!deletionState(db, "assistant", String(id))?.deleted;
+  const live = (id) => { const value = assistant(id); return value && !isDeleted(value.id) ? value : null; };
+  const deletions = createLocalDeletions(db, { kind: "assistant",
+    load: (id) => {
+      const a = assistant(id);
+      if (!a) throw deletionFailure(404, "ASSISTANT_NOT_FOUND", "助手不存在");
+      if (a.preset) throw deletionFailure(400, "ASSISTANT_PRESET", "预设助手不能删除");
+      if (sending.has(a.id)) throw deletionFailure(409, "ASSISTANT_BUSY", "该助手正在回复，请结束后再删除");
+      return { snapshot: { name: a.name, instructions: a.instructions, model: a.model, effort: a.effort, codexThreadId: a.codexThreadId }, value: { id: String(a.id), name: a.name, kind: a.kind } };
+    } });
+  const localList = (deleted) => ({ items: listAssistants(db).filter((a) => !a.preset && isDeleted(a.id) === deleted)
+    .map((a) => ({ ...a, id: String(a.id), ...(deleted && { deletion: deletionState(db, "assistant", String(a.id)) }) })) });
   const fields = (body, previous = {}) => {
     const value = { name: body.name ?? previous.name, instructions: body.instructions ?? previous.instructions ?? "" };
     if (typeof value.name !== "string" || !value.name.trim() || value.name.length > 200) throw new Error("助手名称须为 1–200 字");
@@ -44,10 +62,15 @@ export function routes(db, client = codex) {
   };
   return [
     ...knowledgeRoutes(db),
-    route("GET", "/api/assistants", (req, res) => json(res, 200, listAssistants(db))),
+    route("GET", "/api/assistants", (req, res) => json(res, 200, listAssistants(db).filter((a) => !isDeleted(a.id)))),
+    route("GET", "/api/v3/local-assistants", handleV3((req, { url }) => localList(url.searchParams.get("deleted") === "true"))),
+    route("POST", "/api/v3/local-assistants/:id/remove-preview", handleV3(async (req, { params }) => deletions.preview(params.id, "remove", await body(req)))),
+    route("DELETE", "/api/v3/local-assistants/:id", handleV3(async (req, { params }) => deletions.confirm(params.id, "remove", await body(req)))),
+    route("POST", "/api/v3/local-assistants/:id/restore-preview", handleV3(async (req, { params }) => deletions.preview(params.id, "restore", await body(req)))),
+    route("POST", "/api/v3/local-assistants/:id/restore", handleV3(async (req, { params }) => deletions.confirm(params.id, "restore", await body(req)))),
     route("POST", "/api/assistants", (req, res) => edit(req, res)),
     route("PATCH", "/api/assistants/:id", (req, res, { params }) => {
-      const value = assistant(params.id);
+      const value = live(params.id);
       return value ? edit(req, res, value) : json(res, 404, { error: "助手不存在" });
     }),
     route("GET", "/api/codex/models", async (req, res) => json(res, 200, await client.models())),
@@ -64,7 +87,7 @@ export function routes(db, client = codex) {
       json(res, 200, value.codexThreadId ? await client.messages(value.codexThreadId) : []);
     }),
     route("POST", "/api/assistants/:id/messages", async (req, res, { params }) => {
-      const value = assistant(params.id);
+      const value = live(params.id);
       if (!value) return json(res, 404, { error: "助手不存在" });
       const { text } = await readJson(req);
       if (typeof text !== "string" || !text.trim() || text.length > 50000) return json(res, 400, { error: "请输入 1–50000 字的消息" });

@@ -151,6 +151,9 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .rev-item { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4) var(--s4); min-width: 0; }
 .rev-item + .rev-item { border-left: 1px solid var(--line); }
 .rev-bar b { outline: 1px solid var(--panel); } /* 墨色进度条上也看得清时间进度竖线 */
+.rev-item.line-uni .rev-bar { color: #C23B30; } /* 业务线进度条按业务线配色（用户 2026-10-18）：大学红、国际课程绿、申诉蓝；总进度仍为墨色 */
+.rev-item.line-intl .rev-bar { color: #1E8E4E; }
+.rev-item.line-appeal .rev-bar { color: #2563EB; }
 .rev-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); }
 .rev-name { font-weight: 600; }
 .rev-tone { display: inline-flex; align-items: center; gap: var(--s1); padding: 0 var(--s1); font-size: 11px; line-height: 18px; }
@@ -406,7 +409,7 @@ label.btn { cursor: pointer; }
 .brief-outline button.active .status-mark i { border-color: var(--panel); }
 .brief-outline button.active .status-mark.is-done i { background: var(--panel); }
 .brief-outline .tnum { color: var(--muted); font-size: 12px; }
-.brief-outline .outline-all { display: flex; gap: var(--s2); margin-top: var(--s2); border-top: 1px solid var(--line); font-size: 12px; }
+.brief-outline .outline-all { display: flex; gap: var(--s2); margin-bottom: var(--s2); border-bottom: 1px solid var(--line); font-size: 12px; } /* 目录第一项：全部展开；点任一节回到单节 */
 .doc { align-self: stretch; padding: var(--s5) var(--s6) 28px; background: var(--panel); border: var(--border) solid var(--line); min-height: 520px; } /* 正文卡至少和右栏一样高，两者底边对齐；左右栏仍按内容高度吸顶 */
 .doc > h2 { font-size: 18px; font-weight: 600; margin: var(--s1) 0 var(--s2); }
 .doc h3 { display: flex; align-items: center; gap: var(--s2); margin: var(--s5) 0 var(--s2); padding-bottom: var(--s2); border-bottom: 2px solid var(--text); font-size: 14px; font-weight: 600; }
@@ -476,7 +479,9 @@ label.btn { cursor: pointer; }
 /* 节点清单（营销战役、项目推进共用） */
 .node-list .phase { display: block; border-bottom: 0; }
 .node-list .node-cols, .node-list .node { display: grid; grid-template-columns: 20px 24px minmax(0, 1fr) 64px 72px 84px; gap: var(--s3); }
-.node-list .node-cols { padding: var(--s2) var(--s4); border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; color: var(--muted); }
+.node-list .node-cols { padding: var(--s2) var(--s4); border-bottom: 2px solid var(--text); background: var(--panel); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; color: var(--muted); } /* 表头：墨色底线，和下面的阶段行区分开 */
+.node-list .node-cols > span:nth-child(2) { text-align: right; } /* 编号右对齐，和行里的数字对齐 */
+.node-list:has(.node-owner-input) .node-cols > span:nth-child(4), .node-list:has(input.node-due) .node-cols > span:nth-child(5) { padding-left: calc(var(--s1) + 1px); } /* 和输入框里的文字对齐 */
 .node-list .phase-name { display: flex; flex-direction: row; border-right: 0; align-items: baseline; gap: var(--s2); padding: var(--s2) var(--s4); background: var(--panel-soft); border-bottom: 1px solid var(--line); }
 .node-list .phase-name b { font-family: var(--font-mono); color: var(--muted); }
 .node-list .phase-name strong { font-size: 14px; }
@@ -631,7 +636,8 @@ label.btn { cursor: pointer; }
 .gantt-track { padding: var(--s1) 0; row-gap: var(--s1); }
 .gantt-bg { border-left: 1px solid #ECEDF0; }
 .gantt-bg.is-wkd { background: #F7F7F9; }
-.gantt-bg.is-today { background: #FFF1EC; border-left: 2px solid var(--signal); }
+.gantt { position: relative; }
+.gantt-now { position: absolute; top: 0; bottom: 0; left: calc(210px + (100% - 210px) * var(--now)); z-index: 3; width: 2px; margin-left: -1px; background: var(--signal); pointer-events: none; } /* 今天：一条贯穿全部行的信号橙竖线，落在当前时刻；不再整列铺浅橙底，避免和事件色块撞 */
 .gantt-bar { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--s1); min-width: 0; margin: 0 1px; padding: 0 var(--s1); background: var(--ev-bg); border-left: 3px solid var(--ev); font-size: 12px; white-space: nowrap; overflow: hidden; cursor: default; }
 .gantt-bar b, .gantt-label b { font-weight: 600; color: var(--text); }
 .gantt-bar em, .gantt-label em { font-style: normal; font-size: 11px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; }
@@ -661,7 +667,8 @@ label.btn { cursor: pointer; }
 .flow-chain li > * { position: relative; display: flex; flex-direction: column; gap: 2px; height: 100%; padding: var(--s2) var(--s3) var(--s2) var(--s5); background: var(--panel); border: var(--border) solid var(--line); margin-right: -2px; }
 .flow-chain li:first-child > * { padding-left: var(--s3); }
 .flow-chain li + li > *::before { content: "→"; position: absolute; left: 4px; top: 50%; transform: translateY(-50%); color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
-.flow-chain a:hover { border-color: var(--text); z-index: 1; }
+.flow-chain button { width: 100%; font: inherit; color: inherit; text-align: left; cursor: pointer; } /* 策略拆解：点一下跳到下方详情里的策略 */
+.flow-chain a:hover, .flow-chain button:hover { border-color: var(--text); z-index: 1; }
 .flow-chain li.is-here > * { box-shadow: inset 0 4px 0 var(--signal); }
 .flow-chain b { font-size: 14px; }
 .flow-chain span span { font-size: 12px; color: var(--muted); }
@@ -1084,6 +1091,12 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .sb-group { display: inline-flex; align-items: center; gap: 6px; }
 .sb-group b { font-weight: 400; color: var(--text); }
 .sb-dot { width: 6px; height: 6px; background: var(--ok); }
+.sb-summary { display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 var(--s1); border: 0; background: none; font: inherit; color: var(--text-2); cursor: pointer; }
+.sb-summary:hover, .sb-summary[aria-expanded="true"] { color: var(--text); }
+.sb-summary.is-warn { color: var(--warn); }
+.sb-summary.is-warn .sb-dot { background: var(--warn); }
+.sb-summary.is-off .sb-dot { background: none; border: 1px solid var(--muted); }
+.sb-panel { position: absolute; left: var(--s3); bottom: calc(100% + 4px); display: flex; flex-direction: column; gap: var(--s2); padding: var(--s2) var(--s3); background: var(--panel); border: var(--border) solid var(--text); } /* 点开的各来源明细 */
 .sb-group.is-warn .sb-dot { background: var(--warn); }
 .sb-group.is-off .sb-dot { background: none; border: 1px solid var(--muted); }
 .sb-item + .sb-item::before { content: "·"; margin-right: 6px; color: var(--muted); }

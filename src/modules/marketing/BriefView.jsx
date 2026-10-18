@@ -87,12 +87,12 @@ function Brief({ brief, month, setMonth, onSaved, onEdit }) {
       </WriteBox>
       <div className="brief-layout">
         <nav className="brief-outline" aria-label="章节">
+          <button type="button" className={`outline-all${all ? " active" : ""}`} onClick={() => setAll(true)}><PixelIcon name="menu" />全部展开</button>
           {SECTIONS.map((t, i) => (
             <button key={t} type="button" className={!all && sec === i + 1 ? "active" : ""} onClick={() => { setAll(false); setSec(i + 1); }}>
               <span className="tnum">{i + 1}</span><span>{t}</span><StatusMark state={draft.status[i + 1] || "todo"} />
             </button>
           ))}
-          <button type="button" className={`outline-all${all ? " active" : ""}`} onClick={() => setAll((v) => !v)}><PixelIcon name="menu" />{all ? "只看当前一节" : "全部展开"}</button>
         </nav>
 
         <article className="doc">

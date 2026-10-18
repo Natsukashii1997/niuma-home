@@ -55,7 +55,7 @@ function RevenueItem({ item, timePct }) {
   const tone = timePct == null ? "neutral" : pct >= timePct ? "ok" : pct >= timePct - 0.15 ? "warn" : "risk";
   const toneLabel = { ok: "跟上进度", warn: "略落后", risk: "落后", neutral: "" }[tone];
   return (
-    <div className={`rev-item is-${tone}`}>
+    <div className={`rev-item is-${tone} line-${item.key}`}>
       <div className="rev-head"><span className="rev-name">{LINE_NAME[item.key] || item.name}</span>{toneLabel && <span className="rev-tone">{toneLabel}</span>}</div>
       <span className="rev-pct">{Math.round(pct * 100)}%</span>
       <PixelBar className="rev-bar" value={pct} marker={timePct} label={`完成 ${Math.round(pct * 100)}%${timePct != null ? `，时间进度 ${Math.round(timePct * 100)}%` : ""}`} />

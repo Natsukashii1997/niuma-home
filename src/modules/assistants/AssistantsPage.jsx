@@ -5,6 +5,7 @@ import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Button, Empty, Loadable, PageHeader, Segmented, Tag } from "../../ui/components.jsx";
 import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
+import { DeletedList, useSoftRemove } from "../../ui/soft-delete.jsx";
 import { consumeMessageStream } from "./message-stream.js";
 import ModelControls from "./ModelControls.jsx";
 import { assistantListReader } from "./assistant-list.js";
@@ -93,6 +94,8 @@ function KnowledgePanel({ assistant }) {
     </div>
   );
 }
+const DELETE_API = { base: "/api/v3/local-assistants", active: "/api/assistants" };
+
 export default function AssistantsPage({ route }) {
   const state = useApi("/api/assistants");
   return <Loadable state={state} name="助手列表" big>{(list) => <AssistantDesk initial={list} selectedId={route[0]} />}</Loadable>;
@@ -102,19 +105,32 @@ function AssistantDesk({ initial, selectedId }) {
   const current = list.find((a) => String(a.id) === selectedId) || list[0];
   const [reload] = useState(() => assistantListReader(() => apiSend("GET", "/api/assistants"), setList));
   const saved = async (id) => { await reload(); setModal(null); if (id) window.location.hash = href("assistants", String(id)).slice(1); };
+  // 删除：只给自建和导入的助手；软删除，确认后回读两个列表核对（见 soft-delete.jsx）。
+  const [deleted, setDeleted] = useState([]);
+  const placed = (r) => { setList(Array.isArray(r.active) ? r.active : r.active?.items || []); setDeleted(r.deleted); };
+  const remover = useSoftRemove(DELETE_API, placed);
+  useEffect(() => { apiSend("GET", `${DELETE_API.base}?deleted=true`).then((r) => setDeleted(r.items || []), () => {}); }, []);
   return <div className="assistant-page">
     <PageHeader title="Agent" subtitle="本机 Codex · 只读，不改文件、不执行命令" actions={<>
       <Button onClick={() => setModal({ type: "import" })}><PixelIcon name="download" /> 导入 Codex 会话</Button>
       <Button variant="primary" onClick={() => setModal({ type: "new" })}><PixelIcon name="plus" /> 新建助手</Button>
     </>} />
     <div className="chat-layout">
-      <aside className="chat-list" aria-label="助手列表">{list.map((a) => <a key={a.id} data-dither="" href={href("assistants", String(a.id))} className={a.id === current?.id ? "active" : ""}><AgentFace preset={a.preset} seed={a.name} size={32} /><span className="chat-list-name"><strong>{a.name}</strong>{PRESETS[a.preset] && <small className="muted">{PRESETS[a.preset].role}</small>}</span><Tag>{a.preset ? "预设" : KIND_LABEL[a.kind]}</Tag></a>)}</aside>
-      {current && <Conversation key={current.id} assistant={current} reloadAssistants={reload} edit={() => setModal({ type: "edit", assistant: current })} />}
+      <aside className="chat-list" aria-label="助手列表">{list.map((a) => <a key={a.id} data-dither="" href={href("assistants", String(a.id))} className={a.id === current?.id ? "active" : ""}><AgentFace preset={a.preset} seed={a.name} size={32} /><span className="chat-list-name"><strong>{a.name}</strong>{PRESETS[a.preset] && <small className="muted">{PRESETS[a.preset].role}</small>}</span><Tag>{a.preset ? "预设" : KIND_LABEL[a.kind]}</Tag></a>)}
+        <WriteBox flow={remover.flow} className="soft-delete" title="删除助手预览" confirmLabel="确认删除" savedText="已删除，回读核对：助手列表里不再有它，已在「已删除的助手」里，可恢复" onConfirm={remover.confirm} onRepreview={remover.repreview} onReread={remover.reread}>
+          {(pv) => <dl className="kv"><dt>助手</dt><dd>{pv.value.name}</dd><dt>方式</dt><dd>软删除：设置和对话记录全部保留，可在下方「已删除的助手」里恢复</dd></dl>}
+        </WriteBox>
+        <DeletedList api={DELETE_API} deleted={deleted} onPlaced={placed} noun="助手" describe={(o) => ({ name: o.name, meta: o.kind === "imported" ? "导入的会话" : "自建助手" })}>
+          {(pv) => <dl className="kv"><dt>助手</dt><dd>{pv.value.name}</dd><dt>恢复后</dt><dd>回到助手列表，设置和对话记录不变</dd></dl>}
+        </DeletedList>
+      </aside>
+      {current && <Conversation key={current.id} assistant={current} reloadAssistants={reload} edit={() => setModal({ type: "edit", assistant: current })}
+        remove={PRESETS[current.preset] ? null : () => remover.preview(String(current.id))} removeLocked={remover.flow.busy || remover.flow.phase === "unknown"} />}
     </div>
     {modal && <AssistantDialog key={`${modal.type}-${modal.assistant?.id || ""}`} modal={modal} close={() => setModal(null)} saved={saved} reload={reload} />}
   </div>;
 }
-function Conversation({ assistant, edit, reloadAssistants }) {
+function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked }) {
   const [messages, setMessages] = useState([]), [draft, setDraft] = useState(() => takeDraft(assistant.id));
   const [pending, setPending] = useState(null), [error, setError] = useState("");
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [uncertain, setUncertain] = useState(false);
@@ -161,6 +177,7 @@ function Conversation({ assistant, edit, reloadAssistants }) {
         <Segmented options={[["chat", "对话"], ["kb", "知识库"]]} value={tab} onChange={setTab} />
         <Button variant="model" aria-expanded={modelOpen} onClick={() => setModelOpen((v) => !v)}><PixelIcon name="settings" />{assistant.model || "默认模型"}{assistant.effort ? ` · ${assistant.effort}` : ""}</Button>
         <Button disabled={busy} onClick={edit}><PixelIcon name="edit" />编辑</Button>
+        {remove && <Button disabled={busy || removeLocked} onClick={remove} title="软删除，可在「已删除的助手」里恢复"><PixelIcon name="close" />删除</Button>}
       </div></header>
     <div className={modelOpen ? "model-panel is-open" : "model-panel"}><ModelControls assistant={assistant} busy={busy} version={runtimeVersion} reloadAssistants={reloadAssistants} onBlocked={setSettingsBlocked} /></div>
     {tab === "kb" ? <KnowledgePanel assistant={assistant} /> : <>

@@ -83,3 +83,24 @@ test("请求体延迟到前一轮结束后，重新读取绑定而不创建孤�
   delayed.end('"后完成"}'); await finished;
   assert.equal(calls.length,1);
 });
+
+test("删除助手：预设不能删；自建软删除后不在列表、可恢复；删除后不能编辑和发消息", async (t) => {
+  const { request, db } = await setup(t);
+  const preset = listAssistants(db)[0];
+  assert.equal((await request("POST", `/api/v3/local-assistants/${preset.id}/remove-preview`, {})).status, 400);
+  const a = await (await request("POST", "/api/assistants", { name: "临时助手", instructions: "说明" })).json();
+  const pv = await (await request("POST", `/api/v3/local-assistants/${a.id}/remove-preview`, {})).json();
+  assert.equal(pv.value.name, "临时助手");
+  assert.ok((await (await request("GET", "/api/assistants")).json()).some((x) => x.id === a.id)); // 预览不删除
+  const rm = await (await request("DELETE", `/api/v3/local-assistants/${a.id}`, { previewId: pv.previewId, confirm: true })).json();
+  assert.equal(rm.deleted, true);
+  assert.ok(!(await (await request("GET", "/api/assistants")).json()).some((x) => x.id === a.id));
+  const deleted = await (await request("GET", "/api/v3/local-assistants?deleted=true")).json();
+  assert.deepEqual(deleted.items.map((x) => x.name), ["临时助手"]);
+  assert.equal((await request("PATCH", `/api/assistants/${a.id}`, { name: "改名" })).status, 404);
+  assert.equal((await request("POST", `/api/assistants/${a.id}/messages`, { text: "你好" })).status, 404);
+  const rp = await (await request("POST", `/api/v3/local-assistants/${a.id}/restore-preview`, {})).json();
+  const back = await (await request("POST", `/api/v3/local-assistants/${a.id}/restore`, { previewId: rp.previewId, confirm: true })).json();
+  assert.equal(back.deleted, false);
+  assert.ok((await (await request("GET", "/api/assistants")).json()).some((x) => x.id === a.id));
+});
