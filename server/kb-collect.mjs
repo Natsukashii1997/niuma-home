@@ -135,7 +135,7 @@ export function createKnowledgeCollectService(db,{now=Date.now,run,readDirectory
       const observed=await nodeGet(created.node_token);if(observed.node_token!==created.node_token||!verified(p,observed))throw unknown(p.id);
       return finish(p,response(p,observed,'created',undefined,p.parentTitle));
     }catch(e){
-      if(attempted)return recordUnknown(p);
+      if(attempted&&!e.rejected)return recordUnknown(p);// 授权在执行前被拒：确定没建，不锁
       p.inFlight=null;
       p.state='aborted';p.recentStatus='failed';p.http={status:e.status||502,body:{error:e.status?e.message:'收藏执行前核验失败，请稍后重新操作',...(e.code?{code:e.code}:{}),...(e.receipt?{receipt:e.receipt}:{})}};
       transaction(()=>{save(p);unlock(p);});return replay(p);

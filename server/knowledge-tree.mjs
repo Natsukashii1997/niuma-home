@@ -331,6 +331,8 @@ export function createKnowledgeTreeService(db, { now = Date.now, readSource = re
         }
         return finish(p,'verified',rows);
       }catch(error){
+        // 飞书在执行前就拒绝了授权：确定没有写入，按没执行处理，不锁。
+        if(attemptedWrite&&error.rejected&&!p.inFlight?.result)attemptedWrite=false;
         if(attemptedWrite){p.state='unknown';p.error='写入或回读结果尚未核实；请只读核对操作记录，禁止重发。';save(p);throw unknownWrite(p.id);}
         p.inFlight=null;
         p.error=error.status?error.message:'知识库执行前核验失败';finish(p,p.cursor?'partial':'aborted');throw error;
@@ -349,7 +351,10 @@ export function createKnowledgeTreeService(db, { now = Date.now, readSource = re
           if(observed.space_id!==p.spaceId||observed.node_token!==body.nodeId||observed.obj_type!=='docx'||observed.node_type!=='origin'||observed.title!==op.name||(observed.parent_node_token||'')!==op.parentId)throw unknownWrite(p.id);
           p.inFlight.result={nodeId:body.nodeId,confirmedObservation:true};save(p);
         }
-        try{verifiedStep(p,await directory(p));}catch{p.state='unknown';p.error='仍无法按原节点身份和完整目录核实结果，保持写入锁；不自动重试。';save(p);throw unknownWrite(p.id);}
+        const rows=await directory(p).catch(()=>null);
+        // 移动 / 改名：目录与写入前完全一致，说明这一项没有执行，放行（不重发，由用户决定是否再做一次）。新建目录不适用。
+        if(rows&&p.inFlight.operation.type!=='mkdir'&&!p.inFlight.result&&fingerprint(rows)===fingerprint(p.expectedRows)){p.inFlight=null;p.error='核对：飞书目录与写入前一致，这一项没有执行';save(p);return finish(p,p.cursor?'partial':'aborted',rows);}
+        try{if(!rows)throw unknownWrite();verifiedStep(p,rows);}catch{p.state='unknown';p.error='仍无法按原节点身份和完整目录核实结果，保持写入锁；不自动重试。';save(p);throw unknownWrite(p.id);}
       }
       return finish(p,p.cursor===p.operations.length?'verified':p.cursor?'partial':'aborted');
     },

@@ -29,6 +29,8 @@ function setup(t) {
       const node={id:`created${++sequence}`,name:arg('--title'),parentId:args.includes('--parent-node-token')?arg('--parent-node-token'):''};state.nodes.push(node);
       result={resolved_space_id:KB_SPACE,node_token:node.id,obj_token:`doc${node.id}`,obj_type:'docx',node_type:'origin',title:node.name};
     }else if(args.includes('+move')){
+      if(state.rejectMove)throw Object.assign(Error('缺权限'),{stderr:JSON.stringify({error:{subtype:'missing_scope',missing_scopes:['wiki:node:move']}})});
+      if(state.dropMove)throw Error('模拟请求没有执行就断开');
       assert.equal(arg('--source-space-id'),KB_SPACE);assert.equal(arg('--target-space-id'),KB_SPACE);assert.ok(!args.includes('--obj-token'));assert.ok(!args.includes('--apply'));
       const node=state.nodes.find(n=>n.id===arg('--node-token'));node.parentId=args.includes('--target-parent-token')?arg('--target-parent-token'):'';
       result={mode:'node',source_space_id:KB_SPACE,target_space_id:KB_SPACE,space_id:KB_SPACE,node_token:node.id,parent_node_token:node.parentId};
@@ -167,4 +169,20 @@ test('画布分组顺序只存本机，校验节点ID列表',async t=>{
   assert.deepEqual((await invoke(kb,'GET','/api/v3/kb/layout')).body,{order:['root','peer']});
   for(const order of [['root','root'],['a/b'],'root'])assert.equal((await invoke(kb,'PUT','/api/v3/kb/layout',{order})).status,400);
   assert.equal(state.writes.length,0);
+});
+
+test('画布写入：缺权限在执行前被拒不锁；结果不明时目录与写入前一致，核对判定没执行并解锁',async t=>{
+  const{state,service}=setup(t),kb=service();
+  state.rejectMove=true;
+  const denied=await invoke(kb,'POST','/api/v3/kb/quick',{ops:[{type:'move',id:'child',parentId:''}]});
+  assert.equal(denied.status,403);assert.match(denied.body.error,/wiki:node:move/);assert.equal(state.writes.length,0);
+  state.rejectMove=false;state.dropMove=true;
+  const unknown=await invoke(kb,'POST','/api/v3/kb/quick',{ops:[{type:'move',id:'child',parentId:''}]});
+  assert.equal(unknown.status,409);assert.equal(unknown.body.code,'KB_RESULT_UNKNOWN');
+  state.dropMove=false;
+  const id=unknown.body.receipt.operationId;
+  const checked=await invoke(kb,'POST',`/api/v3/kb/operations/${id}/reconcile`,{});
+  assert.equal(checked.status,200);assert.equal(checked.body.state,'aborted');
+  const again=await invoke(kb,'POST','/api/v3/kb/quick',{ops:[{type:'move',id:'child',parentId:''}]});
+  assert.equal(again.body.state,'verified');assert.equal(state.nodes.find(n=>n.id==='child').parentId,'');
 });

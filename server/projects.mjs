@@ -18,7 +18,9 @@ export async function runLark(args, run = execute) {
     try { detail = JSON.parse(error.stderr).error; } catch { /* CLI或网络错误不返回用户原文。 */ }
     if (detail?.subtype === 'rate_limit') throw Object.assign(failure(429, '飞书读取触发限流，请稍后重试'), { retryAfterMs: 3000 });
     const safeCode = Number.isInteger(detail?.code) ? { larkCode: detail.code } : {};
-    if (detail?.subtype === 'permission_denied') throw Object.assign(failure(403, '当前 codex 用户无权读取此飞书资源'), safeCode);
+    // 授权被拒（缺权限范围 / 无权限）发生在执行之前：rejected 表示飞书确定没有执行，写入方据此不锁。
+    if (detail?.subtype === 'missing_scope') throw Object.assign(failure(403, `codex 用户缺少飞书权限 ${(detail.missing_scopes || []).join('、') || ''}，需要先授权`), safeCode, { rejected: true });
+    if (detail?.subtype === 'permission_denied') throw Object.assign(failure(403, '当前 codex 用户无权读取此飞书资源'), safeCode, { rejected: true });
     throw Object.assign(failure(502, '飞书读取失败，请检查 codex 用户登录、读取权限和网络'), safeCode);
   }
   if (result.ok !== true || result.identity !== 'user' || !result.data || result.truncated || result.data.truncated) throw failure(502, '飞书没有返回完整的用户身份数据');
