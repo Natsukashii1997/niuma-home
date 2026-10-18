@@ -23,6 +23,12 @@
           "name": "总续费",
           "current": 7556727,
           "target": 12461834
+        },
+        {
+          "key": "conv",
+          "name": "总转化率",
+          "rate": 0.348,
+          "lastMonthRate": 0.361
         }
       ]
     },

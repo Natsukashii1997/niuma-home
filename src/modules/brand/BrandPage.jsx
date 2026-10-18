@@ -32,7 +32,7 @@ function BrandData({ initial }) {
   const [data, setData] = useState(initial);
   const [sync, setSync] = useState({ busy: false, error: "" });
   const [v, setV] = useState(0);
-  const [line, setLine] = useState(""), [dim, setDim] = useState(""), [q, setQ] = useState(""), [changed, setChanged] = useState(false);
+  const [line, setLine] = useState(""), [q, setQ] = useState(""), [changed, setChanged] = useState(false);
   const versions = data.versions;
   const ver = versions[v], d = useMemo(() => diffVersion(versions, v), [versions, v]);
   const prevVer = versions[v + 1];
@@ -43,18 +43,16 @@ function BrandData({ initial }) {
   }
   const pick = (i) => { setV(i); setChanged(false); };
   const count = (k) => d.rows.filter((r) => r.kind === k).length;
-  const dims = [...new Set(ver.items.map((x) => x.dim))];
   const term = q.trim().toLowerCase();
-  const shown = d.rows.filter((r) => (!line || r.line === line) && (!dim || r.dim === dim) && (!term || `${r.id}${r.name}${r.value}`.toLowerCase().includes(term)) && (!changed || r.kind || r.renamed));
+  const shown = d.rows.filter((r) => (!line || r.line === line) && (!term || `${r.id}${r.name}${r.value}`.toLowerCase().includes(term)) && (!changed || r.kind || r.renamed));
   const groups = [...shown.reduce((m, r) => m.set(r.dim, [...(m.get(r.dim) || []), r]), new Map())];
   const readAt = new Date(data.readAt).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\//g, "-");
   return (
     <div className="brand-page">
-      <PageHeader title="品牌" subtitle="品牌数据：每半年到一年大更新一次；默认看最新一版，可以切到前几版对照" actions={<>
+      <PageHeader title="品牌" subtitle={<>最新读取于 <span className="tnum">{readAt}</span>{sync.error && <span className="risk-text"> · 重新读取失败：{sync.error}（下面仍是上次读到的数据）</span>}</>} actions={<>
         {sync.busy ? <div style={{ width: 200 }}><StepProgress label="读取飞书（只读）" /></div> : <Button onClick={refresh}><PixelIcon name="refresh" />重新读取</Button>}
         <a className="btn" href={data.source} target="_blank" rel="noreferrer"><PixelIcon name="external" size={14} />在飞书打开</a>
       </>} />
-      <p className="small muted brand-source">飞书品牌多维表格 · 只读「V年.月.日」版本表 · 读取于 {readAt}{sync.error && <span className="risk-text"> · 重新读取失败：{sync.error}（下面仍是上次读到的数据）</span>}</p>
       <div className="brand-vers" role="tablist" aria-label="版本">
         {versions.map((x, i) => (
           <button key={x.table} type="button" role="tab" aria-selected={i === v} className={`brand-ver${i === v ? " is-on" : ""}${i === 0 ? " is-latest" : ""}`} onClick={() => pick(i)}>
@@ -76,11 +74,7 @@ function BrandData({ initial }) {
       <div className="toolbar brand-bar">
         <button type="button" className={`chip${!line ? " is-on" : ""}`} onClick={() => setLine("")}>全部业务线 <span className="tnum">{ver.items.length}</span></button>
         {LINES.map(([name, cls]) => <button key={name} type="button" className={`chip${line === name ? " is-on" : ""}`} onClick={() => setLine(line === name ? "" : name)}><i className={`brand-sw line-${cls}`} />{name} <span className="tnum">{ver.items.filter((x) => x.line === name).length}</span></button>)}
-        <span className="brand-sep" />
-        <button type="button" className={`chip${!dim ? " is-on" : ""}`} onClick={() => setDim("")}>全部维度</button>
-        {dims.map((m) => <button key={m} type="button" className={`chip${dim === m ? " is-on" : ""}`} onClick={() => setDim(dim === m ? "" : m)}>{m} <span className="tnum">{ver.items.filter((x) => x.dim === m).length}</span></button>)}
-      </div>
-      <div className="toolbar">
+        <span className="spacer" />
         <label className="search-box"><PixelIcon name="search" /><input placeholder="搜指标名称、数据、ID" value={q} onChange={(e) => setQ(e.target.value)} /></label>
         {d.hasPrev && <label className="check-inline"><input type="checkbox" checked={changed} onChange={(e) => setChanged(e.target.checked)} />只看有变化</label>}
       </div>

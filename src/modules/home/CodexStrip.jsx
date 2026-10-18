@@ -6,7 +6,7 @@ import { Loadable, Modal, SampleBadge, Tag } from "../../ui/components.jsx";
 // Codex 重置预警（v3）：窗口条下方一行 + 首页大卡；有新信号时高亮。数据源 aihot.news。
 // 两种状态（用户 2026-10-18）：
 //   等待重置 —— 上次重置日期 + Tibo 原话中译 + 发布月日时分 + 距离重置大约还有多久；
-//   已重置   —— 上次重置日期 + 距上次重置过去几天几时 + 下次重置时间未公开。
+//   已重置   —— 上次重置日期 + 距上次重置过去几天几时 + 下次重置时间未公开（横条只写「Codex 重置：上次重置 … 下次重置时间未公开」，用户 2026-10-18）。
 // 只写 Tibo 的发布时间，不写检查时间。定时检查和推送未启用，只在详情里照实写。
 // 信息用方块光标逐字打出（用户 2026-10-18）：光标先闪两次，再每 2 帧一个字，数字橙色；「已重置」这类状态用信号橙。
 const STAGE_TONE = { 预告: "blue", 确认: "orange", 修正: "amber", 撤回: "red" };
@@ -58,7 +58,7 @@ export function CodexStrip() {
   const r = c && resetOf(c, now);
   const last = r?.lastReset ? `上次重置 ${r.lastReset}` : "上次重置未知";
   const texts = r?.state === "pending" ? [last, `Tibo：“${r.announce.zh || r.announce.quote}”`, `发布 ${r.announce.posted}`, r.timeNote]
-    : r?.state === "done" ? [last, `已过去 ${dhm(split(r.sinceMs))}`, "下次重置时间未公开"] : [last];
+    : r?.state === "done" ? [last, "下次重置时间未公开"] : [last];
   const typed = useTypeOut(texts, { ready: !!c });
   const seg = (i, className) => { const v = typed.part(i); return v && <span className={className}>{v}</span>; };
   if (!c) return null;
@@ -66,17 +66,14 @@ export function CodexStrip() {
     <>
       <button type="button" className={`codex-strip${c.isNew ? " is-new" : ""}`} onClick={() => setOpen(true)}>
         <PixelIcon name="alert" />
-        <span className="codex-stage">Codex 重置 · {r.state === "pending" ? "等待重置" : r.state === "done" ? <span className="codex-reset-done">已重置</span> : "暂无信号"}</span>
+        <span className="codex-stage">{r.state === "done" ? "Codex 重置：" : `Codex 重置 · ${r.state === "pending" ? "等待重置" : "暂无信号"}`}</span>
         {seg(0, "codex-when")}
         {r.state === "pending" && <>
           {seg(1, "codex-quote")}
           {seg(2, "codex-when tnum")}
           {seg(3, "codex-cd tnum")}
         </>}
-        {r.state === "done" && <>
-          {seg(1, "codex-cd tnum")}
-          {seg(2, "codex-quote")}
-        </>}
+        {r.state === "done" && seg(1, "codex-quote")}
         {state.isSample && <SampleBadge task={state.task} />}
         <span className="codex-more">详情<PixelIcon name="right" /></span>
       </button>

@@ -38,15 +38,27 @@ function RevenueCard() {
         {(data) => (
           <div className="rev-groups">
             {data.groups.map((g) => (
-              <div key={g.label} className="rev-row">
+              <div key={g.label} className={`rev-row cols-${g.items.length}`}>
                 <span className="rev-group">{g.label}</span>
-                {g.items.map((it) => <RevenueItem key={it.key} item={it} timePct={data.timePct} />)}
+                {g.items.map((it) => it.rate != null ? <RateItem key={it.key} item={it} /> : <RevenueItem key={it.key} item={it} timePct={data.timePct} />)}
               </div>
             ))}
           </div>
         )}
       </Loadable>
     </Card>
+  );
+}
+
+// 总转化率（用户 2026-10-18）：只有当前和上月两个数，没有目标，所以不画进度条、不上状态标签。
+const pct1 = (x) => `${(x * 100).toFixed(1)}%`;
+function RateItem({ item }) {
+  return (
+    <div className={`rev-item rev-rate line-${item.key}`}>
+      <div className="rev-head"><span className="rev-name">{item.name}</span></div>
+      <span className="rev-pct">{pct1(item.rate)}</span>
+      <div className="rev-nums tnum">上月 {item.lastMonthRate != null ? <b className="rev-last">{pct1(item.lastMonthRate)}</b> : "—"}</div>
+    </div>
   );
 }
 

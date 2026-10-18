@@ -1335,3 +1335,11 @@
 - 发布（用户同意）：main 从 `23f546e` 快进到 `c0b667f`，主工作区 `npm test` 388 项全部通过；`bash scripts/release-app.sh` 切换到 `nm-20261018-210353-c0b667f`；数据库备份 `work-desk-20261018-210354-before-nm-20261018-210353-c0b667f.db`；保留策略清理了最老的快照 `nm-20261017-133113-749434c`。
 - 回读（只读，脚本拦截写请求）：首页与快照 `dist/index.html` 逐字节一致；`/api/v3/status`、`/api/assistants`、`/api/v3/projects`、`/api/v3/local-projects?deleted=true`、`/api/v3/brand` 均 200；线上用户页 390 宽 `scrollWidth` = 390、1440 宽 = 1440；线上构建里项目页 `onPlaced` 已含收起删除提示的逻辑。截图 `docs/handoff/V4/线上5280-用户页-390.png`。
 - 回滚：`bash scripts/release-app.sh --use nm-20261018-205532-0e180e5`。
+
+### V4 · 2026-10-18 · 品牌筛选、Codex 横条、业务总转化率（用户点名三处；已提交，未发布）
+
+- 品牌页（`BrandPage.jsx`）：筛选只留全部业务线 + 四条业务线，删掉维度筛选（表格仍按维度分组）；搜索框和「只看有变化」并到同一行右侧；标题下两行说明改为一行「最新读取于 MM-DD HH:mm」（读取失败原因仍接在后面）；统计条压矮（`.brand-page .stat` 内边距、数字 18px，约 74px，版本条约 105px）。删掉随之不用的 `.brand-source`、`.brand-sep`。
+- Codex 横条（`CodexStrip.jsx`）：已重置时只写「Codex 重置：上次重置 10月18日 05:12　下次重置时间未公开」，去掉「· 已重置」和「已过去 X 天」；数字仍信号橙、逐字打出。等待重置状态和首页大卡没动。
+- 业务页（`BusinessPage.jsx`）：「总进度」加第 4 块「总转化率」，四块等宽（`.rev-row.cols-4`）；大号百分比 + 「上月 x.x%」（数字信号橙），无进度条和状态标签。数据是演示值（`fixtures/v3-demo-revenue.json` 新增 `conv` 项 34.8% / 上月 36.1%），接口形状写进 `docs/API.md`「业务 · 营收完成度」。
+- 验证：`npm test` 388 通过 / 0 失败；5294→5290 隔离后端截图（只发 GET）：`docs/handoff/V4/品牌筛选一行-1440.png`、`品牌筛选一行-390.png`、`Codex横条已重置-1440.png`、`业务总转化率-1440.png`；品牌页 390 宽 `scrollWidth` = 390。
+- 范围外发现：业务页营收卡在 390 宽本来就横向溢出（改前 `scrollWidth` 499，改后 484），各块被挤成竖排文字。

@@ -159,6 +159,11 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 | `409 CAMPAIGN_ARCHIVED` | 已归档战役不能由旧编辑令牌重建为当前战役 |
 | `500 LOCAL_DELETE_READBACK_FAILED` | 写后回读不一致，不能宣称成功 |
 
+## 业务 · 营收完成度（演示数据）
+
+- `GET /api/v3/business/revenue` → `{ period, timePct, updatedAt, groups: { label, items }[], origin: "demo", task }`，响应头 `x-workdesk-data-origin: demo`；数据取自 `fixtures/v3-demo-revenue.json`，待正式营收表。
+- 一般项 `{ key, name, current, target }`；比率项 `{ key, name, rate, lastMonthRate }`（0–1 的小数），前端按「有 `rate` 即比率项」显示大号百分比和「上月 x%」，不画进度条。2026-10-18 起「总进度」组第 4 项为 `conv`「总转化率」。
+
 ## 品牌数据（2026-10-18，只读）
 
 来源是设置里的 `brand_base_url`（留空读默认品牌表）。飞书表里每一版是一张表，表名形如 `V2026.09.01`；只读这些版本表，物料、数据汇总等其他表不读，不写飞书。

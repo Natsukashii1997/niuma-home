@@ -146,6 +146,9 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .rev-groups { display: flex; flex-direction: column; }
 .rev-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .rev-row + .rev-row { border-top: 1px solid var(--line); }
+.rev-row.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } /* 总进度加了总转化率，四块等宽 */
+.rev-rate .rev-nums { margin-top: auto; }
+.rev-last { font-weight: 600; color: var(--signal); }
 .rev-group { grid-column: 1 / -1; padding: var(--s3) var(--s4) 0; font: 500 11px var(--font-mono); letter-spacing: 0.06em; color: var(--muted); } /* 组名是卡片组上方的小标题，不再单占一列 */
 .revenue .card-body { padding: 0 var(--s4); }
 .rev-item { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4) var(--s4); min-width: 0; }
@@ -792,7 +795,7 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .codex-stages { display: flex; gap: var(--s1); }
 .codex-count { display: flex; flex-direction: column; justify-content: center; gap: var(--s2); padding: var(--s4) var(--s4); border-left: 1px solid var(--line); background-color: var(--panel-soft); background-image: radial-gradient(circle, var(--line) 1px, transparent 1.2px); background-size: 6px 6px; } /* 网点底：二次评审曾去掉，用户 10-17 要求恢复 */
 .codex-count strong { font-size: 14px; }
-.codex-past, .codex-strip .codex-cd.is-past, .codex-reset-done { font-weight: 600; color: var(--signal); } /* 状态文字用信号橙（用户 2026-10-18，原为绿） */
+.codex-past, .codex-strip .codex-cd.is-past { font-weight: 600; color: var(--signal); } /* 状态文字用信号橙（用户 2026-10-18，原为绿） */
 /* 窄屏（L12）：首页 12 栏在 900px 以下改为每张卡占满一行；600px 以下 Codex 卡、交付月卡上下排列，倒计时移到正文下方，网点底和状态色不变 */
 @media (max-width: 900px) {
   .home-grid > * { grid-column: 1 / -1; }
@@ -1311,7 +1314,6 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .modal-foot .spacer { flex: 1; }
 
 /* 品牌数据（用户 2026-10-18 确认草稿 docs/design/brand-data）：版本条一版一格、当前版墨底；明细按数据维度分组 */
-.brand-source { margin: calc(var(--s2) * -1) 0 var(--s3); }
 .brand-vers { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin-bottom: var(--gap); border: var(--border) solid var(--text); background: var(--panel); }
 .brand-ver { position: relative; display: flex; flex-direction: column; gap: 6px; padding: var(--s3) var(--s4); border: 0; border-right: 1px solid var(--line); background: none; font: inherit; color: var(--text); text-align: left; cursor: pointer; }
 .brand-ver:last-child { border-right: 0; }
@@ -1326,7 +1328,9 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .brand-ver-count b { font-family: var(--font-pixel); font-weight: 400; font-size: 28px; line-height: 1; }
 .brand-bar { margin-bottom: var(--s2); }
 .brand-page .search-box { flex: 0 1 360px; min-width: 0; } /* 窄屏不撑出横向滚动 */
-.brand-sep { width: 1px; height: 20px; margin: 0 var(--s1); background: var(--line); }
+.brand-page .stat { min-height: 0; gap: 0; padding: var(--s2) var(--s4); } /* 统计条比版本条矮（用户 2026-10-18） */
+.brand-page .stat-value { font-size: 18px; }
+.brand-page .stat-foot { min-height: 0; }
 .brand-sw { display: inline-block; width: 8px; height: 8px; background: var(--text); }
 .brand-sw.line-uni { background: #C23B30; } /* 业务线配色同营收进度条：大学红、国际课程绿、申诉蓝，品牌综合墨色 */
 .brand-sw.line-intl { background: #1E8E4E; }
