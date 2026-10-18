@@ -59,7 +59,7 @@ export function CodexStrip() {
   const last = r.lastReset ? `上次重置 ${r.lastReset}` : "上次重置未知";
   return (
     <>
-      <button type="button" className={`codex-strip${c.isNew && r.state === "pending" ? " is-new" : ""}`} onClick={() => setOpen(true)}>
+      <button type="button" className={`codex-strip${c.isNew ? " is-new" : ""}`} onClick={() => setOpen(true)}>
         <PixelIcon name="alert" />
         <span className="codex-stage">Codex 重置 · {r.state === "pending" ? "等待重置" : r.state === "done" ? "已重置" : "暂无信号"}</span>
         <span className="codex-when">{last}</span>
@@ -105,7 +105,7 @@ export function CodexCard({ className = "" }) {
         <h2><PixelIcon name="alert" /> Codex 重置预警</h2>
         <div className="card-extra">
           {state.isSample && <SampleBadge task={state.task} />}
-          <Tag tone={r.state === "pending" ? "blue" : r.state === "done" ? "green" : "neutral"}>{r.state === "pending" ? "等待重置" : r.state === "done" ? "已重置" : "暂无信号"}</Tag>
+          {r.state === "pending" && <Tag tone="blue">等待重置</Tag>}
           <button type="button" className="link-btn" onClick={() => setOpen(true)}>历史与规则<PixelIcon name="right" /></button>
         </div>
       </div>
@@ -118,7 +118,7 @@ export function CodexCard({ className = "" }) {
             <div className="codex-foot"><span className="label">{r.timeNote}</span></div>
           </> : r.state === "done" ? <>
             <p className="codex-done">已重置</p>
-            <p className="codex-zh">距离上次重置已经过去 {dhm(split(r.sinceMs))}。Tibo 暂时没有新消息，下次重置时间未公开。</p>
+            <p className="codex-zh">距离上次重置已经过去 {dhm(split(r.sinceMs))}，下次重置时间未公开。</p>
           </> : <p className="codex-zh">数据源里还没有重置记录。</p>}
         </div>
         <div className="codex-count">
