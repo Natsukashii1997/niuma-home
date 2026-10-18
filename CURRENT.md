@@ -1332,3 +1332,6 @@
 - 改动文件：`src/modules/user/UserPage.jsx`、`src/styles-v3.css`、`src/modules/projects/ProjectsPage.jsx`。
 - 验证：`npm test` 388 通过 / 0 失败；截图 `docs/handoff/V4/用户页溢出修复-390.png`、`用户页溢出修复-1440.png`、`项目页恢复后提示收起-1440.png`（只读截图走 5293，写操作只在 5294→5290 隔离后端）。
 - 范围外发现：用户页 390 宽时甘特表头日期挤在一起、视图切换按钮文字折行（页面不再横向滚动，仅观感问题）。
+- 发布（用户同意）：main 从 `23f546e` 快进到 `c0b667f`，主工作区 `npm test` 388 项全部通过；`bash scripts/release-app.sh` 切换到 `nm-20261018-210353-c0b667f`；数据库备份 `work-desk-20261018-210354-before-nm-20261018-210353-c0b667f.db`；保留策略清理了最老的快照 `nm-20261017-133113-749434c`。
+- 回读（只读，脚本拦截写请求）：首页与快照 `dist/index.html` 逐字节一致；`/api/v3/status`、`/api/assistants`、`/api/v3/projects`、`/api/v3/local-projects?deleted=true`、`/api/v3/brand` 均 200；线上用户页 390 宽 `scrollWidth` = 390、1440 宽 = 1440；线上构建里项目页 `onPlaced` 已含收起删除提示的逻辑。截图 `docs/handoff/V4/线上5280-用户页-390.png`。
+- 回滚：`bash scripts/release-app.sh --use nm-20261018-205532-0e180e5`。
