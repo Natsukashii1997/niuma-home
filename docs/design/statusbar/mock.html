@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>底栏样稿</title>
+<link rel="stylesheet" href="../../../src/styles.css">
+<link rel="stylesheet" href="../../../src/styles-layout.css">
+<link rel="stylesheet" href="../../../src/styles-v3.css">
+<link rel="stylesheet" href="./bars.css">
+<style>
+  body { min-height: 100vh; }
+  .mock-switch { display: flex; flex-wrap: wrap; gap: var(--s2); padding: var(--s4); font: 12px var(--font-mono); }
+  .mock-switch a { padding: 2px var(--s2); border: 1px solid var(--line); background: var(--panel); color: var(--text-2); text-decoration: none; }
+  .mock-switch a.on { border-color: var(--text); color: var(--text); }
+</style>
+</head>
+<body>
+<!-- 单独查看：npx vite --host 127.0.0.1 --port 5341 后打开 /docs/design/statusbar/mock.html?v=A
+     参数：v=A|B|C|D；pop=deadline|source|todo|list；page=home|user|kb|marketing（C 版） -->
+<nav class="mock-switch" id="sw"></nav>
+<script type="module">
+  import { mount } from "./bars.js";
+  const q = new URLSearchParams(location.search);
+  const v = q.get("v") || "A";
+  const links = [["A", "A 截止条"], ["B", "B 计数托盘"], ["C&page=kb", "C 跟着页面·知识库"], ["C&page=user", "C 跟着页面·用户"], ["D", "D 一句话"], ["D&pop=list", "D 展开"], ["A&pop=deadline", "A 悬停截止"], ["B&pop=todo", "B 点开待办"]];
+  sw.innerHTML = links.map(([k, t]) => `<a href="?v=${k}" class="${location.search === `?v=${k}` ? "on" : ""}">${t}</a>`).join("");
+  mount(v, { pop: q.get("pop"), page: q.get("page") || "home" });
+</script>
+</body>
+</html>
