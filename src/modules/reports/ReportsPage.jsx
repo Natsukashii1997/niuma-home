@@ -48,7 +48,7 @@ export default function ReportsPage({ route }) {
   return (
     <div className="reports-page">
       <PageHeader title="日/周报" subtitle="按日期拆分飞书日报、周报文档，只读；可以按状态和业务线筛选事项" actions={<>
-        <a className="link" href={href("settings")}>设置来源</a>
+        <a className="btn" href={href("settings")}><PixelIcon name="settings" />设置来源</a>
         <Button disabled={state.loading} onClick={() => setRefresh(value => value + 1)}><PixelIcon name="refresh" /> {state.loading ? "读取中…" : "刷新"}</Button>
       </>} />
       {refresh > 0 && <div className="operation-progress"><StepProgress key={refresh} label="刷新日/周报" done={!state.loading && !state.error && state.data?.sources.every(s => s.ok)} error={state.error || state.data?.sources.filter(s => !s.ok).map(s => s.error).join("；")} /></div>}
@@ -154,6 +154,7 @@ function ReportBody({ body }) {
         if (b.type === "heading") return <h4 key={i} className={`md-h md-h${b.level}`}>{cleanCell(b.text)}</h4>;
         if (b.type === "table") return <MarkdownTable key={i} head={b.head} rows={b.rows} />;
         if (b.type === "list") { const L = b.ordered ? "ol" : "ul"; return <L key={i}>{b.items.map((t, j) => <li key={j}>{t}</li>)}</L>; }
+        if (/^\s*\\?([-*_])\1{2,}\s*$/.test(b.text)) return i === blocks.length - 1 ? null : <hr key={i} className="md-hr" />; // 分隔线；在末尾时不显示
         return <p key={i} className="pre">{b.text}</p>;
       })}
     </div>

@@ -17,7 +17,7 @@ export default function BrandPage() {
                 <PixelIcon name="external" size={14} /> 在飞书打开
               </a>
             ) : (
-              <Placeholder icon="brand" title="还没有配置品牌记录表" action={<a className="btn" href={href("settings")}>去设置里配置</a>}>
+              <Placeholder className="is-page" icon="brand" title="还没有配置品牌记录表" action={<a className="btn" href={href("settings")}>去设置里配置</a>}>
                 在设置页填入飞书多维表格链接后，这里直接跳转。
               </Placeholder>
             )}

@@ -112,9 +112,9 @@ function PriceBoard({ sku, data, onSaved, onEdit }) {
           <select value={base} onChange={(e) => setBase(e.target.value)}>{schemes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
         </label>
         <span className="price-show">
-          {schemes.map((s) => (
+          {schemes.map((s, k) => (
             <label key={s.id} className="chk"><input type="checkbox" checked={show.includes(s.id)} disabled={s.id === base}
-              onChange={(e) => setShow((old) => e.target.checked ? [...old, s.id] : old.filter((x) => x !== s.id))} />{s.name}</label>
+              onChange={(e) => setShow((old) => e.target.checked ? [...old, s.id] : old.filter((x) => x !== s.id))} /><Mark kind={MARKS[k]} />{s.name}</label>
           ))}
         </span>
         <span className="spacer" />

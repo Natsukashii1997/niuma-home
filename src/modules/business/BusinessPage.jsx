@@ -1,5 +1,5 @@
 import { useApi } from "../../api.js";
-import { Card, Loadable, PageHeader, Placeholder, SampleBadge, Tag } from "../../ui/components.jsx";
+import { Card, Loadable, PageHeader, Placeholder, SampleStrip, Tag } from "../../ui/components.jsx";
 import { PixelBar, PixelIcon } from "../../ui/bitmap.jsx";
 import { LINES } from "../../constants.js";
 
@@ -26,13 +26,14 @@ const fmt = (n) => Math.round(n).toLocaleString("en-US");
 // 卡里写万元、保留 1 位小数，悬停看精确值（二次评审 P2-12）
 const wan = (n) => `${(n / 10000).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} 万`;
 
-// 业务营收完成度：总计一行、业务线一行。竖线是时间进度；完成度不低于时间进度为绿，落后 15 个百分点以内为琥珀，再落后为红。
+// 业务营收完成度：总进度一组、业务线一组。竖线是时间进度；完成度不低于时间进度为绿，落后 15 个百分点以内为琥珀，再落后为红（颜色只上状态标签）。
 function RevenueCard() {
   const state = useApi("/api/v3/business/revenue");
   const r = state.data;
   return (
-    <Card className="revenue" title={<><PixelIcon name="trend" /> 业务营收完成度</>}
-      extra={<>{state.isSample && <SampleBadge task={state.task} />}{r && <span className="small muted">{r.period}{r.timePct != null && ` · 时间进度 ${Math.round(r.timePct * 100)}%（竖线）`} · 更新 {r.updatedAt}</span>}</>}>
+    <Card className={`revenue${state.isSample ? " is-sample" : ""}`} title={<><PixelIcon name="trend" /> 业务营收完成度</>}
+      extra={<>{r && <span className="small muted">{r.period}{r.timePct != null && ` · 时间进度 ${Math.round(r.timePct * 100)}%（竖线）`} · 更新 {r.updatedAt}</span>}</>}>
+      {state.isSample && <SampleStrip task={state.task} />}
       <Loadable state={state} name="营收完成度">
         {(data) => (
           <div className="rev-groups">

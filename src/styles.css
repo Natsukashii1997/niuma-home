@@ -141,12 +141,16 @@ h1, h2, h3, h4, b, strong { font-weight: 600; }
 .tag-orange { border-color: var(--signal); color: var(--signal); }
 .tag-red { border-color: var(--risk-soft); background: var(--risk-soft); color: var(--risk); }
 .tag-amber { border-color: var(--warn-soft); background: var(--warn-soft); color: var(--warn); }
+.tag-blue::before, .tag-green::before, .tag-red::before, .tag-amber::before { content: ""; flex-shrink: 0; width: 6px; height: 6px; background: currentColor; } /* 状态标签统一：小实心方块 + 文字 */
 .tag-ink { border-color: var(--text); background: var(--text); color: var(--panel); }
 .tag-frame { border-color: var(--text); background: var(--panel); color: var(--text); } /* 分类名：墨框白底，不和「墨底 = 当前选中」混淆 */
 .tag-row { display: flex; flex-wrap: wrap; gap: var(--s2); }
 .chip { display: inline-flex; align-items: center; gap: var(--s2); padding: var(--s1) var(--s2); border: 1px solid var(--line); }
 .chip:hover { border-color: var(--text); }
 .sample-badge { padding: 1px var(--s1); font-family: var(--font-mono); font-size: 11px; color: var(--signal); border: 1px dashed var(--signal); white-space: nowrap; }
+.sample-strip { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s2); padding: var(--s1) var(--s3); font-size: 12px; color: var(--text-2); background: var(--panel); border: 1px dashed var(--signal); }
+.card-body > .sample-strip { margin: var(--s3) 0 0; }
+.is-sample:not(.card), .card.is-sample > .card-body { background: var(--dither-1), var(--panel); } /* 示例区整体铺浅网点 */
 
 /* 文本 */
 .muted { color: var(--muted); }
@@ -379,6 +383,11 @@ textarea.paste-box::placeholder { color: var(--muted); }
 .assistant-page .chat-panel .bubble { white-space: pre-wrap; overflow-wrap: anywhere; }
 .assistant-page .chat-input textarea { min-width: 0; color: var(--text); background: var(--panel); }
 .assistant-status { padding: var(--s1) var(--s4); color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.assistant-status.is-hint { padding: 0 var(--s4) var(--s2); margin-top: calc(-1 * var(--s2)); } /* 输入提示紧贴在输入框下方 */
+.chat-head .segmented { height: 32px; } /* 头部三个控件同高 */
+.chat-head .segmented button { height: 100%; }
+.btn-model { border-color: var(--line); color: var(--text-2); font-family: var(--font-mono); font-size: 12px; } /* 模型设置：次要按钮，灰框 */
+.btn-model:hover, .btn-model[aria-expanded="true"] { border-color: var(--text); color: var(--text); }
 .assistant-models { padding: var(--s3) var(--s4); border-bottom: 1px solid var(--line); }
 .assistant-models p { margin: var(--s2) 0 0; overflow-wrap: anywhere; }
 .assistant-model-row { flex-wrap: wrap; align-items: flex-end; }

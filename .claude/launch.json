@@ -29,6 +29,16 @@
         "127.0.0.1"
       ],
       "port": 5297
+    },
+    {
+      "name": "work-desk-dev-live",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5293"
+      ],
+      "port": 5293
     }
   ]
 }

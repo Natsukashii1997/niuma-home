@@ -270,7 +270,7 @@ function Canvas({ kb, initialOrder, ruleIds, reload }) {
       {note && !lock && <p className={`kbf-note is-${note.tone}`} role="status"><PixelIcon name={note.tone === "ok" ? "check" : "alert"} />{note.text}<button type="button" className="icon-btn" aria-label="关闭" onClick={() => setNote(null)}><PixelIcon name="close" /></button></p>}
 
       <div className="kbf-board" data-dragging={drag?.kind || undefined}>
-        <div className={`kbf-loose${over === "loose" ? " is-over" : ""}`} {...dropZone("loose", () => moveTo(ROOT))}>
+        <div className={`kbf-loose${model.loose.length ? "" : " is-empty"}${over === "loose" ? " is-over" : ""}`} {...dropZone("loose", () => moveTo(ROOT))}>
           <span className="kbf-loose-label"><b className="tnum">散卡 {model.loose.length}</b>收藏时归类不明确的放这里</span>
           <div className="kbf-loose-cards">{model.loose.length ? model.loose.map(card) : <p className="kbf-empty">没有散卡，文档都在分组里</p>}</div>
           {model.loose.length > 0 && <span className="kbf-loose-hint"><PixelIcon name="down" />拖进下面的文件夹</span>}

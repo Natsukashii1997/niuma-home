@@ -59,12 +59,12 @@ function PromoTable({ rows }) {
       {!groups.length ? <Empty>没有符合条件的记录</Empty> : (
         <div className="table-wrap promo-table-wrap" role="region" aria-label="促销表" tabIndex={0}>
           <table className="grid promo-table">
-            <colgroup>{BASE.map(([k]) => <col key={k} style={{ width: COL_W[k] }} />)}{PROMO_FIELDS.map(([f]) => <col key={f} style={{ width: COL_W[f] }} />)}<col style={{ width: 40 }} /></colgroup>
-            <thead><tr>{BASE.map(([k, l]) => <th key={k}>{l}</th>)}{PROMO_FIELDS.map(([, label]) => <th key={label}>{label}</th>)}<th aria-label="操作" /></tr></thead>
+            <colgroup>{BASE.map(([k]) => <col key={k} style={{ width: COL_W[k] }} />)}{PROMO_FIELDS.map(([f]) => <col key={f} style={{ width: COL_W[f] }} />)}</colgroup>
+            <thead><tr>{BASE.map(([k, l]) => <th key={k}>{l}</th>)}{PROMO_FIELDS.map(([, label]) => <th key={label}>{label}</th>)}</tr></thead>
             {groups.map(({ key, name, rows: items, latestChange }) => (
               <tbody key={key}>
                 <tr className="group-row">
-                  <td colSpan={BASE.length + PROMO_FIELDS.length + 1} onClick={() => toggle(key)}>
+                  <td colSpan={BASE.length + PROMO_FIELDS.length} onClick={() => toggle(key)}>
                     <div className="promo-group">
                       <button type="button" className="promo-group-toggle" data-dither="" aria-expanded={!collapsed.has(key)} aria-label={`${collapsed.has(key) ? "展开" : "折叠"} ${name}`}>
                         {collapsed.has(key) ? <PixelIcon name="right" size={16} /> : <PixelIcon name="down" size={16} />}
@@ -81,8 +81,8 @@ function PromoTable({ rows }) {
                 {!collapsed.has(key) && items.map((row) => (
                   <tr key={JSON.stringify([row.month, row.line, row.sku])}>
                     {BASE.map(([k]) => <td key={k} className={k === "sku" ? "nowrap promo-sku" : "nowrap"}>{k === "sku" ? <a className="sku-link" href={href("marketing", "sku", row.line, row.sku)} title="打开 SKU 档案">{row.sku}</a> : row[k]}</td>)}
-                    {PROMO_FIELDS.map(([field]) => <PromoCell key={field} value={row[field]} field={field} previous={previous.get(row)} />)}
-                    <td className="promo-actions"><button type="button" className="icon-btn" title="复制这一行" onClick={() => copyRows(JSON.stringify([row.month, row.line, row.sku]), [row])}><PixelIcon name={copied === JSON.stringify([row.month, row.line, row.sku]) ? "check" : "copy"} /></button></td>
+                    {PROMO_FIELDS.map(([field], k) => <PromoCell key={field} value={row[field]} field={field} previous={previous.get(row)}
+                      action={k === PROMO_FIELDS.length - 1 && <button type="button" className="icon-btn promo-row-copy" title="复制这一行" onClick={() => copyRows(JSON.stringify([row.month, row.line, row.sku]), [row])}><PixelIcon name={copied === JSON.stringify([row.month, row.line, row.sku]) ? "check" : "copy"} /></button>} />)}
                   </tr>
                 ))}
               </tbody>
@@ -94,7 +94,8 @@ function PromoTable({ rows }) {
   );
 }
 
-function PromoCell({ value, field, previous }) {
+// action：行复制按钮，放在每行最后一格里，悬停才出现，不再单占一列。
+function PromoCell({ value, field, previous, action = null }) {
   const [anchor, setAnchor] = useState(null);
   const [open, setOpen] = useState(false);
   const long = LONG.has(field) && String(value).length > 40;
@@ -110,13 +111,14 @@ function PromoCell({ value, field, previous }) {
     setAnchor(event.currentTarget.getBoundingClientRect());
   }
   return (
-    <td className={`${changed ? "changed promo-changed" : ""} ${LONG.has(field) ? "long" : ""}`}
+    <td className={`${changed ? "changed promo-changed" : ""} ${LONG.has(field) ? "long" : ""}${action ? " has-action" : ""}`}
       tabIndex={changed ? 0 : undefined} aria-describedby={anchor ? id : undefined}
       onMouseEnter={show} onMouseLeave={closeSoon} onFocus={show} onBlur={closeSoon}>
       {long ? <button type="button" className={`promo-long${open ? " is-open" : ""}`} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
         <span className={open ? undefined : "clamp-2"}>{value}</span><span className="promo-more">{open ? "收起" : "展开"}</span></button> : value}
       {anchor && createPortal(<PreviousValue id={id} anchor={anchor} text={`${previous.month}：${previous[field]}`}
         onClose={() => setAnchor(null)} onEnter={cancelClose} onLeave={closeSoon} />, document.body)}
+      {action}
     </td>
   );
 }

@@ -27,7 +27,7 @@ export function voiceIssue(state) {
 
 function VoiceIssue({ issue, reload }) {
   return (
-    <Placeholder icon={issue.kind === "empty" ? "voice" : "alert"} title={issue.title}
+    <Placeholder className="is-page" icon={issue.kind === "empty" ? "voice" : "alert"} title={issue.title}
       action={issue.kind !== "unavailable" && reload ? <Button onClick={reload}><PixelIcon name="refresh" />重新读取</Button> : null}>
       <span className={issue.kind === "unavailable" ? "warn-text" : issue.kind === "error" ? "risk-text" : ""}>{issue.text}</span>
       {issue.kind === "unavailable" && <><br />免费人工试运行：模型、付费采集和定时任务都没开；这里不显示任何示例话题。</>}

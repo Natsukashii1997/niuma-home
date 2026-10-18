@@ -1,13 +1,11 @@
-import { useState } from "react";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Card, Loadable, SampleBadge, StatusMark } from "../../ui/components.jsx";
+import { Card, Loadable, Placeholder, SampleBadge, StatusMark } from "../../ui/components.jsx";
 import { AgentFace, FlipNumber, PixelIcon } from "../../ui/bitmap.jsx";
 import { deliveryMonth, deliverySteps, daysToDeadline, shortMonth } from "../../constants.js";
 import { CodexCard } from "./CodexStrip.jsx";
 import { VoiceCloud, voiceIssue } from "../voice/VoicePage.jsx";
-import { handOffDraft } from "../assistants/AssistantsPage.jsx";
-import { PRESETS, startersOf } from "../assistants/presets.js";
+import { PRESETS } from "../assistants/presets.js";
 
 // 首页（v3）：Codex 重置 + 待我处理 → 交付月 + 今日日程 → 用户之声 + Agent。业务营收完成度在「业务」页。
 // 工作节奏是本月准备下月，月底前交付。
@@ -125,7 +123,7 @@ function TodayCard({ now }) {
     <Card className="col-4" dither title={<><PixelIcon name="calendar" /> 今日日程</>} extra={<a className="link" href="https://www.feishu.cn/calendar/" target="_blank" rel="noreferrer">飞书<PixelIcon name="external" /></a>}>
       <Loadable state={state} name="今日日程">
         {(events) => {
-          if (!events.length) return <p className="muted">今天没有日程</p>;
+          if (!events.length) return <Placeholder icon="calendar" title="今天没有日程">飞书日历里今天没有安排。</Placeholder>;
           const end = (e) => { const t = [...e.time.matchAll(/(\d{1,2}):(\d{2})/g)].at(-1); return t ? Number(t[1]) * 60 + Number(t[2]) : -1; };
           const next = events.findIndex((e) => end(e) > minutes);
           return (
@@ -145,25 +143,21 @@ function TodayCard({ now }) {
   );
 }
 
-// Agent：四个预设助手是一组像素牛卡片（点卡片进对话），下面是选中助手的常用开场（点一下带着这句进入对话，只填进输入框）；
+// Agent：四个预设助手排成一行（点卡片进对话）；常用开场只在 Agent 页显示，首页不重复（用户 2026-10-18 确认）。
 // 自建和导入的助手排在卡片下方的列表里。
 function AgentsCard() {
   const state = useApi("/api/assistants");
-  const [pick, setPick] = useState(null);
-  const start = (a, text) => { handOffDraft(a.id, text); location.hash = href("assistants", String(a.id)); };
   return (
     <Card className="col-4" dither title={<><PixelIcon name="agent" /> Agent</>} extra={<a className="link" href={href("assistants")}>全部<PixelIcon name="right" /></a>}>
       <Loadable state={state} name="Agent 列表">
         {(list) => {
           const presets = list.filter((a) => PRESETS[a.preset]), others = list.filter((a) => !PRESETS[a.preset]);
-          const current = list.find((a) => a.id === pick) || presets[0] || list[0];
           return (
             <div className="agent-card">
               <div className="agent-tiles">
                 {presets.map((a) => (
-                  <a key={a.id} href={href("assistants", String(a.id))} data-dither="" className={`agent-tile${a.id === current?.id ? " is-picked" : ""}`}
-                    onMouseEnter={() => setPick(a.id)} onFocus={() => setPick(a.id)}>
-                    <AgentFace preset={a.preset} seed={a.name} size={48} />
+                  <a key={a.id} href={href("assistants", String(a.id))} data-dither="" className="agent-tile" title={`${a.name}：${PRESETS[a.preset].role}`}>
+                    <AgentFace preset={a.preset} seed={a.name} size={40} />
                     <strong>{a.name}</strong>
                     <small>{PRESETS[a.preset].role}</small>
                   </a>
@@ -172,12 +166,6 @@ function AgentsCard() {
               {others.length > 0 && <ul className="list agent-list">
                 {others.map((a) => <li key={a.id}><AgentFace seed={a.name} /><a href={href("assistants", String(a.id))}>{a.name}</a><span className="agent-model">{a.model || "默认"}</span></li>)}
               </ul>}
-              {current && <>
-                <span className="label">常用开场 · {current.name}</span>
-                <div className="agent-starters">
-                  {startersOf(current).map((t) => <button key={t} type="button" className="phrase" onClick={() => start(current, t)}>{t}</button>)}
-                </div>
-              </>}
             </div>
           );
         }}
@@ -193,9 +181,9 @@ function VoiceCard() {
   return (
     <Card className="col-8" dither title={<><PixelIcon name="voice" /> 留学之声</>}
       extra={<a className="link" href={href("voice")}>Voice<PixelIcon name="right" /></a>}>
-      {issue ? <div className={`voice-issue is-${issue.kind}`}><strong>{issue.title}</strong><span className="small">{issue.text}</span></div> : <Loadable state={state} name="留学之声">
+      {issue ? <Placeholder icon={issue.kind === "empty" ? "voice" : "alert"} title={issue.title}>{issue.text}</Placeholder> : <Loadable state={state} name="留学之声">
         {(v) => {
-          if (!v.hot?.length) return <div className="voice-issue is-empty"><strong>现在没有合格的话题</strong><span className="small">{v.note || "还没有达到 5 个独立来源的话题。"}</span></div>;
+          if (!v.hot?.length) return <Placeholder icon="voice" title="现在没有合格的话题">{v.note || "还没有达到 5 个独立来源的话题。"}</Placeholder>;
           return (
             <div className="voice-cloud-wrap">
               <VoiceCloud cloud={v.cloud} />

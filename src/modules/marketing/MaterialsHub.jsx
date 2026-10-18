@@ -3,7 +3,7 @@ import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { href } from "../../router.js";
-import { Button, Loadable, Modal, PendingButton, SampleBadge, Segmented, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Loadable, Modal, PendingButton, SampleStrip, Segmented, Tag, useToast } from "../../ui/components.jsx";
 import Thumb from "../../ui/Thumb.jsx";
 import { deliveryMonth } from "../../constants.js";
 import { SAMPLE_NAS } from "../../samples/v3.js";
@@ -34,14 +34,13 @@ function NasViews({ view }) {
 function NasBar({ nas, sample }) {
   const [scan, setScan] = useState(null);
   return (
-    <div className="nas-bar">
+    <div className={`nas-bar${sample ? " is-sample" : ""}`}>
       <span className={`nas-state${nas.reachable ? "" : " is-off"}`}>{nas.reachable ? `NAS 已连接 · ${nas.network}` : "NAS 不可达 · 显示缓存缩略图"}</span>
       <span className="mono small"><PixelIcon name="folder" /> {nas.root}/YYYY-MM/产品物料｜营销物料/类型/</span>
       <span className="small muted">缩略图缓存 {Math.round(nas.thumbBytes / 1024 / 1024)} MB · 只存缩略图</span>
       <span className="small muted">上次扫描 {nas.lastScanAt}</span>
       <span className="spacer" />
       {scan ? <div className="nas-scan"><StepProgress label="扫描 NAS" done={scan === "done"} /></div> : null}
-      {sample && <SampleBadge task={sample} />}
       <Button onClick={() => { setScan("run"); setTimeout(() => setScan("done"), 2600); }}><PixelIcon name="refresh" />重新扫描</Button>
     </div>
   );
@@ -53,9 +52,10 @@ function NasBoard({ nas, view, sample }) {
   const dm = deliveryMonth();
   return (
     <>
+      {sample && <SampleStrip task={`待 ${sample} 接入`} />}
       <NasBar nas={nas} sample={sample} />
       {view === "wall" ? (
-        <div className="wall" style={{ "--cols": nas.months.length }}>
+        <div className={`wall${sample ? " is-sample" : ""}`} style={{ "--cols": nas.months.length }}>
           <div className="wall-h">类型</div>
           {nas.months.map((m) => <div key={m} className={`wall-h${m === dm ? " is-dm" : ""}`}><span className="tnum">{m}</span>{m === dm && <em className="month-flag">交付月</em>}</div>)}
           {nas.types.map((t) => (
@@ -101,8 +101,8 @@ function NasBoard({ nas, view, sample }) {
 const Row = ({ children }) => <>{children}</>;
 
 function WallCell({ cell, source, isDm, onOpen, type, month }) {
-  if (!cell) return <div className="wall-c"><span className="wall-empty">本月未出</span></div>;
-  if (cell.state === "pending") return <div className={`wall-c${isDm ? " is-dm" : ""}`}><button type="button" className="wall-empty is-pending" onClick={onOpen}><PixelIcon name="clock" />待交付<span className="small">{cell.note}</span></button></div>;
+  if (!cell) return <div className="wall-c"><span className="wall-empty"><PixelIcon name="close" />本月不出</span></div>;
+  if (cell.state === "pending") return <div className={`wall-c${isDm ? " is-dm" : ""}`}><button type="button" className="wall-empty is-pending" onClick={onOpen}><PixelIcon name="clock" /><span className="tag tag-amber">待交付</span><span className="small">{cell.note}</span></button></div>;
   if (cell.state === "skip") return <div className={`wall-c${isDm ? " is-dm" : ""}`}><span className="wall-empty"><PixelIcon name="close" />本月不出</span></div>;
   // 沿用：画被沿用那张的线框缩略图，写明来自哪个月、哪一版（二次评审 P2-7）
   if (cell.state === "reuse") return (

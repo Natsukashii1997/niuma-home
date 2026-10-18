@@ -159,7 +159,7 @@ function Conversation({ assistant, edit, reloadAssistants }) {
     <header className="chat-head"><div className="row"><AgentFace preset={assistant.preset} seed={assistant.name} size={32} /><strong>{assistant.name}</strong><Tag>只读</Tag></div>
       <div className="row">
         <Segmented options={[["chat", "对话"], ["kb", "知识库"]]} value={tab} onChange={setTab} />
-        <Button aria-expanded={modelOpen} onClick={() => setModelOpen((v) => !v)}><PixelIcon name="settings" />{assistant.model || "默认模型"}{assistant.effort ? ` · ${assistant.effort}` : ""}</Button>
+        <Button variant="model" aria-expanded={modelOpen} onClick={() => setModelOpen((v) => !v)}><PixelIcon name="settings" />{assistant.model || "默认模型"}{assistant.effort ? ` · ${assistant.effort}` : ""}</Button>
         <Button disabled={busy} onClick={edit}><PixelIcon name="edit" />编辑</Button>
       </div></header>
     <div className={modelOpen ? "model-panel is-open" : "model-panel"}><ModelControls assistant={assistant} busy={busy} version={runtimeVersion} reloadAssistants={reloadAssistants} onBlocked={setSettingsBlocked} /></div>
@@ -172,9 +172,9 @@ function Conversation({ assistant, edit, reloadAssistants }) {
       <div ref={bottom} />
     </div>
     {busy && pending && !pending.replies.length && <div className="assistant-wait"><StepProgress label="等待回复首字" /></div>}
-    <div className="assistant-status" role="status">{busy ? "Codex 正在回复…" : "Enter 发送 · Shift+Enter 换行"}</div>
     {error && <div className="assistant-status"><p className="error" role="alert">{error}</p><Button disabled={busy || loading} onClick={reload}>重新读取历史</Button></div>}
     <footer className="chat-input"><textarea aria-label="消息" placeholder="输入消息，确认后发送" value={draft} onChange={(e) => setDraft(e.target.value)} disabled={busy} maxLength={50000} rows={3} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); } }} /><Button variant="primary" disabled={busy || loading || uncertain || settingsBlocked || !draft.trim()} onClick={send}><PixelIcon name="send" /> 发送</Button></footer>
+    <div className="assistant-status is-hint" role="status">{busy ? "Codex 正在回复…" : "Enter 发送 · Shift+Enter 换行"}</div>
     </>}
   </section>;
 }

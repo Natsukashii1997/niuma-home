@@ -7,7 +7,8 @@ export function deliverySteps(steps = [], plans, month) {
   const plan = {
     key: "plans", label: "方案录入", href: "#/marketing/plans",
     state: done.length === LINES.length ? "done" : done.length ? "part" : "todo",
-    meta: plans ? `${done.length}/${LINES.length} 条业务线${done.length < LINES.length ? ` · 待录 ${LINES.filter((l) => !done.includes(l)).join("、")}` : ""}` : "读取中",
+    meta: plans ? `${done.length}/${LINES.length} 条业务线已录` : "读取中", // 一行写完；待录的业务线名放悬停提示
+    note: plans && done.length < LINES.length ? `待录 ${LINES.filter((l) => !done.includes(l)).join("、")}` : undefined,
   };
   const rest = steps.filter((s) => s.key !== "plans").map((s) => (s.state === "pending" || /未接入/.test(s.meta || "")
     ? { ...s, state: "todo", meta: "待接入", note: s.note || s.meta } : s));

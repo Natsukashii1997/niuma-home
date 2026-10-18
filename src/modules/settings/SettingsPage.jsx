@@ -53,9 +53,9 @@ export default function SettingsPage() {
         <V3Rows v3={v3} keys={["timeline_source", "project_base_url", "project_table_id", "kb_space_id", "mentor_sources", "kb_collect_space"]} /><CollectRulesRow v3={v3} /><PairingRow /></SetGroup>
       <SetGroup title="营销" icon="marketing">{form(settings, "material_types")}
         <V3Rows v3={v3} keys={["campaign_table_id", "price_sku_table_id", "price_floor_margin", "price_cost_per_hour"]} />
-        <div className="set-row"><div className="set-row-head"><span className="set-label">NAS 物料目录</span><span className="set-value muted">暂缓接入（你会重新整理目录）；工作台不扫描、不挂载 NAS</span></div></div></SetGroup>
+        <div className="set-row"><div className="set-row-head"><span className="set-label">NAS 物料目录</span><span className="set-value muted">暂缓接入（你会重新整理目录）；工作台不扫描、不挂载 NAS</span><Tag>暂缓</Tag></div></div></SetGroup>
       <SetGroup title="飞书身份与预算" icon="send"><V3Rows v3={v3} keys={["lark_profile", "lark_app_id", "voice_budget"]} />
-        <div className="set-row"><div className="set-row-head"><span className="set-label">机械邪龙兽推送</span><span className="set-value muted">未启用：不新增定时任务，不推送</span></div></div></SetGroup>
+        <div className="set-row"><div className="set-row-head"><span className="set-label">机械邪龙兽推送</span><span className="set-value muted">未启用：不新增定时任务，不推送</span><Tag>未启用</Tag></div></div></SetGroup>
       <SetGroup title="入口" icon="brand">{form(settings, "brand_base_url")}</SetGroup>
     </div>}</Loadable>
   </>;
@@ -227,6 +227,14 @@ const V3_FIELDS = {
   voice_budget: { label: "留学之声月预算上限（元）", hint: "0 到 10；当前免费试运行，模型和付费采集都没开" },
 };
 const pretty = (k, v) => { if (!V3_FIELDS[k]?.json) return v; try { return JSON.stringify(JSON.parse(v), null, 2); } catch { return v; } };
+// JSON 配置在列表里只显示摘要（几条 + 名称），完整 JSON 在「编辑」里看。
+const summary = (v) => {
+  try {
+    const j = JSON.parse(v); const name = (x) => x?.title || x?.name || x?.label || "";
+    if (Array.isArray(j)) { const names = j.map(name).filter(Boolean); return `${j.length} 条${names.length ? `：${names.slice(0, 4).join("、")}${names.length > 4 ? " 等" : ""}` : ""}`; }
+    return j && typeof j === "object" ? `1 个来源${name(j) ? `：${name(j)}` : ""}` : String(v);
+  } catch { return v || "未设置"; }
+};
 
 function useV3Settings() {
   const state = useApi("/api/v3/settings");
@@ -257,7 +265,7 @@ function V3SettingRow({ k, v3 }) {
     <div className="set-row">
       <div className="set-row-head">
         <span className="set-label">{field.label}</span>
-        <span className={`set-value${field.json ? " is-json" : ""}`}>{field.json ? <code>{pretty(k, values[k] ?? "")}</code> : values[k] || "未设置"}{isDemo && <span className="warn-text small">（演示口径，待你确定）</span>}</span>
+        <span className="set-value" title={field.json ? pretty(k, values[k] ?? "") : undefined}>{field.json ? summary(values[k] ?? "") : values[k] || "未设置"}{isDemo && <span className="warn-text small">（演示口径，待你确定）</span>}</span>
         {isReadonly ? <Tag>固定 · 只读</Tag> : isDemo ? <SampleBadge task="演示口径" /> : saved[k] !== undefined ? <Tag tone="green">已保存</Tag> : <Tag>默认值</Tag>}
         {!isReadonly && <Button onClick={() => { setOpen((o) => !o); flow.reset(); setDraft(pretty(k, values[k] ?? "")); }} disabled={flow.busy || flow.phase === "unknown"}><PixelIcon name="edit" />{open ? "收起" : "编辑"}</Button>}
       </div>

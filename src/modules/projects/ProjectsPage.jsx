@@ -143,7 +143,7 @@ function ProjectBoard({ initial }) {
           const unk = nodes.filter((n) => nodeState(n) === "unknown").length;
           // 当前阶段未知（phase = -1）时不标「进行中 / 遗留」，只按节点状态说明。
           const state = nodes.length && ok === nodes.length ? "done" : p.phase === i ? "cur" : p.phase > i ? "left" : "todo";
-          return { key: ph, name: ph, state, note: <>{ok}/{nodes.length} 已完成{unk ? ` · ${unk} 未填写` : ""}</> };
+          return { key: ph, name: ph, state, note: <>{ok}/{nodes.length} 完成{unk ? ` · ${unk} 未填写` : ""}</> };
         })} />
         <div className="toolbar">
           <Segmented options={[["all", "全部节点"], ["open", "未完成"], ["unknown", `未填写 ${sum.unknown}`], ["gate", `等你审核 ${sum.gates}`], ["soon", `2 天内到期 ${sum.soon}`]]} value={filter} onChange={setFilter} />

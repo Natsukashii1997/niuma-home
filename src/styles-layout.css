@@ -54,16 +54,18 @@ select { height: var(--ctl); }
 
 /* ---------- 概况数字条：等宽格、左对齐，标签 → 数字 → 说明 ---------- */
 .stat-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin-bottom: var(--gap); background: var(--panel); border: var(--border) solid var(--line); }
-.stat { display: flex; flex-direction: column; justify-content: center; gap: var(--s1); min-height: 88px; padding: var(--s3) var(--s4); border: 0; border-left: 1px solid var(--line); background: none; font: inherit; color: inherit; text-align: left; }
+.stat { display: flex; flex-direction: column; justify-content: flex-start; gap: var(--s1); min-height: 88px; padding: var(--s3) var(--s4); border: 0; border-left: 1px solid var(--line); background: none; font: inherit; color: inherit; text-align: left; }
 .stat:first-child { border-left: 0; }
 .stat-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; color: var(--muted); white-space: nowrap; }
 .stat-value { font-size: 24px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
 .stat-value small { margin-left: 2px; font-size: 13px; font-weight: 400; color: var(--muted); }
 .stat-foot { display: flex; align-items: center; gap: var(--s2); min-height: 18px; font-size: 12px; color: var(--muted); }
+.stat-foot:not(:has(*)) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; } /* 纯文字说明最多两行 */
 .stat.is-ok .stat-value { color: var(--ok); }
 .stat.is-warn .stat-value { color: var(--warn); }
 .stat.is-risk .stat-value { color: var(--risk); }
 .stat.is-muted .stat-value { color: var(--muted); }
+.stat.is-signal .stat-value { color: var(--signal); } /* 需要处理且 >0 */
 button.stat { cursor: pointer; }
 button.stat:hover:not(:disabled) { background: var(--panel-soft); }
 button.stat:disabled { cursor: default; }
@@ -85,7 +87,11 @@ button.stat.is-on .stat-label, button.stat.is-on .stat-foot, button.stat.is-on .
 .campaign-grid > .stack > :last-child, .kb-layout > .stack > :last-child { flex: 1 1 auto; }
 .campaign-grid > .stack > :last-child .card-body { display: flex; flex-direction: column; }
 .campaign-grid > .stack > :last-child .review-box { flex: 1 1 auto; min-height: 120px; }
-.kb-detail, .proj-list { position: static; }
+.kb-detail { position: static; }
+.proj-list { align-self: start; position: sticky; top: var(--sticky-top); } /* 项目左栏按内容高度并吸顶，不再跟着节点表拉长 */
+.proj-list .proj-items { position: static; }
+.proj-list .card-head { flex-wrap: wrap; row-gap: var(--s2); } /* 放不下时按钮换到下一行，标题不再被挤成竖排 */
+.proj-list .card-head h2 { white-space: nowrap; }
 
 /* ---------- 页面级补充 ---------- */
 /* Agent：会话列表与对话区 3/9，等高 */
@@ -103,7 +109,7 @@ button.stat.is-on .stat-label, button.stat.is-on .stat-foot, button.stat.is-on .
 .proj-main { display: flex; flex-direction: column; }
 .proj-main > .node-list { flex: 1 1 auto; }
 /* 概况条里的项目名用正文字号，避免和数字抢 */
-.proj-main .stat:first-child .stat-value { font-size: 18px; font-weight: 600; }
+.proj-main .stat:first-child .stat-value { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; font-size: 18px; font-weight: 600; } /* 项目名两行完整显示 */
 .stat-foot .stat-bar { flex: 0 0 72px; }
 /* 会话 / 日报列表：栏框与右侧等高；日报正文很长时，列表本身吸顶滚动 */
 .chat-list { align-self: stretch; }

@@ -277,11 +277,14 @@ function Organizer({ initialKb, initialSel }) {
         { label: "健康检查", value: health.size, unit: " 项待看", foot: "点右边一项，左侧只看这类" },
         ...ISSUES.map(([k, label, why]) => {
           const n = issueCount(k);
-          return { label, value: n, foot: why, tone: n ? (k === "stale" ? "muted" : "warn") : "ok", active: issue === k, disabled: !n, onClick: () => setIssue(issue === k ? "" : k) };
+          return { label, value: n, foot: why, tone: n && k !== "stale" ? "signal" : undefined, active: issue === k, disabled: !n, onClick: () => setIssue(issue === k ? "" : k) };
         }),
       ]} />
       {(kb.sourceError || kb.limitations?.length > 0) && (
-        <div className="warn kb-source-note"><PixelIcon name="alert" /><span>{kb.sourceError ? `${kb.sourceError}：读不到的文档字数和摘要未知，不算空文档，健康检查里标「正文没读到」。` : ""}{kb.limitations?.length ? `来源限制：${kb.limitations.join("；")}。` : ""}{kb.scopeNote ? ` ${kb.scopeNote}` : ""}</span></div>
+        <details className="kb-source-note">
+          <summary><PixelIcon name="alert" />{kb.sourceError ? "部分正文没读到" : `${kb.limitations.length} 类来源读不到正文`}<span className="link">详情</span></summary>
+          <p>{kb.sourceError ? `${kb.sourceError}：读不到的文档字数和摘要未知，不算空文档，健康检查里标「正文没读到」。` : ""}{kb.limitations?.length ? `来源限制：${kb.limitations.join("；")}。` : ""}{kb.scopeNote ? ` ${kb.scopeNote}` : ""}</p>
+        </details>
       )}
       <div className="kb-layout cols-5-7">
       <section className="card kb-tree-card">

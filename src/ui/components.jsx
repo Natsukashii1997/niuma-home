@@ -96,6 +96,11 @@ export function SampleBadge({ task }) {
   return <span className="sample-badge" title={title}>示例</span>;
 }
 
+// 示例区顶部的说明条：示例数据的区域整体铺浅网点（.is-sample），避免当成真实状态。
+export function SampleStrip({ task }) {
+  return <div className="sample-strip"><span className="sample-badge">示例</span>示例数据{task ? ` · ${task}` : ""}：下面的内容和状态都不是真实情况，只用来看排版。</div>;
+}
+
 export function Empty({ children }) {
   return <div className="empty">{children}</div>;
 }
@@ -183,19 +188,19 @@ export function StatusMark({ state, label }) {
   return <span className={`status-mark is-${state}`} title={label}><i aria-hidden="true" />{label && <span>{label}</span>}</span>;
 }
 
-// 未实现的页面或区块：说明清楚在等什么。
-export function Placeholder({ icon = "clock", title, children, action }) {
-  return <div className="empty placeholder"><PixelIcon name={icon} size={32} /><strong>{title}</strong>{children && <p>{children}</p>}{action}</div>;
+// 空状态 / 未实现的区块：像素图标 + 标题 + 一句说明 + 可选按钮。卡片里不再套虚线框；整页只有它时传 className="is-page" 给足高度（360px）。
+export function Placeholder({ icon = "clock", title, children, action, className = "" }) {
+  return <div className={`empty placeholder${className ? ` ${className}` : ""}`}><PixelIcon name={icon} size={32} /><strong>{title}</strong>{children && <p>{children}</p>}{action}</div>;
 }
 
 // 阶段条（二次评审 P1-10）：编号 + 名称 + 一行说明；当前步 4px 橙顶条；
-// 右上状态方块：done 完成（绿）、cur 进行中（蓝半实心）、left 有遗留（琥珀）、todo 未开始（空心）。
+// 右上状态方块：done 完成（墨色勾）、cur 当前（墨色实心）、left 有遗留（琥珀）、todo 未开始（空心）。
 export function PhaseSteps({ items }) {
   return (
     <ol className="phase-steps">
       {items.map((it, i) => (
         <li key={it.key ?? i} className={`is-${it.state}`}>
-          <div className="phase-step-no"><b>{String(i + 1).padStart(2, "0")}</b><i aria-hidden="true" /></div>
+          <div className="phase-step-no"><b>{String(i + 1).padStart(2, "0")}</b><i aria-hidden="true">{it.state === "done" && <PixelIcon name="tick" />}</i></div>
           <strong>{it.name}</strong>
           {it.note && <span className="small muted">{it.note}</span>}
         </li>
@@ -210,7 +215,7 @@ export function StatStrip({ items }) {
     <div className="stat-strip">
       {items.map((it) => {
         const cls = `stat${it.tone ? ` is-${it.tone}` : ""}${it.active ? " is-on" : ""}`;
-        const body = <><span className="stat-label">{it.label}</span><span className="stat-value">{it.value}{it.unit && <small>{it.unit}</small>}</span><span className="stat-foot">{it.foot}</span></>;
+        const body = <><span className="stat-label">{it.label}</span><span className="stat-value">{it.value}{it.unit && <small>{it.unit}</small>}</span><span className="stat-foot" title={typeof it.foot === "string" ? it.foot : undefined}>{it.foot}</span></>;
         return it.onClick
           ? <button key={it.label} type="button" className={cls} onClick={it.onClick} disabled={it.disabled} title={it.title}>{body}</button>
           : <div key={it.label} className={cls}>{body}</div>;

@@ -36,7 +36,7 @@ const mdDate = (md, y) => new Date(y, Number(md.slice(0, 2)) - 1, Number(md.slic
 const mdSpan = (a, b) => (b ? Math.round((mdDate(b, b < a ? 2027 : 2026) - mdDate(a, 2026)) / 86400000) + 1 : 1);
 
 // 事件类别：颜色只区分类别，图例里写明。
-const CATS = [["exam", "考试", ["Final", "考试周", "期末", "期中"]], ["course", "选课 / 开学", ["选课", "春季选课", "开学"]], ["paper", "论文作业", ["Essay 截止"]], ["break", "假期", ["Reading Week", "期中假"]], ["result", "出分", ["出分"]]];
+const CATS = [["exam", "考试 / 补考", ["Final", "考试周", "期末", "期中", "补考"]], ["course", "选课 / 开学", ["选课", "春季选课", "开学"]], ["paper", "论文作业", ["Essay 截止"]], ["break", "假期", ["Reading Week", "期中假"]], ["result", "出分", ["出分"]]];
 const catOf = (type) => (CATS.find(([, , types]) => types.includes(type)) || ["other"])[0];
 
 // 明细表的列是源表原名（如「S1选课时间开放」「final考试(Exams T1)」），按关键词归类，只用于显示 / 隐藏列，不改源表的时间顺序。
