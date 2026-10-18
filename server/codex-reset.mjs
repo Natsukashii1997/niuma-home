@@ -5,6 +5,8 @@ import { beijingText, failure } from './v3-common.mjs';
 
 const endpoint = 'https://aihot.news/api/v1/codex-resets/recent';
 const stages = { announce: '预告', confirm: '确认', amend: '修正', withdraw: '撤回' };
+// 北京时间「10月18日 05:12」。
+const monthDay = value => { const t = beijingText(value); return `${Number(t.slice(5, 7))}月${Number(t.slice(8, 10))}日 ${t.slice(11)}`; };
 const isTime = value => typeof value === 'string' && /T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
 
 export function codexResetView(source, { seen = new Set(), now = Date.now() } = {}) {
@@ -16,6 +18,22 @@ export function codexResetView(source, { seen = new Set(), now = Date.now() } = 
   // 已确认事件仍可能保留旧 schedule，不能把旧预告当作下一次。estimate 不作为承诺时间。
   const upcoming = source.events.filter(e => e.status === 'announced' && !e.presentation?.timeInferred && e.schedule && isTime(e.schedule.from) && isTime(e.schedule.through) && Date.parse(e.schedule.through) > now && signals.find(p => p.eventIds?.includes(e.id))?.action !== 'withdraw')
     .sort((a, b) => Date.parse(a.schedule.from) - Date.parse(b.schedule.from))[0];
+  // 重置状态（用户 2026-10-18）：上次重置 = 最近一次已确认事件的确认时间；在它之后还有未确认、未撤回的预告 = 等待重置，否则 = 已重置。
+  const byTime = key => (a, b) => Date.parse(b[key]) - Date.parse(a[key]);
+  const done = source.events.filter(e => e.status === 'confirmed' && isTime(e.confirmedAt)).sort(byTime('confirmedAt'))[0];
+  const lastResetAt = done?.confirmedAt ?? null;
+  const waiting = source.events.filter(e => e.status === 'announced' && isTime(e.createdAt) && (!lastResetAt || Date.parse(e.createdAt) > Date.parse(lastResetAt)) && signals.find(p => p.eventIds?.includes(e.id))?.action !== 'withdraw')
+    .sort(byTime('createdAt'))[0];
+  const post = waiting && (signals.find(p => p.eventIds?.includes(waiting.id)) || waiting.posts?.find(p => isTime(p.publishedAt)));
+  const etaOk = waiting?.schedule && isTime(waiting.schedule.through);
+  const reset = {
+    state: waiting ? 'pending' : lastResetAt ? 'done' : 'unknown',
+    lastResetAt, lastReset: lastResetAt ? monthDay(lastResetAt) : '',
+    announce: post ? {
+      zh: post.text || '', quote: post.originalText || '', postedAt: post.publishedAt, posted: monthDay(post.publishedAt),
+      eta: etaOk ? waiting.schedule.through : null, etaLabel: etaOk ? waiting.schedule.label || '' : '', etaInferred: !!waiting.presentation?.timeInferred,
+    } : null,
+  };
   let author = '';
   try { const u = new URL(latest?.url); if (['x.com', 'twitter.com'].includes(u.hostname) && /^\/[^/]+\/status\/\d+$/.test(u.pathname)) author = u.pathname.split('/')[1]; } catch { /* 无作者时不猜 */ }
   return {
@@ -26,6 +44,7 @@ export function codexResetView(source, { seen = new Set(), now = Date.now() } = 
     posted: latest ? beijingText(latest.publishedAt) : '', checked: source.checkedAt ? beijingText(source.checkedAt) : '尚无完整核验时间',
     // 本批只读，没有自动标已读；明确已读动作接入前，新信号保留。
     isNew: signals.some(p => !seen.has(p.id)), nextCheck: null, pushed: false,
+    reset,
     history: signals.slice(1).map(p => ({ stage: stages[p.action], time: beijingText(p.publishedAt), text: p.originalText })),
   };
 }

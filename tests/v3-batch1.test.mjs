@@ -213,3 +213,17 @@ test('V3 同一显式学期冲突双向标记，不误伤不同学期', () => {
   assert.equal(tl.agenda.find(e=>e.src.endsWith('D2')).flag,undefined);
   assert.ok(tl.anomalies.some(a=>a.src.includes('B2 /')&&a.src.endsWith('C2')));
 });
+
+test('V3 Codex 重置状态：上次确认之后有预告 = 等待重置，否则 = 已重置', () => {
+  const ev = (id, status, createdAt, confirmedAt, through) => ({ id, status, createdAt, confirmedAt, schedule: through ? { from: through, through, label: '北京时间预计 10月18日 15:00 前' } : null, presentation: { timeInferred: false } });
+  const post = (id, action, at, eventIds) => ({ id, kind: 'event_update', action, publishedAt: at, originalText: 'Landing by EOD PST', text: '太平洋时间当天结束前落地', eventIds, url: 'https://x.com/thsottiaux/status/1' });
+  const s = { checkedAt: null, events: [ev('a', 'confirmed', '2026-10-15T09:00:00+08:00', '2026-10-15T12:55:00+08:00'), ev('b', 'announced', '2026-10-18T00:21:00+08:00', null, '2026-10-18T15:00:00+08:00')], activities: [post('1', 'announce', '2026-10-18T00:21:00+08:00', ['b'])] };
+  let r = codexResetView(s, { now: Date.parse('2026-10-18T03:00:00+08:00') }).reset;
+  assert.equal(r.state, 'pending'); assert.equal(r.lastReset, '10月15日 12:55');
+  assert.equal(r.announce.posted, '10月18日 00:21'); assert.equal(r.announce.zh, '太平洋时间当天结束前落地'); assert.equal(r.announce.eta, '2026-10-18T15:00:00+08:00');
+  s.events[1].status = 'confirmed'; s.events[1].confirmedAt = '2026-10-18T05:12:00+08:00';
+  r = codexResetView(s).reset;
+  assert.equal(r.state, 'done'); assert.equal(r.lastReset, '10月18日 05:12'); assert.equal(r.announce, null);
+  s.events = [];
+  assert.equal(codexResetView(s).reset.state, 'unknown');
+});
