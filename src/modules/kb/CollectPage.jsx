@@ -14,7 +14,8 @@ function timeText(iso) {
 
 const STATUS = { ok: ["green", "已收藏"], duplicate: ["neutral", "已在库中"], failed: ["red", "未收藏"] };
 
-export function CollectRecent({ onVerified }) {
+// bare：放在弹窗里时不再套卡片外框。
+export function CollectRecent({ onVerified, bare = false }) {
   const state = useApi("/api/v3/kb/collect/recent");
   const [check, setCheck] = useState("");
   const [busy, setBusy] = useState(false);
@@ -28,8 +29,7 @@ export function CollectRecent({ onVerified }) {
     } catch (e) { setCheck(`仍未能核实：${e.message}。保持锁定，不会重试。`); }
     finally { setBusy(false); }
   }
-  return (
-    <Card className="kb-collect-recent" title={<><PixelIcon name="clock" />最近收藏</>}>
+  const body = <>
       <p className="small muted kbc-collect-tip"><PixelIcon name="star" />在 Chrome 打开飞书文档，点右下角「收藏」。归类明确的进对应分组，不明确的放进散卡区。</p>
       {check && <p className={`small ${/仍未能/.test(check) ? "warn-text" : "muted"}`}>{check}</p>}
       <Loadable state={state} name="最近收藏">{(d) => d.items.length ? (
@@ -47,6 +47,6 @@ export function CollectRecent({ onVerified }) {
           ))}
         </ol>
       ) : <p className="small muted">还没有收藏记录</p>}</Loadable>
-    </Card>
-  );
+  </>;
+  return bare ? <div className="kb-collect-recent">{body}</div> : <Card className="kb-collect-recent" title={<><PixelIcon name="clock" />最近收藏</>}>{body}</Card>;
 }
