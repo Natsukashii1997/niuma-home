@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>品牌数据 · 草稿</title>
+<style>
+@font-face { font-family: "Geist"; src: url("../../../src/assets/fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Geist Mono"; src: url("../../../src/assets/fonts/GeistMono-Variable.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Geist Pixel"; src: url("../../../src/assets/fonts/GeistPixel-Square.woff2") format("woff2"); }
+:root {
+  --bg: #EDEEF1; --panel: #FBFBFC; --panel-soft: #F3F4F6; --text: #0D0E10; --text-2: #3D4047;
+  --muted: #686D76; --line: #D5D8DE; --signal: #FF4F1F; --signal-soft: #FFEDE6;
+  --uni: #C23B30; --intl: #1E8E4E; --appeal: #2563EB; --brand: #0D0E10;
+  --sans: "Geist", "PingFang SC", -apple-system, sans-serif; --mono: "Geist Mono", "PingFang SC", ui-monospace, monospace; --pixel: "Geist Pixel", "Geist Mono", monospace;
+  --dots: radial-gradient(circle, var(--line) 1px, transparent 1.2px);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); background-image: var(--dots); background-size: 12px 12px; color: var(--text); font-family: var(--sans); font-size: 13px; }
+button, input { font: inherit; color: inherit; }
+.page { max-width: 1240px; margin: 0 auto; padding: 24px 24px 80px; }
+.draft { display: flex; align-items: center; gap: 12px; padding: 10px 24px; background: var(--text); color: var(--panel); }
+.draft b { font-family: var(--pixel); font-weight: 400; font-size: 15px; }
+.draft span { margin-left: auto; font-family: var(--mono); font-size: 11px; color: #9aa0a8; }
+.note { margin: 0 0 18px; padding: 12px 14px; border-left: 4px solid var(--signal); background: var(--panel); line-height: 1.7; }
+.note ul { margin: 4px 0 0; padding-left: 18px; }
+h1 { margin: 0 0 4px; font-size: 26px; }
+.sub { margin: 0 0 18px; color: var(--muted); }
+.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 2px solid var(--text); background: var(--panel); cursor: pointer; text-decoration: none; color: var(--text); white-space: nowrap; }
+.label { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: .02em; }
+.mono { font-family: var(--mono); }
+
+/* 版本条：一版一格，最新版墨底；点选切换下面的明细 */
+.versions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 2px solid var(--text); background: var(--panel); margin-bottom: 16px; }
+.ver { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 0; border-right: 1px solid var(--line); background: none; text-align: left; cursor: pointer; }
+.ver:last-child { border-right: 0; }
+.ver:hover { background: var(--panel-soft); }
+.ver.on { background: var(--text); color: var(--panel); }
+.ver.on .label { color: #9aa0a8; }
+.ver .vno { font-family: var(--pixel); font-size: 20px; line-height: 1; }
+.ver .meta { display: flex; gap: 10px; align-items: baseline; }
+.ver .count { font-family: var(--pixel); font-size: 28px; line-height: 1; }
+.ver .badge { position: absolute; top: 12px; right: 12px; padding: 2px 6px; font-family: var(--mono); font-size: 11px; border: 1px solid currentColor; }
+.ver.latest .badge { border-color: var(--signal); color: var(--signal); }
+.ver.on.latest .badge { background: var(--signal); color: var(--text); }
+
+/* 本版相比上一版 */
+.stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border: 1px solid var(--line); background: var(--panel); margin-bottom: 16px; }
+.stat { padding: 12px 14px; border-right: 1px solid var(--line); }
+.stat:last-child { border-right: 0; }
+.stat b { display: block; margin-top: 6px; font-family: var(--pixel); font-weight: 400; font-size: 26px; line-height: 1; }
+.stat.hot b { color: var(--signal); }
+.stat small { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+
+/* 筛选条 */
+.bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--line); border-bottom: 0; background: var(--panel); }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; white-space: nowrap; }
+.chip i { font-style: normal; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.chip.on { border-color: var(--text); background: var(--text); color: var(--panel); }
+.chip.on i { color: var(--signal); }
+.sw { display: inline-block; width: 8px; height: 8px; background: var(--c, var(--text)); }
+.sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
+.search { flex: 1 1 200px; min-width: 160px; height: 28px; padding: 0 8px; border: 1px solid var(--line); background: var(--panel); }
+.search:focus { outline: none; border-color: var(--text); }
+.toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+.toggle input { appearance: none; width: 14px; height: 14px; margin: 0; border: 2px solid var(--text); background: var(--panel); }
+.toggle input:checked { background: var(--text); box-shadow: inset 0 0 0 2px var(--panel); }
+
+/* 明细表：按数据维度分组 */
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); background: var(--panel); }
+table { width: 100%; min-width: 880px; border-collapse: collapse; }
+th { position: sticky; top: 0; padding: 8px 10px; border-bottom: 2px solid var(--text); background: var(--panel); text-align: left; font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--muted); }
+td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr.group td { padding: 8px 10px; background: var(--panel-soft); border-bottom: 1px solid var(--line); font-weight: 600; }
+tr.group td span { margin-left: 8px; font-family: var(--mono); font-weight: 400; color: var(--muted); font-size: 12px; }
+td.id { width: 108px; font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+td.name { min-width: 220px; }
+td.name small { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+td.line { width: 96px; white-space: nowrap; }
+td.val { width: 170px; font-family: var(--mono); font-size: 15px; font-weight: 600; white-space: nowrap; }
+td.val.empty { font-weight: 400; font-size: 12px; color: var(--muted); }
+td.prev { width: 170px; font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+td.prev s { text-decoration-color: var(--muted); }
+td.tag { width: 84px; }
+td.owner { width: 84px; color: var(--text-2); font-size: 12px; white-space: nowrap; }
+.t { display: inline-block; padding: 1px 6px; border: 1px solid var(--line); font-size: 11px; white-space: nowrap; }
+.t.upd { border-color: var(--signal); color: var(--signal); }
+.t.new { border-color: var(--signal); background: var(--signal); color: var(--panel); }
+.t.ren { border-color: var(--text); }
+.t.del { border-style: dashed; color: var(--muted); }
+tr.is-del td.name, tr.is-del td.val { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
+.num { color: var(--signal); }
+.empty-row td { padding: 24px; text-align: center; color: var(--muted); }
+
+/* 下线的数据项 */
+.gone { margin-top: 16px; border: 1px solid var(--line); background: var(--panel); }
+.gone h2 { display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.gone h2 span { font-family: var(--mono); font-weight: 400; font-size: 12px; color: var(--muted); }
+.gone ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0; margin: 0; padding: 0; list-style: none; }
+.gone li { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background-image: var(--dots); background-size: 6px 6px; }
+.gone li b { font-weight: 500; }
+.gone li .mono { font-size: 12px; color: var(--muted); }
+
+@media (max-width: 760px) {
+  .draft { padding: 10px 16px; } .draft span { display: none; }
+  .page { padding: 16px 16px 60px; }
+  .versions { grid-template-columns: 1fr; }
+  .ver { border-right: 0; border-bottom: 1px solid var(--line); }
+  .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stat:nth-child(3n) { border-right: 0; }
+  .stat:nth-child(-n+3) { border-bottom: 1px solid var(--line); }
+}
+</style>
+</head>
+<body>
+<div class="draft"><b>品牌数据 · 草稿</b>真实数据快照（飞书只读读取 · 2026-10-18）<span>docs/design/brand-data</span></div>
+<div class="page">
+  <div class="note">
+    <strong>这是给你确认的静态草稿</strong>，确认后才接进品牌页。飞书表里每一版是单独一张表（V2026.09.01 / V2026.01.31 / V2025.07.31），字段一致：数据项ID、数据维度、指标名称、指标值、业务线、责任人。草稿只读这三张版本表，物料、数据汇总不读。
+    <ul>
+      <li>最新版有一列「数据核对」，其中 8 项标了「删减」。它们还留在表里，草稿显示为删除线，并打「待删减」标签。</li>
+      <li>和上一版比较时按「数据项ID」对齐：值不同算「更新」，名字不同算「改名」，上一版有、这一版没有的算「下线」。</li>
+      <li>发现一处数据问题：「版本记录」表第一行的日期是 2025-07-30，版本号却写成了 V2026.09.01，应该是 V2025.07.31。所以草稿的版本号以表名为准。</li>
+    </ul>
+  </div>
+
+  <div class="head">
+    <div><h1>品牌</h1><p class="sub">品牌数据：每半年到一年大更新一次；默认看最新一版，可以切到前几版对照。</p></div>
+    <a class="btn" href="https://vm94j8bzy7.feishu.cn/base/NGImbr8D1arJcIsr0SBcx3i4n3b?table=tblOasXFkmfbqfSk" target="_blank" rel="noreferrer">在飞书打开 ↗</a>
+  </div>
+
+  <div class="versions" id="versions"></div>
+  <div class="stats" id="stats"></div>
+  <div class="bar" id="bar"></div>
+  <div class="tablewrap"><table><thead><tr><th>数据项ID</th><th>指标名称</th><th>业务线</th><th>当前数据</th><th id="prevHead">上一版</th><th>变化</th><th>责任人</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <section class="gone" id="gone"></section>
+</div>
+<script src="data.js"></script>
+<script>
+const V = window.BRAND.versions;
+const LINE_C = { 品牌综合: "var(--brand)", 大学辅导: "var(--uni)", 国际课程: "var(--intl)", 申诉服务: "var(--appeal)" };
+const LINES = ["品牌综合", "大学辅导", "国际课程", "申诉服务"];
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const nums = (s) => esc(s).replace(/(\d+(?:[.,:]\d+)*%?)/g, '<span class="num">$1</span>');
+const state = { v: 0, line: "", dim: "", q: "", changed: false };
+
+// 一版和它的上一版比较：按数据项ID对齐。
+function diff(i) {
+  const cur = V[i].items, prev = V[i + 1]?.items;
+  const byId = new Map((prev || []).map((x) => [x.id, x]));
+  const rows = cur.map((x) => {
+    const p = prev ? byId.get(x.id) : undefined;
+    const kind = x.check === "删减" ? "del" : !prev ? "" : !p ? "new" : (p.value || "") !== (x.value || "") ? "upd" : p.name !== x.name ? "ren" : "";
+    return { ...x, prev: p, kind, renamed: p && p.name !== x.name };
+  });
+  const ids = new Set(cur.map((x) => x.id));
+  const gone = prev ? prev.filter((x) => !ids.has(x.id)) : [];
+  return { rows, gone, hasPrev: !!prev };
+}
+
+function render() {
+  const ver = V[state.v], d = diff(state.v);
+  document.getElementById("versions").innerHTML = V.map((x, i) => `
+    <button type="button" class="ver${i === state.v ? " on" : ""}${i === 0 ? " latest" : ""}" data-v="${i}">
+      <span class="badge">${i === 0 ? "最新" : x.status}</span>
+      <span class="label">${i === 0 ? "当前版本" : "历史版本"} · ${x.date}</span>
+      <span class="vno">${x.version}</span>
+      <span class="meta"><span class="count">${x.items.length}</span><span class="label">个数据项</span></span>
+    </button>`).join("");
+  const c = (k) => d.rows.filter((r) => r.kind === k).length;
+  const renamed = d.rows.filter((r) => r.renamed).length;
+  const stats = d.hasPrev ? [
+    ["数据项", ver.items.length, `${ver.version}`], ["数值更新", c("upd"), `相比 ${V[state.v + 1].version}`, true], ["改名", renamed, "按数据项ID对齐"],
+    ["本版新增", c("new"), "上一版没有", c("new") > 0], ["下线", d.gone.length, "上一版有、本版没有"], ["待删减", c("del"), "数据核对标了「删减」"],
+  ] : [["数据项", ver.items.length, ver.version], ["数值更新", "—", "首个版本"], ["改名", "—", ""], ["本版新增", "—", ""], ["下线", "—", ""], ["待删减", "—", ""]];
+  document.getElementById("stats").innerHTML = stats.map(([k, n, s, hot]) => `<div class="stat${hot && n ? " hot" : ""}"><span class="label">${k}</span><b>${n}</b><small>${s}</small></div>`).join("");
+  const dims = [...new Set(ver.items.map((x) => x.dim))];
+  const cnt = (f) => ver.items.filter(f).length;
+  document.getElementById("bar").innerHTML = `
+    <button type="button" class="chip${!state.line ? " on" : ""}" data-line="">全部业务线 <i>${ver.items.length}</i></button>
+    ${LINES.map((l) => `<button type="button" class="chip${state.line === l ? " on" : ""}" data-line="${l}"><span class="sw" style="--c:${LINE_C[l]}"></span>${l} <i>${cnt((x) => x.line === l)}</i></button>`).join("")}
+    <span class="sep"></span>
+    <button type="button" class="chip${!state.dim ? " on" : ""}" data-dim="">全部维度</button>
+    ${dims.map((m) => `<button type="button" class="chip${state.dim === m ? " on" : ""}" data-dim="${m}">${m} <i>${cnt((x) => x.dim === m)}</i></button>`).join("")}
+    <input class="search" id="q" placeholder="搜指标名称、数据、ID" value="${esc(state.q)}">
+    ${d.hasPrev ? `<label class="toggle"><input type="checkbox" id="chg"${state.changed ? " checked" : ""}>只看有变化</label>` : ""}`;
+  document.getElementById("prevHead").textContent = d.hasPrev ? `上一版 ${V[state.v + 1].version}` : "上一版";
+  const q = state.q.trim().toLowerCase();
+  const shown = d.rows.filter((r) => (!state.line || r.line === state.line) && (!state.dim || r.dim === state.dim)
+    && (!q || `${r.id}${r.name}${r.value}`.toLowerCase().includes(q)) && (!state.changed || r.kind));
+  const groups = new Map();
+  for (const r of shown) { if (!groups.has(r.dim)) groups.set(r.dim, []); groups.get(r.dim).push(r); }
+  const TAG = { upd: '<span class="t upd">更新</span>', new: '<span class="t new">新增</span>', ren: '<span class="t ren">改名</span>', del: '<span class="t del">待删减</span>' };
+  document.getElementById("rows").innerHTML = shown.length ? [...groups].map(([dim, rs]) => `<tr class="group"><td colspan="7">${esc(dim)}<span>${rs.length} 项</span></td></tr>` + rs.map((r) => `
+    <tr class="${r.kind === "del" ? "is-del" : ""}">
+      <td class="id">${esc(r.id)}</td>
+      <td class="name">${esc(r.name)}${r.renamed ? `<small>原名：${esc(r.prev.name)}</small>` : ""}</td>
+      <td class="line"><span class="sw" style="--c:${LINE_C[r.line]}"></span> ${esc(r.line)}</td>
+      <td class="val${r.value ? "" : " empty"}">${!r.value ? "未填" : r.kind === "upd" || r.kind === "new" ? nums(r.value) : esc(r.value)}</td>
+      <td class="prev">${!d.hasPrev ? "—" : !r.prev ? "上一版没有" : r.kind === "upd" || (r.kind === "del" && (r.prev.value || "") !== (r.value || "")) ? `<s>${esc(r.prev.value || "未填")}</s>` : "未变"}</td>
+      <td class="tag">${TAG[r.kind] || (r.renamed ? TAG.ren : "")}</td>
+      <td class="owner">${esc(r.owner)}</td>
+    </tr>`).join("")).join("") : `<tr class="empty-row"><td colspan="7">没有符合条件的数据项</td></tr>`;
+  document.getElementById("gone").innerHTML = d.gone.length ? `<h2>相比上一版下线的数据项<span>${d.gone.length} 项 · 只在 ${V[state.v + 1].version} 里有</span></h2><ul>${d.gone.map((x) => `<li><span class="label">${esc(x.id)} · ${esc(x.line)} · ${esc(x.dim)}</span><b>${esc(x.name)}</b><span class="mono">最后的数据：${esc(x.value || "未填")}</span></li>`).join("")}</ul>` : "";
+  document.getElementById("gone").style.display = d.gone.length ? "" : "none";
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-v],[data-line],[data-dim]");
+  if (!b) return;
+  if (b.dataset.v !== undefined) { state.v = Number(b.dataset.v); state.changed = false; }
+  if (b.dataset.line !== undefined) state.line = b.dataset.line;
+  if (b.dataset.dim !== undefined) state.dim = b.dataset.dim;
+  render();
+});
+document.addEventListener("input", (e) => {
+  if (e.target.id === "q") { state.q = e.target.value; const pos = e.target.selectionStart; render(); const q = document.getElementById("q"); q.focus(); q.setSelectionRange(pos, pos); }
+});
+document.addEventListener("change", (e) => { if (e.target.id === "chg") { state.changed = e.target.checked; render(); } });
+render();
+</script>
+</body>
+</html>

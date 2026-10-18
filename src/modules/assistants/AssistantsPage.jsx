@@ -120,7 +120,7 @@ function AssistantDesk({ initial, selectedId }) {
         <WriteBox flow={remover.flow} className="soft-delete" title="删除助手预览" confirmLabel="确认删除" savedText="已删除，回读核对：助手列表里不再有它，已在「已删除的助手」里，可恢复" onConfirm={remover.confirm} onRepreview={remover.repreview} onReread={remover.reread}>
           {(pv) => <dl className="kv"><dt>助手</dt><dd>{pv.value.name}</dd><dt>方式</dt><dd>软删除：设置和对话记录全部保留，可在下方「已删除的助手」里恢复</dd></dl>}
         </WriteBox>
-        <DeletedList api={DELETE_API} deleted={deleted} onPlaced={placed} noun="助手" describe={(o) => ({ name: o.name, meta: o.kind === "imported" ? "导入的会话" : "自建助手" })}>
+        <DeletedList api={DELETE_API} deleted={deleted} onPlaced={(r) => { placed(r); if (remover.flow.phase === "saved") remover.flow.resolve(); }} noun="助手" describe={(o) => ({ name: o.name, meta: o.kind === "imported" ? "导入的会话" : "自建助手" })}>
           {(pv) => <dl className="kv"><dt>助手</dt><dd>{pv.value.name}</dd><dt>恢复后</dt><dd>回到助手列表，设置和对话记录不变</dd></dl>}
         </DeletedList>
       </aside>

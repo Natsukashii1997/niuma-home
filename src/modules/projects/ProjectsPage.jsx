@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { PixelBar, PixelIcon, StepProgress, TypeText } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Card, Loadable, NodeCheck, PageHeader, PhaseSteps, Placeholder, Segmented, StatStrip, Tabs, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Card, DateCommit, Loadable, NodeCheck, PageHeader, PhaseSteps, Placeholder, Segmented, StatStrip, Tabs, Tag, useToast } from "../../ui/components.jsx";
 import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { DeletedList, useSoftRemove } from "../../ui/soft-delete.jsx";
 import { isoWeek, localDate } from "../../constants.js";
@@ -243,13 +243,9 @@ function NewProject({ projects, onSaved, onReread, onClose }) {
   );
 }
 
-// 截止日期：完整 YYYY-MM-DD；回车或离开输入框时，和原值不同才生成预览。格式不对时提示，不发请求。
+// 截止日期：浏览器自带日期选择器，存完整 YYYY-MM-DD；选好后和原值不同才生成预览。
 function DueInput({ node, disabled, onCommit }) {
-  const [v, setV] = useState(node.dueDate || "");
-  const bad = v !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(v);
-  const commit = () => { if (!bad && v !== (node.dueDate || "")) onCommit(v); };
-  return <input className={`node-due${bad ? " is-bad" : ""}`} value={v} placeholder="未设日期" disabled={disabled} title={bad ? "日期要写成 2026-10-31" : "回车或离开输入框后生成预览"}
-    onChange={(e) => setV(e.target.value.trim())} onBlur={commit} onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setV(node.dueDate || ""); }} aria-label={`截止日期：${node.t}`} />;
+  return <DateCommit className="node-due" value={node.dueDate || ""} disabled={disabled} title="选好日期后生成预览" onCommit={onCommit} aria-label={`截止日期：${node.t}`} />;
 }
 
 /* ================= 管培带教 ================= */

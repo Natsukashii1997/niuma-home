@@ -87,6 +87,19 @@ export function NodeCheck({ checked, onChange, label }) {
   return <span className="node-check"><input type="checkbox" checked={checked} onChange={onChange} aria-label={label} />{checked && <PixelIcon name="tick" />}</span>;
 }
 
+// 日期输入：浏览器自带日期选择器（用户 2026-10-18 确认），值始终是 YYYY-MM-DD 或 ""。外观沿用各处原来的输入框类名。
+export function DateInput({ value, onChange, className = "", ...rest }) {
+  return <input type="date" min="2000-01-01" max="2099-12-31" {...rest} className={`date-input${value ? "" : " is-empty"} ${className}`.trim()} value={value || ""} onChange={(e) => onChange(e.target.value)} />;
+}
+
+// 改完即提交的日期格：选好（或清空）就提交，和原值相同不提交；Esc 还原。
+// 键盘逐位输入年份时会先出现 0002、0020 这类中间值，年份不到 2000 的不提交。
+export function DateCommit({ value, onCommit, ...rest }) {
+  const [v, setV] = useState(value || "");
+  const commit = (x) => { setV(x); if ((x === "" || x >= "2000") && x !== (value || "")) onCommit(x); };
+  return <DateInput {...rest} value={v} onChange={commit} onKeyDown={(e) => { if (e.key === "Escape") setV(value || ""); }} />;
+}
+
 export function Tag({ tone = "neutral", children }) {
   return <span className={`tag tag-${tone}`}>{children}</span>;
 }

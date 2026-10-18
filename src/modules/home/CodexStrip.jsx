@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PixelIcon } from "../../ui/bitmap.jsx";
+import { PixelIcon, useTypeOut } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
 import { Loadable, Modal, SampleBadge, Tag } from "../../ui/components.jsx";
 
@@ -8,7 +8,8 @@ import { Loadable, Modal, SampleBadge, Tag } from "../../ui/components.jsx";
 //   等待重置 —— 上次重置日期 + Tibo 原话中译 + 发布月日时分 + 距离重置大约还有多久；
 //   已重置   —— 上次重置日期 + 距上次重置过去几天几时 + 下次重置时间未公开。
 // 只写 Tibo 的发布时间，不写检查时间。定时检查和推送未启用，只在详情里照实写。
-const STAGE_TONE = { 预告: "blue", 确认: "green", 修正: "amber", 撤回: "red" };
+// 信息用方块光标逐字打出（用户 2026-10-18）：光标先闪两次，再每 2 帧一个字，数字橙色；「已重置」这类状态用信号橙。
+const STAGE_TONE = { 预告: "blue", 确认: "orange", 修正: "amber", 撤回: "red" };
 
 function useNow() {
   const [now, setNow] = useState(() => Date.now());
@@ -54,23 +55,27 @@ export function CodexStrip() {
   const [open, setOpen] = useState(false);
   const now = useNow();
   const c = state.data;
+  const r = c && resetOf(c, now);
+  const last = r?.lastReset ? `上次重置 ${r.lastReset}` : "上次重置未知";
+  const texts = r?.state === "pending" ? [last, `Tibo：“${r.announce.zh || r.announce.quote}”`, `发布 ${r.announce.posted}`, r.timeNote]
+    : r?.state === "done" ? [last, `已过去 ${dhm(split(r.sinceMs))}`, "下次重置时间未公开"] : [last];
+  const typed = useTypeOut(texts, { ready: !!c });
+  const seg = (i, className) => { const v = typed.part(i); return v && <span className={className}>{v}</span>; };
   if (!c) return null;
-  const r = resetOf(c, now);
-  const last = r.lastReset ? `上次重置 ${r.lastReset}` : "上次重置未知";
   return (
     <>
       <button type="button" className={`codex-strip${c.isNew ? " is-new" : ""}`} onClick={() => setOpen(true)}>
         <PixelIcon name="alert" />
-        <span className="codex-stage">Codex 重置 · {r.state === "pending" ? "等待重置" : r.state === "done" ? "已重置" : "暂无信号"}</span>
-        <span className="codex-when">{last}</span>
+        <span className="codex-stage">Codex 重置 · {r.state === "pending" ? "等待重置" : r.state === "done" ? <span className="codex-reset-done">已重置</span> : "暂无信号"}</span>
+        {seg(0, "codex-when")}
         {r.state === "pending" && <>
-          <span className="codex-quote">Tibo：“{r.announce.zh || r.announce.quote}”</span>
-          <span className="codex-when tnum">发布 {r.announce.posted}</span>
-          <span className="codex-cd tnum">{r.timeNote}</span>
+          {seg(1, "codex-quote")}
+          {seg(2, "codex-when tnum")}
+          {seg(3, "codex-cd tnum")}
         </>}
         {r.state === "done" && <>
-          <span className="codex-cd tnum">已过去 {dhm(split(r.sinceMs))}</span>
-          <span className="codex-quote">下次重置时间未公开</span>
+          {seg(1, "codex-cd tnum")}
+          {seg(2, "codex-quote")}
         </>}
         {state.isSample && <SampleBadge task={state.task} />}
         <span className="codex-more">详情<PixelIcon name="right" /></span>
@@ -92,13 +97,16 @@ export function CodexCard({ className = "" }) {
   const [open, setOpen] = useState(false);
   const now = useNow();
   const c = state.data;
+  const r = c && resetOf(c, now), a = r?.announce;
+  const texts = r?.state === "pending" ? [a.zh || a.quote, a.zh ? `“${a.quote}”` : ""]
+    : r?.state === "done" ? [`距离上次重置已经过去 ${dhm(split(r.sinceMs))}，下次重置时间未公开。`] : ["数据源里还没有重置记录。"];
+  const typed = useTypeOut(texts, { ready: !!c });
   if (!c) return (
     <section className={`card ${className}`}>
       <div className="card-head"><h2><PixelIcon name="alert" /> Codex 重置预警</h2></div>
       <div className="card-body"><Loadable state={state} name="Codex 重置预警">{() => null}</Loadable></div>
     </section>
   );
-  const r = resetOf(c, now), a = r.announce;
   return (
     <section className={`card ${className}`} data-dither="">
       <div className="card-head">
@@ -113,13 +121,13 @@ export function CodexCard({ className = "" }) {
         <div className="codex-main">
           <div className="codex-meta label"><span>上次额度重置 · {r.lastReset || "未知"}</span>{a && <span>TIBO · 发布 {a.posted}</span>}</div>
           {r.state === "pending" ? <>
-            <p className="codex-zh codex-zh-lead">{a.zh || a.quote}</p>
-            {a.zh && <blockquote className="codex-src">“{a.quote}”</blockquote>}
+            <p className="codex-zh codex-zh-lead">{typed.part(0)}</p>
+            {a.zh && typed.part(1) && <blockquote className="codex-src">{typed.part(1)}</blockquote>}
             <div className="codex-foot"><span className="label">{r.timeNote}</span></div>
           </> : r.state === "done" ? <>
             <p className="codex-done">已重置</p>
-            <p className="codex-zh">距离上次重置已经过去 {dhm(split(r.sinceMs))}，下次重置时间未公开。</p>
-          </> : <p className="codex-zh">数据源里还没有重置记录。</p>}
+            <p className="codex-zh">{typed.part(0)}</p>
+          </> : <p className="codex-zh">{typed.part(0)}</p>}
         </div>
         <div className="codex-count">
           {r.state === "pending" ? <>

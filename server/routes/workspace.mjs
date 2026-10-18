@@ -10,6 +10,7 @@ import { createSettingsChanges, V3_SETTING_KEYS, validateV3Setting } from "../v3
 import { routes as selftalkRoutes } from "./selftalk.mjs";
 import { routes as referenceRoutes } from "./references.mjs";
 import { createProjectServices, projectRoutes } from "./projects.mjs";
+import { routes as brandRoutes } from "./brand.mjs";
 import { routes as marketingRoutes } from "./v3-marketing.mjs";
 import { createTodoReader } from "../home-todo.mjs";
 import { demoRevenue } from "../demo-revenue.mjs";
@@ -84,6 +85,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     route('GET', '/api/v3/business/revenue', (req, res) => { res.setHeader('x-workdesk-data-origin', 'demo'); json(res, 200, { ...demoRevenue(), origin: 'demo', task: '演示数据（待正式营收表）' }); }),
     ...deliveryRoutes(userServices.needs, db),
     ...projectRoutes(projectServices),
+    ...brandRoutes(db, v3Options.brand),
     ...marketingRoutes(db, v3Options),
     ...selftalkRoutes(db, v3Options.selftalk),
     ...referenceRoutes(db, v3Options.refs),

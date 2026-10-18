@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FlipNumber, PixelIcon } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Card, Loadable, NodeCheck, PhaseSteps, Segmented, Tag } from "../../ui/components.jsx";
+import { Button, Card, DateCommit, DateInput, Loadable, NodeCheck, PhaseSteps, Segmented, Tag } from "../../ui/components.jsx";
 import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { DeletedList, useSoftRemove } from "../../ui/soft-delete.jsx";
 import { deliveryMonth, deliverySteps } from "../../constants.js";
@@ -112,11 +112,11 @@ function Campaign({ c, onSaved, onEdit, reviewNote }) {
           <div className="card-body">
             <div className="create-grid">
               <label><span className="label">名称</span><input value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); flow.reset(); }} placeholder="如：2026 双11 冲分节" /></label>
-              <label><span className="label">开始</span><input value={form.start} onChange={(e) => { setForm({ ...form, start: e.target.value.trim() }); flow.reset(); }} placeholder="2026-10-20" /></label>
-              <label><span className="label">结束</span><input value={form.end} onChange={(e) => { setForm({ ...form, end: e.target.value.trim() }); flow.reset(); }} placeholder="2026-11-30" /></label>
+              <label><span className="label">开始</span><DateInput value={form.start} onChange={(v) => { setForm({ ...form, start: v }); flow.reset(); }} /></label>
+              <label><span className="label">结束</span><DateInput value={form.end} min={form.start || undefined} onChange={(v) => { setForm({ ...form, end: v }); flow.reset(); }} /></label>
               <label className="is-wide"><span className="label">一句话说明</span><input value={form.desc} onChange={(e) => { setForm({ ...form, desc: e.target.value }); flow.reset(); }} placeholder="这次战役要做成什么" /></label>
             </div>
-            <div className="row"><span className="small muted">{formOk ? "预览确认后才创建；节点、阶段、门禁沿用模板" : "名称、说明、起止日期（YYYY-MM-DD）都要填，结束不早于开始"}</span><span className="spacer" /><Button variant="primary" disabled={!formOk || locked} onClick={create}><PixelIcon name="eye" />预览创建</Button></div>
+            <div className="row"><span className="small muted">{formOk ? "预览确认后才创建；节点、阶段、门禁沿用模板" : "名称、说明、起止日期都要填，结束不早于开始"}</span><span className="spacer" /><Button variant="primary" disabled={!formOk || locked} onClick={create}><PixelIcon name="eye" />预览创建</Button></div>
           </div>
         </section>
       )}
@@ -164,7 +164,7 @@ function Campaign({ c, onSaved, onEdit, reviewNote }) {
                         )}
                       </div>
                       {isTemplate ? <span className="node-owner muted">—</span> : <CellInput className="node-owner-input" value={n.owner} placeholder="负责人" disabled={locked} onCommit={(v) => editNode(n.n, { owner: v }, `「${n.t}」负责人改为「${v || "空"}」`)} />}
-                      {isTemplate ? <span className="muted small">—</span> : <CellInput className="node-due" value={n.due} placeholder="MM-DD" pattern={/^(\d{2}-\d{2})?$/} disabled={locked} onCommit={(v) => editNode(n.n, { due: v }, `「${n.t}」截止日期改为 ${v || "空"}`)} />}
+                      {isTemplate ? <span className="muted small">—</span> : <DateCommit className="node-due" value={n.due ? `${year}-${n.due}` : ""} disabled={locked} aria-label={`截止日期：${n.t}`} onCommit={(v) => { const due = v.slice(5); editNode(n.n, { due }, `「${n.t}」截止日期改为 ${due || "空"}`); }} />}
                       <span className="node-left">{isTemplate ? <span className="muted">模板</span> : n.done ? <span className="ok-text">已完成</span> : left === null ? <span className="muted">—</span> : left < 0 ? <span className="risk-text">逾期 {-left} 天</span> : left === 0 ? <span className="risk-text">今天到期</span> : <span className={left <= 2 ? "warn-text" : "muted"}>还有 {left} 天</span>}</span>
                     </li>
                   );
@@ -285,11 +285,10 @@ function CampaignReview({ c, isTemplate, note, onSaved, onEdit }) {
 }
 
 // 表格里的小输入框：回车或离开时提交，格式不对不提交。
-function CellInput({ value, onCommit, pattern, ...rest }) {
+function CellInput({ value, onCommit, ...rest }) {
   const [v, setV] = useState(value || "");
-  const bad = pattern && !pattern.test(v);
-  const commit = () => { if (!bad && v !== (value || "")) onCommit(v); };
-  return <input {...rest} className={`${rest.className || ""}${bad ? " is-bad" : ""}`} value={v} onChange={(e) => setV(e.target.value.trim())} onBlur={commit} onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setV(value || ""); }} />;
+  const commit = () => { if (v !== (value || "")) onCommit(v); };
+  return <input {...rest} value={v} onChange={(e) => setV(e.target.value.trim())} onBlur={commit} onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setV(value || ""); }} />;
 }
 
 // 月底交付倒计时：本月每天一格，已过为墨、今天为橙、月底交付日空心；右边是交付月 6 个环节的完成数。

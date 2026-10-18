@@ -2,7 +2,7 @@ import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Loadable, MonthSwitch, PageHeader, Placeholder, Segmented, Tabs, Tag } from "../../ui/components.jsx";
+import { Button, DateInput, Loadable, MonthSwitch, PageHeader, Placeholder, Segmented, Tabs, Tag } from "../../ui/components.jsx";
 import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { FeishuExport } from "../../ui/feishu-export.jsx";
 import { ManualNeedForm } from "./ManualNeedForm.jsx";
@@ -33,6 +33,10 @@ const toDate = (s) => { const [y, m, d] = s.split("-").map(Number); return new D
 const span = (from, to) => (to ? Math.round((toDate(to) - toDate(from)) / 86400000) + 1 : 1);
 // 明细表的格子只有「MM-DD」：结束早于开始就是跨年（如 12-19 → 01-03），结束日算到下一年。
 const mdDate = (md, y) => new Date(y, Number(md.slice(0, 2)) - 1, Number(md.slice(3)));
+// 国家顺序（用户 2026-10-18）：甘特图分组、国家筛选、本月节点清单都按这个排；不在名单里的排最后，彼此保持原顺序。
+const COUNTRY_ORDER = ["美国", "英国", "香港", "澳洲", "加拿大", "新加坡", "新西兰", "澳门"];
+const countryRank = (name) => { const i = COUNTRY_ORDER.indexOf(name); return i < 0 ? COUNTRY_ORDER.length : i; };
+const byCountry = (a, b) => countryRank(a) - countryRank(b);
 const mdSpan = (a, b) => (b ? Math.round((mdDate(b, b < a ? 2027 : 2026) - mdDate(a, 2026)) / 86400000) + 1 : 1);
 
 // 事件类别：颜色只区分类别，图例里写明。
@@ -123,7 +127,7 @@ function MonthTimeline({ tl, q, showSrc }) {
       if (!bySchool.has(e.school)) bySchool.set(e.school, []);
       bySchool.get(e.school).push(e);
     }
-    return [...byC.entries()].map(([c, schools]) => [c, [...schools.entries()]]);
+    return [...byC.entries()].sort(([a], [b]) => byCountry(a, b)).map(([c, schools]) => [c, [...schools.entries()]]);
   }, [list]);
   const [dayW, setDayW] = useState(30);
   const ro = useRef(null);
@@ -134,7 +138,7 @@ function MonthTimeline({ tl, q, showSrc }) {
     ro.current.observe(el);
   }, [nDays]);
   const place = (e) => placeBar(e, { first, last, nDays, dayW, showSrc });
-  const countries = [...new Set(inMonth.map((e) => e.c))];
+  const countries = [...new Set(inMonth.map((e) => e.c))].sort(byCountry);
   const cols = { gridTemplateColumns: `repeat(${nDays}, minmax(0, 1fr))` };
   return (
     <>
@@ -234,10 +238,10 @@ function placeBar(e, { first, last, nDays, dayW, showSrc }) {
 
 // 时间轴下面的文字清单：按开始日期排，一句话写全。
 function MonthList({ list, first, showSrc }) {
-  const rows = [...list].sort((a, b) => a.from.localeCompare(b.from));
+  const rows = [...list].sort((a, b) => byCountry(a.c, b.c) || a.from.localeCompare(b.from));
   return (
     <section className="card month-list">
-      <div className="card-head"><h2><PixelIcon name="menu" />本月节点清单</h2><span className="small muted">按开始日期排序 · 悬停一行可看来源单元格</span></div>
+      <div className="card-head"><h2><PixelIcon name="menu" />本月节点清单</h2><span className="small muted">按国家、开始日期排序 · 悬停一行可看来源单元格</span></div>
       <table className="grid compact">
         <thead><tr><th>开始</th><th>国家</th><th>学校</th><th>事件</th><th className="r">起止</th><th className="r">天数</th>{showSrc && <th>来源</th>}</tr></thead>
         <tbody>{rows.map((e, i) => {
@@ -276,7 +280,7 @@ function CountryTable({ tl, q, showSrc }) {
   return (
     <>
       <div className="toolbar">
-        {tl.countries.map(([code, name]) => (
+        {[...tl.countries].sort(([, a], [, b]) => byCountry(a, b)).map(([code, name]) => (
           <button key={code} type="button" className={`chip${c === code ? " is-on" : ""}`} aria-pressed={c === code} onClick={() => setC(code)}>
             {name} <span className="tnum">{tl.table[code] ? `${tl.table[code].length} 校` : "—"}</span>
           </button>
@@ -422,8 +426,8 @@ function AnomalyCard({ a, reread }) {
               <button type="button" className={`chip${pick === "manual" ? " is-on" : ""}`} disabled={locked} onClick={() => choose("manual")}>手填日期</button>
               <button type="button" className={`chip${pick === "exclude" ? " is-on" : ""}`} disabled={locked} onClick={() => choose("exclude")}>不采用</button>
               {pick === "manual" && <>
-                <input className="rule-day" value={days.from} placeholder="开始 YYYY-MM-DD" disabled={locked} onChange={(e) => { setDays({ ...days, from: e.target.value.trim() }); flow.reset(); }} />
-                <input className="rule-day" value={days.to} placeholder="结束 YYYY-MM-DD" disabled={locked} onChange={(e) => { setDays({ ...days, to: e.target.value.trim() }); flow.reset(); }} />
+                <DateInput className="rule-day" value={days.from} aria-label="开始日期" disabled={locked} onChange={(v) => { setDays({ ...days, from: v }); flow.reset(); }} />
+                <DateInput className="rule-day" value={days.to} min={days.from || undefined} aria-label="结束日期" disabled={locked} onChange={(v) => { setDays({ ...days, to: v }); flow.reset(); }} />
               </>}
               {pick && <input className="rule-note" value={note} maxLength={500} placeholder="备注（可选），如：官网校历确认" disabled={locked} onChange={(e) => { setNote(e.target.value); flow.reset(); }} />}
               <span className="spacer" />

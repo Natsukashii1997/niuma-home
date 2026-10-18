@@ -10,9 +10,11 @@ import { WriteBox, useWriteFlow } from "./write-flow.jsx";
 const itemsOf = (x) => (Array.isArray(x) ? x : x?.items || []);
 const enc = encodeURIComponent;
 
+// 按字符串比较 id：有的默认列表给数字 id（如 /api/assistants），删除接口统一用字符串。
 export async function readPlacement(api, id) {
   const [active, deleted] = await Promise.all([apiSend("GET", api.active), apiSend("GET", `${api.base}?deleted=true`)]);
-  return { active, deleted: itemsOf(deleted), inActive: itemsOf(active).some((o) => o.id === id), inDeleted: itemsOf(deleted).some((o) => o.id === id) };
+  const has = (list) => itemsOf(list).some((o) => String(o.id) === String(id));
+  return { active, deleted: itemsOf(deleted), inActive: has(active), inDeleted: has(deleted) };
 }
 
 export const timeText = (iso) => {
