@@ -1321,4 +1321,6 @@
 - 第 4 批 · 品牌数据：草稿 `docs/design/brand-data/`（真实快照，用户确认：删减项留删除线；按表名自动找版本表；先显示上次结果）。接入：`server/brand.mjs`（只读 `V年.月.日` 版本表，每页 200 条分页，没读完整不保存）、`server/routes/brand.mjs`（`GET /api/v3/brand`、`POST /api/v3/brand/refresh`，见 docs/API.md「品牌数据」）、`BrandPage.jsx` 按草稿实现。设置里 `brand_base_url` 为空时读默认品牌表（真实设置当前为空）。5290 读真实飞书三版共 273 项，与草稿快照逐项一致；页面截图 `docs/handoff/V4/品牌数据-*.png`。
 - 验证：`npm test` 388 通过 / 0 失败（新增 `tests/brand-data.test.mjs` 4 项）；截图 `docs/handoff/V4/`（底栏-*、Agent删除-*、日期-*、国家排序-*、codex逐字/、品牌数据-*）。
 - 范围外发现：用户页在 390 宽有 692px 横向溢出（搜索框 `min-width: 300px` 等，旧问题）；飞书「版本记录」表第一行版本号填错（日期 2025-07-30 写成 V2026.09.01）；项目页删除后再恢复，上面那条「已删除」提示同样不会收起（Agent 页已修）。
-- 未发布 5280。
+- 发布（用户同意）：main 从 `ea9af72` 快进到 `0e180e5`，主工作区 `npm test` 388 项全部通过；`bash scripts/release-app.sh` 切换到 `nm-20261018-205532-0e180e5`，保留策略清理了最老的快照 `nm-20261017-131918-6c76d90`。
+- 回读（只读，脚本拦截写请求，0 条被拦）：首页与快照 `dist/index.html` 逐字节一致；`/api/v3/status`、`/api/assistants`（四个预设 + 娱乐助手）、`/api/v3/codex-reset`、`/api/v3/local-assistants?deleted=true` 均 200；`/api/v3/brand` 读到 V2026.09.01 / V2026.01.31 / V2025.07.31 共 85 / 94 / 94 项；底栏版本 0e180e5；Codex 打完后光标消失、「已重置」橙色；甘特分组按新国家顺序；战役节点截止为日期选择器。截图 `docs/handoff/V4/线上5280-第二轮-首页.png`、`线上5280-第二轮-品牌.png`。
+- 回滚：`bash scripts/release-app.sh --use nm-20261018-175402-ea9af72`。
