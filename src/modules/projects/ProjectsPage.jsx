@@ -105,7 +105,7 @@ function ProjectBoard({ initial }) {
         {sync.error && <p className="proj-sync risk-text small">读取失败：{sync.error}（页面仍显示上次读到的内容）</p>}
         {/* 放在列表上方：.proj-items 吸顶，排在它后面的内容滚动时会被盖住 */}
         {deletedError && <p className="proj-sync risk-text small">已删除列表读取失败：{deletedError}</p>}
-        <DeletedList api={LOCAL_API} deleted={deleted} onPlaced={(r) => { placed(r); setDeletedError(""); }} noun="本地项目"
+        <DeletedList api={LOCAL_API} deleted={deleted} onPlaced={(r) => { placed(r); setDeletedError(""); if (remover.flow.phase === "saved") remover.flow.resolve(); }} noun="本地项目"
           describe={(x) => ({ name: x.name, meta: `${x.basedOn?.name ? `按「${x.basedOn.name}」生成 · ` : ""}${nodeCount(x)}` })}>
           {(pv) => <dl className="kv">
             <dt>项目</dt><dd>{pv.value.name}</dd>

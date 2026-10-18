@@ -93,7 +93,7 @@ function TimelineBoard({ tl, view, initialQ, onSynced }) {
       </div>
       <div className="toolbar">
         <Segmented options={[["month", "按月 · 时间轴"], ["country", "按国家 · 明细表"], ["anomalies", `异常待确认 ${tl.anomalies.filter((a) => !a.ruling).length}`]]} value={view} onChange={go} />
-        <label className="search-box"><PixelIcon name="search" /><input placeholder="搜索学校或事件，如 UQ / Final" value={q} onChange={(e) => setQ(e.target.value)} /></label>
+        <label className="search-box tl-search"><PixelIcon name="search" /><input placeholder="搜索学校或事件，如 UQ / Final" value={q} onChange={(e) => setQ(e.target.value)} /></label>
         <label className="check-inline"><input type="checkbox" checked={showSrc} onChange={(e) => setShowSrc(e.target.checked)} />显示来源单元格</label>
         <span className="spacer" />
         {sync.busy ? <div style={{ width: 200 }}><StepProgress label="同步飞书（只读）" /></div> : <Button onClick={runSync}><PixelIcon name="refresh" />同步</Button>}

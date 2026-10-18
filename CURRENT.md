@@ -1324,3 +1324,11 @@
 - 发布（用户同意）：main 从 `ea9af72` 快进到 `0e180e5`，主工作区 `npm test` 388 项全部通过；`bash scripts/release-app.sh` 切换到 `nm-20261018-205532-0e180e5`，保留策略清理了最老的快照 `nm-20261017-131918-6c76d90`。
 - 回读（只读，脚本拦截写请求，0 条被拦）：首页与快照 `dist/index.html` 逐字节一致；`/api/v3/status`、`/api/assistants`（四个预设 + 娱乐助手）、`/api/v3/codex-reset`、`/api/v3/local-assistants?deleted=true` 均 200；`/api/v3/brand` 读到 V2026.09.01 / V2026.01.31 / V2025.07.31 共 85 / 94 / 94 项；底栏版本 0e180e5；Codex 打完后光标消失、「已重置」橙色；甘特分组按新国家顺序；战役节点截止为日期选择器。截图 `docs/handoff/V4/线上5280-第二轮-首页.png`、`线上5280-第二轮-品牌.png`。
 - 回滚：`bash scripts/release-app.sh --use nm-20261018-175402-ea9af72`。
+
+### V4 · 2026-10-18 · 范围外小问题收尾：用户页窄屏溢出、项目页恢复后提示残留（已提交，未发布）
+
+- 用户页（`#/user` 时间轴）390 宽 `scrollWidth` 692 → 390。三处撑宽，只在用户页专用类上改：搜索框加 `tl-search`（`flex: 0 1 300px; min-width: 0`，宽屏仍 300px）；「本月节点清单」卡片 `.month-list` 加 `overflow-x: auto`（表在卡片内横滑）；600px 以下 `.tl-intro` 允许换行、来源说明可收缩。全局 `.search-box` 未动。1440 宽对照线上 5280：`.main` 内 2658 个元素位置尺寸全部一致（只差新加的类名）。
+- 项目页：`DeletedList` 的 `onPlaced` 照搬 Agent 页，删除提示处于 saved 时恢复后一并收起。5290 隔离环境实测删除→恢复：改前恢复后仍残留「已删除，回读核对…」，改后只剩「已恢复」提示。
+- 改动文件：`src/modules/user/UserPage.jsx`、`src/styles-v3.css`、`src/modules/projects/ProjectsPage.jsx`。
+- 验证：`npm test` 388 通过 / 0 失败；截图 `docs/handoff/V4/用户页溢出修复-390.png`、`用户页溢出修复-1440.png`、`项目页恢复后提示收起-1440.png`（只读截图走 5293，写操作只在 5294→5290 隔离后端）。
+- 范围外发现：用户页 390 宽时甘特表头日期挤在一起、视图切换按钮文字折行（页面不再横向滚动，仅观感问题）。

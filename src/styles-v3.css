@@ -660,6 +660,10 @@ label.btn { cursor: pointer; }
 .month-list .grid td { vertical-align: middle; }
 .month-list .grid .tag { margin-left: var(--s2); }
 .month-list tr.is-conflict td:first-child { box-shadow: inset 3px 0 0 var(--risk); }
+/* 用户页窄屏不撑出横向滚动：搜索框放开下限、清单表在卡片内横滑、来源说明可换行 */
+.tl-search { flex: 0 1 300px; min-width: 0; }
+.month-list { overflow-x: auto; }
+@media (max-width: 600px) { .tl-intro { flex-wrap: wrap; } .tl-intro > span { flex-shrink: 1; } }
 
 /* 异常待确认 */
 .anomaly-list { display: flex; flex-direction: column; gap: var(--s2); }
