@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiSend } from "../api.js";
 import { PixelIcon, StepProgress } from "./bitmap.jsx";
 import { Button } from "./components.jsx";
@@ -47,12 +47,14 @@ export function useSoftRemove(api, onPlaced) {
 }
 
 // 已删除列表 + 恢复。deleted 由页面持有（删除后页面拿回读结果更新它，两边保持一致）。
-export function DeletedList({ api, deleted, onPlaced, noun, describe, children }) {
+// label：折叠按钮文字（默认「已删除的{noun}」）；quiet：恢复成功、回读一致后不留绿色提示（Agent 页，用户 2026-10-18）。
+export function DeletedList({ api, deleted, onPlaced, noun, describe, children, label, quiet }) {
   const [open, setOpen] = useState(false);
   const [load, setLoad] = useState({ busy: false, error: "" });
   const [lastId, setLastId] = useState(null); // 预览本身失败时 flow 里没有预览内容，重新预览靠它
   const flow = useWriteFlow();
   const locked = flow.busy || flow.phase === "unknown";
+  useEffect(() => { if (quiet && flow.phase === "saved") flow.resolve(); }, [quiet, flow.phase]); // eslint-disable-line react-hooks/exhaustive-deps
   async function reload() {
     setLoad({ busy: true, error: "" });
     try { onPlaced(await readPlacement(api, null)); setLoad({ busy: false, error: "" }); }
@@ -71,7 +73,7 @@ export function DeletedList({ api, deleted, onPlaced, noun, describe, children }
   return (
     <div className="trash">
       <button type="button" className="trash-toggle link-btn" aria-expanded={open} onClick={() => { if (locked) return; setOpen(!open); flow.reset(); }}>
-        <PixelIcon name="archive" />已删除的{noun}<span className="tnum">{deleted.length}</span><PixelIcon name={open ? "up" : "down"} />
+        <PixelIcon name="archive" />{label || `已删除的${noun}`}<span className="tnum">{deleted.length}</span><PixelIcon name={open ? "up" : "down"} />
       </button>
       {open && (
         <div className="trash-body">

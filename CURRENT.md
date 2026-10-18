@@ -1346,3 +1346,9 @@
 - 发布（用户同意）：main 从 `038060a` 快进到 `93dd9e6`（含 29802d6 与总转化率放大），主工作区 `npm test` 388 项全部通过；`bash scripts/release-app.sh` 切换到 `nm-20261018-214722-93dd9e6`；数据库备份 `work-desk-20261018-214723-before-nm-20261018-214722-93dd9e6.db`；保留策略清理了最老的快照 `nm-20261018-143233-f7d763f`。
 - 回读（只读，脚本拦截写请求，0 条被拦）：首页与快照 `dist/index.html` 逐字节一致；`/api/v3/status`、`/api/v3/codex-reset`、`/api/v3/brand`、`/api/v3/business/revenue` 均 200，营收接口含 `conv` 总转化率 0.348 / 上月 0.361；线上品牌页筛选一行、说明一行、统计条变矮，Codex 横条为「Codex 重置：上次重置 … 下次重置时间未公开」，底栏版本 93dd9e6；品牌页 390 宽 `scrollWidth` = 390。截图 `docs/handoff/V4/线上5280-品牌与Codex横条.png`、`线上5280-业务总转化率.png`。
 - 回滚：`bash scripts/release-app.sh --use nm-20261018-210353-c0b667f`。
+
+### V4 · 2026-10-18 · 第三轮需求（拆分进行中）
+
+- 用户第三轮提了 7 块：月度促销 SKU 规范 + 特殊活动栏 + 录入大学辅导 10 月方案；价格记录页（方案置顶、列增删、4 张产品表、折线配色、删方案设置与档案入口）；方案汇总 SKU 档案改右侧侧栏；Agent 页；设置页重排；机械邪龙兽推送 Codex 重置（飞书卡片）；底栏出 ≥3 版样稿。用户已定：不挂 SKU 的活动（如双11）按业务线整月记一条特殊活动；安心学Max、竞赛课时卡先建空表等用户填；推送每 4 小时检查一次。
+- 除 Agent 页外，其余拆成 4 个并行会话的提议卡（各自 worktree、各自端口，交接写到会话笔记目录，由本会话合并进这里）：促销 SKU 与档案侧栏、价格记录页、设置页 + Codex 推送、底栏样稿。
+- **Agent 页（本会话完成，已提交，未发布）**：删除 / 恢复成功且回读一致后不再留绿色提示（失败、结果不明照常显示）；「已删除的助手」改叫「已删除」，放在左侧助手列表这一栏的右下角、仍在框内。`soft-delete.jsx` 的 `DeletedList` 新增可选 `label`、`quiet`，只有 Agent 页传，项目页、历史战役不变。改动：`src/ui/soft-delete.jsx`、`src/modules/assistants/AssistantsPage.jsx`、`src/styles-v3.css`。5294→5290 隔离环境实测删除→恢复：两次都没有 write-box 残留，助手回到列表。`npm test` 388 通过 / 0 失败；截图 `docs/handoff/V4/Agent已删除右下角-1440.png`、`Agent恢复预览-1440.png`。
