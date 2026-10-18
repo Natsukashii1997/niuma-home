@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>知识库画布 · 三版草稿</title>
+<style>
+@font-face { font-family: "Geist"; src: url("../../../src/assets/fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Geist Mono"; src: url("../../../src/assets/fonts/GeistMono-Variable.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Geist Pixel"; src: url("../../../src/assets/fonts/GeistPixel-Square.woff2") format("woff2"); }
+:root {
+  --bg: #EDEEF1; --grid-dot: #C9CCD3; --panel: #FBFBFC; --panel-soft: #F3F4F6; --text: #0D0E10; --text-2: #3D4047;
+  --muted: #686D76; --line: #D5D8DE; --signal: #FF4F1F; --signal-soft: #FFEDE6; --ok: #1E8E4E;
+  --sans: "Geist", "PingFang SC", -apple-system, sans-serif; --mono: "Geist Mono", "PingFang SC", ui-monospace, monospace; --pixel: "Geist Pixel", "Geist Mono", monospace;
+  --d1: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' fill='%230D0E10' opacity='.18'/%3E%3C/svg%3E");
+  --d2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' fill='%230D0E10' opacity='.35'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%230D0E10' opacity='.35'/%3E%3C/svg%3E");
+  --d3: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2'%3E%3Crect width='1' height='1' fill='%230D0E10' opacity='.5'/%3E%3C/svg%3E");
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; }
+button { font: inherit; color: inherit; }
+.page { max-width: 1320px; margin: 0 auto; padding: 24px 24px 80px; }
+.switch { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 8px; padding: 10px 24px; background: var(--text); color: var(--panel); }
+.switch b { font-family: var(--pixel); font-weight: 400; font-size: 15px; margin-right: 12px; }
+.switch button { padding: 6px 12px; border: 2px solid #3d4047; background: none; color: var(--panel); cursor: pointer; }
+.switch button.on { background: var(--signal); border-color: var(--signal); }
+.switch span { margin-left: auto; font-family: var(--mono); font-size: 11px; color: #9aa0a8; }
+.note { margin: 0 0 18px; padding: 12px 14px; border-left: 4px solid var(--signal); background: var(--panel); line-height: 1.7; }
+.note strong { font-size: 14px; }
+h1 { margin: 0 0 4px; font-size: 26px; }
+.sub { margin: 0 0 18px; color: var(--muted); }
+.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.head-act { display: flex; gap: 8px; padding-top: 6px; }
+
+/* 公共：工具条（分组标签 + 搜索 + 最近收藏） */
+.bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border: 2px solid var(--line); border-bottom: 0; background: var(--panel); }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 2px solid var(--line); background: var(--panel); cursor: pointer; white-space: nowrap; }
+.chip i { font-style: normal; font-family: var(--pixel); color: var(--muted); }
+.chip.on { border-color: var(--text); background: var(--text); color: var(--panel); }
+.chip.on i { color: var(--signal); }
+.chip.add { border-style: dashed; color: var(--muted); }
+.bar .sp { flex: 1; }
+.search { width: 180px; height: 30px; padding: 0 10px; border: 2px solid var(--line); background: var(--panel); color: var(--muted); display: flex; align-items: center; }
+.btn { height: 30px; padding: 0 12px; border: 2px solid var(--text); background: var(--panel); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.btn.badge::after { content: attr(data-n); font-family: var(--pixel); color: var(--panel); background: var(--signal); padding: 0 5px; }
+.board { position: relative; border: 2px solid var(--line); background-color: var(--panel-soft); background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1.3px); background-size: 16px 16px; padding: 28px; }
+
+/* 公共：文档卡（竖版，上半是像素封面） */
+.card { position: relative; width: var(--cw, 150px); height: var(--ch, 200px); border: 2px solid var(--line); background: var(--panel); display: flex; flex-direction: column; flex: none; }
+.card:hover { border-color: var(--text); z-index: 5; }
+.cover { position: relative; height: 46%; border-bottom: 2px solid var(--line); background-image: var(--pat); overflow: hidden; }
+.cover .glyph { position: absolute; left: 8px; bottom: 6px; font-family: var(--pixel); font-size: 20px; line-height: 1; background: var(--panel); padding: 2px 4px; }
+.cover .emo { position: absolute; right: 6px; top: 6px; font-size: 16px; }
+.cover .sc { position: absolute; left: 6px; top: 6px; font-family: var(--mono); font-size: 10px; background: var(--text); color: var(--panel); padding: 1px 4px; }
+.body { flex: 1; display: flex; flex-direction: column; gap: 4px; padding: 8px; min-height: 0; }
+.body strong { font-size: 12px; font-weight: 600; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.meta { margin-top: auto; display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.card.folder { border-left: 6px solid var(--text); }
+.card.folder .cover { background: var(--text); }
+.card.folder .cover .glyph { background: var(--signal); color: var(--panel); }
+
+/* ========== A 桌面纸堆（复刻数码世界） ========== */
+.A .desk { display: flex; flex-wrap: wrap; justify-content: center; row-gap: 44px; }
+.A .desk > .grp { width: 33.333%; }
+.A .loose { width: 100%; display: flex; justify-content: center; gap: 36px; padding-bottom: 28px; border-bottom: 2px dashed var(--line); }
+.A .loose .card { transform: rotate(var(--r)); }
+.A .loose-label { width: 100%; margin: -20px 0 0; text-align: center; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.A .grp { display: flex; flex-direction: column; align-items: center; gap: 14px; cursor: pointer; }
+.A .stack { position: relative; width: 210px; height: 236px; display: grid; place-items: center; }
+.A .stack .card { grid-area: 1 / 1; transform: translate(var(--x), var(--y)) rotate(var(--r)); }
+.A .stack .empty { width: 150px; height: 200px; border: 2px dashed var(--line); display: grid; place-items: center; color: var(--muted); font-size: 12px; background: var(--panel-soft); }
+.A .name { display: flex; align-items: baseline; gap: 8px; padding: 0 6px 6px; border-bottom: 3px solid var(--text); font-size: 15px; font-weight: 600; }
+.A .name i { font-style: normal; font-family: var(--pixel); font-size: 15px; color: var(--signal); }
+.A .name em { font-style: normal; font-size: 12px; color: var(--muted); opacity: 0; }
+.A .grp:hover .name em { opacity: 1; }
+.A .desk > .grp.open { width: 100%; cursor: default; }
+.A .fan { display: grid; grid-template-columns: repeat(var(--cols), 150px); gap: 18px 18px; padding: 8px 0 4px; }
+.A .grp.open .name { border-bottom-color: var(--signal); }
+
+/* ========== B 档案夹 ========== */
+.B .desk { display: grid; grid-template-columns: repeat(4, 1fr); gap: 34px 26px; }
+.B .loose { grid-column: 1 / -1; display: flex; gap: 14px; align-items: center; padding: 12px 14px; border: 2px dashed var(--line); background: var(--panel); }
+.B .loose .lbl { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-right: 6px; }
+.B .loose .card { --cw: 210px; --ch: 72px; flex-direction: row; }
+.B .loose .card .cover { width: 56px; height: auto; border-bottom: 0; border-right: 2px solid var(--line); }
+.B .fold { position: relative; cursor: pointer; padding-top: 30px; }
+.B .tab { position: absolute; left: 0; top: 0; height: 32px; max-width: 86%; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--text); color: var(--panel); font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; }
+.B .tab i { font-style: normal; font-family: var(--pixel); color: var(--signal); }
+.B .case { position: relative; height: 168px; border: 2px solid var(--text); background: var(--panel); overflow: hidden; }
+.B .case .peek { position: absolute; left: 14px; right: 14px; height: 88px; border: 2px solid var(--line); background: var(--panel); padding: 8px 10px; transform: rotate(var(--r)); }
+.B .case .peek strong { font-size: 12px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.B .case .peek .meta { margin-top: 6px; }
+.B .case .lip { position: absolute; left: 0; right: 0; bottom: 0; height: 54px; border-top: 2px solid var(--text); background: var(--panel-soft); background-image: var(--d1); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-family: var(--mono); font-size: 11px; color: var(--text-2); }
+.B .fold:hover .case { background-image: var(--d1); }
+.B .fold.open .tab { background: var(--signal); }
+.B .fold.open .tab i { color: var(--panel); }
+.B .fold.open .case { border-color: var(--signal); }
+.B .drawer { grid-column: 1 / -1; position: relative; margin-top: -18px; border: 2px solid var(--signal); background: var(--panel); padding: 18px; }
+.B .drawer::before { content: ""; position: absolute; top: -12px; left: var(--notch); width: 20px; height: 20px; background: var(--panel); border-left: 2px solid var(--signal); border-top: 2px solid var(--signal); transform: rotate(45deg); }
+.B .drawer-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.B .drawer-head h3 { margin: 0; font-size: 16px; }
+.B .drawer-head .crumbs { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.B .drawer-grid { display: grid; grid-template-columns: repeat(auto-fill, 220px); gap: 14px; }
+.B .drawer-grid .card { --cw: 220px; --ch: 92px; flex-direction: row; }
+.B .drawer-grid .card .cover { width: 64px; height: auto; border-bottom: 0; border-right: 2px solid var(--line); }
+
+/* ========== C 分栏看板 ========== */
+.C .board { padding: 18px; overflow-x: auto; }
+.C .cols { display: flex; gap: 16px; align-items: flex-start; min-width: max-content; }
+.C .col { width: 236px; flex: none; display: flex; flex-direction: column; border: 2px solid var(--text); background: var(--panel); }
+.C .col.loose { border-style: dashed; border-color: var(--muted); background: transparent; }
+.C .col-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--text); color: var(--panel); font-weight: 600; }
+.C .col.loose .col-head { background: none; color: var(--text); }
+.C .col-head i { font-style: normal; font-family: var(--pixel); color: var(--signal); margin-left: auto; font-size: 15px; }
+.C .col-list { display: flex; flex-direction: column; gap: 8px; padding: 10px; }
+.C .row { display: grid; grid-template-columns: 34px 1fr; gap: 8px; padding: 8px; border: 2px solid var(--line); background: var(--panel); }
+.C .row:hover { border-color: var(--text); }
+.C .row .ic { width: 34px; height: 34px; background-image: var(--pat); border: 2px solid var(--line); display: grid; place-items: center; font-family: var(--pixel); font-size: 10px; }
+.C .row strong { font-size: 12px; font-weight: 600; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.C .row .meta { grid-column: 2; margin-top: 2px; }
+.C .row.folder { border-left: 6px solid var(--text); }
+.C .row.folder .ic { background: var(--text); color: var(--panel); }
+.C .more { margin: 0 10px 10px; height: 30px; border: 2px dashed var(--line); background: none; cursor: pointer; font-family: var(--mono); font-size: 11px; color: var(--text-2); }
+.C .more:hover { border-color: var(--text); }
+.C .col.add { border-style: dashed; border-color: var(--line); background: none; height: 120px; display: grid; place-items: center; color: var(--muted); cursor: pointer; }
+
+.legend { margin-top: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.legend div { padding: 10px 12px; background: var(--panel); border: 2px solid var(--line); line-height: 1.7; font-size: 12px; }
+.legend b { display: block; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="switch"><b>知识库画布 · 草稿</b>
+  <button data-v="A" class="on">A 桌面纸堆</button><button data-v="B">B 档案夹</button><button data-v="C">C 分栏看板</button>
+  <span>真实目录快照 · 点分组可展开 / 收起 · 只是视觉稿，不写飞书</span></div>
+<div class="page">
+  <div id="note"></div>
+  <div class="head"><div><h1>知识库</h1><p class="sub">「常浩的知识库」：分组就是飞书一级目录，在这里拖动就是在飞书里整理</p></div><div class="head-act"><button class="btn badge" data-n="3">最近收藏</button><button class="btn">↻ 刷新</button></div></div>
+  <div id="app"></div>
+  <div class="legend" id="legend"></div>
+</div>
+<script src="data.js"></script>
+<script>
+const NOTES = {
+  A: ["A · 桌面纸堆（复刻数码世界）", "画布占满宽度，一行 3 组；每组是一叠竖版卡，组名放在纸堆正下方，带粗下划线和橙色计数。点纸堆或组名，卡片就在原位铺开成网格，组名跟到网格下方，后面的分组往下让位，不再弹出单独的面板。散卡排在最上方，略微倾斜。顶部一排分组标签可以直接跳到某一组。"],
+  B: ["B · 档案夹", "每组是一个文件夹：组名写在黑色页签上，夹子里露出前两篇文档的标题，底部写篇数和最近更新时间。一行 4 个，更紧凑，组名一眼就能扫到。点开后，在这一行下面拉出一个抽屉，带一个指向文件夹的箭头，里面是横版卡片。适合组多、文档多的时候用。"],
+  C: ["C · 分栏看板", "每组一列，列头是黑底组名和计数，列里是紧凑的文档行（小封面 + 标题 + 日期），每列先显示 6 篇，点「展开」显示全部。散卡是最左边的虚线列，新建分组是最右边的空列。在列之间拖动最直观，但没有「桌面」的感觉。"],
+};
+const LEGEND = {
+  A: [["卡片", "竖版 150 × 200，上半是由文档 ID 生成的网点封面（类型缩写 + 分组图标）"], ["组名", "纸堆正下方，15px 粗体 + 3px 墨色下划线 + 像素体橙色计数；展开后下划线变橙"], ["展开", "原位铺开：一行最多 7 张，组名跟到网格底部，后面的组往下推"]],
+  B: [["卡片", "夹内预览是标题条；展开后是横版 220 × 92（左侧小封面）"], ["组名", "黑色页签，压在文件夹左上角；展开时页签变橙"], ["展开", "这一行下面拉出整行抽屉，箭头指向被打开的文件夹"]],
+  C: [["卡片", "紧凑行：34px 小封面 + 两行标题 + 日期，一屏能看更多"], ["组名", "列头黑底条，计数靠右"], ["展开", "列内展开：「展开全部 +N」，列变长；其余列不动"]],
+};
+const TYPE = { docx: "DOC", doc: "DOC", sheet: "SHT", bitable: "BASE", file: "FILE", slides: "PPT", mindnote: "MIND" };
+const PAT = ["var(--d1)", "var(--d2)", "var(--d3)"];
+const hash = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.codePointAt(0), 16777619) >>> 0; return h; };
+const r = (id, k, amp) => ((((hash(id) >>> k) & 255) / 255) - 0.5) * amp;
+const emoji = (name) => (name.match(/^\p{Extended_Pictographic}️?/u) || [""])[0];
+const plain = (name) => name.replace(/^\p{Extended_Pictographic}️?\s*/u, "");
+const count = (n) => (n.kids ? n.kids.reduce((s, k) => s + count(k), 0) : 1);
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const groups = KB.filter((n) => n.kids || /^\p{Extended_Pictographic}/u.test(n.name));
+let loose = KB.filter((n) => !groups.includes(n));
+if (!loose.length) loose = [{ id: "demoLooseA1", name: "（示例）收藏时归类不明确的一篇", type: "docx", updated: "2026-10-18", sc: true }, { id: "demoLooseB2", name: "（示例）同时命中营销和产品关键词的文档", type: "sheet", updated: "2026-10-17", sc: true }];
+const total = groups.reduce((s, g) => s + (g.kids ? count(g) : 0), 0) + loose.length;
+const state = { v: "A", open: { A: "S6SuwcdkAiac4MkSlFGcbd1bnwd", B: "PDlGw8ajXi2VFDkxNepcnf1Yngc", C: { "ZjYLwq2nViKvR7kKJCJcNE8zn1g": true } } };
+
+function card(n, groupEmoji = "", style = "") {
+  const pat = PAT[hash(n.id) % 3], folder = !!n.kids;
+  return `<div class="card${folder ? " folder" : ""}" style="--pat:${pat};${style}">
+    <div class="cover">${n.sc ? '<span class="sc">快捷方式</span>' : ""}<span class="emo">${emoji(n.name) || groupEmoji}</span><span class="glyph">${folder ? "DIR" : TYPE[n.type] || "DOC"}</span></div>
+    <div class="body"><strong>${esc(plain(n.name) || n.name)}</strong><span class="meta"><span>${folder ? `${count(n)} 篇` : (n.updated || "").slice(5)}</span><span>${folder ? "文件夹" : "↗"}</span></span></div></div>`;
+}
+function bar() {
+  return `<div class="bar"><span class="chip on">全部 <i>${total}</i></span>${groups.map((g) => `<span class="chip">${esc(g.name)} <i>${g.kids ? count(g) : 0}</i></span>`).join("")}<span class="chip add">＋ 分组</span><span class="sp"></span><span class="search">⌕ 搜 ${total} 篇的标题或摘要</span></div>`;
+}
+
+function viewA() {
+  const open = state.open.A;
+  const cells = groups.map((g, i) => {
+    const kids = g.kids || [], em = emoji(g.name);
+    const name = `<div class="name">${esc(g.name)}<i>${kids.length ? count(g) : 0}</i><em>✎ 改名</em></div>`;
+    if (g.id === open) {
+      const cols = Math.min(7, Math.max(3, kids.length));
+      return `<div class="grp open" data-g="${g.id}" style="align-items:${["flex-start", "center", "flex-end"][i % 3]}"><div class="fan" style="--cols:${cols}">${[...kids.filter((k) => k.kids), ...kids.filter((k) => !k.kids)].map((k) => card(k, em)).join("")}</div>${name}</div>`;
+    }
+    const top = kids.slice(0, 4);
+    const stack = top.length ? top.map((k, j) => card(k, em, `--x:${r(k.id, 0, 22)}px;--y:${r(k.id, 8, 10) - (top.length - 1 - j) * 3}px;--r:${j === top.length - 1 ? r(k.id, 16, 6) : r(k.id, 16, 16)}deg;z-index:${j}`)).join("") : `<div class="empty">拖文档进来</div>`;
+    return `<div class="grp" data-g="${g.id}"><div class="stack">${stack}</div>${name}</div>`;
+  }).join("");
+  return `${bar()}<div class="board A"><div class="desk"><div class="loose">${loose.map((n) => card(n, "", `--r:${r(n.id, 3, 8)}deg`)).join("")}</div><p class="loose-label">散卡 · 收藏时归类不明确的放这里，拖到下面任意一组即可</p>${cells}</div></div>`;
+}
+
+function viewB() {
+  const open = state.open.B, per = 4;
+  let html = `<div class="loose"><span class="lbl">散卡 ${loose.length}</span>${loose.map((n) => card(n)).join("")}<span class="lbl">← 拖进下面的文件夹</span></div>`;
+  groups.forEach((g, i) => {
+    const kids = g.kids || [];
+    const peeks = kids.slice(0, 2).map((k, j) => `<div class="peek" style="top:${14 + j * 26}px;--r:${r(k.id, 4, 3)}deg;z-index:${j}"><strong>${esc(plain(k.name))}</strong><span class="meta"><span>${TYPE[k.type] || (k.kids ? "DIR" : "DOC")}</span><span>${(k.updated || "").slice(5)}</span></span></div>`).join("");
+    const latest = kids.map((k) => k.updated || "").sort().pop() || "—";
+    html += `<div class="fold${g.id === open ? " open" : ""}" data-g="${g.id}"><div class="tab">${esc(g.name)}<i>${kids.length ? count(g) : 0}</i></div><div class="case">${peeks || '<div class="peek" style="top:24px;--r:0deg;border-style:dashed"><strong style="color:var(--muted)">空文件夹 · 拖文档进来</strong></div>'}<div class="lip"><span>${kids.length ? count(g) : 0} 篇</span><span>更新 ${latest.slice(5) || "—"}</span></div></div></div>`;
+    const rowEnd = i % per === per - 1 || i === groups.length - 1;
+    if (rowEnd) {
+      const rowStart = i - (i % per), openIdx = groups.slice(rowStart, i + 1).findIndex((x) => x.id === open);
+      if (openIdx >= 0) {
+        const og = groups[rowStart + openIdx], ok = og.kids || [];
+        html += `<div class="drawer" style="--notch:calc(${openIdx} * 25% + 60px)"><div class="drawer-head"><h3>${esc(og.name)}</h3><span class="crumbs">${count(og)} 篇 · 文件夹优先 · 拖出抽屉 = 移到别的组</span><span class="sp" style="flex:1"></span><button class="btn">✎ 改名</button><button class="btn" data-close>收起 ▲</button></div><div class="drawer-grid">${[...ok.filter((k) => k.kids), ...ok.filter((k) => !k.kids)].map((k) => card(k, emoji(og.name))).join("")}</div></div>`;
+      }
+    }
+  });
+  return `${bar()}<div class="board B"><div class="desk">${html}</div></div>`;
+}
+
+function viewC() {
+  const row = (n) => `<div class="row${n.kids ? " folder" : ""}" style="--pat:${PAT[hash(n.id) % 3]}"><span class="ic">${n.kids ? "DIR" : TYPE[n.type] || "DOC"}</span><strong>${esc(plain(n.name) || n.name)}</strong><span class="meta"><span>${n.kids ? `${count(n)} 篇` : (n.updated || "").slice(5)}</span><span>${n.sc ? "快捷方式" : ""}</span></span></div>`;
+  const col = (g, isLoose) => {
+    const kids = isLoose ? loose : g.kids || [], all = state.open.C[isLoose ? "loose" : g.id], shown = all ? kids : kids.slice(0, 6);
+    return `<div class="col${isLoose ? " loose" : ""}"><div class="col-head">${isLoose ? "散卡 · 待归类" : esc(g.name)}<i>${isLoose ? kids.length : kids.length ? count(g) : 0}</i></div><div class="col-list">${shown.map(row).join("") || '<div class="row" style="border-style:dashed;color:var(--muted)"><span></span>拖文档进来</div>'}</div>${kids.length > 6 ? `<button class="more" data-col="${isLoose ? "loose" : g.id}">${all ? "收起 ▲" : `展开全部 +${kids.length - 6}`}</button>` : ""}</div>`;
+  };
+  return `${bar()}<div class="board C"><div class="cols">${col(null, true)}${groups.map((g) => col(g)).join("")}<div class="col add">＋ 新建分组</div></div></div>`;
+}
+
+function render() {
+  const [t, d] = NOTES[state.v];
+  document.getElementById("note").innerHTML = `<p class="note"><strong>${t}</strong><br>${d}</p>`;
+  document.getElementById("app").className = state.v;
+  document.getElementById("app").innerHTML = { A: viewA, B: viewB, C: viewC }[state.v]();
+  document.getElementById("legend").innerHTML = LEGEND[state.v].map(([a, b]) => `<div><b>${a}</b>${b}</div>`).join("");
+  document.querySelectorAll(".switch button").forEach((b) => b.classList.toggle("on", b.dataset.v === state.v));
+}
+document.querySelector(".switch").addEventListener("click", (e) => { const v = e.target.dataset.v; if (v) { state.v = v; render(); } });
+document.getElementById("app").addEventListener("click", (e) => {
+  const more = e.target.closest("[data-col]");
+  if (more) { const k = more.dataset.col; state.open.C[k] = !state.open.C[k]; return render(); }
+  if (e.target.closest("[data-close]")) { state.open[state.v] = null; return render(); }
+  const g = e.target.closest("[data-g]");
+  if (g && (state.v === "A" || state.v === "B")) { state.open[state.v] = state.open[state.v] === g.dataset.g ? null : g.dataset.g; render(); }
+});
+const v = new URLSearchParams(location.search).get("v"); if (NOTES[v]) state.v = v;
+render();
+</script>
+</body>
+</html>

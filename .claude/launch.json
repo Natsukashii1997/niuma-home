@@ -17,6 +17,18 @@
         "WORKDESK_DATA_DIR=$(mktemp -d) PORT=5290 npm start"
       ],
       "port": 5290
+    },
+    {
+      "name": "kb-drafts",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5297",
+        "--bind",
+        "127.0.0.1"
+      ],
+      "port": 5297
     }
   ]
 }
