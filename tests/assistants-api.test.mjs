@@ -26,7 +26,9 @@ async function setup(t) {
 
 test("助手新增编辑、延迟建会话、隔离目录与说明只传首次，消息历史回读", async (t) => {
   const { request,db,dir,calls } = await setup(t);
-  assert.equal(listAssistants(db)[0].instructions, "");
+  // 新库自带四个预设助手（文案 / 面试 / 绩效 / 通知），说明是预设初稿。
+  assert.deepEqual(listAssistants(db).map((a) => a.preset), ["copywriter", "interview", "performance", "notice"]);
+  assert.ok(listAssistants(db).every((a) => a.instructions.length > 100 && a.codexThreadId === null));
   assert.equal((await request("POST","/api/assistants",{name:" "})).status,400);
   const a = await (await request("POST","/api/assistants",{name:"自建助手",instructions:"初始说明"})).json();
   assert.equal(a.kind,"custom"); assert.equal(a.codexThreadId,null); assert.equal(calls.length,0);
@@ -42,18 +44,19 @@ test("助手新增编辑、延迟建会话、隔离目录与说明只传首次�
 
 test("批量导入按线程去重、同名不同会话可选、已绑定置灰，事务失败不部分写入", async (t) => {
   const { request, db } = await setup(t);
+  const base = listAssistants(db).length; // 四个预设助手
   assert.equal((await request("POST","/api/assistants/import",{threadIds:["missing"]})).status,400);
   const first = await (await request("POST","/api/assistants/import",{threadIds:["import-1","import-1"]})).json();
   assert.equal(first.length,1); assert.equal(first[0].kind,"imported");
   await request("POST","/api/assistants/import",{threadIds:["import-1"]});
-  assert.equal(listAssistants(db).length,2);
+  assert.equal(listAssistants(db).length,base + 1);
   const sessions = await (await request("GET","/api/codex/sessions")).json(); assert.equal(sessions[0].imported,true); assert.equal(sessions[1].imported,undefined);
   db.exec("CREATE TRIGGER reject_import BEFORE INSERT ON assistants WHEN NEW.codex_thread_id = 'import-2' BEGIN SELECT RAISE(ABORT, '拒绝'); END");
   assert.equal((await request("POST","/api/assistants/import",{threadIds:["import-1","import-2"]})).status,500);
-  assert.equal(listAssistants(db).length,2);
+  assert.equal(listAssistants(db).length,base + 1);
   db.exec("DROP TRIGGER reject_import");
   assert.equal((await request("POST","/api/assistants/import",{threadIds:["import-2"]})).status,200);
-  assert.equal(listAssistants(db).length,3);
+  assert.equal(listAssistants(db).length,base + 2);
 });
 
 test("同助手并发拒绝且只建一个线程，失败走 SSE error 不冒充完成", async (t) => {

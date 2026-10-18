@@ -310,6 +310,44 @@ export function BitAvatar({ seed, size = 28 }) {
   );
 }
 
+// 预设助手形象：和品牌标同一套画法（16×16 黑底、白线、一处信号橙），都是「牛马之家」的牛，各拿一件工具。
+// # = 白线，o = 信号橙，. = 黑底。没有预设的助手用 BitAvatar。
+const COW_FACE = [
+  "................",
+  "...#........#...",
+  "...##......##...",
+  "....########....",
+  "...#........#...",
+  "..##.#....#.##..",
+  "...#........#...",
+  "...#.######.#...",
+  "...#.##..##.#...",
+  "...#.######.#...",
+  "....########....",
+];
+const AGENT_SPRITES = {
+  // 文案：右手一支笔，笔尖橙色
+  copywriter: [...COW_FACE, "..............#.", "....########..#.", "...#........#.#.", "...#........#.o.", "...#........#.o."],
+  // 面试：眼镜 + 橙色领带
+  interview: [...COW_FACE.slice(0, 5), "..###.####.###..", ...COW_FACE.slice(6), "................", "....###oo###....", "...#...oo...#...", "...#..oooo..#...", "...#...oo...#..."],
+  // 绩效：逐级升高的柱状图，最高一根橙色
+  performance: [...COW_FACE, "............o...", "..........#.o...", "........#.#.o...", "......#.#.#.o...", "....##########.."],
+  // 通知：喇叭 + 橙色声波
+  notice: [...COW_FACE, "................", ".......####..o..", "...####...#...o.", "...####...#...o.", ".......####..o.."],
+};
+export function AgentFace({ preset, seed, size = 28 }) {
+  const rows = AGENT_SPRITES[preset];
+  if (!rows) return <BitAvatar seed={seed || preset || ""} size={size} />;
+  const cells = (ch) => rows.flatMap((row, y) => [...row].map((c, x) => (c === ch ? `M${x} ${y}h1v1h-1z` : ""))).join("");
+  return (
+    <svg className="agent-face" width={size} height={size} viewBox="0 0 16 16" shapeRendering="crispEdges" aria-hidden="true">
+      <rect width="16" height="16" fill="var(--text)" />
+      <path d={cells("#")} fill="var(--panel)" />
+      <path d={cells("o")} fill="var(--signal)" />
+    </svg>
+  );
+}
+
 /* ---------- ③ 像素溶解转场 ---------- */
 
 // 在 area 可见范围上覆盖 16px 方格，随机顺序盖住旧页面后换页再揭开，共 3 帧，约 200ms。

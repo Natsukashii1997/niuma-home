@@ -1,4 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
+import { ASSISTANT_PRESETS } from "./assistant-presets.mjs";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
@@ -69,7 +70,8 @@ const SCHEMA = `
     codex_thread_id TEXT,
     created_at TEXT NOT NULL,
     model TEXT,
-    effort TEXT
+    effort TEXT,
+    preset TEXT
   );
 
   -- 简单配置：品牌表链接、日报文档链接、物料类型清单等
@@ -122,7 +124,7 @@ export function openDb(dir = dataDir) {
   db.exec("BEGIN IMMEDIATE");
   try {
     const columns = new Set(db.prepare("PRAGMA table_info(assistants)").all().map((column) => column.name));
-    for (const column of ["model", "effort"]) {
+    for (const column of ["model", "effort", "preset"]) {
       if (!columns.has(column)) db.exec(`ALTER TABLE assistants ADD COLUMN ${column} TEXT`);
     }
     db.exec("COMMIT");
@@ -137,6 +139,12 @@ function seed(db) {
   db.prepare("INSERT OR IGNORE INTO sku_aliases (line, alias, sku) VALUES (?, ?, ?)").run("国际课程", "课时卡", "灵活学Lite");
   if (!db.prepare("SELECT 1 FROM assistants WHERE kind = 'copywriter'").get()) {
     db.prepare("INSERT INTO assistants (name, kind, created_at) VALUES (?, 'copywriter', ?)").run("文案助手", now);
+  }
+  // 预设助手：已有的文案助手认领 copywriter 预设；其余预设没有就新建；说明只在为空时填入。
+  db.prepare("UPDATE assistants SET preset = 'copywriter' WHERE kind = 'copywriter' AND preset IS NULL").run();
+  for (const p of ASSISTANT_PRESETS) {
+    if (!db.prepare("SELECT 1 FROM assistants WHERE preset = ?").get(p.key)) db.prepare("INSERT INTO assistants (name, kind, instructions, preset, created_at) VALUES (?, 'custom', ?, ?, ?)").run(p.name, p.instructions, p.key, now);
+    else db.prepare("UPDATE assistants SET instructions = ? WHERE preset = ? AND instructions = ''").run(p.instructions, p.key);
   }
 }
 
@@ -212,7 +220,7 @@ export function savePlan(db, month, line, { rawText, rawHtml = "", rows }) {
 
 export function listAssistants(db) {
   return db
-    .prepare("SELECT id, name, kind, instructions, codex_thread_id AS codexThreadId, created_at AS createdAt, model, effort FROM assistants ORDER BY id")
+    .prepare("SELECT id, name, kind, preset, instructions, codex_thread_id AS codexThreadId, created_at AS createdAt, model, effort FROM assistants ORDER BY id")
     .all();
 }
 

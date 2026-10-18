@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Card, Loadable, SampleBadge, StatusMark } from "../../ui/components.jsx";
-import { BitAvatar, FlipNumber, PixelIcon } from "../../ui/bitmap.jsx";
+import { AgentFace, FlipNumber, PixelIcon } from "../../ui/bitmap.jsx";
 import { deliveryMonth, deliverySteps, daysToDeadline, shortMonth } from "../../constants.js";
 import { CodexCard } from "./CodexStrip.jsx";
 import { VoiceCloud, voiceIssue } from "../voice/VoicePage.jsx";
-import { STARTERS, handOffDraft } from "../assistants/AssistantsPage.jsx";
+import { handOffDraft } from "../assistants/AssistantsPage.jsx";
+import { PRESETS, startersOf } from "../assistants/presets.js";
 
 // 首页（v3）：Codex 重置 + 待我处理 → 交付月 + 今日日程 → 用户之声 + Agent。业务营收完成度在「业务」页。
 // 工作节奏是本月准备下月，月底前交付。
@@ -143,35 +145,42 @@ function TodayCard({ now }) {
   );
 }
 
-// Agent：助手列表 + 第一个助手的常用开场（点一下带着这句进入对话，只填进输入框）+ 新对话。
+// Agent：四个预设助手是一组像素牛卡片（点卡片进对话），下面是选中助手的常用开场（点一下带着这句进入对话，只填进输入框）；
+// 自建和导入的助手排在卡片下方的列表里。
 function AgentsCard() {
   const state = useApi("/api/assistants");
+  const [pick, setPick] = useState(null);
   const start = (a, text) => { handOffDraft(a.id, text); location.hash = href("assistants", String(a.id)); };
   return (
     <Card className="col-4" dither title={<><PixelIcon name="agent" /> Agent</>} extra={<a className="link" href={href("assistants")}>全部<PixelIcon name="right" /></a>}>
       <Loadable state={state} name="Agent 列表">
-        {(list) => (
-          <div className="agent-card">
-            <ul className="list agent-list">
-              {list.map((a) => (
-                <li key={a.id}>
-                  <BitAvatar seed={a.name} />
-                  <a href={href("assistants", String(a.id))}>{a.name}</a>
-                  <span className="agent-model">{a.model ? a.model : "默认"}</span>
-                </li>
-              ))}
-            </ul>
-            {list[0] && (
-              <>
-                <span className="label">常用开场 · {list[0].name}</span>
+        {(list) => {
+          const presets = list.filter((a) => PRESETS[a.preset]), others = list.filter((a) => !PRESETS[a.preset]);
+          const current = list.find((a) => a.id === pick) || presets[0] || list[0];
+          return (
+            <div className="agent-card">
+              <div className="agent-tiles">
+                {presets.map((a) => (
+                  <a key={a.id} href={href("assistants", String(a.id))} data-dither="" className={`agent-tile${a.id === current?.id ? " is-picked" : ""}`}
+                    onMouseEnter={() => setPick(a.id)} onFocus={() => setPick(a.id)}>
+                    <AgentFace preset={a.preset} seed={a.name} size={48} />
+                    <strong>{a.name}</strong>
+                    <small>{PRESETS[a.preset].role}</small>
+                  </a>
+                ))}
+              </div>
+              {others.length > 0 && <ul className="list agent-list">
+                {others.map((a) => <li key={a.id}><AgentFace seed={a.name} /><a href={href("assistants", String(a.id))}>{a.name}</a><span className="agent-model">{a.model || "默认"}</span></li>)}
+              </ul>}
+              {current && <>
+                <span className="label">常用开场 · {current.name}</span>
                 <div className="agent-starters">
-                  {STARTERS.map((t) => <button key={t} type="button" className="phrase" onClick={() => start(list[0], t)}>{t}</button>)}
+                  {startersOf(current).map((t) => <button key={t} type="button" className="phrase" onClick={() => start(current, t)}>{t}</button>)}
                 </div>
-                <a className="btn btn-sm agent-new" href={href("assistants", String(list[0].id))}><PixelIcon name="plus" />新对话</a>
-              </>
-            )}
-          </div>
-        )}
+              </>}
+            </div>
+          );
+        }}
       </Loadable>
     </Card>
   );

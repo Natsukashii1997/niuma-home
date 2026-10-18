@@ -929,6 +929,15 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 /* 首页 Agent 卡：列表 + 常用开场 + 新对话（新对话贴卡底） */
 .agent-card { display: flex; flex-direction: column; gap: var(--s3); height: 100%; }
 .agent-starters { display: flex; flex-direction: column; gap: var(--s2); }
+/* 预设助手四宫格：像素牛 + 名字 + 一行职责；悬停或聚焦选中，下方开场句跟着换 */
+.agent-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
+.agent-tile { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s1); padding: var(--s3); border: 1px solid var(--line); background: var(--panel); color: var(--text); text-decoration: none; min-width: 0; }
+.agent-tile:hover, .agent-tile.is-picked { border-color: var(--text); outline: 1px solid var(--text); } /* 规范：不用阴影，选中加粗墨框 */
+.agent-tile strong { font-size: 13px; }
+.agent-tile small { font-size: 11px; line-height: 1.4; color: var(--muted); }
+.agent-face { flex: none; display: block; }
+.chat-list-name { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.chat-list-name small { font-size: 11px; }
 .agent-card .agent-new { align-self: flex-start; margin-top: auto; }
 
 /* ---------- ⌘K 命令面板（第三轮提案 2）：遮罩是墨色网点；选中行反色 + 左侧 4px 橙条，和侧栏选中一致 ---------- */
