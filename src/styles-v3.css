@@ -147,6 +147,7 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .rev-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .rev-row + .rev-row { border-top: 1px solid var(--line); }
 .rev-row.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } /* 总进度加了总转化率，四块等宽 */
+.rev-rate .rev-pct { font-size: 40px; line-height: 1; } /* 没有进度条，数字放大填满（用户 2026-10-18） */
 .rev-rate .rev-nums { margin-top: auto; }
 .rev-last { font-weight: 600; color: var(--signal); }
 .rev-group { grid-column: 1 / -1; padding: var(--s3) var(--s4) 0; font: 500 11px var(--font-mono); letter-spacing: 0.06em; color: var(--muted); } /* 组名是卡片组上方的小标题，不再单占一列 */
