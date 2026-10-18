@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { Button, Loadable } from "../../ui/components.jsx";
-import { ROOT, applyOps, canvasModel, countDocs, fromReceipt, locate, pose, remapOp, reorder } from "./kb-canvas.js";
+import { ROOT, applyOps, canvasModel, countDocs, fromReceipt, keepOrder, locate, pose, remapOp, reorder } from "./kb-canvas.js";
 import { CollectRecent } from "./CollectPage.jsx";
 
 // 知识库画布（用户 2026-10-18，复刻数码宝贝「个人收藏」的桌面，换成位图风）：
@@ -62,7 +62,7 @@ function Canvas({ kb, initialOrder, ruleIds, reload }) {
       try {
         const r = await apiSend("POST", "/api/v3/kb/quick", { ops: [item.op] });
         if (r.state !== "verified") throw Object.assign(new Error("飞书没有执行这项变更"), { status: 409 });
-        setBase(fromReceipt(r.tree));
+        setBase((b) => keepOrder(fromReceipt(r.tree), b));
         if (r.created && Object.keys(r.created).length) {
           setQueue((qs) => qs.map((x) => ({ ...x, op: remapOp(x.op, r.created) })));
           setOrder((o) => { const next = o.map((id) => r.created[id] || id); saveOrder(next); return next; });
@@ -90,7 +90,7 @@ function Canvas({ kb, initialOrder, ruleIds, reload }) {
     setNote({ tone: "warn", text: "正在只读核对…" });
     try {
       const r = await apiSend("POST", `/api/v3/kb/operations/${encodeURIComponent(lock.operationId)}/reconcile`, {});
-      if (r.tree) setBase(fromReceipt(r.tree));
+      if (r.tree) setBase((b) => keepOrder(fromReceipt(r.tree), b));
       setQueue((qs) => qs.slice(1)); // 挂着的那一项已按飞书实际情况落定，不重发
       setLock(null);
       setNote({ tone: r.state === "verified" ? "ok" : "warn", text: r.state === "verified" ? `已核对：${lock.label} 已在飞书完成` : `已核对：${lock.label} 没有完成，画布已按飞书刷新` });

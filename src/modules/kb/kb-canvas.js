@@ -73,6 +73,16 @@ export function fromReceipt(tree) {
   return tree.map((n) => (n.kids?.length ? { id: n.id, name: n.name, kids: fromReceipt(n.kids) } : { id: n.id, name: n.name, file: true }));
 }
 
+// 回执里的树按节点 ID 排序；按写入前的位置排回去，新节点排在同级最后，画布不跳。
+export function keepOrder(next, prev) {
+  const at = new Map(); let i = 0;
+  const walk = (ns) => ns.forEach((n) => { at.set(n.id, i++); if (n.kids) walk(n.kids); });
+  walk(prev);
+  const sort = (ns) => ns.map((n, k) => ({ n: n.kids ? { ...n, kids: sort(n.kids) } : n, k }))
+    .sort((a, b) => (at.get(a.n.id) ?? 1e9 + a.k) - (at.get(b.n.id) ?? 1e9 + b.k)).map((x) => x.n);
+  return sort(next);
+}
+
 // 纸堆姿态：由 id 决定，刷新后不跳。返回 [角度, x 偏移, y 偏移]。
 export function pose(id, i) {
   let h = 2166136261;
