@@ -1294,3 +1294,10 @@
 - 没动：写入流程里的琥珀提示框（`.warn`、`.write-box.is-warn` 等，属于写入安全提示）；「改」角标（第 13 条不改）；知识库分组名与日报正文里的 emoji。
 - 验证：`npm test` 381 通过 / 0 失败；`vite build` 通过；新增 `.claude/launch.json` 配置 `work-desk-dev-live`（vite 5293，接口转给 5280，只读查看），Playwright 拦截全部非 GET 请求后逐页截图核对 15 个页面，无脚本报错。「总进度」改在 `fixtures/v3-demo-revenue.json`，5280 发布后才会显示。
 - 未发布 5280（含 37737ce Codex 横条修复）。
+
+### V4 · 2026-10-18 · 精致度调整 + Codex 横条修复合并与发布（用户要求；回读通过）
+
+- 合并：main 从 `1872425` 快进到 `ea9af72`（含 37737ce Codex 横条修复）。主工作区 `npm test` 381 项全部通过。
+- 发布：`bash scripts/release-app.sh` 成功，切换到 `nm-20261018-175402-ea9af72`；数据库备份 `backups/work-desk-20261018-175403-before-nm-20261018-175402-ea9af72.db`；保留策略清理了最老的快照 `nm-20261017-131531-e714d6c`。
+- 回读（只读，脚本拦截写请求）：首页与快照逐字节一致；`/api/v3/business/revenue` 分组为「总进度 / 业务线」；`/api/assistants` 四个预设不变；线上截图核对 Codex 横条橙色高亮恢复、首页 Agent 新图标、业务墨色进度条、甘特考试柔和红。截图 `docs/handoff/V4/线上5280-精致度调整-首页.png`。
+- 回滚：`bash scripts/release-app.sh --use nm-20261018-163515-348113c`（上一版）。
