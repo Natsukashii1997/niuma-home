@@ -1,0 +1,31 @@
+{
+  "首跑": "1 · 我的文档库",
+  "时间": "2026-10-18T06:36:50.100Z",
+  "入口": "Chrome 扩展「牛马之家 · 收藏」，用户本人点击一次",
+  "服务": "5280 · nm-20261018-143233-f7d763f",
+  "后端返回": {
+    "status": "created",
+    "parentTitle": "📢 营销策划",
+    "reason": "matched（关键词：物料）"
+  },
+  "本机记录": {
+    "operationId": "collect-ae0d6198…",
+    "status": "ok",
+    "操作状态": "verified"
+  },
+  "飞书只读核对": {
+    "newNode": {
+      "node_type": "shortcut",
+      "space_id": "7620758074885835965",
+      "parent": "PDlG…Yngc（📢 营销策划）",
+      "title": "双十一物料对接文档",
+      "obj_type": "docx"
+    },
+    "origin": {
+      "node_type": "origin",
+      "space_type": "my_library",
+      "title": "双十一物料对接文档",
+      "same_obj": true
+    }
+  }
+}
