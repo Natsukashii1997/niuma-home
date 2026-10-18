@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { DotMatrix, PixelIcon, TypeText } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
@@ -6,6 +6,7 @@ import { Button, Card, Loadable, PageHeader, Placeholder, StatStrip, Tag } from 
 import { SavedNote } from "../../ui/write-flow.jsx";
 import { ManualNeedForm } from "../user/ManualNeedForm.jsx";
 import { deliveryMonth } from "../../constants.js";
+import { labelLayout, slotHeight } from "./label-layout.js";
 
 // Voice · 留学之声（v3，侧栏独立模块）：留学生最近在讨论什么。基于本机运行的 AIHOT 引擎，免费英文信源；
 // 只看多数人的共性——同一人 / 同一矩阵只算一个来源，独立来源 ≥ 5 才上榜。
@@ -201,17 +202,49 @@ function TrendChart({ topics }) {
   const W = 1000, H = 220, L = 40, R = 260, T = 12, B = 26;
   // 热度是 0–100，刻度固定，不随当天最大值变（P2-9）
   const x = (i) => L + (i * (W - L - R)) / 6, y = (val) => T + (1 - val / 100) * (H - T - B);
+  const text = (t) => `${t.title.length > 16 ? `${t.title.slice(0, 16)}…` : t.title} · ${t.heat}`;
+  // 末端标签避让：字体就绪后用隐藏的同款文字实测包围盒定槽高，再按真实末点排开；只移标签，不移折线和方点。
+  const measure = useRef(null);
+  const [slot, setSlot] = useState(16);
+  const key = topics.map(text).join("\n");
+  useLayoutEffect(() => {
+    let alive = true;
+    const run = () => {
+      const g = measure.current;
+      if (!alive || !g) return;
+      const boxes = [...g.children].map((el) => el.getBBox()).filter((b) => b.height).map((b) => ({ a: b.y, b: b.y + b.height }));
+      setSlot(slotHeight(boxes));
+    };
+    run();
+    document.fonts?.ready.then(run);
+    return () => { alive = false; };
+  }, [key]);
+  const layout = labelLayout(topics, { H, T, B, h: slot });
+  const pos = new Map(layout.mode === "labels" ? layout.labels.map((l) => [l.id, l]) : []);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="trend-chart" role="img" aria-label="话题热度趋势" shapeRendering="crispEdges">
-      {[0, 25, 50, 75, 100].map((v) => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} className="grid-line" /><text x={L - 8} y={y(v) + 4} textAnchor="end" className="axis">{v}</text></g>)}
-      {(topics[0]?.sparkDates || []).map((l, i) => <text key={l} x={x(i)} y={H - 6} textAnchor="middle" className="axis">{String(l).slice(5, 10)}</text>)}
-      {topics.map((t, k) => (
-        <g key={t.id} className={k === 0 ? "series is-top" : "series"}>
-          <polyline points={t.spark.map((val, i) => `${x(i)},${y(val)}`).join(" ")} />
-          {t.spark.map((val, i) => <rect key={i} x={x(i) - 4} y={y(val) - 4} width="8" height="8" className="pt" />)}
-          <text x={W - R + 10} y={y(t.spark.at(-1)) + 4} className="end-label">{t.title.length > 16 ? `${t.title.slice(0, 16)}…` : t.title} · {t.heat}</text>
-        </g>
-      ))}
-    </svg>
+    <>
+      <svg viewBox={`0 0 ${W} ${H}`} className="trend-chart" role="img" aria-label="话题热度趋势" shapeRendering="crispEdges">
+        <g ref={measure} visibility="hidden" aria-hidden="true">{topics.map((t) => <text key={t.id} x={0} y={0} className="end-label">{text(t)}</text>)}</g>
+        {[0, 25, 50, 75, 100].map((v) => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} className="grid-line" /><text x={L - 8} y={y(v) + 4} textAnchor="end" className="axis">{v}</text></g>)}
+        {(topics[0]?.sparkDates || []).map((l, i) => <text key={l} x={x(i)} y={H - 6} textAnchor="middle" className="axis">{String(l).slice(5, 10)}</text>)}
+        {/* 倒序绘制：第一名最后画、压在最上层，同值重合时粗线和橙点仍可见（只改绘制顺序，不改数据） */}
+        {topics.map((t, k) => {
+          const p = pos.get(t.id);
+          return (
+            <g key={t.id} className={k === 0 ? "series is-top" : "series"}>
+              <polyline points={t.spark.map((val, i) => `${x(i)},${y(val)}`).join(" ")} />
+              {t.spark.map((val, i) => <rect key={i} x={x(i) - 4} y={y(val) - 4} width="8" height="8" className="pt" />)}
+              {p && Math.abs(p.labelY - p.pointY) > 0.5 && <line x1={W - R + 4} y1={p.pointY} x2={W - R + 8} y2={p.labelY} className="leader" />}
+              {p && <text x={W - R + 10} y={p.labelY + 4} className="end-label">{t.title.length > 16 && <title>{t.title}</title>}{text(t)}</text>}
+            </g>
+          );
+        }).reverse()}
+      </svg>
+      {layout.mode === "legend" && (
+        <ul className="trend-legend" aria-label="话题图例（末端放不下标签时显示）">
+          {topics.map((t, k) => <li key={t.id} className={k === 0 ? "is-top" : undefined}><i aria-hidden="true" /><span>{t.title}</span><span className="tnum muted">{t.heat}</span></li>)}
+        </ul>
+      )}
+    </>
   );
 }

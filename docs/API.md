@@ -77,7 +77,9 @@ type Message = { role: "user" | "assistant"; text: string; at?: string };
 
 - `GET /api/calendar/today` → `{ time, title, place }[]`（T06）
 - `GET /api/settings` → `Record<string, string>`（已实现；未配置或已清空的键不出现）
-- `PUT /api/settings/:key` 请求 `{ value }` → `{ key, value }`（T07）
+- `POST /api/settings/:key/preview` 请求 `{ value }` → `{ previewId, expiresAt, key, before, value }`（V3 键已实现；下列旧四键由 T11-1 接入，同一形状，`before` 为当前值或 `null`）
+- `PUT /api/settings/:key` 请求 `{ previewId, confirm: true }` → `{ key, value }`。预览 10 分钟有效；旧值已变返回 409，预览失效返回 409；同一令牌重复确认返回同一回执，不重复写入；事务内写入并回读一致才返回成功。
+  - **T11-1 起，旧四键也只接受令牌确认**；直接 `{ value }` 返回 400（`请先预览配置，再确认保存`）且不写库。T07 原「请求 `{ value }` 直接保存」作废，前端由 Claude 同步改为预览 → 确认 → 回读。
 
 配置键：`brand_base_url`、`report_doc_url`、`material_types`（JSON 字符串数组）、`weekly_doc_url`（T05B，可选）。
 `weekly_doc_url` 是唯一允许空值的键：`value` 为空字符串表示清空，删除该行，返回 `{ key, value: "" }`。其余键空值仍返回 400。
@@ -117,3 +119,96 @@ type ReportSource = {
 ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来源为 `w-` + `sha256("周报|" + date + "|" + title)` 前 20 位 + `-` + 同键序号。合并后有重复 ID 时返回 500。
 
 缓存：按规范化链接分别缓存 10 分钟；链接变更或清空只作废该来源的缓存；读取失败作废该来源的缓存，下次请求重试，不返回旧内容。
+
+## 本地项目与历史战役 · 删除与恢复（T10-B2，软删除）
+
+来源：`docs/handoff/T10/删除接口约定.md`（Codex 实现，Claude 2026-10-18 收入本文件）。只允许操作本机创建的项目（`local-project`）和本机历史战役归档；飞书来源、当前战役一律拒绝。软删除只写生命周期记录，原内容全文保留，可恢复。
+
+| 对象 | 方法与地址 | 用途 |
+|---|---|---|
+| 本地项目 | `GET /api/v3/local-projects` | `{ items }`，只列未删除本地项目 |
+| 本地项目 | `GET /api/v3/local-projects?deleted=true` | `{ items }`，已删除对象，每项带 `deletion` |
+| 本地项目 | `POST /api/v3/local-projects/:id/remove-preview` | 请求 `{}`，返回删除预览 |
+| 本地项目 | `DELETE /api/v3/local-projects/:id` | 请求 `{ previewId, confirm: true }` |
+| 本地项目 | `POST /api/v3/local-projects/:id/restore-preview` | 请求 `{}`，返回恢复预览 |
+| 本地项目 | `POST /api/v3/local-projects/:id/restore` | 请求 `{ previewId, confirm: true }` |
+| 历史战役 | `GET /api/v3/campaigns/history` | 既有 `{ items }`，默认隐藏已删除 |
+| 历史战役 | `GET /api/v3/campaigns/history?deleted=true` | 已删除归档，每项带 `deletion` |
+| 历史战役 | `POST /api/v3/campaigns/history/:id/remove-preview` | 请求 `{}` |
+| 历史战役 | `DELETE /api/v3/campaigns/history/:id` | 请求 `{ previewId, confirm: true }` |
+| 历史战役 | `POST /api/v3/campaigns/history/:id/restore-preview` | 请求 `{}` |
+| 历史战役 | `POST /api/v3/campaigns/history/:id/restore` | 请求 `{ previewId, confirm: true }` |
+
+- 预览 → `{ previewId, expiresAt, action, kind, id, before, value }`，`value` 是将被操作的完整当前对象；有效期 10 分钟。
+- 确认 → `{ ok: true, id, kind, action, deleted, revision, at }`；单事务写入并回读一致才返回。同一令牌重复确认返回原回执。前端确认后**必须重新读取默认列表和 `deleted=true` 列表**核对对象位置，不以回执代替回读。
+- `/api/v3/projects` 默认隐藏已删除本地项目。恢复只恢复原 ID；项目恢复遇同名或同 ID 冲突拒绝，历史战役允许不同 ID 同名。
+- 错误体 `{ error, code }`：
+
+| HTTP / code | 含义 |
+|---|---|
+| `400 LOCAL_DELETE_INPUT_INVALID` | 请求体不合约 |
+| `403 LOCAL_SOURCE_REQUIRED` | 非本地对象、飞书记录或来源含糊 |
+| `409 LOCAL_SOURCE_CONFLICT` | 本地与已知飞书来源同 ID 冲突 |
+| `404 LOCAL_OBJECT_NOT_FOUND` | 对象不存在 |
+| `409 LOCAL_OBJECT_DELETED` | 已删除对象不能再编辑或再次删除 |
+| `409 LOCAL_OBJECT_NOT_DELETED` | 对象未删除，不能恢复 |
+| `409 LOCAL_DELETE_PREVIEW_STALE` | 预览过期、对象/动作不符或期间内容/生命周期变化 |
+| `409 LOCAL_RESTORE_CONFLICT` | 恢复内容变化或项目名称冲突 |
+| `409 CAMPAIGN_CURRENT_PROTECTED` | 当前战役不能经历史删除路径操作 |
+| `409 CAMPAIGN_ARCHIVED` | 已归档战役不能由旧编辑令牌重建为当前战役 |
+| `500 LOCAL_DELETE_READBACK_FAILED` | 写后回读不一致，不能宣称成功 |
+
+## 知识库 · 快捷收藏（T12）
+
+在「常浩的知识库」（设置键 `kb_collect_space`）的一级目录下，为一篇飞书文档创建**快捷方式**；原文不移动、不复制。归类规则在设置键 `kb_collect_rules`：`[{ nodeToken, title, keywords: string[] }]`，用现有 V3 设置的预览 → 确认 → 回读来修改。
+
+**一键收藏（用户 2026-10-18 确认）**：快捷收藏不走「先预览、后确认」，点击即创建；仍然只创建一次、不自动重试、写后回读、结果不明时锁住并核对。入口有两个：Chrome 扩展「牛马之家 · 收藏」（飞书文档页右下角按钮）和知识库页「收藏」标签的粘贴框。
+
+- `POST /api/v3/kb/collect` 请求 `{ url, requestId, targetNodeToken? }`。
+  - `requestId`：客户端生成的 UUID。同一 `requestId` 重复请求，返回同一结果，不重复创建（双击、扩展重发都靠它）。
+  - 目录：带 `targetNodeToken` 时用它（必须在规则表里）。不带时自动归类：只命中一个目录就用它；命中多个，取规则表里排在最前的那个；都没命中，用规则表里没有关键词的兜底目录（「杂项其他」）。匹配用原文标题及其上级目录标题，不区分大小写。
+  - 查重：目标空间里已有指向同一原文的快捷方式，或原文本身就在目标空间里，都不创建。
+  - 这篇文档有结果不明、尚未核对的记录时，不创建，返回 `409 COLLECT_PENDING` 并附 `receipt`。
+
+```ts
+// 200
+{
+  status: "created" | "duplicate";
+  operationId: string;          // duplicate 时也给，便于记录
+  title: string; objType: string; location: string;   // location：知识库名或「我的文档库」
+  parentNodeToken: string; parentTitle: string;       // created：新建位置；duplicate：已在的位置
+  url: string;                  // created：新快捷方式链接；duplicate：已有节点链接
+  duplicateKind?: "shortcut" | "inSpace";
+  reason: "chosen" | "matched" | "first" | "fallback"; // 用户所选 / 唯一命中 / 多命中取第一个 / 兜底
+  matched: Array<{ nodeToken: string; title: string; keywords: string[] }>;
+  at: string;
+}
+```
+
+- 实现补充（Codex 交付，Claude 2026-10-18 确认）：
+  - 结果不明的锁是**整个目标空间**的写锁（与知识库整理共用），期间同一空间里其他文档的收藏、整理也返回 `409 COLLECT_PENDING`，附的是那条未核对记录的回执；核对后解锁。
+  - 原请求的 `requestId` 永远重放原来的回执（含 502）；核对确认 `verified` 后，用新的 `requestId` 再收藏会得到 `duplicate`。
+  - 旧版文档（`obj_type: doc`）可以查重，但新建快捷方式不支持，提交前返回 `422 COLLECT_SOURCE_UNSUPPORTED`，零创建、不留锁。
+  - 输入链接本身是快捷方式时，归一到它指向的原文。
+  - 规则：`nodeToken` 不重复，恰好一个无关键词的兜底目录；关键词不分大小写去重、去首尾空白后计数。规则预览时逐个核对目录在收藏目标空间里存在；预览后空间被改则规则确认失败，需重新预览。
+- `GET /api/v3/kb/collect/recent` → `{ items: Array<{ operationId, title, parentTitle, url?, status: "ok" | "duplicate" | "unknown" | "failed", at }> }`，最近 50 条，只读本地记录。
+- 结果不明后的核对沿用 `GET /api/v3/kb/operations/:id`、`POST /api/v3/kb/operations/:id/reconcile`。核对返回 `state: "verified"` 表示快捷方式已建好并指向原文，其余视为没有建成。
+- 错误体 `{ error, code, receipt? }`：
+
+| HTTP / code | 含义 |
+|---|---|
+| `400 COLLECT_URL_INVALID` | 不是飞书文档链接 |
+| `404 COLLECT_SOURCE_UNREADABLE` | 原文档读不到（无权限或不存在） |
+| `422 COLLECT_SOURCE_UNSUPPORTED` | 不是知识库节点（如云盘文档），首跑验证前暂不支持 |
+| `400 COLLECT_TARGET_INVALID` | 所选目录不在规则表或已不存在 |
+| `409 COLLECT_PENDING` | 这篇文档上次结果不明，先核对；附 `receipt` |
+| `403 COLLECT_PAIRING_REQUIRED` | 扩展请求没有带对配对码（见下） |
+| `502 COLLECT_RESULT_UNKNOWN` | 已提交但结果不明，附 `receipt`；不自动重试，先核对 |
+
+### 扩展配对码
+
+- 配对码：64 位小写十六进制，首次读取时由后端生成，存在工作台数据目录里，不写日志、不出现在错误信息里。
+- 来源校验：`Origin` 以 `chrome-extension://` 开头的请求，必须带请求头 `X-Niuma-Collect-Code` 且等于配对码，否则 `403 COLLECT_PAIRING_REQUIRED`；带其他外来 `Origin` 的请求一律 `403`；同源（牛马之家页面）或没有 `Origin` 的请求照常处理。适用于 `POST /api/v3/kb/collect`，且配对码校验排在链接校验之前（扩展用空链接请求检查配对：得到 `400 COLLECT_URL_INVALID` 即配对正确，不会写入）。不加任何跨域放行响应头。
+- `GET /api/v3/kb/collect/pairing` → `{ code, createdAt }`：只给牛马之家页面（扩展来源一律 `403`）。
+- `Host` 也要是本机地址（`127.0.0.1`、`localhost`、`[::1]`，任意端口），否则即使没有 `Origin` 也 `403`。`recent`、`pairing` 系列只给本站页面。
+- 重新生成走预览 → 确认 → 回读：`POST /api/v3/kb/collect/pairing/preview` → `{ previewId, expiresAt }`；`POST /api/v3/kb/collect/pairing/rotate` `{ previewId, confirm: true }` → `{ code, createdAt }`，旧码立即失效。

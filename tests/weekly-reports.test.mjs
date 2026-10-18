@@ -158,6 +158,12 @@ async function setup(t) {
 
 test("隔离 HTTP：周报保存严格校验/清空，日报保存旧规则不变，预览只读", async t => {
   const { db, request } = await setup(t);
+  const save = async (key, value) => {
+    const preview = await request(`/api/settings/${key}/preview`, "POST", { value });
+    assert.equal(preview.status, 200);
+    const { previewId } = await preview.json();
+    return request(`/api/settings/${key}`, "PUT", { previewId, confirm: true });
+  };
   saveSetting(db, "report_doc_url", daily); const baseline = getSettings(db);
   let response = await request("/api/reports/source-preview", "POST", { role: "weekly", url: weekly });
   assert.equal(response.status, 200); let body = await response.json(); assert.equal(body.count, 1); assert.equal(body.latest.date, "2026-10-05"); assert.deepEqual(getSettings(db), baseline);
@@ -168,13 +174,13 @@ test("隔离 HTTP：周报保存严格校验/清空，日报保存旧规则不�
     assert.deepEqual(getSettings(db), baseline);
   }
   for (const value of ["https://feishu.cn/base/x", "https://user@feishu.cn/docx/x", "https://feishu.cn:443/docx/x", "https://feishu.cn:444/docx/x", " " + weekly, weekly + " ", " ", null]) {
-    assert.equal((await request("/api/settings/weekly_doc_url", "PUT", { value })).status, 400);
+    assert.equal((await request("/api/settings/weekly_doc_url/preview", "POST", { value })).status, 400);
   }
-  assert.equal((await request("/api/settings/weekly_doc_url", "PUT", { value: weekly })).status, 200);
-  response = await request("/api/settings/weekly_doc_url", "PUT", { value: "" }); assert.equal(response.status, 200);
+  assert.equal((await save("weekly_doc_url", weekly)).status, 200);
+  response = await save("weekly_doc_url", ""); assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { key: "weekly_doc_url", value: "" }); assert.deepEqual(getSettings(db), baseline);
-  assert.equal((await request("/api/settings/report_doc_url", "PUT", { value: "https://feishu.cn/base/x" })).status, 200);
-  assert.equal((await request("/api/settings/report_doc_url", "PUT", { value: "" })).status, 400);
+  assert.equal((await save("report_doc_url", "https://feishu.cn/base/x")).status, 200);
+  assert.equal((await request("/api/settings/report_doc_url/preview", "POST", { value: "" })).status, 400);
 });
 
 test("隔离 HTTP：新旧列表、失败来源详情、全部失败 sources 与预览参数校验", async t => {

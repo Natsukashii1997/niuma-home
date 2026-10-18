@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>牛马之家 · 收藏</title><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <header><span>牛马之家</span><h1>收藏</h1></header>
+  <form id="pair">
+    <label for="code">配对码</label>
+    <input id="code" type="password" autocomplete="off" maxlength="64" pattern="[a-f0-9]{64}" placeholder="牛马之家「设置 → 扩展配对码」里复制" required>
+    <label for="port">本机端口</label>
+    <input id="port" type="number" min="1024" max="65535" value="5280" required>
+    <div class="row"><button type="submit">保存并检查</button><button type="button" id="clear">清除</button></div>
+  </form>
+  <p id="status" role="status"></p>
+  <button type="button" id="open" class="wide">打开牛马之家 · 收藏页</button>
+  <small>在飞书文档页右下角点「收藏」：收进「常浩的知识库」对应目录，建快捷方式，原文不动。只连本机 127.0.0.1。</small>
+  <script src="popup.js"></script>
+</body>
+</html>

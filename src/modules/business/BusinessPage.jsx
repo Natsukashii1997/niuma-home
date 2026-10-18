@@ -62,4 +62,3 @@ function RevenueItem({ item, timePct }) {
     </div>
   );
 }
-

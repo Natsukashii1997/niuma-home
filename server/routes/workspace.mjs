@@ -1,12 +1,12 @@
 import { json, readJson, route } from "../http.mjs";
-import { getSettings, saveSetting } from "../db.mjs";
+import { getSettings } from "../db.mjs";
 import { createReportReader, reportDocumentUrl } from "../reports.mjs";
 import { createCalendarReader } from "../calendar.mjs";
 import { createCodexResetReader } from "../codex-reset.mjs";
 import { createUserServices, userRoutes, handleV3 } from "./user.mjs";
 import { deliveryRoutes } from "./delivery.mjs";
 import { recordSource, sourceStatus, reportIdentity } from "../source-status.mjs";
-import { createSettingsChanges, V3_SETTING_KEYS } from "../v3-settings.mjs";
+import { createSettingsChanges, V3_SETTING_KEYS, validateV3Setting } from "../v3-settings.mjs";
 import { routes as selftalkRoutes } from "./selftalk.mjs";
 import { routes as referenceRoutes } from "./references.mjs";
 import { createProjectServices, projectRoutes } from "./projects.mjs";
@@ -44,7 +44,9 @@ function settingValue(key, value) {
 
 // 首页、日报周报、日历、配置
 export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
-  const settingsChanges = createSettingsChanges(db, v3Options.settings);
+  const settingsChanges = createSettingsChanges(db, { ...v3Options.settings,
+    validate: (key, value) => V3_SETTING_KEYS.has(key) ? validateV3Setting(key, value) : settingValue(key, value),
+  });
   const calendar = createCalendarReader(calendarOptions);
   const reports = createReportReader(() => getSettings(db), { ...reportOptions, onSource: event => {
     const settings = getSettings(db);
@@ -106,8 +108,8 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
         let body;
         try { body = await readJson(req); } catch { invalid("请求内容不是有效的 JSON"); }
         if (V3_SETTING_KEYS.has(key)) return json(res, 200, settingsChanges.confirm(key, body));
-        const value = settingValue(key, body?.value);
-        return json(res, 200, saveSetting(db, key, value));
+        if (!body || Object.keys(body).some(k => !['previewId', 'confirm'].includes(k))) invalid("请先预览配置，再确认保存");
+        return json(res, 200, settingsChanges.confirm(key, body));
       } catch (error) {
         return json(res, error.status || 500, { error: error.status ? error.message : "配置保存失败，请重新读取配置后再操作" });
       }

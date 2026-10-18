@@ -1,0 +1,27 @@
+✖ T10 附件删除文件失败后重试不得返回文件仍遗留的成功回执 (10.34275ms)
+ℹ 附件隔离故障实测：{"faultInjected":true,"firstStatus":500,"firstBody":{"error":"营销数据处理失败，请重新读取后再操作","code":"EACCES"},"recordsAfterFirst":0,"fileExistsAfterFirst":true,"retryStatus":200,"retryBody":{"ok":true,"id":"787e47f7-2b32-47f4-953f-18c263dfc83c"},"recordsAfterRetry":0,"fileExistsAfterRetry":true,"fileEndpointAfterRetry":404}
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 69.296291
+
+✖ failing tests:
+
+test at tests/t10-write-regression.test.mjs:222:1
+✖ T10 附件删除文件失败后重试不得返回文件仍遗留的成功回执 (10.34275ms)
+  AssertionError [ERR_ASSERTION]: 删除文件失败后再次确认返回 200/ok，但物理文件仍遗留，不满足完整删除与回读合同
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-write-regression.test.mjs:260:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

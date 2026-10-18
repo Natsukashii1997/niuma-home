@@ -1,0 +1,56 @@
+{
+  "verifiedAt": "2026-10-18",
+  "workspace": "/Users/nat/Documents/ChatGPT/个人/work/work-desk-t10",
+  "branch": "codex/t10-final",
+  "head": "c118a0bf24ee13677cc1984f896f5100ace3163c",
+  "baseline": "/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/workdesk-t12-baseline-c67nyccq",
+  "baselineFiles": 861,
+  "changedBaselineFiles": [
+    "CURRENT.md",
+    "server/knowledge-tree.mjs",
+    "server/projects.mjs",
+    "server/routes/projects.mjs",
+    "server/v3-settings.mjs"
+  ],
+  "unchangedBaselineFiles": 856,
+  "missingBaselineFiles": [],
+  "existingTestFilesUnchanged": 39,
+  "newCodeFiles": [
+    "server/kb-collect.mjs",
+    "server/kb-collect-config.mjs",
+    "server/kb-collect-pairing.mjs",
+    "tests/t12-collect.test.mjs"
+  ],
+  "codeSha256": {
+    "server/kb-collect.mjs": "2ebba1a12c30c0d155a9574e29a052888917794fd0d34a3fe0e87c353fab42d0",
+    "server/kb-collect-config.mjs": "3eb3f9da8d7c50741bcca9a2385f8548f984236b8d0a03e7a41ec7e4e365f39a",
+    "server/kb-collect-pairing.mjs": "0eb8825408cb6d759130eaf6de2ac7bdf84cbb08796bafb23b5468004e43f162",
+    "server/knowledge-tree.mjs": "f0055f7561abc31a1e8c14fd8ef10f6565764ecd429821c4170e627856314868",
+    "server/projects.mjs": "eb4a2c1ce1fd61aebcd45e7170fa5aafc8494c8a1f0440cead77f2c1a17e00dc",
+    "server/routes/projects.mjs": "32498f6f94cdb36b0cae432d2d2e48b66f00c766249f1ec07ff0bbd9a3f08b2b",
+    "server/v3-settings.mjs": "35d41452a9fdad1b4dcce5497f3f6f19c45fe7f77ab52ac64bd3c66cb46d6ff0",
+    "tests/t12-collect.test.mjs": "971bbe043e54cd77902cd0af2a2907f944dbecd9830e0b26d32d12567c0a920e"
+  },
+  "fullTest": {
+    "command": "WORKDESK_DATA_DIR=$(mktemp -d) npm test",
+    "total": 373,
+    "pass": 373,
+    "fail": 0,
+    "skip": 0,
+    "todo": 0,
+    "log": "npm-test.log"
+  },
+  "build": {
+    "command": "npx vite build --outDir \"$(mktemp -d)\"",
+    "exitCode": 0,
+    "log": "vite-build.log"
+  },
+  "diffCheck": {
+    "command": "git diff --check",
+    "exitCode": 0
+  },
+  "realFeishuWrites": 0,
+  "realCollectionFirstRun": "未执行，dry-run缺少wiki:space:read",
+  "formalRuntimeAdoption": "未执行",
+  "userAcceptance": "待完成"
+}

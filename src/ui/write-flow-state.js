@@ -6,10 +6,12 @@ export const IDLE = { phase: "idle" };
 
 // 提交失败怎么归类：409 是预览过期或数据被别人改了；结果未知的收据、网络中断、5xx 都按「结果不明」处理，
 // 因为请求可能已经写进去了，再点一次可能重复写入。其余 4xx 是输入问题，改了再预览即可。
+// 例外：下面这些 409 是对象状态冲突（来源冲突、同名、已删除/未删除、当前战役保护），重新预览也不会变，按「没有完成」显示原因。
+export const CONFLICT_CODES = new Set(["LOCAL_SOURCE_CONFLICT", "LOCAL_RESTORE_CONFLICT", "LOCAL_OBJECT_DELETED", "LOCAL_OBJECT_NOT_DELETED", "CAMPAIGN_CURRENT_PROTECTED", "CAMPAIGN_ARCHIVED"]);
 export function classifyFailure(error) {
   if (error?.code === "EXPORT_RESULT_UNKNOWN" || error?.receipt) return "unknown";
   if (!error?.status) return "unknown";
-  if (error.status === 409) return "stale";
+  if (error.status === 409) return CONFLICT_CODES.has(error.code) ? "error" : "stale";
   if (error.status >= 500) return "unknown";
   return "error";
 }

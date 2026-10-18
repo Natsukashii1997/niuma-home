@@ -1,0 +1,25 @@
+✔ T10 发布保留命令默认仅预览，执行后保留最近五份及旧current、十份备份并保护范围外哨兵 (70.48025ms)
+✔ T10 日志严格超过10MiB才轮转，校验内容并只保留一份旧日志 (146.4325ms)
+✔ T10 current已在最近五份时只留五份，按命名时间排序而不按mtime (35.205083ms)
+✔ T10 当前快照缺失、越界、符号链接或位于数据目录内时拒绝，所有旧文件仍在 (108.691208ms)
+✔ T10 未识别名称、链接快照及快照内符号链接均保留，范围外哨兵不受影响 (35.831917ms)
+✔ T10 日志源或轮转目标为符号链接、硬链接时跳过，不截断范围外文件 (35.000958ms)
+✔ T10 backups和daemon-logs目录为符号链接时整目录跳过 (33.636542ms)
+✔ T10 所有清理路径在修改前完整打印，预览后对象变化则整批拒绝 (27.168791ms)
+✔ T10 日志复制失败不会清空原日志，明确失败而不是假报完成 (5.123625ms)
+✔ T10 发布控制流 logs 维护失败仍启动并回读服务，最后明确报告维护未完成 (12.062375ms)
+ℹ {"phase":"logs","status":1,"events":["launchctl:bootout","maintenance:logs","launchctl:bootstrap","curl:ready","curl:readback","maintenance:artifacts"],"stderr":"T10 合成维护失败：logs EACCES\n日志保留策略失败（退出码 7）；保留上述错误，继续启动并核对目标服务\n服务已切换但保留策略未完成：nm-20261001-120000-c118a0b；http://127.0.0.1:5299（launchd cn.niuma-home.synthetic-test）。请核对上方错误后处理维护项。\n"}
+✔ T10 发布控制流 artifacts 维护失败仍启动并回读服务，最后明确报告维护未完成 (11.543375ms)
+ℹ {"phase":"artifacts","status":1,"events":["launchctl:bootout","maintenance:logs","launchctl:bootstrap","curl:ready","curl:readback","maintenance:artifacts"],"stderr":"T10 合成维护失败：artifacts EACCES\n发布产物保留策略失败（退出码 7）；保留上述错误及当前文件状态\n服务已切换但保留策略未完成：nm-20261001-120000-c118a0b；http://127.0.0.1:5299（launchd cn.niuma-home.synthetic-test）。请核对上方错误后处理维护项。\n"}
+✔ T11 UTF-8发布尾段成功输出完整中文且无变量展开错误 (10.769333ms)
+ℹ {"locale":"en_US.UTF-8","phase":"","status":0,"stdout":"已切换到 nm-20261001-120000-c118a0b：http://127.0.0.1:5299（launchd cn.niuma-home.synthetic-test）\n","stderr":""}
+✔ T11 UTF-8发布尾段维护失败输出完整中文且无变量展开错误 (10.296834ms)
+ℹ {"locale":"en_US.UTF-8","phase":"logs","status":1,"stdout":"","stderr":"T10 合成维护失败：logs EACCES\n日志保留策略失败（退出码 7）；保留上述错误，继续启动并核对目标服务\n服务已切换但保留策略未完成：nm-20261001-120000-c118a0b；http://127.0.0.1:5299（launchd cn.niuma-home.synthetic-test）。请核对上方错误后处理维护项。\n"}
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 578.773541

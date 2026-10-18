@@ -1,0 +1,15 @@
+✔ T10 V3 配置 HTTP 拒绝过期、跨键和并发旧预览，重复确认不改回新值 (11.408833ms)
+✔ T10 旧配置四键应拒绝未预览确认的直接 PUT (5.812958ms)
+ℹ 隔离数据实测：[{"key":"brand_base_url","previewStatus":200,"directPutStatus":400,"savedWithoutPreview":false},{"key":"report_doc_url","previewStatus":200,"directPutStatus":400,"savedWithoutPreview":false},{"key":"weekly_doc_url","previewStatus":200,"directPutStatus":400,"savedWithoutPreview":false},{"key":"material_types","previewStatus":200,"directPutStatus":400,"savedWithoutPreview":false}]
+✔ T11 旧四键预览形状与TTL拒绝、不写入 (7.424375ms)
+✔ T11 旧四键旧值变化后拒绝，确认不可夹带替换内容 (7.36875ms)
+✔ T11 旧四键重复确认返回原回执、不重复写或覆盖新值 (11.74175ms)
+✔ T11 清空周报来源删除行并回读缺键，重复确认不再写 (4.844834ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 108.527542

@@ -1,0 +1,15 @@
+{
+  "status": 200,
+  "seconds": 22.593,
+  "sourceVersion": "a011bd945b6ac8cb2b3a09a98562bc644bae542b8fb7e976fa4cb40f2c9a8350",
+  "previewId": "346f162c-5787-408d-b14b-4f65d494954e",
+  "expiresAt": "2026-10-18T02:09:53.655Z",
+  "writeEnabled": false,
+  "requiresConfirmation": true,
+  "sourceTitle": "管培生带教工作台",
+  "from": "常浩的知识库 / 根目录",
+  "to": "常浩的知识库 / 👔 管培带教",
+  "operation": "移动一个现有节点",
+  "body": "正文不变；多维表正文的知识库摘要读取不受支持，未据此判断正文质量",
+  "confirmationCalled": false
+}

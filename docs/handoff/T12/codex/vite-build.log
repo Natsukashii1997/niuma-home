@@ -1,0 +1,21 @@
+vite v6.4.3 building for production...
+
+(!) outDir /var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/tmp.bkHHctkMxY is not inside project root and will not be emptied.
+Use --emptyOutDir to override.
+
+transforming...
+✓ 87 modules transformed.
+rendering chunks...
+computing gzip size...
+../../../../../../../var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/tmp.bkHHctkMxY/index.html                                  0.64 kB │ gzip:   0.38 kB
+../../../../../../../var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/tmp.bkHHctkMxY/assets/GeistPixel-Square-B0mEoKr8.woff2    28.54 kB
+../../../../../../../var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/tmp.bkHHctkMxY/assets/Geist-Variable-Bj2R_7yk.woff2       69.65 kB
+../../../../../../../var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/tmp.bkHHctkMxY/assets/GeistMono-Variable-Dispecij.woff2   71.37 kB
+../../../../../../../var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/tmp.bkHHctkMxY/assets/index-B1QBFwvj.css                 119.20 kB │ gzip:  20.97 kB
+../../../../../../../var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/tmp.bkHHctkMxY/assets/index-Duxjs1Gk.js                  550.53 kB │ gzip: 173.45 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 685ms

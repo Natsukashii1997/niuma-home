@@ -28,7 +28,7 @@ export function createLocalChanges(db, { now = Date.now } = {}) {
       pending.set(previewId, { kind, id: String(id), value: structuredClone(value), before: fingerprint(current), validate, remove, expires });
       return { previewId, expiresAt: new Date(expires).toISOString(), before: current, value };
     },
-    confirm(kind, id, body) {
+    confirm(kind, id, body, { beforeCommit } = {}) {
       if (body?.confirm !== true || typeof body.previewId !== 'string') throw failure(400, '请先预览，再明确确认');
       const p = pending.get(body.previewId);
       if (!p || p.kind !== kind || p.id !== String(id) || p.expires <= now()) throw failure(409, '预览已失效，请先读取当前记录再预览');
@@ -47,6 +47,8 @@ export function createLocalChanges(db, { now = Date.now } = {}) {
           receipt = putRecord(db, kind, id, p.value, now());
           if (fingerprint(receipt) !== fingerprint(p.value)) throw failure(500, '保存后回读不一致');
         }
+        // 附件等同步文件操作须完成并回读后才能提交；失败沿用事务回滚，不缓存回执。
+        if (beforeCommit) beforeCommit(receipt);
         db.exec('COMMIT'); p.receipt = structuredClone(receipt); return receipt;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     },

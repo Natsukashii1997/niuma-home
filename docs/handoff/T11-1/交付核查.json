@@ -1,0 +1,65 @@
+{
+  "start_head": "c118a0bf24ee13677cc1984f896f5100ace3163c",
+  "projectHeadUnchanged": true,
+  "baselineDirectory": "/var/folders/19/41dqp8kj55x991m3vjqpxthc0000gn/T/workdesk-t11-1-baseline-kbz7paqr",
+  "baselineFiles": 800,
+  "protectedFilesUnchanged": 790,
+  "changedFiles": [
+    "CURRENT.md",
+    "scripts/release-app.sh",
+    "server/brief-attachments.mjs",
+    "server/local-records.mjs",
+    "server/routes/workspace.mjs",
+    "server/v3-settings.mjs",
+    "tests/settings-api.test.mjs",
+    "tests/t10-release-retention.test.mjs",
+    "tests/t10-write-regression.test.mjs",
+    "tests/weekly-reports.test.mjs"
+  ],
+  "finalSha256": {
+    "CURRENT.md": "3bc88b75b9a67584f75e40b8809754f9e37e7b156d195ea50216ed95fc2e5c9a",
+    "scripts/release-app.sh": "87f7dcfe9eea0ed11924df02e6d3aaceb00ae909881563e75811d1332b048b9c",
+    "server/brief-attachments.mjs": "edc759a08fb122a56d7c6d2f5e278f36a22ba6f300ffef96e458527b6f367aae",
+    "server/local-records.mjs": "a5910550c4a7dc804ce45b440c446235c395ade4dfa6785652bb8be5dfa39fa9",
+    "server/routes/workspace.mjs": "92f647e7bda2b32f40e0f3b8f47927984911f0d20fa6039b8b1397b4f88c8556",
+    "server/v3-settings.mjs": "dfd63dd6d2f91891a15a996695fa5931cd1aabbd7d2910164604520c065c5f94",
+    "tests/settings-api.test.mjs": "7adc3256fa75c93bc9feda90963ec7d061610eb71ddbe9052eb12c3700309502",
+    "tests/t10-release-retention.test.mjs": "df9edaaab6f108db52869f4b532d8956865afbe60a83ac689a95b8317f0c6b48",
+    "tests/t10-write-regression.test.mjs": "0cd0b46a68c1eee76c7b657d036c6b63ea667babe9c169eb9b2543251016613c",
+    "tests/weekly-reports.test.mjs": "3fa587037b845d04c3cd7a0831452d0f88b7c6b84afc8c855cc452cae87f6bf9"
+  },
+  "newFiles": [
+    "docs/handoff/T11-1/R1-回归.log",
+    "docs/handoff/T11-1/R1-门禁回归.log",
+    "docs/handoff/T11-1/R1-首败.log",
+    "docs/handoff/T11-1/R2-回归.log",
+    "docs/handoff/T11-1/R2-首败.log",
+    "docs/handoff/T11-1/R3-回归.log",
+    "docs/handoff/T11-1/R3-完整发布.log",
+    "docs/handoff/T11-1/R3-完整发布与清理.json",
+    "docs/handoff/T11-1/R3-首败.log",
+    "docs/handoff/T11-1/交付核查.json",
+    "docs/handoff/T11-1/全套测试.log",
+    "docs/handoff/T11-1/双轴审查.md",
+    "docs/handoff/T11-1/构建.log",
+    "docs/handoff/T11-1/返修说明.md"
+  ],
+  "testResult": {
+    "total": 341,
+    "pass": 341,
+    "fail": 0,
+    "skip": 0,
+    "todo": 0
+  },
+  "build": "passed; >500KB warning retained",
+  "diffCheck": "passed",
+  "mainStatus": " M CURRENT.md",
+  "mainHead": "c118a0bf24ee13677cc1984f896f5100ace3163c",
+  "releaseCopiedSourcesStillMatch": true,
+  "cleanup": {
+    "bootoutCode": 0,
+    "labelAbsent": true,
+    "plistAbsent": true,
+    "portFree": true
+  }
+}

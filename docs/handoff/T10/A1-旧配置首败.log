@@ -1,0 +1,38 @@
+✔ T10 本地项目 HTTP 新建绑定预览内容、重复确认不重复创建并可回读 (8.292541ms)
+✔ T10 本地项目 HTTP 新建预览过期或并发同名时拒绝且不产生额外项目 (4.602667ms)
+✔ T10 本地项目 HTTP 节点修改拒绝过期与并发旧预览、兼容确认入口幂等 (5.653458ms)
+✔ T10 当前战役 HTTP 保存拒绝过期预览、重复确认回执稳定且不覆盖新修改 (6.204125ms)
+✔ T10 战役 HTTP 归档拒绝过期与变化预览、重复确认不影响下一场且历史可回读 (5.214416ms)
+✔ T10 brief HTTP 保存拒绝过期及并发旧预览、绑定月份并重复确认回读一致 (5.741917ms)
+✔ T10 附件 HTTP 上传过期拒绝、确认绑定月份并幂等、文件经下载回读一致 (5.092292ms)
+✔ T10 附件 HTTP 删除过期拒绝、并发旧预览拒绝、重复确认后列表与文件均不存在 (4.660542ms)
+✔ T10 手写需求 HTTP 删除过期拒绝、并发旧预览拒绝、重复确认后两处列表均无草稿 (5.656375ms)
+✔ T10 需求策略 HTTP PATCH 拒绝过期和并发旧预览、重复确认不覆盖较新策略 (5.266667ms)
+✔ T10 V3 配置 HTTP 拒绝过期、跨键和并发旧预览，重复确认不改回新值 (4.995667ms)
+✖ T10 旧配置四键应拒绝未预览确认的直接 PUT (5.449875ms)
+ℹ 隔离数据实测：[{"key":"brand_base_url","previewStatus":400,"directPutStatus":200,"savedWithoutPreview":true},{"key":"report_doc_url","previewStatus":400,"directPutStatus":200,"savedWithoutPreview":true},{"key":"weekly_doc_url","previewStatus":400,"directPutStatus":200,"savedWithoutPreview":true},{"key":"material_types","previewStatus":400,"directPutStatus":200,"savedWithoutPreview":true}]
+ℹ tests 12
+ℹ suites 0
+ℹ pass 11
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 119.072083
+
+✖ failing tests:
+
+test at tests/t10-write-regression.test.mjs:303:1
+✖ T10 旧配置四键应拒绝未预览确认的直接 PUT (5.449875ms)
+  AssertionError [ERR_ASSERTION]: T10 要求全部写入先预览确认；旧配置仍允许直接保存，待 Claude 判定兼容迁移方案
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-write-regression.test.mjs:319:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

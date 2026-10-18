@@ -77,17 +77,41 @@ export function createBriefAttachments(db, { now = Date.now } = {}) {
       if (!p || p.month !== month) throw failure(409, '预览已失效，请重新预览');
       if (p.receipt) return structuredClone(p.receipt);
       if (p.remove) {
-        p.receipt = changes.confirm(ATTACHMENT_KIND, p.id, body);
-        fs.rmSync(fileOf(p.remove), { force: true });
+        const target = fileOf(p.remove);
+        let original;
+        try {
+          p.receipt = changes.confirm(ATTACHMENT_KIND, p.id, body, { beforeCommit() {
+            if (fs.existsSync(target)) original = fs.readFileSync(target);
+            fs.rmSync(target, { force: true });
+            if (fs.existsSync(target)) throw failure(500, '附件删除后文件仍存在');
+          } });
+        } catch (error) {
+          // 数据库已回滚；若文件已删而提交失败，只恢复原文件，不覆盖其他文件。
+          try {
+            if (original !== undefined && !fs.existsSync(target)) fs.writeFileSync(target, original, { flag: 'wx', mode: 0o600 });
+          } catch (restoreError) {
+            throw failure(500, `附件删除失败且文件恢复失败，请核对后再操作：${error.message}；${restoreError.message}`);
+          }
+          throw error;
+        }
         return structuredClone(p.receipt);
       }
-      // 先写文件（不覆盖已有文件），再写记录；记录写入失败就删掉刚写的文件。
+      // 数据库事务内独占创建文件并核验哈希；任一步失败，回滚记录并清理本次文件。
       const target = fileOf({ month, file: p.file });
-      fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.writeFileSync(target, p.bytes, { flag: 'wx', mode: 0o600 });
-      try { p.receipt = changes.confirm(ATTACHMENT_KIND, p.id, body); }
-      catch (error) { fs.rmSync(target, { force: true }); throw error; }
-      if (createHash('sha256').update(fs.readFileSync(target)).digest('hex') !== p.receipt.sha256) throw failure(500, '附件回读不一致');
+      let created = false;
+      try {
+        p.receipt = changes.confirm(ATTACHMENT_KIND, p.id, body, { beforeCommit(receipt) {
+          fs.mkdirSync(path.dirname(target), { recursive: true });
+          const fd = fs.openSync(target, 'wx', 0o600);
+          created = true;
+          try { fs.writeFileSync(fd, p.bytes); } finally { fs.closeSync(fd); }
+          if (createHash('sha256').update(fs.readFileSync(target)).digest('hex') !== receipt.sha256) throw failure(500, '附件回读不一致');
+        } });
+      } catch (error) {
+        try { if (created) fs.rmSync(target, { force: true }); }
+        catch (cleanupError) { throw failure(500, `附件保存失败且文件清理失败，请核对后再操作：${error.message}；${cleanupError.message}`); }
+        throw error;
+      }
       p.bytes = null;
       return structuredClone(p.receipt);
     },

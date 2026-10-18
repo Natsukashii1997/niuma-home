@@ -1,0 +1,55 @@
+✔ B2 project 软删除与恢复保留完整对象，离线本地列表可回读 (13.58925ms)
+✔ B2 project 删除及恢复到期预览均拒绝且状态不变 (6.278834ms)
+✔ B2 project 重复确认幂等且旧删除恢复令牌不能跨生命周期重放 (6.336292ms)
+✔ B2 project 并发内容变化及并发删除令牌均失效 (5.361541ms)
+✔ B2 project 预览绑定对象与动作且确认不接受额外字段 (4.475917ms)
+✔ B2 project 恢复同名冲突拒绝，不覆盖新对象 (5.118458ms)
+✔ B2 project 生命周期保存失败回滚，不能假报删除成功 (7.700167ms)
+✔ B2 project 删除期间原始内容变化不能被恢复覆盖 (5.174667ms)
+✔ B2 project 恢复预览后新增同名对象会在确认前再次拒绝 (5.57725ms)
+✔ B2 campaign 软删除与恢复保留完整对象，离线本地列表可回读 (9.190541ms)
+✔ B2 campaign 删除及恢复到期预览均拒绝且状态不变 (6.675917ms)
+✔ B2 campaign 重复确认幂等且旧删除恢复令牌不能跨生命周期重放 (7.045208ms)
+✔ B2 campaign 并发内容变化及并发删除令牌均失效 (5.829042ms)
+✔ B2 campaign 预览绑定对象与动作且确认不接受额外字段 (4.928667ms)
+✔ B2 campaign 恢复同名冲突拒绝，不覆盖新对象 (7.17875ms)
+✔ B2 campaign 生命周期保存失败回滚，不能假报删除成功 (5.71725ms)
+✔ B2 campaign 删除期间原始内容变化不能被恢复覆盖 (5.667208ms)
+✔ B2 campaign 恢复预览后新增同名对象会在确认前再次拒绝 (7.069708ms)
+✔ B2 项目来源必须由持久化本地记录证明，飞书同ID冲突保守拒绝 (8.810167ms)
+✔ B2 项目删除恢复后旧节点编辑与创建令牌仍拒绝，覆盖内容保持原样 (5.882542ms)
+✔ B2 历史战役拒绝当前对象、飞书模板及外部来源标记 (6.488375ms)
+✔ B2 历史战役删除恢复后旧编辑与归档令牌不能重建或覆盖对象 (6.192209ms)
+✔ B2 项目另一服务持有的已确认和待确认编辑令牌也受生命周期隔离 (6.565ms)
+✔ B2 历史战役预览后出现飞书同ID记录会拒绝确认 (5.034833ms)
+✖ B2 已存在的不同ID同名历史战役删除其一后可以原ID完整恢复 (8.074958ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 24
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 214.330333
+
+✖ failing tests:
+
+test at tests/t10-local-deletion.test.mjs:266:1
+✖ B2 已存在的不同ID同名历史战役删除其一后可以原ID完整恢复 (8.074958ms)
+  AssertionError [ERR_ASSERTION]: POST /api/v3/campaigns/history/63526512-c756-4959-ba3e-ee8c94becbca/restore-preview: {"error":"已有同名历史战役，请先处理名称冲突","code":"LOCAL_RESTORE_CONFLICT"}
+  
+  409 !== 200
+  
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:34:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Object.change (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:70:52)
+      at async TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:273:3)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 409,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

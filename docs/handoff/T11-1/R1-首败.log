@@ -1,0 +1,27 @@
+✖ T10 旧配置四键应拒绝未预览确认的直接 PUT (19.401041ms)
+ℹ 隔离数据实测：[{"key":"brand_base_url","previewStatus":400,"directPutStatus":200,"savedWithoutPreview":true},{"key":"report_doc_url","previewStatus":400,"directPutStatus":200,"savedWithoutPreview":true},{"key":"weekly_doc_url","previewStatus":400,"directPutStatus":200,"savedWithoutPreview":true},{"key":"material_types","previewStatus":400,"directPutStatus":200,"savedWithoutPreview":true}]
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 109.384292
+
+✖ failing tests:
+
+test at tests/t10-write-regression.test.mjs:349:1
+✖ T10 旧配置四键应拒绝未预览确认的直接 PUT (19.401041ms)
+  AssertionError [ERR_ASSERTION]: T10 要求全部写入先预览确认；旧配置仍允许直接保存，待 Claude 判定兼容迁移方案
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-write-regression.test.mjs:365:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

@@ -729,6 +729,12 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .trend-chart .pt { fill: var(--muted); } /* 方点标出每天的值 */
 .trend-chart .series.is-top .pt { fill: var(--signal); }
 .trend-chart .end-label { font: 12px var(--font-sans); fill: var(--text-2); }
+.trend-chart .leader { stroke: var(--muted); stroke-width: 1; pointer-events: none; } /* 标签被推开时，从真实末点连到文字 */
+.trend-chart .series.is-top .leader { stroke: var(--signal); }
+.trend-legend { list-style: none; margin: var(--s2) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); font-size: 12px; }
+.trend-legend li { display: inline-flex; align-items: center; gap: var(--s1); min-width: 0; }
+.trend-legend i { width: 12px; height: 0; border-top: 2px dashed var(--muted); }
+.trend-legend .is-top i { border-top: 2px solid var(--signal); }
 
 /* ---------- Codex 预警横条 ---------- */
 .codex-strip { position: sticky; top: 34px; z-index: 4; display: flex; align-items: center; gap: var(--s3); width: 100%; height: 30px; padding: 0 var(--s3); border: 0; border-bottom: 1px solid var(--line); background: var(--panel); font: inherit; font-size: 12px; color: var(--text-2); text-align: left; cursor: pointer; }
@@ -755,6 +761,26 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .codex-count { display: flex; flex-direction: column; justify-content: center; gap: var(--s2); padding: var(--s4) var(--s4); border-left: 1px solid var(--line); background-color: var(--panel-soft); background-image: radial-gradient(circle, var(--line) 1px, transparent 1.2px); background-size: 6px 6px; } /* 网点底：二次评审曾去掉，用户 10-17 要求恢复 */
 .codex-count strong { font-size: 14px; }
 .codex-past, .codex-strip .codex-cd.is-past { font-weight: 600; color: var(--ok); }
+/* 窄屏（L12）：首页 12 栏在 900px 以下改为每张卡占满一行；600px 以下 Codex 卡、交付月卡上下排列，倒计时移到正文下方，网点底和状态色不变 */
+@media (max-width: 900px) {
+  .home-grid > * { grid-column: 1 / -1; }
+  .campaign-grid.cols-9-3, .proj-layout.cols-3-9 { grid-template-columns: minmax(0, 1fr); } /* 删除/恢复入口所在的两页：窄屏单列，其他页面不在本次范围 */
+  .proj-items { position: static; }
+  .statusbar { overflow-x: auto; scrollbar-width: none; } /* 状态栏条目不换行；窄屏在栏内横向滚动，不撑宽整页 */
+}
+@media (max-width: 600px) {
+  .codex-card { grid-template-columns: minmax(0, 1fr); }
+  .delivery { grid-template-columns: minmax(0, 1fr); } /* 交付月卡同样是固定 260px 左栏，390px 下右侧只剩 2px */
+  .codex-count { border-left: 0; border-top: 1px solid var(--line); }
+  .codex-meta span { white-space: normal; }
+  .codex-foot { flex-wrap: wrap; }
+  .codex-stages { flex-wrap: wrap; }
+  .card-head .card-extra { flex-wrap: wrap; justify-content: flex-end; }
+  .codex-strip .codex-quote, .codex-strip .codex-when:has(+ .codex-cd) { display: none; } /* 顶部横条：有倒计时就省掉时间说明和引文，完整内容在首页卡片和详情 */
+  .set-row-head { grid-template-columns: minmax(0, 1fr) auto auto; } .set-row-head .set-value { grid-column: 1 / -1; grid-row: 2; } /* 设置行头：150px 标签列在窄屏挤出「编辑」按钮；值改到第二行 */
+  .set-row.is-open .settings-form { padding-left: 0; } /* 展开的表单不再让出 150px 名称列 */
+  .state-error { flex-wrap: wrap; } /* 读取失败框：标题不换行 + 按钮，窄屏下换行而不是撑出卡片 */
+}
 .countdown { display: flex; align-items: flex-start; gap: var(--s1); }
 .countdown span { display: flex; flex-direction: column; align-items: center; gap: var(--s1); }
 .countdown b { min-width: 62px; padding: var(--s1) var(--s2); background: var(--text); color: var(--panel); font-family: var(--font-pixel); font-weight: 400; font-size: 40px; line-height: 1; text-align: center; }
@@ -863,6 +889,21 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .kb-stage.has-ops { border-top-color: var(--text); background: var(--text); color: var(--panel); }
 .kb-stage.has-ops .btn-primary { background: var(--signal); border-color: var(--signal); }
 .kb-ops li { gap: var(--s2); }
+/* 知识库 · 快捷收藏（T12）：左边粘贴收藏，右边最近收藏；窄屏单列 */
+.kb-collect { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--gap); align-items: start; }
+.kb-collect-input { display: flex; gap: var(--s2); }
+.kb-collect-input .search-box { flex: 1; min-width: 0; }
+.kb-collect-target { height: 32px; padding: 0 var(--s2); border: var(--border) solid var(--line); background: var(--panel); font: inherit; font-size: 13px; color: inherit; }
+.kb-collect-target:focus { outline: none; border-color: var(--text); }
+.kb-recent-main { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.kb-recent-title { overflow-wrap: anywhere; }
+@media (max-width: 900px) { .kb-collect { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .kb-collect-input { flex-wrap: wrap; } .kb-collect-input .search-box { flex-basis: 100%; } .kb-collect-hint { display: none; } } /* 扩展只在电脑上的 Chrome 里有 */
+.set-rules td { vertical-align: middle; }
+.set-rules .set-rules-dir { width: 150px; white-space: nowrap; }
+.set-rules .set-input { width: 100%; }
+.set-rules-diff td { min-width: 0; } .set-rules-diff code { white-space: normal; overflow-wrap: anywhere; } /* 改动对比三列：窄屏换行，不撑宽页面 */
+@media (max-width: 600px) { .set-rules .set-rules-dir { width: auto; min-width: 0; white-space: normal; } }
 .kb-op-type { flex-shrink: 0; padding: 0 var(--s1); border: 1px solid var(--text); font-size: 11px; }
 .kb-ops { padding: var(--s2) var(--s4) var(--s2); }
 
@@ -1084,6 +1125,30 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .proj-new .row { flex-wrap: wrap; gap: var(--s2); }
 .campaign-history summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2); cursor: pointer; }
 .campaign-history details > p, .campaign-history details > pre { margin: var(--s1) 0 0; }
+/* T10-B2 软删除：已删除列表与恢复（项目左栏、历史战役卡底部共用） */
+.trash { border-top: 1px dashed var(--line); padding: var(--s2) var(--s4); }
+.card .trash { padding-left: 0; padding-right: 0; margin-top: var(--s3); }
+.proj-list .trash { padding: var(--s2) var(--s4); margin: 0; border-top: 0; border-bottom: 1px dashed var(--line); }
+.trash-toggle { gap: var(--s1); }
+.trash-toggle .tnum { color: var(--muted); }
+.trash-body { display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s2); }
+.trash-body .row { flex-wrap: wrap; gap: var(--s2); }
+.trash-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.trash-list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding: var(--s2) 0; border-bottom: 1px solid var(--line); }
+.trash-list li .btn { margin-left: auto; }
+.trash-list li:last-child { border-bottom: 0; }
+.trash-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 100%; }
+.trash-main strong { overflow-wrap: anywhere; }
+.write-box.soft-delete .kv dd { display: block; } /* 删除/恢复预览：字段文字正常换行，不被 flex 撑出卡片 */
+.proj-list .write-box.soft-delete .kv { grid-template-columns: 1fr; gap: 2px; } /* 项目左栏太窄：字段上下排 */
+.proj-list .write-box.soft-delete .kv dd + dt { margin-top: var(--s1); }
+@media (max-width: 600px) {
+  .write-box.soft-delete .kv { grid-template-columns: 1fr; gap: 2px; }
+  .write-box.soft-delete .kv dd + dt { margin-top: var(--s1); }
+}
+.campaign-history details { flex: 1 1 auto; min-width: 0; }
+.campaign-history details > p { white-space: normal; }
+.campaign-history details .row { margin-top: var(--s2); justify-content: flex-end; }
 /* brief 附件 */
 .brief-files { display: flex; flex-direction: column; gap: var(--s2); }
 .brief-file-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: var(--border) solid var(--line); }

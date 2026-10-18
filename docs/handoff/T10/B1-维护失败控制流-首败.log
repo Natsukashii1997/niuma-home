@@ -1,0 +1,62 @@
+✖ T10 发布控制流 logs 维护失败仍启动并回读服务，最后明确报告维护未完成 (9.738542ms)
+ℹ {"phase":"logs","status":7,"events":["launchctl:bootout","maintenance:logs"],"stderr":"T10 合成维护失败：logs EACCES\n"}
+✖ T10 发布控制流 artifacts 维护失败仍启动并回读服务，最后明确报告维护未完成 (12.729875ms)
+ℹ {"phase":"artifacts","status":7,"events":["launchctl:bootout","maintenance:logs","launchctl:bootstrap","curl:ready","curl:readback","maintenance:artifacts"],"stderr":"T10 合成维护失败：artifacts EACCES\n"}
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 59.350833
+
+✖ failing tests:
+
+test at tests/t10-release-retention.test.mjs:218:3
+✖ T10 发布控制流 logs 维护失败仍启动并回读服务，最后明确报告维护未完成 (9.738542ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'launchctl:bootout',
+      'maintenance:logs',
+  -   'launchctl:bootstrap',
+  -   'curl:ready',
+  -   'curl:readback',
+  -   'maintenance:artifacts'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-release-retention.test.mjs:221:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'launchctl:bootout', 'maintenance:logs' ],
+    expected: [ 'launchctl:bootout', 'maintenance:logs', 'launchctl:bootstrap', 'curl:ready', 'curl:readback', 'maintenance:artifacts' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/t10-release-retention.test.mjs:218:3
+✖ T10 发布控制流 artifacts 维护失败仍启动并回读服务，最后明确报告维护未完成 (12.729875ms)
+  AssertionError [ERR_ASSERTION]: 服务切换成功但维护失败须非零退出
+  
+  7 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-release-retention.test.mjs:222:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 7,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

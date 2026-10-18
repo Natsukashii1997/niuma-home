@@ -1,0 +1,115 @@
+{
+  "boundary": "原生 server/index.mjs，127.0.0.1:5297，合成对象和独立临时数据库",
+  "dataDirectory": "/tmp/workdesk-t10-b2-http-GRnZab",
+  "flowsPassed": 2,
+  "httpRequests": 21,
+  "assertionFailures": 0,
+  "externalWrites": 0,
+  "details": [
+    {
+      "method": "GET",
+      "path": "/api/v3/local-projects",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v3/local-projects/[local-project]/remove-preview",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v3/local-projects/[local-project]",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v3/local-projects/[local-project]",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/local-projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/local-projects?deleted=true",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v3/local-projects/[local-project]/restore-preview",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v3/local-projects/[local-project]/restore",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/local-projects",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v3/local-projects/[local-project]",
+      "status": 409
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/campaigns/history",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v3/campaigns/history/[local-campaign]/remove-preview",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v3/campaigns/history/[local-campaign]",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v3/campaigns/history/[local-campaign]",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/campaigns/history",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/campaigns/history?deleted=true",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v3/campaigns/history/[local-campaign]/restore-preview",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v3/campaigns/history/[local-campaign]/restore",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/campaigns/history",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v3/campaigns/history/[local-campaign]",
+      "status": 409
+    },
+    {
+      "method": "POST",
+      "path": "/api/v3/local-projects/remote-project/remove-preview",
+      "status": 403
+    }
+  ]
+}

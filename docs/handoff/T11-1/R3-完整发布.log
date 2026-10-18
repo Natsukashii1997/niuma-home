@@ -1,0 +1,10 @@
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+保留策略预览：当前快照始终保留 /private/tmp/workdesk-t11-release-noyc5u9m/release-base/releases/nm-20261018-113238-2de4905
+保留策略完成：已清理 0 项
+保留策略预览：当前快照始终保留 /private/tmp/workdesk-t11-release-noyc5u9m/release-base/releases/nm-20261018-113238-2de4905
+保留策略完成：已清理 0 项
+已切换到 nm-20261018-113238-2de4905：http://127.0.0.1:5299（launchd cn.niuma-home.server.t11）

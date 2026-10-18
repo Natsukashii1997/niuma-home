@@ -24,7 +24,12 @@ async function setup(t) {
   const request = (method, endpoint, body) => fetch(`http://127.0.0.1:${server.address().port}${endpoint}`, {
     method, headers: { "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body),
   });
-  const put = (key, value) => request("PUT", `/api/settings/${key}`, { value });
+  const put = async (key, value) => {
+    const preview = await request("POST", `/api/settings/${key}/preview`, { value });
+    if (preview.status !== 200) return preview;
+    const { previewId } = await preview.json();
+    return request("PUT", `/api/settings/${key}`, { previewId, confirm: true });
+  };
   const get = async () => (await request("GET", "/api/settings")).json();
   return { db, put, get, request };
 }

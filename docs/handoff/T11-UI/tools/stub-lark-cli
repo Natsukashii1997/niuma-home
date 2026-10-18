@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "隔离验收替身：不访问外部服务（lark-cli）" >&2
+exit 97

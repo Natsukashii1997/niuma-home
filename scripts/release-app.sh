@@ -1,6 +1,6 @@
 #!/bin/bash
 # 发布「牛马之家」本地应用（做法同数码世界）：把当前提交的 server、fixtures + 构建好的 dist 复制成固定快照，
-# 由 launchd 常驻服务运行；之后改开发目录不影响正在用的版本。旧快照保留，可回滚。
+# 由 launchd 常驻服务运行；之后改开发目录不影响正在用的版本。保留最近 5 份快照和当前运行版本，可回滚。
 #
 #   bash scripts/release-app.sh              在主工作区执行：备份数据库 → 生成新快照 → 切换服务
 #   bash scripts/release-app.sh --use <快照名>   切回已有快照（回滚）
@@ -26,7 +26,7 @@ fail() { echo "发布中止：$*" >&2; exit 1; }
 OWNER=$(lsof -nP -tiTCP:"$PORT" -sTCP:LISTEN | head -1 || true)
 if [ -n "$OWNER" ]; then
   JOB_PID=$(launchctl list | awk -v l="$LABEL" '$3 == l { print $1 }')
-  [ "$OWNER" = "$JOB_PID" ] || fail "端口 $PORT 被其他进程占用（pid $OWNER），先停掉它再发布"
+  [ "$OWNER" = "$JOB_PID" ] || fail "端口 $PORT 被其他进程占用（pid ${OWNER}），先停掉它再发布"
 fi
 
 if [ "${1:-}" = "--use" ]; then
@@ -102,10 +102,32 @@ cat > "$PLIST" <<EOF
 EOF
 
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+RETENTION_FAILED=0
 for _ in $(seq 20); do lsof -nP -tiTCP:"$PORT" -sTCP:LISTEN >/dev/null || break; sleep 0.5; done
+# 日志只在旧服务停止之后轮转，避免复制/清空期间仍有进程写入。
+lsof -nP -tiTCP:"$PORT" -sTCP:LISTEN >/dev/null && fail "服务仍占用端口 ${PORT}，未轮转日志或启动新版本"
+if "$NODE" "$ROOT/scripts/release-retention.mjs" --base "$BASE" --data-dir "$DATA_DIR" --current-release "$REL" --scope logs --apply; then
+  :
+else
+  RETENTION_STATUS=$?
+  RETENTION_FAILED=1
+  printf '日志保留策略失败（退出码 %s）；保留上述错误，继续启动并核对目标服务\n' "$RETENTION_STATUS" >&2
+fi
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 
 # 回读：服务返回的首页必须和快照里的 dist/index.html 逐字节一致
 for _ in $(seq 30); do curl -sf "$URL/" -o /dev/null && break; sleep 0.5; done
 curl -sf "$URL/" | cmp -s - "$REL/dist/index.html" || fail "$URL 返回的首页和快照不一致，查看 $DATA_DIR/daemon-logs/server.stderr.log"
-echo "已切换到 $NAME：$URL（launchd $LABEL）"
+# 只有目标版本通过运行回读，才清理历史产物；REL 是本次已确认在用的快照。
+if "$NODE" "$ROOT/scripts/release-retention.mjs" --base "$BASE" --data-dir "$DATA_DIR" --current-release "$REL" --scope artifacts --apply; then
+  :
+else
+  RETENTION_STATUS=$?
+  RETENTION_FAILED=1
+  printf '发布产物保留策略失败（退出码 %s）；保留上述错误及当前文件状态\n' "$RETENTION_STATUS" >&2
+fi
+if [ "$RETENTION_FAILED" -ne 0 ]; then
+  printf '服务已切换但保留策略未完成：%s；%s（launchd %s）。请核对上方错误后处理维护项。\n' "$NAME" "$URL" "$LABEL" >&2
+  exit 1
+fi
+echo "已切换到 ${NAME}：${URL}（launchd ${LABEL}）"

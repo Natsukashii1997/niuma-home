@@ -1,0 +1,597 @@
+{
+  "schemaVersion": 1,
+  "purpose": "T10 B3 计算方案验证；全部为合成输入，不是真实Voice话题。",
+  "algorithm": "stable-sort-forward-backward-v1",
+  "defaults": {
+    "chart": {
+      "W": 1000,
+      "H": 220,
+      "L": 40,
+      "R": 260,
+      "T": 12,
+      "B": 26
+    },
+    "labelHeight": 16,
+    "gap": 6,
+    "baselineOffset": 4,
+    "textX": 750,
+    "leaderStartX": 744,
+    "leaderEndX": 748
+  },
+  "inputContract": {
+    "lastValue": "实际组件从spark.at(-1)取得；有限数值0到100。heat仅保留展示，不参与标签定位。",
+    "labelHeight": "所有标签字体加载后的最大包围盒对应的统一对称槽高，至少16 SVG单位。",
+    "coordinates": "全部以SVG viewBox单位计算；标签中心labelY，文字baseline=labelY+4；不能用屏幕CSS像素混算。",
+    "ids": "稳定唯一ID；同末点y按ID的确定性代码单元顺序排序，不改变源数组或第一名高亮。"
+  },
+  "assertions": [
+    "输出符合手工给定预期，容差1e-9",
+    "每个标签槽完整落在[T,H-B]内",
+    "相邻槽中心距至少labelHeight+gap",
+    "仅生成labelY映射，不修改topics或lastValue/heat",
+    "同一输入确定性；相同末值的标签顺序不依赖输入数组顺序",
+    "放不下时返回全部话题的图例退化，不输出重叠的end-label"
+  ],
+  "cases": [
+    {
+      "name": "空集合",
+      "topics": [],
+      "expected": {
+        "mode": "labels",
+        "labelYById": {}
+      }
+    },
+    {
+      "name": "单标签保持末点",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 50,
+          "heat": 50
+        }
+      ],
+      "expected": {
+        "mode": "labels",
+        "labelYById": {
+          "A": 103
+        }
+      }
+    },
+    {
+      "name": "互不冲突保持原位",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 90,
+          "heat": 90
+        },
+        {
+          "id": "B",
+          "lastValue": 70,
+          "heat": 70
+        },
+        {
+          "id": "C",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "D",
+          "lastValue": 20,
+          "heat": 20
+        }
+      ],
+      "expected": {
+        "mode": "labels",
+        "labelYById": {
+          "A": 30.2,
+          "B": 66.6,
+          "C": 103,
+          "D": 157.6
+        }
+      }
+    },
+    {
+      "name": "两话题末值相同",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "B",
+          "lastValue": 50,
+          "heat": 50
+        }
+      ],
+      "expected": {
+        "mode": "labels",
+        "labelYById": {
+          "A": 103,
+          "B": 125
+        }
+      }
+    },
+    {
+      "name": "四话题相同且输入乱序",
+      "topics": [
+        {
+          "id": "D",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "B",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "A",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "C",
+          "lastValue": 50,
+          "heat": 50
+        }
+      ],
+      "expected": {
+        "mode": "labels",
+        "labelYById": {
+          "A": 103,
+          "B": 125,
+          "C": 147,
+          "D": 169
+        }
+      }
+    },
+    {
+      "name": "顶部四话题",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 100,
+          "heat": 100
+        },
+        {
+          "id": "B",
+          "lastValue": 100,
+          "heat": 100
+        },
+        {
+          "id": "C",
+          "lastValue": 100,
+          "heat": 100
+        },
+        {
+          "id": "D",
+          "lastValue": 100,
+          "heat": 100
+        }
+      ],
+      "expected": {
+        "mode": "labels",
+        "labelYById": {
+          "A": 20,
+          "B": 42,
+          "C": 64,
+          "D": 86
+        }
+      }
+    },
+    {
+      "name": "底部四话题",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 0,
+          "heat": 0
+        },
+        {
+          "id": "B",
+          "lastValue": 0,
+          "heat": 0
+        },
+        {
+          "id": "C",
+          "lastValue": 0,
+          "heat": 0
+        },
+        {
+          "id": "D",
+          "lastValue": 0,
+          "heat": 0
+        }
+      ],
+      "expected": {
+        "mode": "labels",
+        "labelYById": {
+          "A": 120,
+          "B": 142,
+          "C": 164,
+          "D": 186
+        }
+      }
+    },
+    {
+      "name": "顶底边界与中部重合",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 100,
+          "heat": 100
+        },
+        {
+          "id": "B",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "C",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "D",
+          "lastValue": 0,
+          "heat": 0
+        }
+      ],
+      "expected": {
+        "mode": "labels",
+        "labelYById": {
+          "A": 20,
+          "B": 103,
+          "C": 125,
+          "D": 186
+        }
+      }
+    },
+    {
+      "name": "末值接近但不相同",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 60,
+          "heat": 60
+        },
+        {
+          "id": "B",
+          "lastValue": 59,
+          "heat": 59
+        },
+        {
+          "id": "C",
+          "lastValue": 58,
+          "heat": 58
+        },
+        {
+          "id": "D",
+          "lastValue": 20,
+          "heat": 20
+        }
+      ],
+      "expected": {
+        "mode": "labels",
+        "labelYById": {
+          "A": 84.8,
+          "B": 106.8,
+          "C": 128.8,
+          "D": 157.6
+        }
+      }
+    },
+    {
+      "name": "字体实测槽高24",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "B",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "C",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "D",
+          "lastValue": 50,
+          "heat": 50
+        }
+      ],
+      "expected": {
+        "mode": "labels",
+        "labelYById": {
+          "A": 92,
+          "B": 122,
+          "C": 152,
+          "D": 182
+        }
+      },
+      "labelHeight": 24
+    },
+    {
+      "name": "缩小图高后恰好放满",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "B",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "C",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "D",
+          "lastValue": 50,
+          "heat": 50
+        }
+      ],
+      "expected": {
+        "mode": "labels",
+        "labelYById": {
+          "A": 20,
+          "B": 42,
+          "C": 64,
+          "D": 86
+        }
+      },
+      "chartOverrides": {
+        "H": 120
+      }
+    },
+    {
+      "name": "默认图高可容纳八标签",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "B",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "C",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "D",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "E",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "F",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "G",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "H",
+          "lastValue": 50,
+          "heat": 50
+        }
+      ],
+      "expected": {
+        "mode": "labels",
+        "labelYById": {
+          "A": 32,
+          "B": 54,
+          "C": 76,
+          "D": 98,
+          "E": 120,
+          "F": 142,
+          "G": 164,
+          "H": 186
+        }
+      }
+    },
+    {
+      "name": "九标签超容量转图例",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "B",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "C",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "D",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "E",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "F",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "G",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "H",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "I",
+          "lastValue": 50,
+          "heat": 50
+        }
+      ],
+      "expected": {
+        "mode": "legend",
+        "reason": "insufficient-height",
+        "legendIds": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E",
+          "F",
+          "G",
+          "H",
+          "I"
+        ]
+      }
+    },
+    {
+      "name": "超大标签槽转图例",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "B",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "C",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "D",
+          "lastValue": 50,
+          "heat": 50
+        }
+      ],
+      "expected": {
+        "mode": "legend",
+        "reason": "insufficient-height",
+        "legendIds": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      },
+      "labelHeight": 80
+    },
+    {
+      "name": "较矮图高两标签仍可放下",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "B",
+          "lastValue": 50,
+          "heat": 50
+        }
+      ],
+      "expected": {
+        "mode": "labels",
+        "labelYById": {
+          "A": 24,
+          "B": 46
+        }
+      },
+      "chartOverrides": {
+        "H": 80
+      }
+    },
+    {
+      "name": "较矮图高三标签转图例",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "B",
+          "lastValue": 50,
+          "heat": 50
+        },
+        {
+          "id": "C",
+          "lastValue": 50,
+          "heat": 50
+        }
+      ],
+      "expected": {
+        "mode": "legend",
+        "reason": "insufficient-height",
+        "legendIds": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      "chartOverrides": {
+        "H": 80
+      }
+    },
+    {
+      "name": "定位用末值而不改heat",
+      "topics": [
+        {
+          "id": "A",
+          "lastValue": 30,
+          "heat": 99
+        },
+        {
+          "id": "B",
+          "lastValue": 70,
+          "heat": 0
+        }
+      ],
+      "expected": {
+        "mode": "labels",
+        "labelYById": {
+          "B": 66.6,
+          "A": 139.4
+        }
+      }
+    }
+  ]
+}

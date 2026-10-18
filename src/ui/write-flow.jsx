@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "./bitmap.jsx";
 import { Button } from "./components.jsx";
-import { IDLE, canConfirm, canReset, classifyFailure } from "./write-flow-state.js";
+import { CONFLICT_CODES, IDLE, canConfirm, canReset, classifyFailure } from "./write-flow-state.js";
 
 // 写操作统一流程：预览 → 明确确认 → 提交 → 回读。预览内容在 flow.pv（flow.preview 是生成预览的方法）。只有回读核对一致才进入「已保存」，本地状态变化和成功提示都不算保存。
 // 用法：
@@ -26,7 +26,7 @@ export function useWriteFlow() {
       return p;
     } catch (e) {
       // 预览本身不写入：失败一般是「改了再试」；但后端带回未结的操作记录（同一对象上次结果不明）时要锁住，先核对。
-      const kind = e.receipt || e.code === "EXPORT_RESULT_UNKNOWN" ? "unknown" : e.status === 409 ? "stale" : "error";
+      const kind = e.receipt || e.code === "EXPORT_RESULT_UNKNOWN" ? "unknown" : e.status === 409 && !CONFLICT_CODES.has(e.code) ? "stale" : "error";
       if (gen.current === my) set({ phase: kind, error: e.message, code: e.code, receipt: e.receipt });
       return null;
     }

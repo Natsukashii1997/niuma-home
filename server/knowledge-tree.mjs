@@ -6,6 +6,7 @@ import { fingerprint, getRecord, putRecord } from './local-records.mjs';
 import { beijingText, failure } from './v3-common.mjs';
 import { recordSource } from './source-status.mjs';
 import { createConfiguredReader, runLark } from './projects.mjs';
+import { createKnowledgeCollectService } from './kb-collect.mjs';
 
 export const KB_SPACE = '7620758074885835965';
 const textContent = value => value.replace(/<[^>]+>/g, ' ').replace(/!\[[^\]]*\]\([^)]+\)/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/^[#>*\-\s]+/gm, '').replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim();
@@ -222,6 +223,7 @@ export async function writeKnowledgeOperation(spaceId, op, { run } = {}) {
 }
 
 export function createKnowledgeTreeService(db, { now = Date.now, readSource = readKnowledgeSource, readDirectory = readKnowledgeDirectory, run, onSource, ...options } = {}) {
+  const collect = createKnowledgeCollectService(db, { now, run, readDirectory, assertWriterIdentity, activeWrites, ownerAlive });
   const config = () => { const spaceId = getSettings(db).kb_space_id || KB_SPACE; if (!/^\d+$/.test(spaceId)) throw failure(400, '知识库空间ID无效'); return { spaceId }; };
   const read = createConfiguredReader(db, 'kb', config, async cfg => {
     const source = await readSource(cfg, { run }), refs = {};
@@ -271,6 +273,7 @@ export function createKnowledgeTreeService(db, { now = Date.now, readSource = re
     p.cursor++;p.expectedRows=rows;p.inFlight=null;p.state='verified';save(p);
   };
   return {
+    collect: collect.collect, recentCollections: collect.recent, collectPairing: collect.pairing,
     list: async opts => { const value=await read({...opts,refresh:needsRefresh || opts?.refresh});needsRefresh=false;return value; },
     async preview(body) {
       const spaceId=config().spaceId,kb=await read({refresh:true});
@@ -280,7 +283,7 @@ export function createKnowledgeTreeService(db, { now = Date.now, readSource = re
       save({id,spaceId,state:'preview',expiresAt,sourceVersion:plan.sourceVersion,operations:plan.operations,expectedRows:rowsOfTree(kb.tree),cursor:0,completed:[],created:{}});
       return {...plan,previewId:id,spaceId,expiresAt,confirmationEndpoint:'/api/v3/kb/confirm'};
     },
-    status: id => publicOperation(load(id)),
+    status: id => { const p=load(id); return p.type==='collect'?collect.status(p):publicOperation(p); },
     async confirm(body) {
       if(body?.confirm!==true || typeof body.previewId!=='string')throw failure(400,'请先预览，再明确确认知识库操作');
       let p=load(body.previewId);if(p.receipt)return structuredClone(p.receipt);sameSpace(p);
@@ -316,7 +319,8 @@ export function createKnowledgeTreeService(db, { now = Date.now, readSource = re
       }finally{activeWrites.delete(p.id);}
     },
     async reconcile(id,body={}) {
-      const p=load(id);if(p.receipt)return structuredClone(p.receipt);sameSpace(p);
+      const p=load(id);if(p.type==='collect')return collect.reconcile(id);
+      if(p.receipt)return structuredClone(p.receipt);sameSpace(p);
       if(p.state==='preview')return publicOperation(p);
       if(p.state!=='unknown'&&ownerAlive(p)||activeWrites.has(p.id))throw failure(409,'知识库确认仍在进行，请等待当前请求结束');
       if(p.inFlight){

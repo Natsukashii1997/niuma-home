@@ -1,0 +1,7 @@
+['launchctl', 'list', 'cn.niuma-home.server.t10']
+exit=1
+
+['lsof', '-nP', '-iTCP:5299', '-sTCP:LISTEN']
+exit=1
+
+测试 plist 存在：False

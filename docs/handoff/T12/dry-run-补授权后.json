@@ -1,0 +1,41 @@
+{
+  "capturedAt": "2026-10-18 Claude 复测（用户补授权后）",
+  "command": "lark-cli --profile codex wiki +node-create --space-id 7620…5965 --parent-node-token RIPw…znwc --node-type shortcut --origin-node-token AeH5…ngh --obj-type docx --as user --dry-run",
+  "exitCode": 0,
+  "executed": false,
+  "writeCalls": 0,
+  "scopeCheck": "auth status：user 身份 tokenStatus=valid，scope 含 wiki:space:read",
+  "result": {
+    "ok": true,
+    "identity": "user",
+    "dry_run": true,
+    "data": {
+      "api": [
+        {
+          "desc": "[1] Resolve parent node space",
+          "method": "GET",
+          "url": "/open-apis/wiki/v2/spaces/node_by_token",
+          "params": {
+            "token": "RIPw…znwc"
+          }
+        },
+        {
+          "desc": "[2] Create wiki node",
+          "method": "POST",
+          "url": "/open-apis/wiki/v2/spaces/7620758074885835965/nodes",
+          "body": {
+            "node_type": "shortcut",
+            "obj_type": "docx",
+            "origin_node_token": "AeH5…ngh（仅检查权限用的目录节点）",
+            "parent_node_token": "<resolved_parent_node_token>"
+          }
+        }
+      ],
+      "context": {
+        "app_id": "cli_aacf58ab61b85beb",
+        "user_open_id": "ou_…（打码）"
+      },
+      "description": "2-step orchestration: resolve parent node -> create wiki node"
+    }
+  }
+}

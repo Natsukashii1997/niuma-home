@@ -1,0 +1,151 @@
+{
+  "start_head": "c118a0bf24ee13677cc1984f896f5100ace3163c",
+  "sourceBackup": "/Users/nat/Library/Application Support/NiumaHome/backups/work-desk-20261017-133114-before-nm-20261017-133113-749434c.db",
+  "sourceHashBefore": "e34bbfe40c95b5246455f96ecda47b77e98c0ab178f7678d1db50949d76d84e8",
+  "steps": [
+    {
+      "command": [
+        "bash",
+        "scripts/release-app.sh"
+      ],
+      "code": 0,
+      "seconds": 2.447,
+      "output": "已切换到 nm-20261018-094228-c118a0b：http://127.0.0.1:5299（launchd cn.niuma-home.server.t10）\n"
+    },
+    {
+      "command": [
+        "bash",
+        "scripts/release-app.sh"
+      ],
+      "code": 0,
+      "seconds": 2.394,
+      "output": "已切换到 nm-20261018-094231-c118a0b：http://127.0.0.1:5299（launchd cn.niuma-home.server.t10）\n"
+    },
+    {
+      "command": [
+        "bash",
+        "scripts/release-app.sh",
+        "--use",
+        "nm-20261018-094228-c118a0b"
+      ],
+      "code": 0,
+      "seconds": 1.578,
+      "output": "已切换到 nm-20261018-094228-c118a0b：http://127.0.0.1:5299（launchd cn.niuma-home.server.t10）\n"
+    },
+    {
+      "command": [
+        "bash",
+        "scripts/release-app.sh"
+      ],
+      "code": 0,
+      "seconds": 2.274,
+      "output": "已切换到 nm-20261018-094238-c118a0b：http://127.0.0.1:5299（launchd cn.niuma-home.server.t10）\n"
+    },
+    {
+      "command": [
+        "launchctl",
+        "list",
+        "cn.niuma-home.server.t10"
+      ],
+      "code": 0,
+      "seconds": 0.006,
+      "output": "{\n\t\"StandardOutPath\" = \"/tmp/workdesk-t10-jiHkDp/a4-C/a4-data/daemon-logs/server.stdout.log\";\n\t\"LimitLoadToSessionType\" = \"Aqua\";\n\t\"StandardErrorPath\" = \"/tmp/workdesk-t10-jiHkDp/a4-C/a4-data/daemon-logs/server.stderr.log\";\n\t\"Label\" = \"cn.niuma-home.server.t10\";\n\t\"OnDemand\" = true;\n\t\"LastExitStatus\" = 0;\n\t\"PID\" = 25186;\n\t\"Program\" = \"/tmp/workdesk-t10-jiHkDp/a4-C/release-base/NiumaHomeServer.app/Contents/MacOS/node\";\n\t\"ProgramArguments\" = (\n\t\t\"/tmp/workdesk-t10-jiHkDp/a4-C/release-base/NiumaHomeServer.app/Contents/MacOS/node\";\n\t\t\"/tmp/workdesk-t10-jiHkDp/a4-C/release-base/releases/nm-20261018-094238-c118a0b/server/index.mjs\";\n\t);\n};\n"
+    },
+    {
+      "command": [
+        "kill",
+        "-9",
+        "25186"
+      ],
+      "code": 0,
+      "seconds": 0.003,
+      "output": ""
+    },
+    {
+      "command": [
+        "curl",
+        "-fsS",
+        "http://127.0.0.1:5299/api/v3/status"
+      ],
+      "code": 0,
+      "seconds": 0.041,
+      "output": "{\"checkedAt\":\"2026-10-18 09:43\",\"sources\":{\"daily\":{\"state\":\"never\"},\"weekly\":{\"state\":\"never\"},\"timeline\":{\"state\":\"ok\",\"at\":\"2026-10-17 13:10\"},\"kb\":{\"state\":\"never\"},\"nas\":{\"state\":\"off\"},\"voice\":{\"state\":\"off\"}}}"
+    },
+    {
+      "command": [
+        "launchctl",
+        "bootout",
+        "gui/501/cn.niuma-home.server.t10"
+      ],
+      "code": 0,
+      "seconds": 0.006,
+      "output": ""
+    },
+    {
+      "command": [
+        "bash",
+        "scripts/release-app.sh",
+        "--use",
+        "nm-20261018-094238-c118a0b"
+      ],
+      "code": 0,
+      "seconds": 1.642,
+      "output": "已切换到 nm-20261018-094238-c118a0b：http://127.0.0.1:5299（launchd cn.niuma-home.server.t10）\n"
+    }
+  ],
+  "sourceCounts": {
+    "assistants": 1,
+    "material_images": 0,
+    "materials": 0,
+    "plans": 0,
+    "promos": 15,
+    "settings": 2,
+    "sku_aliases": 1,
+    "v3_documents": 0,
+    "v3_needs": 0,
+    "v3_snapshots": 3,
+    "v3_source_status": 2,
+    "integrity_check": "ok"
+  },
+  "restart": {
+    "oldPid": "25186",
+    "newPid": "25421",
+    "seconds": 29.972
+  },
+  "recoveryBackup": "/tmp/workdesk-t10-jiHkDp/a4-C/release-base/backups/work-desk-20261018-094238-before-nm-20261018-094238-c118a0b.db",
+  "recoveryCountsBefore": {
+    "assistants": 1,
+    "material_images": 0,
+    "materials": 0,
+    "plans": 0,
+    "promos": 15,
+    "settings": 2,
+    "sku_aliases": 1,
+    "v3_documents": 0,
+    "v3_needs": 0,
+    "v3_snapshots": 3,
+    "v3_source_status": 2,
+    "integrity_check": "ok"
+  },
+  "recoveryCountsAfter": {
+    "assistants": 1,
+    "material_images": 0,
+    "materials": 0,
+    "plans": 0,
+    "promos": 15,
+    "settings": 2,
+    "sku_aliases": 1,
+    "v3_documents": 0,
+    "v3_needs": 0,
+    "v3_snapshots": 3,
+    "v3_source_status": 2,
+    "integrity_check": "ok"
+  },
+  "result": "通过",
+  "cleanup": {
+    "labelAbsent": true,
+    "plistAbsent": true,
+    "portFree": true
+  },
+  "sourceHashAfter": "e34bbfe40c95b5246455f96ecda47b77e98c0ab178f7678d1db50949d76d84e8"
+}

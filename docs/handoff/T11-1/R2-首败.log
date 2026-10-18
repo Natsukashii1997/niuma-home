@@ -1,0 +1,70 @@
+✖ T10 附件删除文件失败后重试不得返回文件仍遗留的成功回执 (12.048875ms)
+ℹ 附件隔离故障实测：{"faultInjected":true,"firstStatus":500,"firstBody":{"error":"营销数据处理失败，请重新读取后再操作","code":"EACCES"},"recordsAfterFirst":0,"fileExistsAfterFirst":true,"retryStatus":200,"retryBody":{"ok":true,"id":"fe7c6a09-25c3-4e6e-87dd-8c96d05cb307"},"recordsAfterRetry":0,"fileExistsAfterRetry":true,"fileEndpointAfterRetry":404}
+✖ T11 附件新增哈希不一致不留记录或文件，重试不得假成功 (4.928208ms)
+ℹ {"mode":"hash","attempt":0,"status":500,"records":1,"file":true,"hits":1}
+✖ T11 附件新增读文件抛错不留记录或文件，重试不得假成功 (6.158417ms)
+ℹ {"mode":"read","attempt":0,"status":500,"records":1,"file":true,"hits":1}
+ℹ tests 3
+ℹ suites 0
+ℹ pass 0
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 85.475458
+
+✖ failing tests:
+
+test at tests/t10-write-regression.test.mjs:224:1
+✖ T10 附件删除文件失败后重试不得返回文件仍遗留的成功回执 (12.048875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-write-regression.test.mjs:262:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/t10-write-regression.test.mjs:440:3
+✖ T11 附件新增哈希不一致不留记录或文件，重试不得假成功 (4.928208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-write-regression.test.mjs:461:50)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/t10-write-regression.test.mjs:440:3
+✖ T11 附件新增读文件抛错不留记录或文件，重试不得假成功 (6.158417ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-write-regression.test.mjs:461:50)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

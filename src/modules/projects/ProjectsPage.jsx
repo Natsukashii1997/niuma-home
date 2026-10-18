@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PixelBar, PixelIcon, StepProgress, TypeText } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Button, Card, Loadable, NodeCheck, PageHeader, PhaseSteps, Placeholder, Segmented, StatStrip, Tabs, Tag, useToast } from "../../ui/components.jsx";
 import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
+import { DeletedList, useSoftRemove } from "../../ui/soft-delete.jsx";
 import { isoWeek, localDate } from "../../constants.js";
 import { nodeState, projectSummary } from "./project-view.js";
 
@@ -21,6 +22,8 @@ export default function ProjectsPage({ route }) {
 
 const STATUS_TONE = { 已结项: "green", 实施中: "blue", 推进中: "blue", 调研中: "blue" };
 const STATE_TEXT = { done: "已完成", open: "未完成", unknown: "未填写" };
+const LOCAL_API = { base: "/api/v3/local-projects", active: "/api/v3/projects" };
+const nodeCount = (x) => `${x.nodes.length} 个节点，已完成 ${x.nodes.filter((n) => n.done).length}`;
 
 function Board() {
   const state = useApi("/api/v3/projects");
@@ -36,8 +39,14 @@ function ProjectBoard({ initial }) {
   const [creating, setCreating] = useState(false);
   const [note, setNote] = useState(""); // 新建后表单关闭，结果放在外层
   const flow = useWriteFlow();
+  const [deleted, setDeleted] = useState([]); // 已删除的本地项目（软删除，可恢复）
+  const [deletedError, setDeletedError] = useState("");
+  const placed = (r) => { setProjects(r.active); setDeleted(r.deleted); };
+  const remover = useSoftRemove(LOCAL_API, placed);
   const p = projects.find((x) => x.id === sel) || projects[0];
   const today = localDate();
+  useEffect(() => { apiSend("GET", `${LOCAL_API.base}?deleted=true`).then((d) => setDeleted(d.items || []), (e) => setDeletedError(e.message)); }, []);
+  const removeLocked = remover.flow.busy || remover.flow.phase === "unknown";
 
   async function refresh() {
     setSync({ busy: true, error: "" });
@@ -94,11 +103,22 @@ function ProjectBoard({ initial }) {
           }} />}
         {sync.busy && <div className="proj-sync"><StepProgress label="只读同步飞书项目表" /></div>}
         {sync.error && <p className="proj-sync risk-text small">读取失败：{sync.error}（页面仍显示上次读到的内容）</p>}
+        {/* 放在列表上方：.proj-items 吸顶，排在它后面的内容滚动时会被盖住 */}
+        {deletedError && <p className="proj-sync risk-text small">已删除列表读取失败：{deletedError}</p>}
+        <DeletedList api={LOCAL_API} deleted={deleted} onPlaced={(r) => { placed(r); setDeletedError(""); }} noun="本地项目"
+          describe={(x) => ({ name: x.name, meta: `${x.basedOn?.name ? `按「${x.basedOn.name}」生成 · ` : ""}${nodeCount(x)}` })}>
+          {(pv) => <dl className="kv">
+            <dt>项目</dt><dd>{pv.value.name}</dd>
+            <dt>内容</dt><dd className="tnum">{nodeCount(pv.value)}；节点改动原样保留</dd>
+            <dt>恢复后</dt><dd>按原编号回到项目列表，从已删除列表移出</dd>
+            <dt>写到哪里</dt><dd>工作台本地；不影响飞书项目表</dd>
+          </dl>}
+        </DeletedList>
         <div className="proj-items">
           {projects.map((x) => {
             const s = projectSummary(x, today);
             return (
-              <button key={x.id} type="button" className={`proj-card${x.id === p.id ? " active" : ""}`} onClick={() => { setSel(x.id); flow.reset(); }}>
+              <button key={x.id} type="button" className={`proj-card${x.id === p.id ? " active" : ""}`} onClick={() => { if (removeLocked) return; setSel(x.id); flow.reset(); remover.flow.reset(); }}>
                 <span className="proj-card-top"><strong>{x.name}</strong><Tag tone={STATUS_TONE[x.status] || "neutral"}>{x.status}</Tag></span>
                 <span className="small muted">模板：{x.template}{x.local && <> · <Tag tone="frame">本地</Tag> 按「{x.basedOn.name}」生成</>}</span>
                 <PixelBar className="proj-bar" value={s.total ? s.done / s.total : 0} label={`已完成 ${s.done}/${s.total}`} />
@@ -129,7 +149,16 @@ function ProjectBoard({ initial }) {
           <Segmented options={[["all", "全部节点"], ["open", "未完成"], ["unknown", `未填写 ${sum.unknown}`], ["gate", `等你审核 ${sum.gates}`], ["soon", `2 天内到期 ${sum.soon}`]]} value={filter} onChange={setFilter} />
           <span className="spacer" />
           <span className="small muted">改动只存在工作台，不回写飞书</span>
+          {p.local && <Button onClick={() => { flow.reset(); remover.preview(p.id); }} disabled={removeLocked || flow.busy || flow.phase === "unknown"}><PixelIcon name="close" />删除本地项目</Button>}
         </div>
+        <WriteBox flow={remover.flow} className="soft-delete" title="删除本地项目预览" confirmLabel="确认删除" savedText="已删除，回读核对：项目列表里不再有它，已在「已删除的本地项目」里，可恢复" onConfirm={remover.confirm} onRepreview={remover.repreview} onReread={remover.reread}>
+          {(pv) => <dl className="kv">
+            <dt>删除</dt><dd>{pv.value.name}</dd>
+            <dt>内容</dt><dd className="tnum">{nodeCount(pv.value)}</dd>
+            <dt>方式</dt><dd>软删除：项目和节点改动全部保留，可在左侧「已删除的本地项目」里按原编号恢复</dd>
+            <dt>影响</dt><dd>只影响工作台本地；不删除飞书项目表里的任何内容</dd>
+          </dl>}
+        </WriteBox>
         <WriteBox flow={flow} title="节点改动预览" onConfirm={confirm} onRepreview={() => edit && propose(edit.node, "due" in edit ? { due: edit.due } : { done: edit.done })} onReread={reread}>
           {() => edit && <dl className="kv">
             <dt>项目</dt><dd>{p.name}</dd>

@@ -4,6 +4,7 @@ import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Button, Card, Loadable, NodeCheck, PhaseSteps, Segmented, Tag } from "../../ui/components.jsx";
 import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
+import { DeletedList, useSoftRemove } from "../../ui/soft-delete.jsx";
 import { deliveryMonth, deliverySteps } from "../../constants.js";
 
 // 营销战役（v3）：大节点（如双11）才开，可跨月。节点来自飞书营销战役模板（阶段、节点名、门禁、里程碑不能改）。
@@ -195,22 +196,53 @@ function Campaign({ c, onSaved, onEdit, reviewNote }) {
   );
 }
 
-// 历史战役：「新开战役」时归档的旧战役，只读。
+// 历史战役：「新开战役」时归档的旧战役，只读；可以软删除（内容保留，可恢复）。
+const HISTORY_API = { base: "/api/v3/campaigns/history", active: "/api/v3/campaigns/history" };
+const doneText = (c) => { const all = c.phases.flatMap((p) => p.nodes); return `${all.filter((n) => n.done).length}/${all.length} 个节点已完成`; };
 function CampaignHistory() {
   const state = useApi("/api/v3/campaigns/history");
-  const items = state.data?.items || [];
-  if (state.loading || (!state.error && !items.length)) return null;
+  const gone = useApi("/api/v3/campaigns/history?deleted=true");
+  if (state.loading || gone.loading) return null;
+  if (state.error) return <Card title={<><PixelIcon name="archive" />历史战役</>}><p className="small risk-text">读取失败：{state.error}</p></Card>;
+  const items = state.data?.items || [], deleted = gone.data?.items || [];
+  if (!items.length && !deleted.length) return null;
+  return <HistoryList initial={items} initialDeleted={deleted} deletedError={gone.error} />;
+}
+
+function HistoryList({ initial, initialDeleted, deletedError }) {
+  const [items, setItems] = useState(initial);
+  const [deleted, setDeleted] = useState(initialDeleted);
+  const placed = (r) => { setItems(r.active.items || []); setDeleted(r.deleted); };
+  const remover = useSoftRemove(HISTORY_API, placed);
+  const locked = remover.flow.busy || remover.flow.phase === "unknown";
   return (
     <Card title={<><PixelIcon name="archive" />历史战役<span className="tnum small muted">{items.length}</span></>}>
-      {state.error ? <p className="small risk-text">读取失败：{state.error}</p> : (
-        <ul className="list campaign-history">{items.map((c) => { const all = c.phases.flatMap((p) => p.nodes); return (
-          <li key={c.id}><details>
-            <summary><strong>{c.name}</strong><span className="tnum small muted">{c.start} → {c.end.slice(5)}</span></summary>
-            <p className="small muted tnum">{all.filter((n) => n.done).length}/{all.length} 个节点已完成 · 归档于 {c.archivedAt.slice(0, 10)}</p>
-            {c.review ? <pre className="pre">{c.review}</pre> : <p className="small muted">没有写复盘</p>}
-          </details></li>
-        ); })}</ul>
-      )}
+      <WriteBox flow={remover.flow} className="soft-delete" title="删除历史战役预览" confirmLabel="确认删除" savedText="已删除，回读核对：历史列表里不再有它，已在「已删除的历史战役」里，可恢复" onConfirm={remover.confirm} onRepreview={remover.repreview} onReread={remover.reread}>
+        {(pv) => <dl className="kv">
+          <dt>删除</dt><dd>{pv.value.name} · <span className="tnum">{pv.value.start} → {pv.value.end}</span></dd>
+          <dt>内容</dt><dd className="tnum">{doneText(pv.value)}；{pv.value.review ? `复盘 ${pv.value.review.length} 字` : "没有写复盘"}</dd>
+          <dt>方式</dt><dd>软删除：归档全文和复盘全部保留，可在下方「已删除的历史战役」里按原编号恢复</dd>
+          <dt>影响</dt><dd>只影响工作台本地；当前战役和飞书都不受影响</dd>
+        </dl>}
+      </WriteBox>
+      {items.length ? <ul className="list campaign-history">{items.map((c) => (
+        <li key={c.id}><details>
+          <summary><strong>{c.name}</strong><span className="tnum small muted">{c.start} → {c.end.slice(5)}</span></summary>
+          <p className="small muted tnum">{doneText(c)} · 归档于 {c.archivedAt.slice(0, 10)}</p>
+          {c.review ? <pre className="pre">{c.review}</pre> : <p className="small muted">没有写复盘</p>}
+          <div className="row"><Button className="btn btn-xs" disabled={locked} onClick={() => remover.preview(c.id)}><PixelIcon name="close" />预览删除</Button></div>
+        </details></li>
+      ))}</ul> : <p className="small muted">没有历史战役。</p>}
+      {deletedError && <p className="small risk-text">已删除列表读取失败：{deletedError}</p>}
+      <DeletedList api={HISTORY_API} deleted={deleted} onPlaced={placed} noun="历史战役"
+        describe={(c) => ({ name: c.name, meta: `${c.start} → ${c.end} · ${doneText(c)}` })}>
+        {(pv) => <dl className="kv">
+          <dt>战役</dt><dd>{pv.value.name} · <span className="tnum">{pv.value.start} → {pv.value.end}</span></dd>
+          <dt>内容</dt><dd className="tnum">{doneText(pv.value)}；{pv.value.review ? `复盘 ${pv.value.review.length} 字` : "没有写复盘"}</dd>
+          <dt>恢复后</dt><dd>按原编号回到历史战役，从已删除列表移出；同名的其他归档不受影响</dd>
+          <dt>写到哪里</dt><dd>工作台本地；不影响当前战役和飞书</dd>
+        </dl>}
+      </DeletedList>
     </Card>
   );
 }

@@ -1,0 +1,11 @@
+✔ T10 V3 配置 HTTP 拒绝过期、跨键和并发旧预览，重复确认不改回新值 (9.642709ms)
+✔ T10 旧配置四键应拒绝未预览确认的直接 PUT (4.66025ms)
+ℹ 隔离数据实测：[{"key":"brand_base_url","previewStatus":200,"directPutStatus":400,"savedWithoutPreview":false},{"key":"report_doc_url","previewStatus":200,"directPutStatus":400,"savedWithoutPreview":false},{"key":"weekly_doc_url","previewStatus":200,"directPutStatus":400,"savedWithoutPreview":false},{"key":"material_types","previewStatus":200,"directPutStatus":400,"savedWithoutPreview":false}]
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 71.241208

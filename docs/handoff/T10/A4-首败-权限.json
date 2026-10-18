@@ -1,0 +1,36 @@
+{
+  "start_head": "c118a0bf24ee13677cc1984f896f5100ace3163c",
+  "sourceBackup": "/Users/nat/Library/Application Support/NiumaHome/backups/work-desk-20261017-133114-before-nm-20261017-133113-749434c.db",
+  "sourceHashBefore": "e34bbfe40c95b5246455f96ecda47b77e98c0ab178f7678d1db50949d76d84e8",
+  "steps": [
+    {
+      "command": [
+        "bash",
+        "scripts/release-app.sh"
+      ],
+      "code": 1,
+      "seconds": 6.502,
+      "output": "scripts/release-app.sh: line 75: /Users/nat/Library/LaunchAgents/cn.niuma-home.server.t10.plist: Operation not permitted\n"
+    }
+  ],
+  "sourceCounts": {
+    "assistants": 1,
+    "material_images": 0,
+    "materials": 0,
+    "plans": 0,
+    "promos": 15,
+    "settings": 2,
+    "sku_aliases": 1,
+    "v3_documents": 0,
+    "v3_needs": 0,
+    "v3_snapshots": 3,
+    "v3_source_status": 2,
+    "integrity_check": "ok"
+  },
+  "cleanup": {
+    "labelAbsent": true,
+    "plistAbsent": true,
+    "portFree": true
+  },
+  "sourceHashAfter": "e34bbfe40c95b5246455f96ecda47b77e98c0ab178f7678d1db50949d76d84e8"
+}

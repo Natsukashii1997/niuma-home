@@ -1,0 +1,199 @@
+{
+  "date": "2026-10-18",
+  "timezone": "Asia/Shanghai",
+  "scope": "A2 只读读取核查；不含随后 A3 调用",
+  "environment": {
+    "cwd": "/tmp/workdesk-t10-jiHkDp/a4-C/release-base/releases/nm-20261018-094238-c118a0b",
+    "PATH": "/Users/nat/.nvm/versions/node/v24.16.0/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "data": "/tmp/workdesk-t10-jiHkDp/a2-data",
+    "port": 5299,
+    "snapshotCommit": "c118a0bf24ee13677cc1984f896f5100ace3163c",
+    "mode": "foreground temporary server, no launchd added"
+  },
+  "identity": {
+    "profile": "codex",
+    "appId": "cli_aacf58ab61b85beb",
+    "identity": "user",
+    "available": true,
+    "tokenStatus": "ready",
+    "exit": 0,
+    "seconds": 0.033,
+    "userPresent": true
+  },
+  "cliEvidence": {
+    "source": "/tmp/workdesk-t10-jiHkDp/a2-cli.ndjson",
+    "firstLines": 101,
+    "executed": 100,
+    "blockedByHarness": 1,
+    "allExecutedIdentity": "user",
+    "groups": {
+      "日历": {
+        "calls": 1,
+        "cliMillisecondsTotal": 532,
+        "allOk": true
+      },
+      "日报": {
+        "calls": 1,
+        "cliMillisecondsTotal": 5952,
+        "allOk": true
+      },
+      "周报": {
+        "calls": 1,
+        "cliMillisecondsTotal": 1789,
+        "allOk": true
+      },
+      "用户时间线": {
+        "calls": 6,
+        "cliMillisecondsTotal": 1761,
+        "allOk": true
+      },
+      "知识库": {
+        "calls": 83,
+        "cliMillisecondsTotal": 42123,
+        "allOk": true
+      },
+      "项目多维表-复测": {
+        "calls": 4,
+        "cliMillisecondsTotal": 2300,
+        "allOk": true
+      },
+      "管培日志": {
+        "calls": 4,
+        "cliMillisecondsTotal": 4829,
+        "allOk": true
+      }
+    }
+  },
+  "reports": {
+    "dailyCount": 129,
+    "weeklyCount": 22,
+    "combinedHttpSeconds": 5.984,
+    "dailyCliSeconds": 5.952,
+    "weeklyCliSeconds": 1.789,
+    "durationAttribution": "源角色 fetchedAt 的完成先后与 CLI 完成顺序对照；两份文档并行读取，HTTP 合并耗时不重复记入每项"
+  },
+  "results": [
+    {
+      "item": "日历",
+      "httpStatus": 200,
+      "httpSeconds": 0.536,
+      "events": 0,
+      "statusComparison": "不适用：status 无日历字段"
+    },
+    {
+      "item": "日报",
+      "httpStatus": 200,
+      "reportCount": 129,
+      "statusComparison": "一致：daily 从 never 变为 ok"
+    },
+    {
+      "item": "周报",
+      "httpStatus": 200,
+      "reportCount": 22,
+      "statusComparison": "一致：weekly 从 never 变为 ok"
+    },
+    {
+      "item": "用户时间线",
+      "httpStatus": 200,
+      "httpSeconds": 1.793,
+      "agendaCount": 975,
+      "anomalyCount": 330,
+      "sheetsRead": 4,
+      "statusComparison": "一致：timeline 保持 ok，成功时间更新"
+    },
+    {
+      "item": "知识库",
+      "httpStatus": 200,
+      "httpSeconds": 24.207,
+      "nodes": 76,
+      "docxContentReadable": 72,
+      "unsupportedContent": {
+        "bitable": 1,
+        "file": 3
+      },
+      "statusComparison": "目录/支持格式读取成功与 kb=ok 一致；4项正文不支持未体现在 status"
+    },
+    {
+      "item": "项目多维表",
+      "httpStatus": 200,
+      "httpSeconds": 1.871,
+      "projects": 1,
+      "topLevelNodes": 17,
+      "statusComparison": "不适用：status 无项目字段",
+      "firstAttempt": {
+        "httpStatus": 502,
+        "seconds": 0.004,
+        "cause": "验证 hook 漏列 base +field-list，命令未执行；已补只读白名单并重测"
+      }
+    },
+    {
+      "item": "管培日志",
+      "httpStatus": 200,
+      "httpSeconds": 2.869,
+      "people": 2,
+      "logsPerPerson": [
+        16,
+        16
+      ],
+      "statusComparison": "不适用：status 无带教字段"
+    }
+  ],
+  "statusBefore": {
+    "checkedAt": "2026-10-18 09:53",
+    "sources": {
+      "daily": {
+        "state": "never"
+      },
+      "weekly": {
+        "state": "never"
+      },
+      "timeline": {
+        "state": "ok",
+        "at": "2026-10-17 13:10"
+      },
+      "kb": {
+        "state": "never"
+      },
+      "nas": {
+        "state": "off"
+      },
+      "voice": {
+        "state": "off"
+      }
+    }
+  },
+  "statusAfter": {
+    "checkedAt": "2026-10-18 09:55",
+    "sources": {
+      "daily": {
+        "state": "ok",
+        "at": "2026-10-18 09:53"
+      },
+      "weekly": {
+        "state": "ok",
+        "at": "2026-10-18 09:53"
+      },
+      "timeline": {
+        "state": "ok",
+        "at": "2026-10-18 09:53"
+      },
+      "kb": {
+        "state": "ok",
+        "at": "2026-10-18 09:54"
+      },
+      "nas": {
+        "state": "off"
+      },
+      "voice": {
+        "state": "off"
+      }
+    }
+  },
+  "limits": [
+    "仅证明本次快照目录和 launchd 同款 PATH 下的读取结果，不代表正式服务采用或长期稳定",
+    "真实权限拒绝、断网、限流及分页截断未触发，不宣称这些失败路径已真人验收",
+    "知识库 bitable/file 正文不支持，引用覆盖仅含本工作台已登记来源",
+    "NAS 与 Voice 的 off 状态不纳入本轮验收",
+    "真实正文、日记、名称和资源标识不随报告复制"
+  ]
+}

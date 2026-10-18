@@ -54,7 +54,7 @@ fixtures/            验收样例（飞书复制的方案原文）
 - 接口路径与数据形状以 [docs/API.md](docs/API.md) 为准；需要改，先在交接里说明理由，由 Claude 更新文档。
 - 表结构只在 `server/db.mjs` 的 SCHEMA 里改；已有列不改名、不删。
 - 视觉以 [docs/STYLE-GUIDE.md](docs/STYLE-GUIDE.md)（v2 位图风）为准：新样式先用 `styles.css` 里的变量和已有类；图标只用 `PixelIcon`；动效只用 `src/ui/bitmap.jsx` 的按帧组件，不写 CSS transition。不引入 UI 框架、CSS-in-JS 或图标库。新增依赖须在交接里说明理由。
-- 所有写入真实数据的操作必须「先预览、后确认」。
+- 所有写入真实数据的操作必须「先预览、后确认」。唯一例外：知识库快捷收藏（T12，只新建指向原文的快捷方式）用户 2026-10-18 确认点击即收藏，但仍须只写一次、不自动重试、写后回读、结果不明时锁住核对。
 - 访问飞书一律用本机 `lark-cli`（`--as user`），不在代码里写 token。
 - 只监听 127.0.0.1。
 

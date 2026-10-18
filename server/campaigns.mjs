@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { getSettings } from './db.mjs';
 import { getRecord, putRecord, listRecords, createLocalChanges, fingerprint } from './local-records.mjs';
 import { failure, validMonth } from './v3-common.mjs';
+import { assertLocalLifecycle, createLocalDeletions, deletionFailure, deletionRevision, deletionState, externalOrigin } from './local-deletions.mjs';
 
 const execute = promisify(execFile);
 export const MARKETING_BASE = 'https://vm94j8bzy7.feishu.cn/base/MxB8biSR2aJKenszh4CcprRenmf';
@@ -134,7 +135,27 @@ export function createCampaignService(db, options = {}) {
   const now = options.now || Date.now;
   const source = createMarketingSourceReader(db, { kind: 'campaign-template', tableKey: 'campaign_table_id', defaultTable: CAMPAIGN_TABLE, fields: CAMPAIGN_FIELDS, ...options, validate: campaignTemplate });
   const changes = createLocalChanges(db, { now });
-  const archives = new Map();
+  const archives = new Map(), edits = new Map();
+  const history = (deleted = false) => listRecords(db, 'campaign-archive').filter(c => !!deletionState(db, 'campaign', c.id)?.deleted === deleted).sort((a, b) => b.archivedAt.localeCompare(a.archivedAt));
+  const requireArchive = id => {
+    if (getRecord(db, 'campaign', 'current')?.id === id) throw deletionFailure(409, 'CAMPAIGN_CURRENT_PROTECTED', '当前战役不能通过历史接口删除或恢复');
+    const record = getRecord(db, 'campaign-archive', id);
+    const remote = id === 'template' || (getRecord(db, 'marketing-source', 'campaign-template')?.rows || []).some(row => row.id === id);
+    if (record && remote) throw deletionFailure(409, 'LOCAL_SOURCE_CONFLICT', '归档与已知飞书模板编号冲突，不能操作');
+    if (remote) throw deletionFailure(403, 'LOCAL_SOURCE_REQUIRED', '飞书模板记录不能在本地删除');
+    if (!record) throw deletionFailure(404, 'LOCAL_OBJECT_NOT_FOUND', '本地历史战役不存在');
+    if (record.id !== id || externalOrigin(record) || !Number.isFinite(Date.parse(record.archivedAt))) throw deletionFailure(403, 'LOCAL_SOURCE_REQUIRED', '无法核验为本地战役归档');
+    const { archivedAt, ...value } = record;
+    try { validateCampaign(value); } catch { throw deletionFailure(403, 'LOCAL_SOURCE_REQUIRED', '归档内容不符合本地战役结构'); }
+    return record;
+  };
+  const deletions = createLocalDeletions(db, { kind: 'campaign', now,
+    load: id => { const record = requireArchive(id); return { snapshot: record, value: record }; },
+  });
+  const editable = (id, revision) => {
+    assertLocalLifecycle(db, 'campaign', id, revision);
+    if (getRecord(db, 'campaign-archive', id)) throw deletionFailure(409, 'CAMPAIGN_ARCHIVED', '战役已经归档，旧编辑不能重建当前战役');
+  };
   const template = async () => {
     const data = await source();
     return { id: 'template', name: '营销战役模板（未实例化）', start: '', end: '', months: [], desc: '来自飞书营销战役模板；尚未创建真实战役，日期、负责人和物料决定待填写', phases: campaignTemplate(data.rows), routine: [] };
@@ -153,33 +174,49 @@ export function createCampaignService(db, options = {}) {
       const expected = fingerprint(signature(base.phases));
       const identity = marketingSource(db, 'campaign_table_id', CAMPAIGN_TABLE).identity;
       const sourceVersion = fingerprint(getRecord(db, 'marketing-source', 'campaign-template')?.rows ?? null);
-      return changes.preview('campaign', 'current', value, { validate: candidate => {
+      const revision = deletionRevision(db, 'campaign', value.id);
+      const preview = changes.preview('campaign', 'current', value, { validate: candidate => {
+        editable(candidate.id, revision);
         validateCampaign(candidate);
         if (fingerprint(signature(candidate.phases)) !== expected) fail('节点名称、阶段和门禁类型来自模板，请只修改状态、负责人或日期');
         if (marketingSource(db, 'campaign_table_id', CAMPAIGN_TABLE).identity !== identity) throw marketingFailure(409, 'CAMPAIGN_SOURCE_CHANGED', '战役模板配置已变化，请重新预览');
         if (!current && fingerprint(getRecord(db, 'marketing-source', 'campaign-template')?.rows ?? null) !== sourceVersion) throw marketingFailure(409, 'CAMPAIGN_SOURCE_CHANGED', '战役模板内容已变化，请重新预览');
       } });
+      for (const [token, p] of edits) if (p.expires <= now()) edits.delete(token);
+      edits.set(preview.previewId, { id: value.id, revision, expires: Date.parse(preview.expiresAt) });
+      return preview;
     },
-    confirm: body => changes.confirm('campaign', 'current', body),
+    confirm(body) {
+      const p = edits.get(body?.previewId);
+      if (p) editable(p.id, p.revision);
+      return changes.confirm('campaign', 'current', body);
+    },
     // 新开战役：当前战役整条归档为历史（只读），当前位置清空，页面回到「按模板创建」。归档和清空在同一个事务里。
-    history: () => ({ items: listRecords(db, 'campaign-archive').sort((a, b) => b.archivedAt.localeCompare(a.archivedAt)) }),
+    history: ({ deleted = false } = {}) => ({ items: history(deleted).map(c => ({ ...c, ...(deleted && { deletion: deletionState(db, 'campaign', c.id) }) })) }),
+    removePreview: (id, body) => deletions.preview(id, 'remove', body),
+    removeConfirm: (id, body) => deletions.confirm(id, 'remove', body),
+    restorePreview: (id, body) => deletions.preview(id, 'restore', body),
+    restoreConfirm: (id, body) => deletions.confirm(id, 'restore', body),
     archivePreview() {
       const current = getRecord(db, 'campaign', 'current');
       if (!current) fail('还没有创建战役，不需要新开');
+      editable(current.id, deletionRevision(db, 'campaign', current.id));
       for (const [id, p] of archives) if (p.expires <= now()) archives.delete(id);
       const previewId = randomUUID(), expires = now() + 600_000;
-      archives.set(previewId, { before: fingerprint(current), id: current.id, expires });
+      archives.set(previewId, { before: fingerprint(current), id: current.id, expires, revision: deletionRevision(db, 'campaign', current.id) });
       return { previewId, expiresAt: new Date(expires).toISOString(), value: current };
     },
     archiveConfirm(body) {
       if (body?.confirm !== true || typeof body.previewId !== 'string') fail('请先预览，再明确确认');
       const p = archives.get(body.previewId);
       if (!p || p.expires <= now()) throw failure(409, '预览已失效，请重新预览');
+      assertLocalLifecycle(db, 'campaign', p.id, p.revision);
       if (p.receipt) return structuredClone(p.receipt);
       db.exec('BEGIN IMMEDIATE');
       try {
         const current = getRecord(db, 'campaign', 'current');
         if (fingerprint(current) !== p.before) throw failure(409, '战役已变化，请重新预览');
+        if (getRecord(db, 'campaign-archive', current.id)) throw deletionFailure(409, 'CAMPAIGN_ARCHIVED', '同编号战役已归档，不能覆盖');
         const archived = { ...current, archivedAt: new Date(now()).toISOString() };
         const back = putRecord(db, 'campaign-archive', current.id, archived, now());
         db.prepare("DELETE FROM v3_documents WHERE kind='campaign' AND id='current'").run();

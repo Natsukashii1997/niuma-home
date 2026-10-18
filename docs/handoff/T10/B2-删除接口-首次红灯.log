@@ -1,0 +1,353 @@
+✖ B2 project 软删除与恢复保留完整对象，离线本地列表可回读 (19.097125ms)
+✖ B2 project 删除及恢复到期预览均拒绝且状态不变 (5.693209ms)
+✖ B2 project 重复确认幂等且旧删除恢复令牌不能跨生命周期重放 (5.416ms)
+✖ B2 project 并发内容变化及并发删除令牌均失效 (4.941792ms)
+✖ B2 project 预览绑定对象与动作且确认不接受额外字段 (5.683417ms)
+✖ B2 project 恢复同名冲突拒绝，不覆盖新对象 (5.030417ms)
+✖ B2 project 生命周期保存失败回滚，不能假报删除成功 (4.6995ms)
+✖ B2 campaign 软删除与恢复保留完整对象，离线本地列表可回读 (6.643083ms)
+✖ B2 campaign 删除及恢复到期预览均拒绝且状态不变 (5.620542ms)
+✖ B2 campaign 重复确认幂等且旧删除恢复令牌不能跨生命周期重放 (4.892792ms)
+✖ B2 campaign 并发内容变化及并发删除令牌均失效 (5.040042ms)
+✖ B2 campaign 预览绑定对象与动作且确认不接受额外字段 (8.826708ms)
+✖ B2 campaign 恢复同名冲突拒绝，不覆盖新对象 (4.924708ms)
+✖ B2 campaign 生命周期保存失败回滚，不能假报删除成功 (5.355417ms)
+✖ B2 项目来源必须由持久化本地记录证明，飞书同ID冲突保守拒绝 (4.660833ms)
+✖ B2 项目删除恢复后旧节点编辑与创建令牌仍拒绝，覆盖内容保持原样 (5.248458ms)
+✖ B2 历史战役拒绝当前对象、飞书模板及外部来源标记 (6.616292ms)
+✖ B2 历史战役删除恢复后旧编辑与归档令牌不能重建或覆盖对象 (6.79075ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 0
+ℹ fail 18
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 184.397875
+
+✖ failing tests:
+
+test at tests/t10-local-deletion.test.mjs:73:3
+✖ B2 project 软删除与恢复保留完整对象，离线本地列表可回读 (19.097125ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：GET /api/v3/local-projects
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:79:26)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:96:3
+✖ B2 project 删除及恢复到期预览均拒绝且状态不变 (5.693209ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/local-projects/local-675538a1-3924-46c0-a848-dd6d61ee9c56/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at Object.preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:98:21)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:109:3
+✖ B2 project 重复确认幂等且旧删除恢复令牌不能跨生命周期重放 (5.416ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/local-projects/local-7c26588f-8370-49f4-bac6-d7ee8217415b/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at Object.change (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:68:58)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:111:29)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:123:3
+✖ B2 project 并发内容变化及并发删除令牌均失效 (4.941792ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/local-projects/local-4003e69a-619c-4f3a-8179-997801e65a74/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at Object.preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:125:27)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:135:3
+✖ B2 project 预览绑定对象与动作且确认不接受额外字段 (5.683417ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/local-projects/local-dd385bcd-68f5-4665-a35f-da294db4e0b4/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at Object.preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:137:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:146:3
+✖ B2 project 恢复同名冲突拒绝，不覆盖新对象 (5.030417ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/local-projects/local-aec839f9-9833-43c3-9a8a-7a54b432d586/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at Object.change (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:68:58)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:148:13)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:156:3
+✖ B2 project 生命周期保存失败回滚，不能假报删除成功 (4.6995ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/local-projects/local-a441a621-ea7c-42bf-bcf6-3274d05ad55c/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at Object.preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:158:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:73:3
+✖ B2 campaign 软删除与恢复保留完整对象，离线本地列表可回读 (6.643083ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/campaigns/history/654f9ff5-3f5e-411f-8909-5eaa3da70d58/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at Object.preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:81:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:96:3
+✖ B2 campaign 删除及恢复到期预览均拒绝且状态不变 (5.620542ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/campaigns/history/ec16456d-b762-40c3-b88c-b914b8a880d6/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at Object.preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:98:21)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:109:3
+✖ B2 campaign 重复确认幂等且旧删除恢复令牌不能跨生命周期重放 (4.892792ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/campaigns/history/8df4f2b3-adc2-4582-bea9-4e21f83bee51/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at Object.change (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:68:58)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:111:29)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:123:3
+✖ B2 campaign 并发内容变化及并发删除令牌均失效 (5.040042ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/campaigns/history/d34740ff-b0a4-424c-a724-e6ed7aa64974/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at Object.preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:125:27)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:135:3
+✖ B2 campaign 预览绑定对象与动作且确认不接受额外字段 (8.826708ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/campaigns/history/c753ecd1-76bc-4780-9da7-a8273b9a6a49/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at Object.preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:137:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:146:3
+✖ B2 campaign 恢复同名冲突拒绝，不覆盖新对象 (4.924708ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/campaigns/history/5ba3a47e-76bc-4ae3-8375-ff767da8dd6f/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at Object.change (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:68:58)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:148:13)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:156:3
+✖ B2 campaign 生命周期保存失败回滚，不能假报删除成功 (5.355417ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/campaigns/history/cbbf53d1-04a2-4765-b432-99ed322c5ba2/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at Object.preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:158:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:168:1
+✖ B2 项目来源必须由持久化本地记录证明，飞书同ID冲突保守拒绝 (4.660833ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/local-projects/remote-project/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:170:24)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:182:1
+✖ B2 项目删除恢复后旧节点编辑与创建令牌仍拒绝，覆盖内容保持原样 (5.248458ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/local-projects/local-c62096fa-3a48-49c6-af9e-032735551697/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at Object.change (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:68:58)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:185:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:194:1
+✖ B2 历史战役拒绝当前对象、飞书模板及外部来源标记 (6.616292ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/campaigns/history/488a4312-cc72-4875-98ac-b635df358b8c/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:198:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/t10-local-deletion.test.mjs:206:1
+✖ B2 历史战役删除恢复后旧编辑与归档令牌不能重建或覆盖对象 (6.79075ms)
+  AssertionError [ERR_ASSERTION]: 缺少真实路由：POST /api/v3/campaigns/history/403b5abd-4468-4e9c-9e29-91d439ecc57e/remove-preview
+      at request (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:25:10)
+      at ok (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:33:26)
+      at preview (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:66:35)
+      at Object.change (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:68:58)
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-local-deletion.test.mjs:208:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

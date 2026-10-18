@@ -1,0 +1,20 @@
+✔ T10 附件 HTTP 上传过期拒绝、确认绑定月份并幂等、文件经下载回读一致 (13.339625ms)
+✔ T10 附件 HTTP 删除过期拒绝、并发旧预览拒绝、重复确认后列表与文件均不存在 (6.131ms)
+✔ T10 附件删除文件失败后重试不得返回文件仍遗留的成功回执 (6.170416ms)
+ℹ 附件隔离故障实测：{"faultInjected":true,"firstStatus":500,"firstBody":{"error":"营销数据处理失败，请重新读取后再操作","code":"EACCES"},"recordsAfterFirst":1,"fileExistsAfterFirst":true,"retryStatus":200,"retryBody":{"ok":true,"id":"091de84e-aba3-4680-b6e4-b81156d05586"},"recordsAfterRetry":0,"fileExistsAfterRetry":false,"fileEndpointAfterRetry":404}
+✔ T11 附件新增哈希不一致不留记录或文件，重试不得假成功 (7.009042ms)
+ℹ {"mode":"hash","attempt":0,"status":500,"records":0,"file":false,"hits":1}
+ℹ {"mode":"hash","attempt":1,"status":500,"records":0,"file":false,"hits":2}
+✔ T11 附件新增读文件抛错不留记录或文件，重试不得假成功 (5.796916ms)
+ℹ {"mode":"read","attempt":0,"status":500,"records":0,"file":false,"hits":1}
+ℹ {"mode":"read","attempt":1,"status":500,"records":0,"file":false,"hits":2}
+✔ T11 附件upload提交失败补偿文件与记录，同令牌可重试 (5.09925ms)
+✔ T11 附件remove提交失败补偿文件与记录，同令牌可重试 (5.550875ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 118.732209

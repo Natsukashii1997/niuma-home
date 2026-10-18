@@ -1,0 +1,303 @@
+✔ B2 project 软删除与恢复保留完整对象，离线本地列表可回读 (44.039542ms)
+✔ B2 project 删除及恢复到期预览均拒绝且状态不变 (34.399791ms)
+✔ B2 project 重复确认幂等且旧删除恢复令牌不能跨生命周期重放 (13.1365ms)
+✔ B2 project 并发内容变化及并发删除令牌均失效 (9.503125ms)
+✔ B2 project 预览绑定对象与动作且确认不接受额外字段 (10.483666ms)
+✔ B2 project 恢复同名冲突拒绝，不覆盖新对象 (12.362792ms)
+✔ B2 project 生命周期保存失败回滚，不能假报删除成功 (10.716291ms)
+✔ B2 campaign 软删除与恢复保留完整对象，离线本地列表可回读 (17.170791ms)
+✔ B2 campaign 删除及恢复到期预览均拒绝且状态不变 (11.227542ms)
+✔ B2 campaign 重复确认幂等且旧删除恢复令牌不能跨生命周期重放 (13.086833ms)
+✔ B2 campaign 并发内容变化及并发删除令牌均失效 (9.43675ms)
+✔ B2 campaign 预览绑定对象与动作且确认不接受额外字段 (8.498916ms)
+✔ B2 campaign 恢复同名冲突拒绝，不覆盖新对象 (12.152542ms)
+✔ B2 campaign 生命周期保存失败回滚，不能假报删除成功 (7.825375ms)
+✔ B2 项目来源必须由持久化本地记录证明，飞书同ID冲突保守拒绝 (11.117459ms)
+✔ B2 项目删除恢复后旧节点编辑与创建令牌仍拒绝，覆盖内容保持原样 (5.721167ms)
+✔ B2 历史战役拒绝当前对象、飞书模板及外部来源标记 (6.24475ms)
+✔ B2 历史战役删除恢复后旧编辑与归档令牌不能重建或覆盖对象 (6.432958ms)
+✔ T10 带教记录预览到期后拒绝确认，回读没有新增记录 (96.416042ms)
+✔ T10 带教记录重复确认返回原回执，回读只有一条周记录 (13.16975ms)
+✔ T10 带教来源配置变更使旧记录预览失效，新旧来源均不误写 (11.395792ms)
+✔ T10 助手知识新增预览到期后拒绝确认，回读仍为空 (9.00225ms)
+✔ T10 助手知识删除预览到期后拒绝确认，原文仍可回读 (10.662875ms)
+✔ T10 助手知识重复删除确认返回原回执，不删除其他知识 (11.926958ms)
+✔ T10 参考画布预览到期后拒绝确认，不写入记录或预备图片 (7.806125ms)
+✔ T10 时间线裁定预览到期后拒绝确认，回读异常保持未裁定 (9.277458ms)
+✔ T10 时间线裁定重复确认返回原回执，回读只应用一次 (5.424083ms)
+✔ T10 自言自语 PATCH :id 路由完成预览确认与回读 (9.187292ms)
+✔ T10 V3 未实现写接口 POST 返回501及派单标识 (0.142458ms)
+✔ T10 V3 未实现写接口 PUT 返回501及派单标识 (0.070958ms)
+✔ T10 V3 未实现写接口 PATCH 返回501及派单标识 (0.020875ms)
+✔ T10 V3 未实现写接口 DELETE 返回501及派单标识 (0.018209ms)
+✔ T10 策略导出路由预览到期后拒绝确认，不调用创建或写收据 (11.652ms)
+✔ T10 策略导出路由重复确认只创建一次，过期后仍回放成功收据 (9.925167ms)
+✔ T10 飞书项目同步后节点来源变化使旧编辑预览失效 (6.69575ms)
+✔ T10 飞书项目来源配置变化使旧编辑预览失效且不误写新旧来源 (7.016083ms)
+✖ 营销真实模板拆多值、保留普通子项并提升门禁，不生成运行时间或完成状态 (64.366917ms)
+✖ 产品目录真实名称与促销表一致；仅两Lite演示矩阵标明来源，不污染业务记录 (8.977084ms)
+✖ 价格先预览后确认、破底线包含赠课成本、完整档位校验和已采纳需求关联 (5.829834ms)
+✖ 价格确认重新检查成本、需求状态、来源配置和预览过期；数据库失败回滚 (7.574042ms)
+✖ 模板实例只在本地预览确认后生成，物料决定持久化，门禁不可被状态编辑抹去 (5.320625ms)
+✖ 战役复盘只在已创建战役上预览确认后保存，节点改动不会冲掉复盘 (6.179583ms)
+✖ brief只带入已采纳需求和正式保存价格；缺价格仍完整返回七节 (7.079625ms)
+✖ brief逐字段保护人工编辑，源变更保留已改文字、更新未改目标；预览确认和导出无飞书写入 (5.878208ms)
+✖ 已采纳需求在时间线内容变化后不再成为营销价格或brief的确定事实 (8.323125ms)
+✖ 自言自语派生需求按完整来源指纹核对，支持已采纳项且排除变更与删除 (5.565459ms)
+✖ 来源缓存按配置identity失效，读取失败不回旧配置成功 (5.7255ms)
+✖ 时间线来源配置变更不能借旧快照接受需求；已采纳自言自语来源保持独立 (6.426708ms)
+✖ A成功快照在B读取失败后不会被冒认成B，配置切回A可继续核验原采纳需求 (4.738667ms)
+✖ 旧裸时间线快照仅兼容默认来源，不以失败尝试身份给自定义来源背书 (6.550708ms)
+✖ 价格和新战役预览绑定来源行指纹，同配置的新同步不允许旧预览确认 (4.876209ms)
+✔ 飞书读取使用codex/user，固定字段投影和完整分页，拒绝bot、半页和修订漂移 (0.931542ms)
+✔ 日期类异常带单元格定位；校名类异常没有 (12.691333ms)
+✔ 裁定先预览后确认；采用后这一格参与需求推导，原格一改自动失效 (13.308625ms)
+✔ 手填日期补上不能解析的格子；不采用不参与；撤销裁定；同步后旧预览被拒 (53.350708ms)
+✔ 新建本地项目按飞书项目结构生成、全部清空，节点改动照常预览确认 (14.795708ms)
+✔ 新开战役：当前战役整条归档为历史，再按模板新开；并发改动被拒 (11.880083ms)
+✔ V3 项目矩阵完整性、真实阶段、多值门禁与跨年日期不推断 (4.050709ms)
+✔ V3 飞书读取强制codex/user并拒绝非用户身份、截断结果 (0.622375ms)
+✔ V3 项目真实CLI读取使用JSON上限200并完整分页关联读取 (0.579084ms)
+✔ V3 项目缓存懒加载、配置失效、失败不返回旧快照 (52.121417ms)
+✔ V3 项目勾选和改期先预览后确认、并发与旧回执稳定 (12.441084ms)
+✔ V3 近30天日志按明确年份及倒序跨年、固定章节不假报提问 (14.790417ms)
+✔ V3 带教目录先读XML并固定版本范围读取，无近30天时不拉全文 (1.531375ms)
+✔ V3 带教结论仅本地预览确认回读，来源变更不混用历史 (12.042125ms)
+✔ V3 知识树目录保留正文、不可读不伪造0、重复需标题及正文双证据 (1.649834ms)
+✔ V3 知识树变更只预览，禁止同名目录猜测、删除与循环 (0.511083ms)
+✔ V3 知识树分页与来源身份校验，失败不保存成功水位 (10.198625ms)
+✔ V3 知识库遇限流有限退避，权限错误不重试 (0.840833ms)
+✔ V3 知识库引用只来自实际本地设置、Agent指令与已登记知识 (10.535ms)
+✖ V3 项目带教知识库HTTP读取、同步及各写入预览门禁 (11.557625ms)
+ℹ tests 71
+ℹ suites 0
+ℹ pass 55
+ℹ fail 16
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 319.59425
+
+✖ failing tests:
+
+test at tests/v3-marketing.test.mjs:62:1
+✖ 营销真实模板拆多值、保留普通子项并提升门禁，不生成运行时间或完成状态 (64.366917ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-marketing.test.mjs:77:1
+✖ 产品目录真实名称与促销表一致；仅两Lite演示矩阵标明来源，不污染业务记录 (8.977084ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-marketing.test.mjs:97:1
+✖ 价格先预览后确认、破底线包含赠课成本、完整档位校验和已采纳需求关联 (5.829834ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-marketing.test.mjs:116:1
+✖ 价格确认重新检查成本、需求状态、来源配置和预览过期；数据库失败回滚 (7.574042ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-marketing.test.mjs:130:1
+✖ 模板实例只在本地预览确认后生成，物料决定持久化，门禁不可被状态编辑抹去 (5.320625ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-marketing.test.mjs:144:1
+✖ 战役复盘只在已创建战役上预览确认后保存，节点改动不会冲掉复盘 (6.179583ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at processTicksAndRejections (node:internal/process/task_queues:90:21)
+      at runNextTicks (node:internal/process/task_queues:69:3)
+      at process.processImmediate (node:internal/timers:472:9) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-marketing.test.mjs:166:1
+✖ brief只带入已采纳需求和正式保存价格；缺价格仍完整返回七节 (7.079625ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at processTicksAndRejections (node:internal/process/task_queues:90:21)
+      at runNextTicks (node:internal/process/task_queues:69:3)
+      at process.processImmediate (node:internal/timers:472:9) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-marketing.test.mjs:176:1
+✖ brief逐字段保护人工编辑，源变更保留已改文字、更新未改目标；预览确认和导出无飞书写入 (5.878208ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at processTicksAndRejections (node:internal/process/task_queues:90:21)
+      at runNextTicks (node:internal/process/task_queues:69:3)
+      at process.processImmediate (node:internal/timers:472:9) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-marketing.test.mjs:196:1
+✖ 已采纳需求在时间线内容变化后不再成为营销价格或brief的确定事实 (8.323125ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at processTicksAndRejections (node:internal/process/task_queues:90:21)
+      at runNextTicks (node:internal/process/task_queues:69:3)
+      at process.processImmediate (node:internal/timers:472:9) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-marketing.test.mjs:205:1
+✖ 自言自语派生需求按完整来源指纹核对，支持已采纳项且排除变更与删除 (5.565459ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-marketing.test.mjs:218:1
+✖ 来源缓存按配置identity失效，读取失败不回旧配置成功 (5.7255ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-marketing.test.mjs:227:1
+✖ 时间线来源配置变更不能借旧快照接受需求；已采纳自言自语来源保持独立 (6.426708ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-marketing.test.mjs:239:1
+✖ A成功快照在B读取失败后不会被冒认成B，配置切回A可继续核验原采纳需求 (4.738667ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at processTicksAndRejections (node:internal/process/task_queues:90:21)
+      at runNextTicks (node:internal/process/task_queues:69:3)
+      at process.processImmediate (node:internal/timers:472:9) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-marketing.test.mjs:265:1
+✖ 旧裸时间线快照仅兼容默认来源，不以失败尝试身份给自定义来源背书 (6.550708ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at processTicksAndRejections (node:internal/process/task_queues:90:21)
+      at runNextTicks (node:internal/process/task_queues:69:3)
+      at process.processImmediate (node:internal/timers:472:9) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-marketing.test.mjs:279:1
+✖ 价格和新战役预览绑定来源行指纹，同配置的新同步不允许旧预览确认 (4.876209ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at processTicksAndRejections (node:internal/process/task_queues:90:21)
+      at runNextTicks (node:internal/process/task_queues:69:3)
+      at process.processImmediate (node:internal/timers:472:9) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at tests/v3-projects.test.mjs:186:1
+✖ V3 项目带教知识库HTTP读取、同步及各写入预览门禁 (11.557625ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1986:21)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }

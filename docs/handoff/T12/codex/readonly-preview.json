@@ -1,0 +1,62 @@
+{
+  "capturedAt": "2026-10-18T05:26:20.648Z",
+  "identity": {
+    "profile": "codex",
+    "appId": "cli_aacf…5beb",
+    "identity": "user"
+  },
+  "mode": "真实只读预览，未调用收藏接口，未创建",
+  "source": {
+    "nodeToken": "MEwD…DnRb",
+    "objToken": "P4t5…mnpc",
+    "objType": "docx",
+    "nodeType": "origin",
+    "spaceId": "7527…9826",
+    "spaceName": "My Document Library",
+    "spaceType": "my_library",
+    "parentTitle": "",
+    "titlePreview": "轮岗结束后产品业务问题反馈与岗位调整沟通",
+    "titleLength": 1024,
+    "titleTruncated": true
+  },
+  "target": {
+    "spaceId": "7620…5965",
+    "nodeToken": "RIPw…znwc",
+    "title": "👔 管培带教"
+  },
+  "classification": {
+    "reason": "first",
+    "matched": [
+      {
+        "nodeToken": "RIPw…znwc",
+        "title": "👔 管培带教",
+        "keywords": [
+          "轮岗"
+        ]
+      },
+      {
+        "nodeToken": "ZjYL…zn1g",
+        "title": "📦 产品文档",
+        "keywords": [
+          "产品"
+        ]
+      },
+      {
+        "nodeToken": "S6Su…bnwd",
+        "title": "🧪 AI实验室",
+        "keywords": [
+          "AI"
+        ]
+      }
+    ]
+  },
+  "duplicate": null,
+  "treeNodesRead": 76,
+  "writeCalls": 0,
+  "limitations": [
+    "只核验元信息，未读取正文",
+    "未证明真实创建及写后回读",
+    "未执行云盘真实收藏请求",
+    "源文档的标题字段含长段转写，证据仅保留首行；关键词匹配仍基于读取到的完整标题。"
+  ]
+}

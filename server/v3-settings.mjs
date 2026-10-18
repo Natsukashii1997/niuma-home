@@ -4,12 +4,14 @@ import { getSettings, saveSetting } from './db.mjs';
 import { failure } from './v3-common.mjs';
 import { reportDocumentUrl } from './reports.mjs';
 import { TIMELINE_SOURCE } from './timeline.mjs';
+import { COLLECT_SPACE, COLLECT_RULES, collectRules, validateCollectRuleNodes } from './kb-collect-config.mjs';
 
 export const V3_DEFAULTS = {
   timeline_source: JSON.stringify(TIMELINE_SOURCE),
   project_base_url: 'https://vm94j8bzy7.feishu.cn/base/MxB8biSR2aJKenszh4CcprRenmf',
   project_table_id: 'tblIEuoDOvkHeU3P', campaign_table_id: 'tblDhQCi5CCZCvUT', price_sku_table_id: 'tblwaujJdrNHoVea',
   kb_space_id: '7620758074885835965',
+  kb_collect_space: COLLECT_SPACE, kb_collect_rules: JSON.stringify(COLLECT_RULES),
   mentor_sources: JSON.stringify([
     { name: '林瑶', role: '管培生', year: 2026, url: 'https://vm94j8bzy7.feishu.cn/docx/GcwKdGzljozUeUxesWhctBQXnpe' },
     { name: '胡贵兰', role: '管培生', year: 2026, url: 'https://vm94j8bzy7.feishu.cn/docx/FZfXdpxL9oKs6jxW1T7cVisdnIb' },
@@ -38,7 +40,9 @@ export function validateV3Setting(key, raw) {
     return `${u.origin}${u.pathname.replace(/\/$/, '')}`;
   } else if (key.endsWith('_table_id')) {
     if (!/^tbl[a-zA-Z0-9]+$/.test(value)) bad('数据表 ID 须以 tbl 开头');
-  } else if (key === 'kb_space_id') {
+  } else if (key === 'kb_collect_rules') {
+    return JSON.stringify(collectRules(value));
+  } else if (key === 'kb_space_id' || key === 'kb_collect_space') {
     if (!/^\d{10,30}$/.test(value)) bad('知识空间 ID 须为数字');
   } else if (key === 'mentor_sources') {
     let list; try { list = JSON.parse(value); } catch { bad('日志来源须为 JSON 数组'); }
@@ -59,17 +63,23 @@ export function validateV3Setting(key, raw) {
   return value;
 }
 
-export function createSettingsChanges(db, { now = Date.now } = {}) {
+export function createSettingsChanges(db, { now = Date.now, validate = validateV3Setting, run } = {}) {
   const pending = new Map();
   return {
     read: () => ({ values: { ...V3_DEFAULTS, ...getSettings(db) }, saved: getSettings(db), readonly: ['lark_profile', 'lark_app_id'], demoDefaults: ['price_floor_margin', 'price_cost_per_hour'] }),
     preview(key, body) {
-      const value = validateV3Setting(key, body?.value), before = getSettings(db)[key] ?? null;
+      const value = validate(key, body?.value), before = getSettings(db)[key] ?? null;
+      const space = getSettings(db).kb_collect_space || COLLECT_SPACE;
+      const prepare = () => {
+      if(key === 'kb_collect_rules' && (getSettings(db).kb_collect_space || COLLECT_SPACE) !== space) throw failure(409, '收藏空间已变化，请重新预览规则');
       for (const [id, p] of pending) if (p.expires <= now()) pending.delete(id);
       if (pending.size >= 100) throw failure(429, '待确认配置过多，请稍后重试');
       const previewId = randomUUID(), expires = now() + 600000;
-      pending.set(previewId, { key, value, before, expires });
+      pending.set(previewId, { key, value, before, expires, ...(key === 'kb_collect_rules' ? { space } : {}) });
       return { previewId, expiresAt: new Date(expires).toISOString(), key, before, value };
+      };
+      // 只对收藏规则做异步节点核验，保留旧设置服务的同步合同。
+      return key === 'kb_collect_rules' ? validateCollectRuleNodes(JSON.parse(value), space, run).then(prepare) : prepare();
     },
     confirm(key, body) {
       if (body?.confirm !== true || typeof body.previewId !== 'string') throw failure(400, '请先预览配置，再确认保存');
@@ -79,9 +89,12 @@ export function createSettingsChanges(db, { now = Date.now } = {}) {
       db.exec('BEGIN IMMEDIATE');
       try {
         if ((getSettings(db)[key] ?? null) !== p.before) throw failure(409, '配置已被修改，请重新预览');
-        validateV3Setting(key, p.value);
+        if(p.space && (getSettings(db).kb_collect_space || COLLECT_SPACE) !== p.space) throw failure(409, '收藏空间已变化，请重新预览规则');
+        validate(key, p.value);
         const receipt = saveSetting(db, key, p.value);
-        if (getSettings(db)[key] !== p.value) throw failure(500, '配置回读不一致');
+        const saved = getSettings(db);
+        const cleared = key === 'weekly_doc_url' && p.value === '';
+        if (cleared ? Object.hasOwn(saved, key) : saved[key] !== p.value) throw failure(500, '配置回读不一致');
         db.exec('COMMIT'); p.receipt = receipt; return receipt;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     },

@@ -4,6 +4,7 @@ import { getSettings } from './db.mjs';
 import { randomUUID } from 'node:crypto';
 import { createLocalChanges, fingerprint, getRecord, listRecords } from './local-records.mjs';
 import { failure, saveSnapshot } from './v3-common.mjs';
+import { assertLocalLifecycle, createLocalDeletions, deletionFailure, deletionRevision, deletionState, externalOrigin } from './local-deletions.mjs';
 
 const execute = promisify(execFile);
 export const PROJECT_SOURCE = { url: 'https://vm94j8bzy7.feishu.cn/base/MxB8biSR2aJKenszh4CcprRenmf', table: 'tblIEuoDOvkHeU3P' };
@@ -16,8 +17,9 @@ export async function runLark(args, run = execute) {
     let detail;
     try { detail = JSON.parse(error.stderr).error; } catch { /* CLI或网络错误不返回用户原文。 */ }
     if (detail?.subtype === 'rate_limit') throw Object.assign(failure(429, '飞书读取触发限流，请稍后重试'), { retryAfterMs: 3000 });
-    if (detail?.subtype === 'permission_denied') throw failure(403, '当前 codex 用户无权读取此飞书资源');
-    throw failure(502, '飞书读取失败，请检查 codex 用户登录、读取权限和网络');
+    const safeCode = Number.isInteger(detail?.code) ? { larkCode: detail.code } : {};
+    if (detail?.subtype === 'permission_denied') throw Object.assign(failure(403, '当前 codex 用户无权读取此飞书资源'), safeCode);
+    throw Object.assign(failure(502, '飞书读取失败，请检查 codex 用户登录、读取权限和网络'), safeCode);
   }
   if (result.ok !== true || result.identity !== 'user' || !result.data || result.truncated || result.data.truncated) throw failure(502, '飞书没有返回完整的用户身份数据');
   return result.data;
@@ -141,17 +143,38 @@ export function createProjectService(db, { readSource = readProjectSource, now =
   const receipts = new Map();
   const identity = () => fingerprint(config());
   // 本地项目（编号 local-…）只存工作台：按某个飞书项目的阶段和节点生成，节点改动同样存 project-state，但不随飞书来源配置变化。
-  const LOCAL = 'local-project', isLocal = id => id.startsWith('local-');
+  const LOCAL = 'local-project', isLocal = id => !!getRecord(db, LOCAL, id);
   const key = id => isLocal(id) ? `local:${id}` : `${identity()}:${id}`;
-  const locals = () => listRecords(db, LOCAL).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const creations = new Map();
+  const locals = (deleted = false) => listRecords(db, LOCAL).filter(p => !!deletionState(db, 'project', p.id)?.deleted === deleted).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const creations = new Map(), edits = new Map();
+  const knownRemote = () => {
+    const row = db.prepare("SELECT payload FROM v3_snapshots WHERE kind='projects'").get();
+    return [...(latestProjects || []), ...(row ? JSON.parse(row.payload).value || [] : [])];
+  };
+  const requireLocal = id => {
+    const record = getRecord(db, LOCAL, id), remote = knownRemote().some(p => p.id === id);
+    if (record && remote) throw deletionFailure(409, 'LOCAL_SOURCE_CONFLICT', '本地项目与已知飞书来源编号冲突，不能操作');
+    if (remote) throw deletionFailure(403, 'LOCAL_SOURCE_REQUIRED', '飞书来源项目不能在本地删除');
+    if (!record) throw deletionFailure(404, 'LOCAL_OBJECT_NOT_FOUND', '本地项目不存在');
+    if (record.id !== id || record.local !== true || externalOrigin(record) || !record.basedOn?.id || !Array.isArray(record.nodes) || !Number.isFinite(Date.parse(record.createdAt))) throw deletionFailure(403, 'LOCAL_SOURCE_REQUIRED', '无法核验为本地创建的项目');
+    return record;
+  };
   function apply(project, saved) {
     const record = saved || getRecord(db, 'project-state', key(project.id));
     const overlay = n => ({ ...n, ...(record?.overrides[n.id] || {}), ...(record?.overrides[n.id]?.dueDate !== undefined ? { due: record.overrides[n.id].dueDate.slice(5) } : {}) });
     return { ...project, nodes: project.nodes.map(n => { const kids = n.childNodes?.map(overlay); return { ...overlay(n), ...(kids ? { childNodes: kids, kids: kids.map(k => [k.t, k.done]) } : {}) }; }) };
   }
+  const deletions = createLocalDeletions(db, { kind: 'project', now,
+    load: id => { const record = requireLocal(id); return { snapshot: { record, state: getRecord(db, 'project-state', `local:${id}`) }, value: apply(record) }; },
+    restoreConflict: (id, target) => { if ([...locals(), ...knownRemote()].some(p => p.id !== id && p.name === target.value.name)) throw deletionFailure(409, 'LOCAL_RESTORE_CONFLICT', '已有同名项目，请先处理名称冲突'); },
+  });
   return {
     list: async options => [...(await read(options)), ...locals()].map(project => apply(project)),
+    localList: ({ deleted = false } = {}) => ({ items: locals(deleted).map(p => ({ ...apply(p), ...(deleted && { deletion: deletionState(db, 'project', p.id) }) })) }),
+    removePreview: (id, body) => deletions.preview(id, 'remove', body),
+    removeConfirm: (id, body) => deletions.confirm(id, 'remove', body),
+    restorePreview: (id, body) => deletions.preview(id, 'restore', body),
+    restoreConfirm: (id, body) => deletions.confirm(id, 'restore', body),
     async createPreview(body) {
       if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some(k => !['name', 'basedOn'].includes(k))) throw failure(400, '新建项目内容无效');
       const name = typeof body.name === 'string' ? body.name.trim() : '';
@@ -166,17 +189,21 @@ export function createProjectService(db, { readSource = readProjectSource, now =
       const value = { id, name, template: '项目推进', status: '推进中', phase: -1, phases: base.phases, nodes, local: true, basedOn: { id: base.id, name: base.name }, createdAt: new Date(now()).toISOString() };
       const preview = changes.preview(LOCAL, id, value, { validate: (v, current) => { if (current || locals().some(p => p.name === name)) throw failure(409, '已有同名项目，请重新预览'); } });
       for (const [k, c] of creations) if (c.expires <= now()) creations.delete(k);
-      creations.set(preview.previewId, { id, expires: Date.parse(preview.expiresAt) });
+      creations.set(preview.previewId, { id, expires: Date.parse(preview.expiresAt), revision: deletionRevision(db, 'project', id) });
       return preview;
     },
     createConfirm(body) {
       if (body?.confirm !== true || typeof body.previewId !== 'string') throw failure(400, '请先预览，再明确确认');
       const c = creations.get(body.previewId);
       if (!c) throw failure(409, '预览已失效，请重新预览');
+      assertLocalLifecycle(db, 'project', c.id, c.revision);
+      if (isLocal(c.id)) requireLocal(c.id);
       return apply(changes.confirm(LOCAL, c.id, body));
     },
     async preview(id, body) {
-      const project = isLocal(id) ? getRecord(db, LOCAL, id) : (await read()).find(p => p.id === id);
+      const local = isLocal(id), revision = deletionRevision(db, 'project', id);
+      if (local) assertLocalLifecycle(db, 'project', id);
+      const project = local ? requireLocal(id) : (await read()).find(p => p.id === id);
       if (!project) throw failure(404, '项目不存在');
       if (!body || typeof body.nodeId !== 'string' || !project.nodes.flatMap(n => [n, ...(n.childNodes || [])]).some(n => n.id === body.nodeId)) throw failure(400, '请选择有效项目节点');
       const patch = {};
@@ -186,11 +213,17 @@ export function createProjectService(db, { readSource = readProjectSource, now =
       const sourceIdentity = isLocal(id) ? 'local' : identity(), recordKey = key(id), sourceHash = fingerprint(project);
       const current = getRecord(db, 'project-state', recordKey);
       const value = { sourceIdentity, projectId: id, overrides: { ...current?.overrides, [body.nodeId]: { ...current?.overrides?.[body.nodeId], ...patch } } };
-      return changes.preview('project-state', recordKey, value, { validate: () => {
+      const preview = changes.preview('project-state', recordKey, value, { validate: () => {
+        if (local) { assertLocalLifecycle(db, 'project', id, revision); requireLocal(id); }
         if (isLocal(id) ? fingerprint(getRecord(db, LOCAL, id)) !== sourceHash : identity() !== sourceIdentity || fingerprint(latestProjects?.find(p => p.id === id)) !== sourceHash) throw failure(409, '项目来源或节点已变化，请重新预览');
       } });
+      for (const [token, p] of edits) if (p.expires <= now()) edits.delete(token);
+      edits.set(preview.previewId, { id, local, revision, expires: Date.parse(preview.expiresAt) });
+      return preview;
     },
     async confirm(id, body) {
+      const edit = edits.get(body?.previewId);
+      if (isLocal(id)) { assertLocalLifecycle(db, 'project', id, edit?.revision); requireLocal(id); }
       const projects = isLocal(id) ? locals() : await read();
       const committed = changes.confirm('project-state', key(id), body);
       if (receipts.has(body.previewId)) return structuredClone(receipts.get(body.previewId));

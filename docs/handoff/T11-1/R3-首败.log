@@ -1,0 +1,33 @@
+✖ T11 UTF-8发布尾段成功输出完整中文且无变量展开错误 (16.889292ms)
+ℹ {"locale":"en_US.UTF-8","phase":"","status":1,"stdout":"","stderr":"/bin/bash: line 63: NAME�: unbound variable\n"}
+✔ T11 UTF-8发布尾段维护失败输出完整中文且无变量展开错误 (12.619ms)
+ℹ {"locale":"en_US.UTF-8","phase":"logs","status":1,"stdout":"","stderr":"T10 合成维护失败：logs EACCES\n日志保留策略失败（退出码 7）；保留上述错误，继续启动并核对目标服务\n服务已切换但保留策略未完成：nm-20261001-120000-c118a0b；http://127.0.0.1:5299（launchd cn.niuma-home.synthetic-test）。请核对上方错误后处理维护项。\n"}
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 65.406959
+
+✖ failing tests:
+
+test at tests/t10-release-retention.test.mjs:230:3
+✖ T11 UTF-8发布尾段成功输出完整中文且无变量展开错误 (16.889292ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/nat/Documents/ChatGPT/%E4%B8%AA%E4%BA%BA/work/work-desk-t10/tests/t10-release-retention.test.mjs:234:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

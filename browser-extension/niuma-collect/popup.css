@@ -1,0 +1,18 @@
+/* 扩展弹窗：沿用牛马之家位图风（方角、2px 墨色描边、信号橙强调） */
+body { width: 300px; margin: 0; padding: 14px; background: #FBFBFC; color: #0D0E10; font: 13px/1.5 -apple-system, "PingFang SC", sans-serif; }
+header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #0D0E10; }
+header span { font: 11px "SF Mono", ui-monospace, monospace; color: #686D76; letter-spacing: .08em; }
+h1 { margin: 0; font-size: 16px; }
+form { display: flex; flex-direction: column; gap: 6px; }
+label { font: 11px "SF Mono", ui-monospace, monospace; color: #686D76; }
+input { height: 30px; padding: 0 8px; border: 2px solid #D5D8DE; background: #fff; font: inherit; }
+input:focus { outline: none; border-color: #0D0E10; }
+.row { display: flex; gap: 8px; margin-top: 4px; }
+button { height: 30px; padding: 0 12px; border: 2px solid #0D0E10; background: #FBFBFC; font: 600 12px -apple-system, "PingFang SC", sans-serif; cursor: pointer; }
+button[type="submit"] { background: #0D0E10; color: #FBFBFC; }
+button:hover { border-color: #FF4F1F; }
+button[type="submit"]:hover { background: #FF4F1F; }
+.wide { width: 100%; margin: 4px 0 10px; }
+#status { min-height: 18px; margin: 10px 0 4px; font-size: 12px; color: #686D76; }
+#status.ok { color: #1E8E4E; } #status.err { color: #D92D20; }
+small { display: block; color: #686D76; font-size: 11px; }

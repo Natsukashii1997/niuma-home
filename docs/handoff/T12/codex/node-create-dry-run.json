@@ -1,0 +1,13 @@
+{
+  "capturedAt": "2026-10-18T05:26:20.711Z",
+  "command": "lark-cli --profile codex wiki +node-create --space-id 7620…5965 --parent-node-token RIPw…znwc --node-type shortcut --origin-node-token MEwD…DnRb --obj-type docx --as user --dry-run",
+  "result": {
+    "ok": false,
+    "exitCode": 3,
+    "type": "authorization",
+    "subtype": "missing_scope",
+    "message": "missing required scope(s): wiki:space:read"
+  },
+  "executed": false,
+  "writeCalls": 0
+}

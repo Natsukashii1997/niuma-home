@@ -1,0 +1,75 @@
+{
+  "boundary": "直接执行交接 Markdown 内 JavaScript 计算函数，与独立预期JSON逐项比较",
+  "passed": 17,
+  "failed": 0,
+  "details": [
+    {
+      "name": "空集合",
+      "status": "passed"
+    },
+    {
+      "name": "单标签保持末点",
+      "status": "passed"
+    },
+    {
+      "name": "互不冲突保持原位",
+      "status": "passed"
+    },
+    {
+      "name": "两话题末值相同",
+      "status": "passed"
+    },
+    {
+      "name": "四话题相同且输入乱序",
+      "status": "passed"
+    },
+    {
+      "name": "顶部四话题",
+      "status": "passed"
+    },
+    {
+      "name": "底部四话题",
+      "status": "passed"
+    },
+    {
+      "name": "顶底边界与中部重合",
+      "status": "passed"
+    },
+    {
+      "name": "末值接近但不相同",
+      "status": "passed"
+    },
+    {
+      "name": "字体实测槽高24",
+      "status": "passed"
+    },
+    {
+      "name": "缩小图高后恰好放满",
+      "status": "passed"
+    },
+    {
+      "name": "默认图高可容纳八标签",
+      "status": "passed"
+    },
+    {
+      "name": "九标签超容量转图例",
+      "status": "passed"
+    },
+    {
+      "name": "超大标签槽转图例",
+      "status": "passed"
+    },
+    {
+      "name": "较矮图高两标签仍可放下",
+      "status": "passed"
+    },
+    {
+      "name": "较矮图高三标签转图例",
+      "status": "passed"
+    },
+    {
+      "name": "定位用末值而不改heat",
+      "status": "passed"
+    }
+  ]
+}

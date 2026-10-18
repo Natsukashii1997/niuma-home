@@ -1,0 +1,21 @@
+vite v6.4.3 building for production...
+
+(!) outDir /tmp/workdesk-t11-build-1xQN5x is not inside project root and will not be emptied.
+Use --emptyOutDir to override.
+
+transforming...
+✓ 85 modules transformed.
+rendering chunks...
+computing gzip size...
+../../../../../../../tmp/workdesk-t11-build-1xQN5x/index.html                                  0.64 kB │ gzip:   0.38 kB
+../../../../../../../tmp/workdesk-t11-build-1xQN5x/assets/GeistPixel-Square-B0mEoKr8.woff2    28.54 kB
+../../../../../../../tmp/workdesk-t11-build-1xQN5x/assets/Geist-Variable-Bj2R_7yk.woff2       69.65 kB
+../../../../../../../tmp/workdesk-t11-build-1xQN5x/assets/GeistMono-Variable-Dispecij.woff2   71.37 kB
+../../../../../../../tmp/workdesk-t11-build-1xQN5x/assets/index-LNH53Jns.css                 117.98 kB │ gzip:  20.79 kB
+../../../../../../../tmp/workdesk-t11-build-1xQN5x/assets/index-Clxp10FV.js                  532.67 kB │ gzip: 168.25 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 521ms

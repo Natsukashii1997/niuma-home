@@ -1,0 +1,47 @@
+B1 实际临时目录演练：仅合成文件，不启动发布脚本、应用或 launchd。
+
+默认预览
+保留策略预览：当前快照始终保留 <演练目录>/base/releases/nm-20261001-120000-c118a0b
+保留未识别或链接对象：<演练目录>/base/releases/用户链接
+保留未识别或链接对象：<演练目录>/base/backups/用户手工备份.db
+将删除快照：<演练目录>/base/releases/nm-20261003-120000-c118a0b
+将删除快照：<演练目录>/base/releases/nm-20261002-120000-c118a0b
+将删除数据库备份：<演练目录>/base/backups/work-desk-20261002-120000-before-nm-20261002-120000-c118a0b.db
+将删除数据库备份：<演练目录>/base/backups/work-desk-20261001-120000-before-nm-20261001-120000-c118a0b.db
+将删除旧轮转日志：<演练目录>/data/daemon-logs/server.stdout.log.1
+将轮转日志：<演练目录>/data/daemon-logs/server.stdout.log → <演练目录>/data/daemon-logs/server.stdout.log.1；内容校验一致后清空原文件
+仅预览：5 项，未修改文件
+退出码：0
+
+执行
+保留策略预览：当前快照始终保留 <演练目录>/base/releases/nm-20261001-120000-c118a0b
+保留未识别或链接对象：<演练目录>/base/releases/用户链接
+保留未识别或链接对象：<演练目录>/base/backups/用户手工备份.db
+将删除快照：<演练目录>/base/releases/nm-20261003-120000-c118a0b
+将删除快照：<演练目录>/base/releases/nm-20261002-120000-c118a0b
+将删除数据库备份：<演练目录>/base/backups/work-desk-20261002-120000-before-nm-20261002-120000-c118a0b.db
+将删除数据库备份：<演练目录>/base/backups/work-desk-20261001-120000-before-nm-20261001-120000-c118a0b.db
+将删除旧轮转日志：<演练目录>/data/daemon-logs/server.stdout.log.1
+将轮转日志：<演练目录>/data/daemon-logs/server.stdout.log → <演练目录>/data/daemon-logs/server.stdout.log.1；内容校验一致后清空原文件
+保留策略完成：已清理 5 项
+退出码：0
+
+写后回读：
+{
+  "snapshotNames": [
+    "nm-20261001-120000-c118a0b",
+    "nm-20261004-120000-c118a0b",
+    "nm-20261005-120000-c118a0b",
+    "nm-20261006-120000-c118a0b",
+    "nm-20261007-120000-c118a0b",
+    "nm-20261008-120000-c118a0b"
+  ],
+  "backupCount": 10,
+  "currentExists": true,
+  "logBytes": 0,
+  "rotatedBytes": 10485761,
+  "thresholdLogBytes": 10485760,
+  "thresholdNotRotated": true,
+  "sentinelsUnchanged": true,
+  "symbolicLinkRetained": true
+}

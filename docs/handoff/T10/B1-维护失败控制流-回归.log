@@ -1,0 +1,12 @@
+✔ T10 发布控制流 logs 维护失败仍启动并回读服务，最后明确报告维护未完成 (17.385167ms)
+ℹ {"phase":"logs","status":1,"events":["launchctl:bootout","maintenance:logs","launchctl:bootstrap","curl:ready","curl:readback","maintenance:artifacts"],"stderr":"T10 合成维护失败：logs EACCES\n日志保留策略失败（退出码 7）；保留上述错误，继续启动并核对目标服务\n服务已切换但保留策略未完成：nm-20261001-120000-c118a0b；http://127.0.0.1:5299（launchd cn.niuma-home.synthetic-test）。请核对上方错误后处理维护项。\n"}
+✔ T10 发布控制流 artifacts 维护失败仍启动并回读服务，最后明确报告维护未完成 (13.504666ms)
+ℹ {"phase":"artifacts","status":1,"events":["launchctl:bootout","maintenance:logs","launchctl:bootstrap","curl:ready","curl:readback","maintenance:artifacts"],"stderr":"T10 合成维护失败：artifacts EACCES\n发布产物保留策略失败（退出码 7）；保留上述错误及当前文件状态\n服务已切换但保留策略未完成：nm-20261001-120000-c118a0b；http://127.0.0.1:5299（launchd cn.niuma-home.synthetic-test）。请核对上方错误后处理维护项。\n"}
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 67.923209
