@@ -5,22 +5,23 @@ import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { toBackendOps } from "./kb-ops.js";
 import { Button, Loadable, PageHeader, Segmented, StatStrip, Tabs, Tag, useToast } from "../../ui/components.jsx";
 import { href } from "../../router.js";
-import CollectPage from "./CollectPage.jsx";
+import KbCanvas from "./KbCanvas.jsx";
 
 // 知识库整理（v3）：一棵可编辑的树 + 暂存区。拖动、多选、剪切粘贴、重命名、新建目录都先进暂存，可撤销；
 // 预览确认后一次同步到飞书（第一批只做移动、重命名、新建目录；不删除，要删的先移到「99 待清理」）。
 // 第 3 轮：搜索（标题 / 标签 / 正文摘要）、详情面板（位置、更新、标签、摘要、被谁引用）、健康检查（点一项只看这类问题）。
-// kb/<文档 id>：⌘K 打开某篇文档时直接选中它，右栏显示详情；kb/collect：快捷收藏（T12）。
+// 路由：kb = 画布（默认）；kb/tree = 目录树整理；kb/<文档 id>（⌘K 打开某篇文档）进目录树并选中它，右栏显示详情。
+// 旧地址 kb/collect 并入画布：收藏只走 Chrome 扩展按钮，不再粘贴链接（用户 2026-10-18）。
 const TABS = [
-  ["organize", "整理", "先在这里暂存，预览确认后才同步飞书（只移动、重命名、新建目录，不删除）", href("kb")],
-  ["collect", "收藏", "把一篇飞书文档收进对应一级目录：建快捷方式，原文不动；按关键词建议目录，确认后回读", href("kb", "collect")],
+  ["canvas", "画布", "按分组拖动整理：拖完就写入飞书，每项回读核对", href("kb")],
+  ["tree", "目录树", "多层目录、批量规则、健康检查：先暂存，预览确认后才同步飞书", href("kb", "tree")],
 ].map(([key, label, desc, to]) => ({ key, label, desc, href: to }));
 
 export default function KnowledgePage({ route = [] }) {
-  const collect = route[0] === "collect";
-  return <><PageHeader title="知识库" subtitle="「常浩的知识库」：整理目录，收藏飞书文档" />
-    <Tabs items={TABS} active={collect ? "collect" : "organize"} />
-    {collect ? <CollectPage /> : <OrganizeTab route={route} />}</>;
+  const tree = route[0] && route[0] !== "collect";
+  return <><PageHeader title="知识库" subtitle="「常浩的知识库」：分组就是飞书一级目录，在这里拖动就是在飞书里整理" />
+    <Tabs items={TABS} active={tree ? "tree" : "canvas"} />
+    {tree ? <OrganizeTab route={route[0] === "tree" ? route.slice(1) : route} /> : <KbCanvas />}</>;
 }
 
 function OrganizeTab({ route }) {

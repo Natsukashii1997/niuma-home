@@ -143,3 +143,28 @@ test('KB确认、操作查询和只读核对路由保持同一预览目标及门
   assert.deepEqual((await invoke(kb,'GET',`/api/v3/kb/operations/${id}`)).body,confirmed.body);
   assert.deepEqual((await invoke(kb,'POST',`/api/v3/kb/operations/${id}/reconcile`,{})).body,confirmed.body);assert.equal(state.writes.length,1);
 });
+
+test('画布拖完即写：只读目录生成计划，单项写入并回读；多项、非法操作和结果不明锁都拒绝',async t=>{
+  const{state,service}=setup(t),kb=service();
+  const r=await invoke(kb,'POST','/api/v3/kb/quick',{ops:[{type:'move',id:'child',parentId:''}]});
+  assert.equal(r.status,200);assert.equal(r.body.state,'verified');assert.equal(state.writes.length,1);
+  assert.equal(state.nodes.find(n=>n.id==='child').parentId,'');
+  assert.equal((await invoke(kb,'POST','/api/v3/kb/quick',{ops:[rename,rename]})).status,400);
+  assert.equal((await invoke(kb,'POST','/api/v3/kb/quick',{ops:[{type:'delete',id:'child'}]})).status,400);
+  const made=await invoke(kb,'POST','/api/v3/kb/quick',{ops:[{type:'mkdir',id:'g1',name:'新分组',parentId:''}]});
+  assert.equal(made.body.state,'verified');assert.ok(made.body.created.g1);assert.equal(state.writes.length,2);
+  state.failAfterWrite=true;
+  assert.equal((await invoke(kb,'POST','/api/v3/kb/quick',{ops:[rename]})).status,409);
+  state.failAfterWrite=false;
+  const locked=await invoke(kb,'POST','/api/v3/kb/quick',{ops:[{type:'move',id:'child',parentId:'root'}]});
+  assert.equal(locked.status,409);assert.equal(locked.body.code,'KB_RESULT_UNKNOWN');assert.equal(state.writes.length,3);
+});
+
+test('画布分组顺序只存本机，校验节点ID列表',async t=>{
+  const{state,service}=setup(t),kb=service();
+  assert.deepEqual((await invoke(kb,'GET','/api/v3/kb/layout')).body,{order:[]});
+  assert.equal((await invoke(kb,'PUT','/api/v3/kb/layout',{order:['root','peer']})).status,200);
+  assert.deepEqual((await invoke(kb,'GET','/api/v3/kb/layout')).body,{order:['root','peer']});
+  for(const order of [['root','root'],['a/b'],'root'])assert.equal((await invoke(kb,'PUT','/api/v3/kb/layout',{order})).status,400);
+  assert.equal(state.writes.length,0);
+});

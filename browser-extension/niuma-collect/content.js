@@ -25,7 +25,7 @@
   </style>
   <div class="wrap"><div class="tip" role="status" hidden></div><button class="main" type="button" title="收进「常浩的知识库」：建快捷方式，原文不动"><span class="star">★</span><span class="label">收藏</span></button></div>`;
   const tip = root.querySelector(".tip"), btn = root.querySelector("button.main"), label = root.querySelector(".label");
-  const REASON = { chosen: "按你选的目录", matched: "按关键词命中", first: "命中多个目录，取排最前的", fallback: "没命中关键词，放兜底目录" };
+  const REASON = { chosen: "按你选的目录", matched: "按关键词命中", unclear: "归类不明确，先放在根目录（牛马之家画布的散卡区）", first: "命中多个目录，取排最前的", fallback: "没命中关键词，放兜底目录" };
   let timer = 0;
 
   function show(tone, title, detail, acts = []) {

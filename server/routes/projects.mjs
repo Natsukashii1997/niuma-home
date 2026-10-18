@@ -39,6 +39,9 @@ export function projectRoutes({ projects, mentor, kb }) {
     route('POST', '/api/v3/kb/refresh', handleV3(() => kb.list({ refresh: true }))),
     route('POST', '/api/v3/kb/preview', handleV3(async req => kb.preview(await body(req)))),
     route('POST', '/api/v3/kb/confirm', handleV3(async req => kb.confirm(await body(req)))),
+    route('POST', '/api/v3/kb/quick', handleV3(async req => kb.quick(await body(req)))),
+    route('GET', '/api/v3/kb/layout', handleV3(() => kb.layout())),
+    route('PUT', '/api/v3/kb/layout', handleV3(async req => kb.saveLayout(await body(req)))),
     route('GET', '/api/v3/kb/operations/:id', handleV3((req, { params }) => kb.status(params.id))),
     route('POST', '/api/v3/kb/operations/:id/reconcile', handleV3(async (req, { params }) => kb.reconcile(params.id, await body(req)))),
   ];

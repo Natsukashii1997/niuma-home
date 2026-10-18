@@ -41,7 +41,7 @@ function setup(t){
     }
     if(args.includes('+node-create')){
       state.writes.push(args);assert.equal(arg('--node-type'),'shortcut');assert.equal(arg('--origin-node-token'),state.source.node_token);assert.equal(arg('--obj-type'),state.source.obj_type);
-      const created=node(`created${state.writes.length}`,SPACE,{obj_token:state.source.obj_token,obj_type:state.source.obj_type,node_type:'shortcut',origin_node_token:state.source.node_token,parent_node_token:arg('--parent-node-token'),title:state.source.title,...state.mismatch});
+      const created=node(`created${state.writes.length}`,SPACE,{obj_token:state.source.obj_token,obj_type:state.source.obj_type,node_type:'shortcut',origin_node_token:state.source.node_token,parent_node_token:args.includes('--parent-node-token')?arg('--parent-node-token'):'',title:state.source.title,...state.mismatch});
       state.nodes.push(created);state.onWrite?.();if(state.lost)throw Error('写成功但响应丢失');if(state.badJson)return{stdout:'bad-json'};
       return ok({resolved_space_id:SPACE,...created});
     }
@@ -99,9 +99,9 @@ test('T12支持七种链接入口与两类知识空间；写命令保持原文�
   assert.equal(state.writes.length,7);
 });
 
-test('T12按标题和上级标题归类，匹配不分大小写；多命中首项、无命中兜底、显式目录优先',async t=>{
+test('T12按标题和上级标题归类，匹配不分大小写；只命中一个才进组，多命中或无命中放根目录，显式目录优先',async t=>{
   const{state,collect}=setup(t);
-  for(const[title,body,target,reason]of [['brief agent',{},'marketing','first'],['无匹配',{},'fallback','fallback'],['agent',{},'ai','matched'],['brief',{targetNodeToken:'ai'},'ai','chosen']]){
+  for(const[title,body,target,reason]of [['brief agent',{},'','unclear'],['无匹配',{},'','unclear'],['agent',{},'ai','matched'],['brief',{targetNodeToken:'ai'},'ai','chosen']]){
     state.source=node(`source${state.writes.length}`,SOURCE,{title});const r=await collect(body);
     assert.equal(r.status,200);assert.equal(r.body.parentNodeToken,target);assert.equal(r.body.reason,reason);
   }

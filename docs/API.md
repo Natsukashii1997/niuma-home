@@ -54,7 +54,8 @@ type Material = { id: number; month: string; line: string; name: string; type: s
 
 ```ts
 type Assistant = { id: number; name: string; kind: "copywriter" | "imported" | "custom"; instructions: string; codexThreadId: string | null; createdAt: string;
-  model: string | null; effort: string | null };   // T08 新增；null = 跟随 Codex 默认配置（不把解析出的默认值写进数据库）
+  model: string | null; effort: string | null;   // T08 新增；null = 跟随 Codex 默认配置（不把解析出的默认值写进数据库）
+  preset: "copywriter" | "interview" | "performance" | "notice" | null };   // 2026-10-18：预设助手（文案 / 面试 / 绩效 / 通知），启动时只补缺，说明为空才填初稿
 type CodexModel = { id: string; model: string; displayName: string; description: string; isDefault: boolean;
   defaultEffort: string; efforts: Array<{ value: string; description: string }> };   // T08，来自 app-server model/list，不含隐藏模型
 type Message = { role: "user" | "assistant"; text: string; at?: string };
@@ -158,15 +159,23 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 | `409 CAMPAIGN_ARCHIVED` | 已归档战役不能由旧编辑令牌重建为当前战役 |
 | `500 LOCAL_DELETE_READBACK_FAILED` | 写后回读不一致，不能宣称成功 |
 
+## 知识库 · 画布（2026-10-18）
+
+知识库页默认是画布：根目录下的目录是分组，其余根节点是散卡。拖动整理**拖完即写**（用户确认，不走预览确认），但每次只写一项、写锁、身份核验、目录指纹、写后回读、结果不明锁住，和目录整理共用同一套操作记录。
+
+- `POST /api/v3/kb/quick` 请求 `{ ops: [op] }`（恰好一项；`op` 与 `/api/v3/kb/preview` 相同：`move` / `rename` / `mkdir`）→ 与 `/api/v3/kb/confirm` 相同的回执（`state`、`completed`、`created`、`tree`…）。只读目录结构生成计划（不读正文），然后走确认路径。结果不明返回 `409 KB_RESULT_UNKNOWN` 并附 `receipt`，核对沿用 `operations/:id/reconcile`。
+- `GET /api/v3/kb/layout` → `{ order: string[] }`；`PUT /api/v3/kb/layout` 请求 `{ order }`（不重复的节点 ID，最多 200 个）。分组顺序只存本机，不写飞书（飞书不支持调同级顺序）；排过序的根目录节点也视为分组。
+- `GET /api/v3/kb/tree` 的 `docs[id]` 新增 `shortcut: boolean`（是不是快捷方式节点）。
+
 ## 知识库 · 快捷收藏（T12）
 
 在「常浩的知识库」（设置键 `kb_collect_space`）的一级目录下，为一篇飞书文档创建**快捷方式**；原文不移动、不复制。归类规则在设置键 `kb_collect_rules`：`[{ nodeToken, title, keywords: string[] }]`，用现有 V3 设置的预览 → 确认 → 回读来修改。
 
-**一键收藏（用户 2026-10-18 确认）**：快捷收藏不走「先预览、后确认」，点击即创建；仍然只创建一次、不自动重试、写后回读、结果不明时锁住并核对。入口有两个：Chrome 扩展「牛马之家 · 收藏」（飞书文档页右下角按钮）和知识库页「收藏」标签的粘贴框。
+**一键收藏（用户 2026-10-18 确认）**：快捷收藏不走「先预览、后确认」，点击即创建；仍然只创建一次、不自动重试、写后回读、结果不明时锁住并核对。入口只有 Chrome 扩展「牛马之家 · 收藏」（飞书文档页右下角按钮）；知识库页的粘贴框已删除（用户 2026-10-18），页面只保留「最近收藏」。
 
 - `POST /api/v3/kb/collect` 请求 `{ url, requestId, targetNodeToken? }`。
   - `requestId`：客户端生成的 UUID。同一 `requestId` 重复请求，返回同一结果，不重复创建（双击、扩展重发都靠它）。
-  - 目录：带 `targetNodeToken` 时用它（必须在规则表里）。不带时自动归类：只命中一个目录就用它；命中多个，取规则表里排在最前的那个；都没命中，用规则表里没有关键词的兜底目录（「杂项其他」）。匹配用原文标题及其上级目录标题，不区分大小写。
+  - 目录：带 `targetNodeToken` 时用它（必须在规则表里）。不带时自动归类（用户 2026-10-18 改）：只命中一个目录才放进它；命中多个或都没命中，算「不明确」，放在知识空间根目录（画布散卡区），由用户在画布上拖进分组。规则表仍保留一个无关键词的目录，但不再用来兜底。匹配用原文标题及其上级目录标题，不区分大小写。
   - 查重：目标空间里已有指向同一原文的快捷方式，或原文本身就在目标空间里，都不创建。
   - 这篇文档有结果不明、尚未核对的记录时，不创建，返回 `409 COLLECT_PENDING` 并附 `receipt`。
 
@@ -179,7 +188,7 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
   parentNodeToken: string; parentTitle: string;       // created：新建位置；duplicate：已在的位置
   url: string;                  // created：新快捷方式链接；duplicate：已有节点链接
   duplicateKind?: "shortcut" | "inSpace";
-  reason: "chosen" | "matched" | "first" | "fallback"; // 用户所选 / 唯一命中 / 多命中取第一个 / 兜底
+  reason: "chosen" | "matched" | "unclear" | "first" | "fallback"; // 用户所选 / 唯一命中 / 不明确放根目录；first、fallback 只出现在 2026-10-18 之前的旧记录
   matched: Array<{ nodeToken: string; title: string; keywords: string[] }>;
   at: string;
 }

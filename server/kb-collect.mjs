@@ -80,6 +80,7 @@ export function createKnowledgeCollectService(db,{now=Date.now,run,readDirectory
     return{parentTitle,location};
   }
   async function target(p){
+    if(!p.parentNodeToken)return{title:'根目录'};// 归类不明确：放在知识库根目录（画布散卡区）
     let n;try{n=await nodeGet(p.parentNodeToken);}catch{throw targetInvalid();}
     if(!nodeValid(n)||n.node_token!==p.parentNodeToken||n.space_id!==p.spaceId)throw targetInvalid();return n;
   }
@@ -104,7 +105,7 @@ export function createKnowledgeCollectService(db,{now=Date.now,run,readDirectory
     if(found.parent_node_token&&!parent)throw failure(502,'已有收藏的目录信息不完整');
     return response(p,found,'duplicate',duplicateKind,parent?.title||'根目录');
   }
-  const verified=(p,n)=>nodeValid(n)&&n.node_type==='shortcut'&&n.space_id===p.spaceId&&n.parent_node_token===p.parentNodeToken&&n.origin_node_token===p.source.node_token&&sourceKey(n)===p.sourceKey;
+  const verified=(p,n)=>nodeValid(n)&&n.node_type==='shortcut'&&n.space_id===p.spaceId&&(n.parent_node_token||'')===p.parentNodeToken&&n.origin_node_token===p.source.node_token&&sourceKey(n)===p.sourceKey;
   async function execute(p,body,link){
     activeWrites.add(p.id);let attempted=false;
     try{
@@ -114,9 +115,11 @@ export function createKnowledgeCollectService(db,{now=Date.now,run,readDirectory
       const context=await sourceContext(p.source);p.location=context.location;
       const haystack=`${p.source.title} ${context.parentTitle}`.toLocaleLowerCase();
       p.matched=cfg.rules.map(r=>({...r,keywords:r.keywords.filter(k=>haystack.includes(k.toLocaleLowerCase()))})).filter(r=>r.keywords.length);
-      const chosen=body.targetNodeToken!==undefined?cfg.rules.find(r=>r.nodeToken===body.targetNodeToken):p.matched[0]||cfg.rules.find(r=>!r.keywords.length);
-      if(!chosen)throw targetInvalid();
-      p.reason=body.targetNodeToken!==undefined?'chosen':p.matched.length>1?'first':p.matched.length?'matched':'fallback';p.parentNodeToken=chosen.nodeToken;
+      // 用户 2026-10-18：只命中一个目录才进组；没命中或命中多个都算不明确，放在根目录，由用户在画布上拖进分组。
+      const explicit=body.targetNodeToken!==undefined;
+      const chosen=explicit?cfg.rules.find(r=>r.nodeToken===body.targetNodeToken):p.matched.length===1?p.matched[0]:null;
+      if(explicit&&!chosen)throw targetInvalid();
+      p.reason=explicit?'chosen':chosen?'matched':'unclear';p.parentNodeToken=chosen?chosen.nodeToken:'';
       // 身份、目录与查重均在写前完成；任何读失败都不会调用创建。
       await assertWriterIdentity(run);p.parentTitle=(await target(p)).title;
       const nodes=await readDirectory({spaceId:p.spaceId},{run});sameConfiguration(p);
@@ -126,7 +129,7 @@ export function createKnowledgeCollectService(db,{now=Date.now,run,readDirectory
       p.parentTitle=(await target(p)).title;await assertWriterIdentity(run);sameConfiguration(p);
       p.state='writing';p.inFlight={originNodeToken:p.source.node_token,parentNodeToken:p.parentNodeToken};save(p);
       attempted=true;
-      const created=await runLark(['wiki','+node-create','--space-id',p.spaceId,'--parent-node-token',p.parentNodeToken,'--node-type','shortcut','--origin-node-token',p.source.node_token,'--obj-type',p.source.obj_type],run);
+      const created=await runLark(['wiki','+node-create','--space-id',p.spaceId,...(p.parentNodeToken?['--parent-node-token',p.parentNodeToken]:[]),'--node-type','shortcut','--origin-node-token',p.source.node_token,'--obj-type',p.source.obj_type],run);
       if(!validNodeToken(created.node_token)||p.baseline.includes(created.node_token)||created.resolved_space_id!==p.spaceId||created.node_type!=='shortcut'||created.obj_type!==p.source.obj_type||created.obj_token!==p.source.obj_token)throw unknown(p.id);
       p.inFlight.nodeId=created.node_token;save(p);
       const observed=await nodeGet(created.node_token);if(observed.node_token!==created.node_token||!verified(p,observed))throw unknown(p.id);
@@ -171,7 +174,7 @@ export function createKnowledgeCollectService(db,{now=Date.now,run,readDirectory
         if(p.inFlight.nodeId){observed=await nodeGet(p.inFlight.nodeId);if(observed.node_token!==p.inFlight.nodeId)throw unknown(id);}
         else{
           const nodes=await readDirectory({spaceId:p.spaceId},{run}),candidates=[];
-          for(const n of nodes.filter(n=>!p.baseline.includes(n.node_token)&&n.parent_node_token===p.parentNodeToken&&n.node_type==='shortcut')){const detail=await nodeGet(n.node_token);if(detail.node_token===n.node_token&&verified(p,detail))candidates.push(detail);}
+          for(const n of nodes.filter(n=>!p.baseline.includes(n.node_token)&&(n.parent_node_token||'')===p.parentNodeToken&&n.node_type==='shortcut')){const detail=await nodeGet(n.node_token);if(detail.node_token===n.node_token&&verified(p,detail))candidates.push(detail);}
           if(candidates.length!==1)throw unknown(id);observed=candidates[0];
         }
         if(!verified(p,observed))throw unknown(id);

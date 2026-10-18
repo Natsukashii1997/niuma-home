@@ -107,7 +107,7 @@ export function knowledgeView(source, now = Date.now(), refs = {}) {
     const meta = source.metadata[n.obj_token], content = source.contents[n.node_token];
     const modified = Number(meta?.latest_modify_time);
     const error = source.errors[n.node_token] || (!Number.isFinite(modified) || modified <= 0 ? '修改时间不可用' : undefined);
-    docs[n.node_token] = { updated: Number.isFinite(modified) && modified > 0 ? beijingText(modified * 1000).slice(0, 10) : null, chars: typeof content === 'string' ? [...content].length : null, tags: [], excerpt: typeof content === 'string' ? [...content].slice(0, 100).join('') : '', refs: refs[n.node_token] || [], referencesComplete: false, type: n.obj_type, url: meta?.url || null, ...(error ? { error } : {}) };
+    docs[n.node_token] = { updated: Number.isFinite(modified) && modified > 0 ? beijingText(modified * 1000).slice(0, 10) : null, chars: typeof content === 'string' ? [...content].length : null, tags: [], excerpt: typeof content === 'string' ? [...content].slice(0, 100).join('') : '', refs: refs[n.node_token] || [], referencesComplete: false, type: n.obj_type, shortcut: n.node_type === 'shortcut', url: meta?.url || null, ...(error ? { error } : {}) };
   }
   const tree = [];
   for (const n of source.nodes) {
@@ -282,6 +282,24 @@ export function createKnowledgeTreeService(db, { now = Date.now, readSource = re
       const lock=getRecord(db,lockKind,spaceId);if(lock)throw unknownWrite(lock.operationId);
       save({id,spaceId,state:'preview',expiresAt,sourceVersion:plan.sourceVersion,operations:plan.operations,expectedRows:rowsOfTree(kb.tree),cursor:0,completed:[],created:{}});
       return {...plan,previewId:id,spaceId,expiresAt,confirmationEndpoint:'/api/v3/kb/confirm'};
+    },
+    // 画布「拖完即写」（用户 2026-10-18）：每次一项移动 / 重命名 / 新建目录。只读目录结构生成计划（不读正文，约 5 秒），
+    // 然后走同一条确认路径：写锁、身份核验、目录指纹、逐项写入、回读核对、结果不明锁住。
+    async quick(body) {
+      if (!Array.isArray(body?.ops) || body.ops.length !== 1) throw failure(400,'画布每次只写一项变更');
+      const spaceId=config().spaceId, rows=rowsOfDirectory(await readDirectory({spaceId},{run}),spaceId);
+      if(config().spaceId!==spaceId)throw failure(409,'读取期间知识库配置已变化');
+      const lock=getRecord(db,lockKind,spaceId);if(lock)throw unknownWrite(lock.operationId);
+      const plan=previewKnowledgeChanges({tree:treeOfRows(rows)},body),id=randomUUID();
+      save({id,spaceId,state:'preview',origin:'canvas',expiresAt:new Date(now()+600000).toISOString(),sourceVersion:plan.sourceVersion,operations:plan.operations,expectedRows:rows,cursor:0,completed:[],created:{}});
+      return this.confirm({previewId:id,confirm:true});
+    },
+    // 画布分组顺序：只存本机，不写飞书（飞书接口不支持调整同级顺序）。
+    layout: () => getRecord(db,'kb-canvas','layout') || { order: [] },
+    saveLayout(body) {
+      const order=body?.order;
+      if(!Array.isArray(order)||order.length>200||order.some(id=>typeof id!=='string'||!/^[A-Za-z0-9]{1,80}$/.test(id))||new Set(order).size!==order.length)throw failure(400,'分组顺序须为不重复的节点ID列表');
+      putRecord(db,'kb-canvas','layout',{order},now());return {order};
     },
     status: id => { const p=load(id); return p.type==='collect'?collect.status(p):publicOperation(p); },
     async confirm(body) {
