@@ -165,6 +165,12 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 | `409 CAMPAIGN_ARCHIVED` | 已归档战役不能由旧编辑令牌重建为当前战役 |
 | `500 LOCAL_DELETE_READBACK_FAILED` | 写后回读不一致，不能宣称成功 |
 
+## 营销 · 价格记录（2026-10-18 改为固定 4 张表）
+
+- `GET /api/v3/price/skus` → `[{ id, line, name, label, unitOrig, tiers, origin }]`，固定 4 张，顺序即页签顺序：`uni-lite` 大学辅导·灵活学Lite、`uni-max` 大学辅导·安心学Max、`intl-lite` 国际课程·灵活学Lite（`label` 为「课时卡」）、`intl-comp` 国际课程·竞赛课时卡。不再读飞书 SKU 表（设置里的 `price_sku_table_id` 价格页已不用）。`origin`：`local` 已保存、`demo` 演示矩阵（两张 Lite，`fixtures/v3-demo-price.json`）、`empty` 还没有价格（`unitOrig: null`，档位 5–200h）。SKU 档案按 `line + name` 匹配。
+- `GET /api/v3/price/schemes?sku=` → `{ sku, floorMargin, costPerHour, schemes, origin }`；空表返回 `schemes: []`、`origin: "empty"`，不报错。
+- `POST /api/v3/price/schemes/preview?sku=` body `{ unitOrig, tiers, schemes }` → 预览；`PUT /api/v3/price/schemes?sku=` body `{ previewId, confirm: true }` → 写入，页面再回读核对。整张矩阵一起保存：页面里新增、插入、删除方案都只改草稿。必须填满才能保存：原价为空、任一方案有空格（`null`）或一个方案都没有时返回 400，空格的报错写明方案名和缺几档。
+
 ## 业务 · 营收完成度（演示数据）
 
 - `GET /api/v3/business/revenue` → `{ period, timePct, updatedAt, groups: { label, items }[], origin: "demo", task }`，响应头 `x-workdesk-data-origin: demo`；数据取自 `fixtures/v3-demo-revenue.json`，待正式营收表。

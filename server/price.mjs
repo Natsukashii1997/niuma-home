@@ -1,27 +1,27 @@
-import { createHash } from 'node:crypto';
 import { getSettings } from './db.mjs';
 import { getRecord, listRecords, createLocalChanges, fingerprint } from './local-records.mjs';
 import { deriveNeeds } from './needs.mjs';
 import { manualNeedRecords } from './manual-needs.mjs';
 import { withRulings } from './timeline-rulings.mjs';
 import { failure } from './v3-common.mjs';
-import { createMarketingSourceReader, marketingFailure, marketingSource, multiValues, isDay } from './campaigns.mjs';
+import { marketingFailure, isDay } from './campaigns.mjs';
 import { V3_DEFAULTS } from './v3-settings.mjs';
 import { TIMELINE_SOURCE } from './timeline.mjs';
 import demo from '../fixtures/v3-demo-price.json' with { type: 'json' };
 
-export const PRICE_SKU_TABLE = 'tblwaujJdrNHoVea';
-export const PRICE_SKU_FIELDS = ['SKU名称', '业务线', '产品类别', 'SKU状态'];
+// 价格记录固定 4 张表（2026-10-18 用户确认），不再读飞书 SKU 表。前两张沿用原来的编号，已保存的价格记录照常读取；
+// SKU 档案按 业务线 + 名称 匹配到这里。label 是页签上的显示名。
+export const PRICE_SHEETS = [
+  { id: 'uni-lite', line: '大学辅导', name: '灵活学Lite', label: '灵活学Lite' },
+  { id: 'uni-max', line: '大学辅导', name: '安心学Max', label: '安心学Max' },
+  { id: 'intl-lite', line: '国际课程', name: '灵活学Lite', label: '课时卡' },
+  { id: 'intl-comp', line: '国际课程', name: '竞赛课时卡', label: '竞赛课时卡' },
+];
 const fail = message => { throw failure(400, message); };
 const plain = value => value && typeof value === 'object' && !Array.isArray(value);
 const nonempty = (value, max = 500) => typeof value === 'string' && value.trim().length > 0 && value.length <= max;
 const identifier = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(value);
 const same = (a, b) => fingerprint(a) === fingerprint(b);
-
-export function skuId(line, name) {
-  if (name === '灵活学Lite' && ['大学辅导', '国际课程'].includes(line)) return line === '大学辅导' ? 'uni-lite' : 'intl-lite';
-  return createHash('sha256').update(JSON.stringify([line, name])).digest('hex').slice(0, 20);
-}
 
 export function priceSettings(db) {
   const values = { ...V3_DEFAULTS, ...getSettings(db) }, a = values.price_floor_margin, b = values.price_cost_per_hour;
@@ -55,23 +55,13 @@ export function acceptedMarketingNeeds(db, month) {
   });
 }
 
-export function priceCatalog(rows, db) {
-  const products = [], seen = new Set();
-  for (const row of rows) {
-    const name = row['SKU名称'], lines = multiValues(row['业务线']);
-    if (!nonempty(name) || !lines.length || lines.some(line => !['大学辅导', '国际课程', '申诉服务'].includes(line))) throw marketingFailure(502, 'PRICE_CATALOG_INVALID', 'SKU目录缺少正式名称或业务线');
-    for (const line of lines) {
-      const id = skuId(line, name);
-      if (seen.has(id)) throw marketingFailure(502, 'PRICE_CATALOG_INVALID', 'SKU目录有重复的业务线与名称');
-      seen.add(id);
-      const saved = db && getRecord(db, 'price-schemes', id);
-      const actual = saved?.line === line && saved?.name === name;
-      // 课时价格列表只展示已有档位的课时型 SKU；其余目录记录不虚构档位。
-      if (actual) products.push({ id, line, name, unitOrig: saved.unitOrig, tiers: saved.tiers, origin: 'local' });
-      else if (demo.skus.includes(id)) products.push({ id, line, name, unitOrig: demo.unitOrig, tiers: [...demo.tiers], origin: 'demo' });
-    }
-  }
-  return products.sort((a, b) => a.line.localeCompare(b.line, 'zh') || a.name.localeCompare(b.name, 'zh'));
+export function priceCatalog(db) {
+  return PRICE_SHEETS.map(sheet => {
+    const saved = getRecord(db, 'price-schemes', sheet.id);
+    if (saved?.line === sheet.line && saved?.name === sheet.name) return { ...sheet, unitOrig: saved.unitOrig, tiers: saved.tiers, origin: 'local' };
+    if (demo.skus.includes(sheet.id)) return { ...sheet, unitOrig: demo.unitOrig, tiers: [...demo.tiers], origin: 'demo' };
+    return { ...sheet, unitOrig: null, tiers: [...demo.tiers], origin: 'empty' }; // 还没有价格：档位沿用 5–200h，原价和方案留空，由用户在页面填写
+  });
 }
 
 function validateMatrix(db, value, sku) {
@@ -83,6 +73,8 @@ function validateMatrix(db, value, sku) {
     if (!plain(scheme) || !identifier(scheme.id) || ids.has(scheme.id) || !nonempty(scheme.name) || !['常规', '活动', '赠课'].includes(scheme.kind) || !['生效中', '草稿', '历史'].includes(scheme.status)) fail('价格方案编号、名称、类型或状态无效');
     ids.add(scheme.id);
     if (!isDay(scheme.from) || typeof scheme.to !== 'string' || (scheme.to !== '' && (!isDay(scheme.to) || scheme.to < scheme.from))) fail('价格生效期须为有效的 YYYY-MM-DD，长期有效的结束日期留空');
+    const blank = Array.isArray(scheme.prices) ? scheme.prices.filter(p => p === null).length : 0;
+    if (blank) fail(`「${scheme.name}」还有 ${blank} 档总价没填，填满后才能保存`);
     if (!Array.isArray(scheme.prices) || !Array.isArray(scheme.gifts) || scheme.prices.length !== value.tiers.length || scheme.gifts.length !== value.tiers.length || scheme.prices.some(p => !Number.isFinite(p) || p <= 0 || p > 100000000) || scheme.gifts.some(g => !Number.isSafeInteger(g) || g < 0 || g > 10000)) fail('各档总价与赠课须对应课时档位；总价大于零，赠课为非负整数');
     const breach = scheme.prices.some((price, i) => (price - settings.costPerHour * (value.tiers[i] + scheme.gifts[i])) / price < settings.floorMargin);
     if (breach && !nonempty(scheme.breachReason, 2000)) fail('该方案低于毛利底线，请填写破底线原因');
@@ -102,13 +94,12 @@ export function availablePriceMatrices(db) { return listRecords(db, 'price-schem
 
 export function createPriceService(db, options = {}) {
   const now = options.now || Date.now;
-  const read = createMarketingSourceReader(db, { kind: 'price-catalog', tableKey: 'price_sku_table_id', defaultTable: PRICE_SKU_TABLE, fields: PRICE_SKU_FIELDS, ...options, validate: rows => priceCatalog(rows) });
   const changes = createLocalChanges(db, { now });
-  const skus = async () => priceCatalog((await read()).rows, db);
+  const skus = async () => priceCatalog(db);
   const getSku = async id => {
     if (!identifier(id)) fail('请选择有效的 SKU');
     const sku = (await skus()).find(s => s.id === id);
-    if (!sku) throw marketingFailure(404, 'PRICE_SKU_NOT_FOUND', 'SKU不存在，请重新读取产品目录');
+    if (!sku) throw marketingFailure(404, 'PRICE_SKU_NOT_FOUND', '没有这张价格表');
     return sku;
   };
   return {
@@ -116,8 +107,8 @@ export function createPriceService(db, options = {}) {
     async schemes(id) {
       const sku = await getSku(id), record = getRecord(db, 'price-schemes', id);
       const actual = record && record.line === sku.line && record.name === sku.name;
-      if (!actual && !demo.skus.includes(id)) throw marketingFailure(503, 'PRICE_MATRIX_UNCONFIGURED', '该SKU尚未录入真实价格矩阵，请先预览录入正式价格表');
       const settings = priceSettings(db);
+      if (!actual && !demo.skus.includes(id)) return { sku: id, ...settings, schemes: [], origin: 'empty' };
       const savedSettings = getSettings(db), origin = actual && savedSettings.price_floor_margin !== undefined && savedSettings.price_cost_per_hour !== undefined ? 'local' : 'demo';
       return { sku: id, ...settings, schemes: actual ? record.schemes : structuredClone(demo.schemes), origin };
     },
@@ -132,12 +123,9 @@ export function createPriceService(db, options = {}) {
           if (need) scheme.need = `${need.seg} · ${need.node}`;
         }
       }
-      const settings = priceSettings(db), identity = marketingSource(db, 'price_sku_table_id', PRICE_SKU_TABLE).identity;
-      const catalogVersion = fingerprint(getRecord(db, 'marketing-source', 'price-catalog')?.rows ?? null);
+      const settings = priceSettings(db);
       return changes.preview('price-schemes', id, value, { validate: candidate => {
         if (!same(settings, priceSettings(db))) throw marketingFailure(409, 'PRICE_SETTINGS_CHANGED', '价格成本或毛利底线已变化，请重新预览');
-        if (marketingSource(db, 'price_sku_table_id', PRICE_SKU_TABLE).identity !== identity) throw marketingFailure(409, 'PRICE_SOURCE_CHANGED', 'SKU来源配置已变化，请重新预览');
-        if (fingerprint(getRecord(db, 'marketing-source', 'price-catalog')?.rows ?? null) !== catalogVersion) throw marketingFailure(409, 'PRICE_SOURCE_CHANGED', 'SKU来源内容已变化，请重新预览');
         validateMatrix(db, candidate, sku);
       } });
     },
