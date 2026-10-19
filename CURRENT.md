@@ -1521,3 +1521,11 @@ SKU规范-1-方案汇总-按月份-特殊活动.png、SKU规范-2-方案汇总-�
 - 截图（只读，拦截所有非 GET 的 /api 请求，拦截记录为空）：工作树 `docs/handoff/V4/线上5280-10月大学辅导-方案汇总.png`、`docs/handoff/V4/线上5280-灵活学Lite档案侧栏.png`（在 `.claude/worktrees/charming-roentgen-f7d8c9` 下，未提交，按要求不提交）。
 - 写前/写后的 promos 快照在本会话 scratchpad（promos-before.json / promos-after.json）。
 - 协调会话复核（只读）：5280 `/api/promos` 共 22 行，2026-10 大学辅导 7 行与用户截图一致（论文稳Pass、先修班课为「无」），8、9 月仍 15 行；`/api/plans` 里 10 月大学辅导整月特殊活动为「双11活动（10.15-11.11）」及四项子活动。
+
+### V4 · 2026-10-19 · 价格记录页优化并发布（用户同意；回读通过，发布 nm-20261019-110404-a9a569a）
+
+- 改动（提交 `a9a569a`）：方案筛选去掉复选框，每套方案一个同色小方框直接点击（实心显示、空心隐藏），只显示方案名；演示方案改为常规价格（基准，长期生效）、双11价格 历史 2025-10-15→11-30、新春价格 历史 01-18→02-28、赠课价格 历史 08-01→09-30，删掉「澳洲 · 本科 · S2 Final」关联需求；列头不再显示关联需求，长期方案只显示「长期生效」方框（不显示「生效中」）；课时单价折线图高度 190 → 340。只改演示口径（`fixtures/v3-demo-price.json`），真实库里没有已保存的价格方案。
+- 测试：ui-v4 与主工作区 `npm test` 均 413 项全部通过。
+- 发布：main 从 `90e9e03` 快进到 `a9a569a`；`bash scripts/release-app.sh` 从 `nm-20261019-104512-90e9e03` 切换到 `nm-20261019-110404-a9a569a`；切换前已自动备份数据库；保留策略清理了快照 `nm-20261018-205532-0e180e5` 和最老的一份数据库备份。
+- 回读（只读）：首页与快照 `dist/index.html` 逐字节一致；`/api/v3/status`、`/api/promos`、`/api/v3/price/skus`、`/api/v3/price/schemes?sku=intl-lite`、`?sku=uni-lite`、`/api/v3/codex-push`、`/api/settings`、`/api/assistants` 均 200；intl-lite 四套方案名称、状态、日期与改动一致，无关联需求。浏览器打开线上价格记录页核对筛选和列头，页面发到 5280 的请求只有 GET。
+- 回滚：`bash scripts/release-app.sh --use nm-20261019-104512-90e9e03`。
