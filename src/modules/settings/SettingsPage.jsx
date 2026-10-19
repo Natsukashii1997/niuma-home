@@ -55,9 +55,9 @@ const itemLabel = ([type, key]) => type === "old" ? fields.find((f) => f.key ===
 function itemStatus([type, key], settings, v3data) {
   if (type === "old") return settings[key] ? "ok" : "missing";
   if (type === "pairing") return "ok";
-  if (type === "push" || type === "nas") return "fixed";
+  if (type === "nas") return "fixed";
   if (!v3data) return "loading";
-  const k = type === "rules" ? RULES_KEY : key;
+  const k = type === "rules" ? RULES_KEY : type === "push" ? PUSH_KEY : key;
   if (v3data.readonly.includes(k)) return "fixed";
   if (v3data.demoDefaults.includes(k) && v3data.saved[k] === undefined) return "demo";
   return v3data.saved[k] !== undefined ? "ok" : "default";
@@ -76,7 +76,7 @@ export default function SettingsPage() {
     if (type === "v3") return <V3Rows key={key} v3={v3} keys={[key]} />;
     if (type === "rules") return <CollectRulesRow key="rules" v3={v3} />;
     if (type === "pairing") return <PairingRow key="pairing" />;
-    if (type === "push") return <div key="push" className="set-row"><div className="set-row-head"><span className="set-label">机械邪龙兽推送</span><span className="set-value muted">未启用：不新增定时任务，不推送</span><Tag>未启用</Tag></div></div>;
+    if (type === "push") return <PushRow key="push" v3={v3} />;
     return <div key="nas" className="set-row"><div className="set-row-head"><span className="set-label">NAS 物料目录</span><span className="set-value muted">暂缓接入（你会重新整理目录）；工作台不扫描、不挂载 NAS</span><Tag>暂缓</Tag></div></div>;
   };
   return <>
@@ -422,6 +422,54 @@ function PairingRow() {
         <span className="small muted">Chrome 扩展「牛马之家 · 收藏」第一次使用时填这个码；生成于 {new Date(createdAt).toLocaleString("zh-CN", { hour12: false })}。<button type="button" className="link-btn" onClick={preview} disabled={flow.busy || flow.phase === "unknown"}>重新生成</button>{note && ` ${note}`}</span>
         <WriteBox flow={flow} title="重新生成配对码 · 预览" confirmLabel="确认重新生成" savedText="已生成新配对码，回读一致；请在扩展里重新填写" onConfirm={confirm} onRepreview={preview} onReread={reread}>
           <p className="small">旧配对码会立即失效，Chrome 扩展要重新填写新码才能收藏。只改工作台本机配置，不改飞书。</p>
+        </WriteBox>
+      </div>
+    </div>
+  );
+}
+
+// 机械邪龙兽推送 Codex 重置：开关写 V3 配置 codex_push_enabled，走预览 → 确认 → 回读；下面照实显示检查与推送记录。
+const PUSH_KEY = "codex_push_enabled";
+const PUSH_STATUS = { sent: "已推送", failed: "推送失败", unknown: "结果不明" };
+function PushRow({ v3 }) {
+  const state = useApi("/api/v3/codex-push");
+  const [fresh, setFresh] = useState(null);
+  const flow = useWriteFlow();
+  if (!v3.data) return null; // 上面的 V3 行已在显示读取状态
+  const on = v3.data.values[PUSH_KEY] === "1";
+  const push = fresh || state.data;
+  const next = on ? "0" : "1";
+  const preview = () => flow.preview(() => apiSend("POST", `/api/settings/${PUSH_KEY}/preview`, { value: next }));
+  const confirm = () => flow.confirm(
+    (pv) => apiSend("PUT", `/api/settings/${PUSH_KEY}`, { previewId: pv.previewId, confirm: true }),
+    async (receipt, pv) => {
+      const back = await apiSend("GET", "/api/v3/settings");
+      const ok = back.values[PUSH_KEY] === pv.value && back.saved[PUSH_KEY] === pv.value;
+      if (ok) { v3.setData(back); setFresh(await apiSend("GET", "/api/v3/codex-push")); }
+      return ok;
+    },
+  );
+  const reread = async () => { const back = await apiSend("GET", "/api/v3/settings"); flow.resolve(); v3.setData(back); setFresh(await apiSend("GET", "/api/v3/codex-push")); };
+  const last = push?.lastPush;
+  return (
+    <div className="set-row">
+      <div className="set-row-head">
+        <span className="set-label">机械邪龙兽推送</span>
+        <span className="set-value">{on ? "已开启 · 每 4 小时检查 Codex 重置，有新重置时私聊发给你" : <span className="muted">未开启：不检查、不推送</span>}</span>
+        <Tag tone={on ? "green" : "neutral"}>{on ? "已开启" : "未开启"}</Tag>
+        <Button onClick={preview} disabled={flow.busy || flow.phase === "unknown"}><PixelIcon name={on ? "close" : "send"} />{on ? "关闭" : "开启"}</Button>
+      </div>
+      <div className="set-edit stack-sm set-push-foot">
+        {state.error && !fresh ? <span className="small warn-text">推送状态读取失败：{state.error}</span> : push && <dl className="kv set-push-kv">
+          <dt>发送</dt><dd>{push.sender} → {push.recipient}</dd>
+          <dt>上次检查</dt><dd>{push.lastCheck ? <>{push.lastCheck.at}{push.lastCheck.error && <span className="warn-text">数据源读取失败：{push.lastCheck.error}</span>}</> : <span className="muted">还没检查过</span>}{on && push.nextCheck && <span className="muted">· 下次 {push.nextCheck}</span>}</dd>
+          <dt>上次推送</dt><dd>{last ? <><span>{last.at}</span><Tag tone={last.status === "sent" ? "green" : last.status === "failed" ? "red" : "amber"}>{PUSH_STATUS[last.status]}</Tag><span>{last.summary}</span></> : <span className="muted">{on ? (push.baseline ? "刚开启：第一次检查只记下已有的重置，不推" : "还没有新的重置需要推送") : "没有推送记录"}</span>}</dd>
+          {last?.error && <><dt>失败原因</dt><dd className="warn-text">{last.error}</dd></>}
+        </dl>}
+        <WriteBox flow={flow} title={`${on ? "关闭" : "开启"}机械邪龙兽推送 · 预览`} confirmLabel={`确认${on ? "关闭" : "开启"}`} savedText={`已${on ? "开启" : "关闭"}推送，回读一致`} onConfirm={confirm} onRepreview={preview} onReread={reread}>
+          {(pv) => <dl className="kv"><dt>原值</dt><dd>{pv.before === "1" ? "开启" : "关闭"}{pv.before === null && "（默认）"}</dd><dt>新值</dt><dd><code className="diff-new">{pv.value === "1" ? "开启" : "关闭"}</code></dd>
+            <dt>之后</dt><dd>{pv.value === "1" ? "10 分钟内做第一次检查，只记下已有的重置、不推；之后每 4 小时检查一次，同一次重置只推一次，由机械邪龙兽（机器人身份）私聊发给你本人。" : "不再检查、不再推送；已有的推送记录保留。"}</dd>
+            <dt>写到哪里</dt><dd>工作台本地配置，不改飞书</dd></dl>}
         </WriteBox>
       </div>
     </div>

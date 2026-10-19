@@ -582,7 +582,7 @@ label.btn { cursor: pointer; }
 .set-groups > .stat-strip { margin-bottom: 0; } /* 列表已有 gap */
 .set-count { display: inline-flex; gap: var(--s3); font-family: var(--font-mono); font-size: 11px; color: var(--text-2); white-space: nowrap; }
 .set-pairing-code { display: flex; align-items: center; gap: var(--s3); }
-.set-pairing-foot { padding-top: 0; padding-left: calc(180px + var(--s3)); }
+.set-push-kv { grid-template-columns: 180px minmax(0, 1fr); column-gap: var(--s3); } /* 与行头「名称｜值」两列对齐 */
 .set-pairing-foot .link-btn { margin-left: var(--s2); }
 
 /* ---------- 用户 · 时间线 ---------- */
@@ -819,7 +819,7 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
   .card-head .card-extra { flex-wrap: wrap; justify-content: flex-end; }
   .codex-strip .codex-quote, .codex-strip .codex-when:has(+ .codex-cd) { display: none; } /* 顶部横条：有倒计时就省掉时间说明和引文，完整内容在首页卡片和详情 */
   .set-row-head { grid-template-columns: minmax(0, 1fr) auto auto; } .set-row-head .set-value { grid-column: 1 / -1; grid-row: 2; } /* 设置行头：150px 标签列在窄屏挤出「编辑」按钮；值改到第二行 */
-  .set-row.is-open .settings-form, .set-pairing-foot { padding-left: 0; }
+  .set-row.is-open .settings-form { padding-left: 0; } .set-push-kv { grid-template-columns: 64px minmax(0, 1fr); }
   .set-groups > .stat-strip { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); } .set-groups > .stat-strip .stat:nth-child(odd) { border-left: 0; } .set-groups > .stat-strip .stat:nth-child(n+3) { border-top: 1px solid var(--line); } /* 设置页总览：窄屏 2×2 */ /* 展开的表单不再让出 150px 名称列 */
   .state-error { flex-wrap: wrap; } /* 读取失败框：标题不换行 + 按钮，窄屏下换行而不是撑出卡片 */
 }

@@ -7,7 +7,7 @@ import { Loadable, Modal, SampleBadge, Tag } from "../../ui/components.jsx";
 // 两种状态（用户 2026-10-18）：
 //   等待重置 —— 上次重置日期 + Tibo 原话中译 + 发布月日时分 + 距离重置大约还有多久；
 //   已重置   —— 上次重置日期 + 距上次重置过去几天几时 + 下次重置时间未公开（横条只写「Codex 重置：上次重置 … 下次重置时间未公开」，用户 2026-10-18）。
-// 只写 Tibo 的发布时间，不写检查时间。定时检查和推送未启用，只在详情里照实写。
+// 只写 Tibo 的发布时间，不写检查时间。推送状态（机械邪龙兽，设置页开关）只在详情里照实写。
 // 信息用方块光标逐字打出（用户 2026-10-18）：光标先闪两次，再每 2 帧一个字，数字橙色；「已重置」这类状态用信号橙。
 const STAGE_TONE = { 预告: "blue", 确认: "orange", 修正: "amber", 撤回: "red" };
 
@@ -34,14 +34,26 @@ function resetOf(c, now) {
   };
 }
 
+// 详情里「推送」一句：读 /api/v3/codex-push，照实写开没开、上次推了什么、失败原因。
+const PUSH_STATUS = { sent: "已推送", failed: "推送失败", unknown: "结果不明" };
+function pushText(p) {
+  if (p.loading) return "正在读取推送状态…";
+  if (p.error) return `推送状态读取失败：${p.error}`;
+  const { enabled, lastPush: l, nextCheck } = p.data;
+  const last = l ? `上次${PUSH_STATUS[l.status]}（${l.at}）：${l.summary}${l.error ? `；${l.error}` : ""}` : "";
+  if (!enabled) return last ? `推送已关闭；${last}` : "推送未开启（在设置页开启），没有推送记录";
+  return `${last || "已开启，还没有新的重置需要推送"}${nextCheck ? `；下次检查 ${nextCheck}` : ""}`;
+}
+
 function CodexDetail({ c }) {
+  const push = useApi("/api/v3/codex-push");
   return (
     <div className="codex-detail">
       <dl className="kv">
         <dt>数据源</dt><dd className="mono small">aihot.news/api/v1/codex-resets/recent</dd>
         <dt>上次重置</dt><dd>{c.reset?.lastReset || "数据源里没有已确认的重置"}</dd>
         <dt>读取</dt><dd>{c.nextCheck ? `下次检查 ${c.nextCheck}` : "定时检查未启用：打开工作台时读取一次"}</dd>
-        <dt>推送</dt><dd>{c.pushed ? "机械邪龙兽已推送这一条" : "推送未启用，没有推送记录"}</dd>
+        <dt>推送</dt><dd>{pushText(push)}</dd>
         <dt>失效</dt><dd>数据源读取失败时，这里显示失败原因和上次成功检查的时间</dd>
       </dl>
       <div className="label">最近帖子 · 北京时间</div>

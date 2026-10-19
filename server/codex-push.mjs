@@ -164,7 +164,7 @@ export function codexPushStatus(db) {
     enabledSince: enabled ? time(state.enabledSince) : null,
     lastCheck: state.lastCheckAt ? { at: time(state.lastCheckAt), error: state.lastCheckError || null } : null,
     nextCheck: enabled ? (state.enabledSince && state.lastCheckAt ? time(state.lastCheckAt + PUSH_INTERVAL) : '10 分钟内') : null,
-    baseline: enabled && !!state.baseline,
+    baseline: enabled && (!state.enabledSince || !!state.baseline), // 已开启但第一次成功检查还没做
     lastPush: last ? { eventId: last.event_id, status: last.status, stage: last.stage, summary: last.summary, attempts: last.attempts, error: last.error, at: beijingText(last.updated_at) } : null,
   };
 }

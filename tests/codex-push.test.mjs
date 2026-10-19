@@ -156,5 +156,6 @@ test('开关配置只接受 0 / 1，默认关；状态接口可读', async () =>
   assert.equal((await call('PUT', '/api/settings/codex_push_enabled', { previewId: pv.previewId, confirm: true })).status, 200);
   const status = (await call('GET', '/api/v3/codex-push')).body;
   assert.equal(status.enabled, true); assert.equal(status.nextCheck, '10 分钟内');
+  assert.equal(status.baseline, true, '已开启、还没做第一次检查时提示只记基线');
   assert.match(status.sender, /cli_aacf58ab61b85beb/);
 });
