@@ -296,24 +296,41 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .unit-legend svg { width: 10px !important; height: 10px; flex-shrink: 0; }
 .grid td.changed { padding-right: var(--s5); }
 
-/* ---------- 营销 · SKU 档案（第三轮提案 5）：数字条 → 跨月政策 → 单价阶梯 | 价格图版本（6/6，等高） ---------- */
-.sku-page .page-header h1 { display: flex; align-items: center; gap: 6px; }
-.sku-page .card > .table-wrap { flex: 1 1 auto; border: 0; }
-.sku-policy { margin-bottom: var(--gap); }
-.sku-policy .grid { table-layout: fixed; }
-.sku-policy th[scope="row"] { position: static; background: var(--panel); font: 12px var(--font-sans); letter-spacing: 0; color: var(--text-2); }
-.sku-policy td { min-width: 0; font-size: 12px; line-height: 1.5; white-space: normal; }
-.sku-policy thead th.is-dm { background: var(--text); color: var(--panel); }
-.sku-policy thead th.is-dm b { margin-left: var(--s1); padding: 0 var(--s1); background: var(--signal); font-weight: 400; }
-.sku-policy td.is-dm, .sku-policy tbody tr:hover td.is-dm { background-color: var(--panel-soft); }
-.sku-policy td.todo { color: var(--muted); }
+/* ---------- 营销 · SKU 档案侧栏（2026-10-19）：方案汇总里点「档案」从右侧打开，只放跨月政策，按月从上到下 ---------- */
 .clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.sku-scheme { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1); }
-.sku-split { display: grid; gap: var(--gap); align-items: stretch; }
-.ver-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s3); }
-.ver-strip figure { display: flex; flex-direction: column; gap: var(--s1); margin: 0; }
-.ver-strip figcaption { font: 11px var(--font-mono); color: var(--muted); }
-.ver-pend { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s1); aspect-ratio: 3 / 4; padding: var(--s2); border: var(--border) solid var(--warn); color: var(--warn); font-size: 12px; text-align: center; }
+.sku-dossier-btn { display: inline-flex; align-items: center; gap: var(--s2); padding: var(--s1) var(--s3); border: var(--border) solid var(--text); border-left: 6px solid var(--signal); background: var(--text); color: var(--panel); font: 600 12px var(--font-sans); white-space: nowrap; cursor: pointer; }
+.sku-dossier-btn .pixel-icon { color: var(--signal); }
+.sku-dossier-btn:hover { background: var(--signal); border-color: var(--signal); }
+.sku-dossier-btn:hover .pixel-icon { color: var(--panel); }
+button.sku-link { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; text-align: left; }
+.sku-drawer { position: fixed; inset: 0 0 0 auto; width: min(520px, 100vw); max-width: 100vw; height: 100vh; max-height: 100vh; margin: 0; padding: 0; flex-direction: column; border: 0; border-left: var(--border) solid var(--text); background: var(--panel); color: var(--text); }
+.sku-drawer[open] { display: flex; }
+.sku-drawer::backdrop { background-color: transparent; background-image: var(--dither-ink-1); }
+.sku-drawer > .card-head { flex: none; background: var(--text); color: var(--panel); }
+.sku-drawer > .card-head h2 { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s1) var(--s2); }
+.sku-drawer-line { font: 400 12px var(--font-mono); color: #9CA0A8; }
+.sku-drawer > .card-head .icon-btn { color: var(--panel); }
+.sku-drawer-body { flex: 1 1 auto; overflow-y: auto; padding: var(--s3) var(--s4) var(--s5); }
+.sku-drawer-body .legend { display: flex; align-items: center; gap: var(--s2); margin: 0; }
+.sku-month { margin-top: var(--s3); border: 1px solid var(--line); background: var(--panel); }
+.sku-month > h3 { display: flex; align-items: center; gap: var(--s2); margin: 0; padding: var(--s2) var(--s3); border-bottom: 1px solid var(--line); background: var(--panel-soft); font: 600 13px var(--font-mono); }
+.sku-month.is-dm > h3 { background: var(--text); color: var(--panel); }
+.sku-month.is-dm > h3 b { padding: 0 var(--s1); background: var(--signal); font: 400 11px var(--font-sans); }
+.sku-month > h3 .link { margin-left: auto; font: 400 12px var(--font-sans); color: inherit; }
+.sku-fields { margin: 0; }
+.sku-field { display: grid; grid-template-columns: 76px minmax(0, 1fr); }
+.sku-field + .sku-field { border-top: 1px solid var(--line); }
+.sku-field dt, .sku-field dd { margin: 0; padding: var(--s2) var(--s3); font-size: 12px; line-height: 1.5; }
+.sku-field dt { color: var(--text-2); }
+.sku-field dd { white-space: pre-line; overflow-wrap: anywhere; }
+.sku-field dd.none { color: var(--muted); }
+.sku-field dd.changed { background-image: var(--dither-2); border-left: 3px solid var(--signal); cursor: help; }
+.promo-special-row td { padding: 0; }
+.month-special { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s2) var(--s3); border-left: 3px solid var(--signal); background-image: var(--dither-1); }
+.month-special-tag { flex: none; padding: 1px var(--s1); background: var(--text); color: var(--panel); font: 11px var(--font-mono); white-space: nowrap; }
+.month-special-block + .month-special-block { margin-top: var(--s2); }
+.month-special strong { font-size: 13px; }
+.month-special p { margin: 2px 0 0; font-size: 12px; line-height: 1.6; white-space: pre-line; color: var(--text-2); }
 
 /* ---------- 缩略图（版式示意 / 真实图片） ---------- */
 .thumb { container-type: inline-size; position: relative; display: flex; flex-direction: column; gap: 6%; width: 100%; aspect-ratio: 3 / 4; padding: 8%; background: var(--panel); border: 1px solid var(--line); overflow: hidden; color: var(--text); text-align: left; }

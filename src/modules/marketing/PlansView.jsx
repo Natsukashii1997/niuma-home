@@ -2,13 +2,13 @@ import { useState } from "react";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { MonthSwitch, StatusMark } from "../../ui/components.jsx";
-import { LINES, currentMonth, deliveryMonth } from "../../constants.js";
+import { PROMO_LINES as LINES, currentMonth, deliveryMonth } from "../../constants.js";
 import PlanEditor from "./PlanEditor.jsx";
 import PromosView from "./PromosView.jsx";
 
 // 月度促销（v3）：上半是当月促销——选月份、业务线，直接在填写框里粘贴 → 解析 → 处理 → 确认；
 // 下半是方案汇总（原促销表）。路由 marketing/plans/<月份>/<业务线>，默认交付月、第一条业务线。
-export default function PlansView({ route = [] }) {
+export default function PlansView({ route = [], dossier = null }) {
   const [m, l] = route;
   const month = /^\d{4}-\d{2}$/.test(m || "") ? m : deliveryMonth();
   const line = LINES.includes(l) ? l : LINES[0];
@@ -30,7 +30,7 @@ export default function PlansView({ route = [] }) {
           <h2>方案汇总</h2>
           <span className="small muted">全部月份已入库的促销 SKU；标「改」的格子与上一个有数据的月份不同</span>
         </div>
-        <PromosView key={rev} />
+        <PromosView key={rev} dossier={dossier} />
       </section>
     </>
   );
