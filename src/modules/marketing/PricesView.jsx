@@ -129,10 +129,16 @@ function PriceBoard({ sku, data, onSaved, onEdit }) {
             <select value={base} onChange={(e) => setBase(e.target.value)}>{schemes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
           </label>
           <span className="price-show">
-            {schemes.map((s) => (
-              <label key={s.id} className={`chk ${seriesClass(s)}`}><input type="checkbox" checked={!hidden.includes(s.id) || s.id === base} disabled={s.id === base}
-                onChange={(e) => setHidden((old) => e.target.checked ? old.filter((x) => x !== s.id) : [...old, s.id])} /><Mark kind={markOf(s)} />{s.name}</label>
-            ))}
+            {schemes.map((s) => {
+              const on = !hidden.includes(s.id) || s.id === base;
+              return (
+                <button type="button" key={s.id} className={`price-chip ${seriesClass(s)}${on ? "" : " is-off"}`} aria-pressed={on} disabled={s.id === base}
+                  title={s.id === base ? "基准方案始终显示" : on ? "点击隐藏这套方案" : "点击显示这套方案"}
+                  onClick={() => setHidden((old) => on ? [...old, s.id] : old.filter((x) => x !== s.id))}>
+                  <i className="price-chip-box" />{s.name}
+                </button>
+              );
+            })}
           </span>
         </> : <span className="small muted">还没有价格方案：先填原价，再点表格右边的「+」新增第一个方案</span>}
         <span className="spacer" />
@@ -164,10 +170,11 @@ function PriceBoard({ sku, data, onSaved, onEdit }) {
                     onClick={() => setPanel(panel === s.id ? null : s.id)} />
                   <div className="scheme-name">{s.name}{s.id === base && <em>基准</em>}</div>
                   <div className="scheme-meta">
-                    <Tag tone={s.status === "生效中" ? "green" : s.status === "草稿" ? "amber" : "neutral"}>{s.status}</Tag>
-                    <span>{s.from ? `${s.from.slice(5)} → ${s.to ? s.to.slice(5) : "长期"}` : "未设日期"}</span>
+                    {s.from && !s.to ? <Tag tone="neutral">长期生效</Tag> : <>
+                      <Tag tone={s.status === "生效中" ? "green" : s.status === "草稿" ? "amber" : "neutral"}>{s.status}</Tag>
+                      <span>{periodText(s)}</span>
+                    </>}
                   </div>
-                  {s.need && <div className="scheme-need"><PixelIcon name="target" />{s.need}</div>}
                   <button type="button" className="scheme-ins" disabled={locked} aria-label={`在「${s.name}」右边插入新方案`} title="在这里插入一列新方案（复制左边一列的价格）"
                     onMouseEnter={() => setSeam(s.id)} onMouseLeave={() => setSeam(null)} onFocus={() => setSeam(s.id)} onBlur={() => setSeam(null)} onClick={() => insertAfter(s.id)}><span>+</span></button>
                   {panel === s.id && <SchemePanel scheme={s} isBase={s.id === base} breach={isBreach(s)} adoptedNeeds={adoptedNeeds} locked={locked} alignRight={k > 0 && k >= visible.length - 2}
@@ -286,16 +293,20 @@ function PriceInput({ value, onDone }) {
   );
 }
 
-// 课时单价阶梯：每套方案一条折线，放在矩阵下面。四套常用方案固定配色（用户 2026-10-18 指定）：常规优惠版墨色、双11底价红、
-// 新春囤课价橙黄、赠送课时价绿；按方案名对应（编号兜底），别的表里新建同名方案也同色。其余方案维持浅灰点线，基准更粗。
+// 列头生效期文字「10.15–11.30」；没有结束日期的长期方案只显示「长期生效」方框，不显示状态（用户 2026-10-19）。
+const md = (d) => d.slice(5).replace("-", ".");
+function periodText(s) { return !s.from ? "未设日期" : s.to ? `${md(s.from)}–${md(s.to)}` : "长期生效"; }
+
+// 课时单价阶梯：每套方案一条折线，放在矩阵下面。四套常用方案固定配色（用户 2026-10-18 指定，10-19 改名）：常规价格墨色、双11价格红、
+// 新春价格橙黄、赠课价格绿；按方案名对应（编号兜底），别的表里新建同名方案也同色。其余方案维持浅灰点线，基准更粗。
 // 悬停或点选图例：该线加粗、其余变淡（不再染橙色，免得和橙黄撞色）；悬停某一档时竖线对齐并列出各方案数值。
 const MARKS = ["square", "ring", "diamond", "dot", "square", "ring"];
-const SERIES_COLORS = { 常规优惠版: "ink", 双11底价: "red", 新春囤课价: "amber", 赠送课时价: "green" };
+const SERIES_COLORS = { 常规价格: "ink", 双11价格: "red", 新春价格: "amber", 赠课价格: "green" };
 const SERIES_IDS = { regular: "ink", d11: "red", cny: "amber", gift: "green" };
 function seriesClass(s) { const color = SERIES_COLORS[s.name] || SERIES_IDS[s.id]; return color ? `has-color c-${color}` : ""; }
 
 function UnitChart({ schemes, base, tiers, c, markOf, hover, setHover }) {
-  const W = 1000, H = 190, L = 56, R = 16, T = 16, B = 30;
+  const W = 1000, H = 340, L = 56, R = 16, T = 16, B = 30;
   const values = schemes.flatMap((s) => tiers.map((_, i) => c(s, i)).filter((v) => !v.empty).map((v) => v.unit));
   const min = values.length ? Math.floor(Math.min(...values) / 50) * 50 : 0, max = values.length ? Math.ceil(Math.max(...values) / 50) * 50 : 0;
   const step = (W - L - R) / Math.max(1, tiers.length - 1);

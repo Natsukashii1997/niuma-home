@@ -237,9 +237,14 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .sku-tabs button.active { background: var(--text); color: var(--panel); }
 .sku-tabs button.active .muted { color: #9CA0A8; }
 .price-show { display: inline-flex; flex-wrap: wrap; gap: var(--s3); }
-.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
-.price-show .mk { fill: var(--muted); }
-.price-show .mk.ring { fill: var(--panel); stroke: var(--muted); stroke-width: 1.5; } /* 方案开关前的标记和图表里同形状 */
+/* 方案筛选（2026-10-19）：每套方案一个同色小方框，直接点；实心 = 显示，空心 = 隐藏；基准始终显示 */
+.price-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 0; border: 0; background: none; font: 13px var(--font-sans); color: var(--text); cursor: pointer; --series: var(--muted); }
+.price-chip-box { width: 10px; height: 10px; flex: none; background: var(--series); border: 2px solid var(--series); }
+.price-chip.is-off { color: var(--muted); }
+.price-chip.is-off .price-chip-box { background: var(--panel); }
+.price-chip:disabled { cursor: default; }
+.price-chip:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }
+.price-chip:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 .unit-chart { margin: 0 0 var(--gap); padding: var(--s3) var(--s4) var(--s2); background: var(--panel); border: var(--border) solid var(--line); }
 .unit-chart-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); margin-bottom: var(--s1); }
 .unit-legend { display: inline-flex; flex-wrap: wrap; gap: var(--s3); font-size: 12px; color: var(--text-2); }
@@ -263,13 +268,13 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .unit-legend .mk.ring { fill: var(--panel); stroke: var(--muted); stroke-width: 1.5; }
 .unit-chart .series.is-focus .mk.ring, .unit-legend .is-focus .mk.ring { fill: var(--panel); stroke: var(--text-2); }
 .unit-legend .mk { fill: var(--muted); }
-/* 四套常用方案固定配色（2026-10-18）：常规优惠版墨色、双11底价红、新春囤课价橙黄、赠送课时价绿；图例、方案开关同色 */
+/* 四套常用方案固定配色（2026-10-18）：常规价格墨色、双11价格红、新春价格橙黄、赠课价格绿；图例、方案筛选同色 */
 .c-ink { --series: var(--text); } .c-red { --series: var(--risk); } .c-amber { --series: #E89B00; } .c-green { --series: var(--ok); }
 .unit-chart .series.has-color polyline { stroke: var(--series); stroke-width: 2; stroke-dasharray: none; }
 .unit-chart .series.has-color.is-base polyline { stroke-width: 2.5; }
 .unit-chart .series.has-color.is-focus polyline { stroke-width: 3; }
-.unit-chart .series.has-color .mk, .unit-legend .has-color .mk, .price-show .has-color .mk { fill: var(--series); }
-.unit-chart .series.has-color .mk.ring, .unit-legend .has-color .mk.ring, .price-show .has-color .mk.ring { fill: var(--panel); stroke: var(--series); }
+.unit-chart .series.has-color .mk, .unit-legend .has-color .mk { fill: var(--series); }
+.unit-chart .series.has-color .mk.ring, .unit-legend .has-color .mk.ring { fill: var(--panel); stroke: var(--series); }
 .unit-chart svg.has-focus .series:not(.is-focus) { opacity: .3; }
 .unit-chart-empty { padding: var(--s6) var(--s4); border: 1px dashed var(--line); text-align: center; font-size: 12px; color: var(--muted); }
 .unit-chart .tip rect { fill: var(--panel); stroke: var(--text); stroke-width: 1.5; }
@@ -317,7 +322,6 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .scheme-name { display: flex; align-items: center; gap: var(--s2); font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: inherit; }
 .scheme-name em { font-style: normal; font-size: 11px; font-weight: 400; padding: 0 var(--s1); background: var(--text); color: var(--panel); }
 .scheme-meta { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s1); font-size: 11px; }
-.scheme-need { display: flex; align-items: center; gap: var(--s1); margin-top: var(--s1); font-family: var(--font-sans); font-size: 11px; }
 .price-cell { position: relative; }
 .price-cell.is-base { background: #F6F7F8; }
 .price-total { display: block; width: 100%; padding: 0; border: 0; background: none; text-align: right; font: 600 16px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); cursor: text; }
