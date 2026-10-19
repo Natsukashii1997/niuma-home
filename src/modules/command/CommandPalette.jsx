@@ -164,7 +164,7 @@ function Preview({ item, onClose }) {
       <dt>续费</dt><dd><span className="clamp-2">{p.latest.renewal}</span></dd>
     </dl>;
     links[0] = ["打开 SKU 档案", null, "↵"];
-    links.push(["方案汇总", href("marketing", "plans")], ["价格记录", href("marketing", "prices")]);
+    links.push(["方案汇总", href("marketing", "plans")], ["价格档案", href("marketing", "prices")]);
   } else if (p.kind === "school") {
     head = "学校 · 接下来的节点";
     body = p.next.length

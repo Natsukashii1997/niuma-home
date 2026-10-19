@@ -22,7 +22,7 @@ export default function UserPage({ route }) {
   if (tab === "voice") { location.replace(href("voice")); return null; } // 旧地址：留学之声已独立为 Voice
   const key = tab === "needs" ? "strategy" : tab;
   const View = key === "strategy" ? Strategy : Timeline;
-  return <><PageHeader title="用户" /><Tabs items={TABS} active={key === "strategy" ? "strategy" : "timeline"} /><View route={rest} /></>;
+  return <><PageHeader title="策略" /><Tabs items={TABS} active={key === "strategy" ? "strategy" : "timeline"} /><View route={rest} /></>;
 }
 
 /* ================= 用户时间线 ================= */

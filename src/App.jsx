@@ -7,7 +7,7 @@ import UserPage from "./modules/user/UserPage.jsx";
 import VoicePage from "./modules/voice/VoicePage.jsx";
 import BrandPage from "./modules/brand/BrandPage.jsx";
 import BusinessPage from "./modules/business/BusinessPage.jsx";
-import ProjectsPage from "./modules/projects/ProjectsPage.jsx";
+import ProjectsPage, { MentorPage } from "./modules/projects/ProjectsPage.jsx";
 import KnowledgePage from "./modules/kb/KnowledgePage.jsx";
 import AssistantsPage from "./modules/assistants/AssistantsPage.jsx";
 import ReportsPage from "./modules/reports/ReportsPage.jsx";
@@ -18,24 +18,21 @@ import { CommandPalette } from "./modules/command/CommandPalette.jsx";
 import { StatusBar } from "./modules/statusbar/StatusBar.jsx";
 
 // 新增模块：在这里登记一项（icon 为 src/ui/icons7.js 中的图标名），并在 src/modules/<key>/ 下建页面。
-// 分组：「工作」是本人的主线业务，「协作与工具」是项目、知识与辅助。
-const GROUPS = [
-  { label: "工作", items: [
-    { key: "home", label: "首页", icon: "home", Page: HomePage },
-    { key: "marketing", label: "营销", icon: "marketing", Page: MarketingPage },
-    { key: "user", label: "用户", icon: "user", Page: UserPage },
-    { key: "voice", label: "Voice", icon: "voice", Page: VoicePage },
-    { key: "brand", label: "品牌", icon: "brand", Page: BrandPage },
-    { key: "business", label: "业务", icon: "business", Page: BusinessPage },
-  ] },
-  { label: "协作与工具", items: [
-    { key: "projects", label: "项目", icon: "project", Page: ProjectsPage },
-    { key: "kb", label: "知识库", icon: "kb", Page: KnowledgePage },
-    { key: "assistants", label: "Agent", icon: "agent", Page: AssistantsPage },
-    { key: "reports", label: "日/周报", icon: "reports", Page: ReportsPage },
-  ] },
+// 侧栏顺序与名称（用户 2026-10-19）：不再分「工作 / 协作与工具」两组，一列排下。
+// 策略 = 用户时间线 + 用户策略；营销 = 月度促销 + 价格档案 + 物料沉淀 + 设计 Brief；项目 = 项目看板 + 项目推进 + 营销战役；带教单列。
+const MODULES = [
+  { key: "home", label: "首页", icon: "home", Page: HomePage },
+  { key: "user", label: "策略", icon: "target", Page: UserPage },
+  { key: "marketing", label: "营销", icon: "marketing", Page: MarketingPage },
+  { key: "voice", label: "Voice", icon: "voice", Page: VoicePage },
+  { key: "projects", label: "项目", icon: "project", Page: ProjectsPage },
+  { key: "mentor", label: "带教", icon: "mentor", Page: MentorPage },
+  { key: "brand", label: "品牌", icon: "brand", Page: BrandPage },
+  { key: "business", label: "业务", icon: "business", Page: BusinessPage },
+  { key: "assistants", label: "Agent", icon: "agent", Page: AssistantsPage },
+  { key: "reports", label: "日/周报", icon: "reports", Page: ReportsPage },
+  { key: "kb", label: "飞书知识库", icon: "kb", Page: KnowledgePage },
 ];
-const MODULES = GROUPS.flatMap((g) => g.items);
 const SETTINGS = { key: "settings", label: "设置", icon: "settings", Page: SettingsPage };
 
 const moduleOf = (key) => (key === "settings" ? SETTINGS : MODULES.find((m) => m.key === key) || MODULES[0]);
@@ -111,12 +108,9 @@ export default function App() {
             <BrandMark />
             <span className="brand-name"><strong>牛马之家</strong><span className="label">niuma home</span></span>
           </div>
-          {GROUPS.map((g) => (
-            <div key={g.label} className="nav-group">
-              <span className="nav-group-label">{g.label}</span>
-              {g.items.map((item) => <NavLink key={item.key} item={item} current={current} />)}
-            </div>
-          ))}
+          <div className="nav-group">
+            {MODULES.map((item) => <NavLink key={item.key} item={item} current={current} />)}
+          </div>
           <div className="spacer" />
           <NavLink item={SETTINGS} current={current} />
           <div className="sidebar-foot label">local · 127.0.0.1</div>

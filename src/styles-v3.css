@@ -136,9 +136,8 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .delivery-step-name { font-weight: 600; }
 .delivery-step-meta { grid-column: 2 / 4; grid-row: 2; align-self: start; font-size: 12px; line-height: 1.5; color: var(--muted); }
 .todo-list li { gap: var(--s2); }
-/* 待我处理：高度跟同一行走、不撑长首页；最少 360px，窄屏单列时也是这个高度 */
-.todo-card { min-height: 360px; }
-.todo-card > .card-body { flex: 1 1 0; height: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+/* 待我处理：高度跟同一行的 Codex 板块走、不撑长首页；窄屏单列时没有同行可跟，固定 360px */
+.card.todo-card > .card-body { flex: 1 1 0; height: 0; min-height: 0; overflow: hidden; padding-top: var(--s3); padding-bottom: var(--s3); display: flex; flex-direction: column; }
 .todo-box { position: relative; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .todo-more { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s3); padding-top: var(--s2); border-top: 1px solid var(--line); font-size: 12px; min-height: 40px; }
 .todo-more .link { display: inline-flex; align-items: center; gap: var(--s1); }
@@ -251,41 +250,9 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .price-chip:disabled { cursor: default; }
 .price-chip:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }
 .price-chip:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
-.unit-chart { margin: 0 0 var(--gap); padding: var(--s3) var(--s4) var(--s2); background: var(--panel); border: var(--border) solid var(--line); }
-.unit-chart-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); margin-bottom: var(--s1); }
-.unit-legend { display: inline-flex; flex-wrap: wrap; gap: var(--s3); font-size: 12px; color: var(--text-2); }
-.unit-legend button { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
-.unit-legend button:hover, .unit-legend .is-focus { color: var(--text); }
-.unit-legend .is-focus { text-decoration: underline; text-underline-offset: 3px; }
-.unit-legend .is-base { color: var(--text); font-weight: 600; }
-.unit-chart svg { display: block; width: 100%; height: auto; }
-.unit-chart .grid-line { stroke: var(--line); stroke-width: 1; }
-.unit-chart .axis { font: 11px var(--font-mono); fill: var(--muted); }
-.unit-chart .axis.is-hot { fill: var(--text); font-weight: 600; }
-.unit-chart .cross { stroke: var(--text); stroke-dasharray: 3 3; }
-.unit-chart .series polyline { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 2 4; } /* 非重点方案画点线 */
-.unit-chart svg { shape-rendering: crispEdges; }
-.unit-chart .series.is-base polyline { stroke: var(--text); stroke-width: 2.5; stroke-dasharray: none; }
-.unit-chart .series.is-focus polyline { stroke: var(--text-2); stroke-width: 3; stroke-dasharray: none; }
-.unit-chart .mk { fill: var(--line); }
-.unit-chart .series.is-base .mk, .unit-legend .is-base .mk { fill: var(--text); }
-.unit-chart .series.is-focus .mk, .unit-legend .is-focus .mk { fill: var(--text-2); }
-.unit-chart .mk.ring { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
-.unit-legend .mk.ring { fill: var(--panel); stroke: var(--muted); stroke-width: 1.5; }
-.unit-chart .series.is-focus .mk.ring, .unit-legend .is-focus .mk.ring { fill: var(--panel); stroke: var(--text-2); }
-.unit-legend .mk { fill: var(--muted); }
-/* 四套常用方案固定配色（2026-10-18）：常规价格墨色、双11价格红、新春价格橙黄、赠课价格绿；图例、方案筛选同色 */
+/* 四套常用方案固定配色（2026-10-18）：常规价格墨色、双11价格红、新春价格橙黄、赠课价格绿；方案筛选用 */
+.price-sim { margin-top: var(--gap); }
 .c-ink { --series: var(--text); } .c-red { --series: var(--risk); } .c-amber { --series: #E89B00; } .c-green { --series: var(--ok); }
-.unit-chart .series.has-color polyline { stroke: var(--series); stroke-width: 2; stroke-dasharray: none; }
-.unit-chart .series.has-color.is-base polyline { stroke-width: 2.5; }
-.unit-chart .series.has-color.is-focus polyline { stroke-width: 3; }
-.unit-chart .series.has-color .mk, .unit-legend .has-color .mk { fill: var(--series); }
-.unit-chart .series.has-color .mk.ring, .unit-legend .has-color .mk.ring { fill: var(--panel); stroke: var(--series); }
-.unit-chart svg.has-focus .series:not(.is-focus) { opacity: .3; }
-.unit-chart-empty { padding: var(--s6) var(--s4); border: 1px dashed var(--line); text-align: center; font-size: 12px; color: var(--muted); }
-.unit-chart .tip rect { fill: var(--panel); stroke: var(--text); stroke-width: 1.5; }
-.unit-chart .tip-title { font: 600 12px var(--font-sans); fill: var(--text); }
-.unit-chart .tip-row { font: 12px var(--font-mono); fill: var(--text-2); }
 .price-matrix th.r, .price-matrix td.r { text-align: right; }
 .price-matrix .tier { font-family: var(--font-mono); font-size: 16px; font-weight: 600; line-height: normal; color: var(--text); background: var(--panel); vertical-align: top; width: 70px; } /* 与各格总价顶对齐、基线一致（P2-6） */
 .price-matrix .tier small { font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 1px; }
@@ -341,7 +308,6 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .price-flag.is-risk { color: var(--risk); }
 .price-cell.is-breach { border-left: 3px solid var(--risk); }
 .price-note { margin: var(--s2) 0 var(--gap); }
-.unit-legend svg { width: 10px !important; height: 10px; flex-shrink: 0; }
 .grid td.changed { padding-right: var(--s5); }
 
 /* ---------- 营销 · SKU 档案侧栏（2026-10-19）：方案汇总里点「档案」从右侧打开，只放跨月政策，按月从上到下 ---------- */
@@ -885,6 +851,7 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 /* 窄屏（L12）：首页 12 栏在 900px 以下改为每张卡占满一行；600px 以下 Codex 卡、交付月卡上下排列，倒计时移到正文下方，网点底和状态色不变 */
 @media (max-width: 900px) {
   .home-grid > * { grid-column: 1 / -1; }
+  .todo-card { min-height: 360px; }
   .campaign-grid.cols-9-3, .proj-layout.cols-3-9 { grid-template-columns: minmax(0, 1fr); } /* 删除/恢复入口所在的两页：窄屏单列，其他页面不在本次范围 */
   .proj-items, .proj-list { position: static; }
   .statusbar { overflow: hidden; } /* 底栏不换行也不横向滚动：放不下的信息末尾省略，见 600px 以下 */
@@ -1034,26 +1001,22 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .kbf-note.is-warn { border-left-color: var(--warn); }
 .kbf-note.is-error { border-left-color: var(--risk); }
 .kbf-note .icon-btn { margin-left: auto; }
-.kbf-board { display: flex; flex-direction: column; gap: var(--s5); min-height: 560px; padding: var(--s5); border: var(--border) solid var(--line); background-color: var(--panel-soft); background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1.3px); background-size: 16px 16px; }
+.kbf-board { display: flex; flex-direction: column; gap: 56px; min-height: max(720px, calc(100vh - 300px)); padding: 48px; border: var(--border) solid var(--line); background-color: var(--panel-soft); background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1.3px); background-size: 16px 16px; }
 .kbf-empty { margin: 0; font-size: 12px; color: var(--muted); }
 .kbc-collect-tip { display: flex; align-items: flex-start; gap: var(--s2); margin: 0 0 var(--s2); }
 
-/* 散卡条 */
-.kbf-loose { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s3); padding: var(--s3); border: 2px dashed var(--line); background: var(--panel); }
-.kbf-loose-label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); }
-.kbf-loose-label b { font-family: var(--font-pixel); font-weight: 400; font-size: 15px; color: var(--text); }
-/* 散卡为 0：收成一行细条，左对齐；仍可把卡片拖进来 */
-.kbf-loose.is-empty { padding: var(--s2) var(--s3); }
-.kbf-loose.is-empty .kbf-loose-label { flex-direction: row; align-items: baseline; gap: var(--s2); }
-.kbf-loose.is-empty .kbf-loose-label b { font-size: 13px; }
-.kbf-loose.is-empty .kbf-loose-cards { flex: 0 1 auto; }
-.kbf-loose.is-empty .kbf-empty::before { content: "· "; }
-.kbf-loose-cards { display: flex; flex-wrap: wrap; gap: var(--s3); flex: 1; min-width: 0; }
-.kbf-loose-hint { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+/* 散卡区：顶部一行标题（名称 · 篇数 · 说明 · 右侧提示），下面是卡片 */
+.kbf-loose { display: flex; flex-direction: column; gap: var(--s4); padding: var(--s4) var(--s5) var(--s5); border: 2px dashed var(--line); background: var(--panel); }
+.kbf-loose-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s2) var(--s3); }
+.kbf-loose-head strong { font-size: 14px; }
+.kbf-loose-head i { font-style: normal; font-family: var(--font-pixel); font-size: 15px; color: var(--signal); }
+.kbf-loose.is-empty { padding: var(--s3) var(--s5); }
+.kbf-loose-cards { display: flex; flex-wrap: wrap; gap: var(--s4); }
+.kbf-loose-hint { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; font-size: 11px; color: var(--muted); }
 .kbf-loose.is-over, .kbf-drawer.is-over, .kbf-folder.is-over .kbf-case, .kbf-card.is-folder.is-over { border-style: dashed; border-color: var(--signal); background-image: var(--dither-1); }
 
 /* 文件夹 */
-.kbf-grid { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 34px 26px; }
+.kbf-grid { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 64px 40px; align-content: start; }
 .kbf-folder { position: relative; min-width: 0; padding-top: 30px; }
 .kbf-folder.is-dim { opacity: 0.4; }
 .kbf-tab { position: absolute; left: 0; top: 0; z-index: 2; display: flex; align-items: center; max-width: 88%; height: 32px; background: var(--text); color: var(--panel); cursor: grab; }
@@ -1065,10 +1028,10 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .kbf-folder.is-open .kbf-tab, .kbf-folder.is-new .kbf-tab { background: var(--signal); }
 .kbf-folder.is-open .kbf-tab-name i { color: var(--panel); }
 .kbf-folder.is-over-tab .kbf-tab { outline: 2px dashed var(--signal); outline-offset: 3px; }
-.kbf-case { position: relative; display: block; width: 100%; height: 182px; padding: 0; overflow: hidden; border: var(--border) solid var(--text); background: var(--panel); font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+.kbf-case { position: relative; display: block; width: 100%; height: 240px; padding: 0; overflow: hidden; border: var(--border) solid var(--text); background: var(--panel); font: inherit; color: var(--text); text-align: left; cursor: pointer; }
 .kbf-case:hover { background-image: var(--dither-1); }
 .kbf-folder.is-open .kbf-case { border-color: var(--signal); }
-.kbf-peek { position: absolute; left: 14px; right: 14px; display: flex; flex-direction: column; gap: 6px; height: 88px; padding: 8px 10px; border: var(--border) solid var(--line); background: var(--panel); }
+.kbf-peek { position: absolute; left: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; height: 104px; padding: 10px 12px; border: var(--border) solid var(--line); background: var(--panel); }
 .kbf-peek strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; font-weight: 600; line-height: 1.45; }
 .kbf-peek.is-folder { border-left: 4px solid var(--text); }
 .kbf-peek.is-empty { border-style: dashed; }
@@ -1079,7 +1042,7 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .kbf-name-input:focus { outline: none; }
 
 /* 抽屉：整行，箭头指向被打开的文件夹 */
-.kbf-drawer { grid-column: 1 / -1; position: relative; margin-top: -18px; padding: var(--s4); border: var(--border) solid var(--signal); background: var(--panel); }
+.kbf-drawer { grid-column: 1 / -1; position: relative; margin-top: -36px; padding: var(--s4); border: var(--border) solid var(--signal); background: var(--panel); }
 .kbf-drawer::before { content: ""; position: absolute; top: -12px; left: var(--notch); width: 20px; height: 20px; border-left: var(--border) solid var(--signal); border-top: var(--border) solid var(--signal); background: var(--panel); transform: rotate(45deg); }
 .kbf-drawer-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2) var(--s3); margin-bottom: var(--s3); }
 .kbf-drawer-head h3 { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin: 0; font-size: 16px; }
@@ -1089,7 +1052,7 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 
 /* 横版卡 */
 .kbf-card { position: relative; height: 92px; min-width: 0; border: var(--border) solid var(--line); background: var(--panel); cursor: grab; }
-.kbf-loose .kbf-card { width: 240px; height: 76px; }
+.kbf-loose .kbf-card { width: 260px; height: 84px; }
 .kbf-card:hover { border-color: var(--text); }
 .kbf-card-hit { display: flex; width: 100%; height: 100%; padding: 0; border: 0; background: none; color: var(--text); font: inherit; text-align: left; text-decoration: none; cursor: inherit; }
 .kbf-cover { position: relative; flex: none; display: flex; align-items: flex-end; width: 64px; padding: 4px; border-right: var(--border) solid var(--line); background-color: var(--panel-soft); }
@@ -1109,7 +1072,9 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 
 @media (max-width: 600px) {
   .kbf-search { width: 100%; }
-  .kbf-board { padding: var(--s3); }
+  .kbf-board { padding: var(--s3); gap: var(--s5); }
+  .kbf-grid { gap: 48px var(--s4); }
+  .kbf-loose { padding: var(--s3); }
   .kbf-loose .kbf-card { width: 100%; }
   .kbf-tab-edit { display: none; } /* 手机上不能拖动整理，只看；改名在电脑上做 */
   .kbf-drawer-head > .small, .kbf-loose-hint { display: none; }

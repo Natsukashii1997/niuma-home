@@ -16,7 +16,7 @@ import { CollectRecent } from "./CollectPage.jsx";
 
 const TYPE = { docx: "DOC", doc: "DOC", sheet: "SHT", bitable: "BASE", file: "FILE", slides: "PPT", mindnote: "MIND" };
 const TYPE_ZH = { docx: "文档", doc: "旧文档", sheet: "表格", bitable: "多维表", file: "文件", slides: "幻灯片", mindnote: "思维笔记" };
-const FOLDER_MIN = 240, GAP = 26;
+const FOLDER_MIN = 280, GAP = 40; // 用户 2026-10-19：放大留白，1440 宽排 3 列
 const PATTERNS = ["var(--dither-1)", "var(--dither-2)", "var(--dither-3)"];
 const patternOf = (id) => { let h = 0; for (const ch of String(id)) h = (h * 31 + ch.codePointAt(0)) >>> 0; return PATTERNS[h % PATTERNS.length]; };
 
@@ -200,11 +200,11 @@ function Canvas({ kb, focus, initialOrder, ruleIds, reload }) {
         </div>
         <button type="button" className="kbf-case" onClick={() => openGroup(g.id)} aria-label={`${isOpen ? "收起" : "打开"}分组：${g.name}`}>
           {peeks.length ? peeks.map((k, j) => (
-            <span key={k.id} className={`kbf-peek${k.kids ? " is-folder" : ""}`} style={{ top: 14 + j * 26, transform: `rotate(${pose(k.id, 1)[0] / 5}deg)`, zIndex: j }}>
+            <span key={k.id} className={`kbf-peek${k.kids ? " is-folder" : ""}`} style={{ top: 22 + j * 40, transform: `rotate(${pose(k.id, 1)[0] / 5}deg)`, zIndex: j }}>
               <strong>{k.name}</strong>
               <span className="kbf-meta"><span>{k.kids ? `文件夹 · ${countDocs(k)} 篇` : TYPE_ZH[docs[k.id]?.type] || "文档"}</span><span className="tnum">{(k.kids ? latest(k) : docs[k.id]?.updated)?.slice(5) || ""}</span></span>
             </span>
-          )) : <span className="kbf-peek is-empty" style={{ top: 22 }}><strong>空文件夹 · 把文档拖进来</strong></span>}
+          )) : <span className="kbf-peek is-empty" style={{ top: 30 }}><strong>空文件夹 · 把文档拖进来</strong></span>}
           <span className="kbf-lip"><span className="tnum">{n} 篇{h ? ` · 命中 ${h}` : ""}</span><span className="tnum">更新 {(g.kids ? latest(g).slice(5) : "") || "—"}</span></span>
         </button>
       </div>
@@ -244,7 +244,7 @@ function Canvas({ kb, focus, initialOrder, ruleIds, reload }) {
   if (naming?.id === "new") cells.push(
     <div key="new" className="kbf-folder is-new">
       <div className="kbf-tab">{nameInput("新分组名称")}</div>
-      <div className="kbf-case"><span className="kbf-peek is-empty" style={{ top: 22 }}><strong>回车后在飞书根目录新建这个目录</strong></span><span className="kbf-lip"><span>0 篇</span></span></div>
+      <div className="kbf-case"><span className="kbf-peek is-empty" style={{ top: 30 }}><strong>回车后在飞书根目录新建这个目录</strong></span><span className="kbf-lip"><span>0 篇</span></span></div>
     </div>,
   );
 
@@ -275,9 +275,13 @@ function Canvas({ kb, focus, initialOrder, ruleIds, reload }) {
 
       <div className="kbf-board" data-dragging={drag?.kind || undefined}>
         <div className={`kbf-loose${model.loose.length ? "" : " is-empty"}${over === "loose" ? " is-over" : ""}`} {...dropZone("loose", () => moveTo(ROOT))}>
-          <span className="kbf-loose-label" title="收藏时归类不明确的放这里"><b className="tnum">散卡 {model.loose.length}</b></span>
-          <div className="kbf-loose-cards">{model.loose.length ? model.loose.map(card) : <p className="kbf-empty">没有散卡，文档都在分组里</p>}</div>
-          {model.loose.length > 0 && <span className="kbf-loose-hint"><PixelIcon name="down" />拖进下面的文件夹</span>}
+          {/* 散卡区标题放在区块顶部一行（用户 2026-10-19：原来左侧单独一个「散卡 5」太突兀） */}
+          <div className="kbf-loose-head">
+            <strong>散卡</strong><i className="tnum">{model.loose.length}</i>
+            <span className="small muted">{model.loose.length ? "收藏时归类不明确的放这里" : "没有散卡，文档都在分组里；也可以把卡片拖回这里"}</span>
+            {model.loose.length > 0 && <span className="kbf-loose-hint"><PixelIcon name="down" />拖进下面的文件夹</span>}
+          </div>
+          {model.loose.length > 0 && <div className="kbf-loose-cards">{model.loose.map(card)}</div>}
         </div>
         <div className="kbf-grid" ref={gridRef} style={{ "--cols": cols }}>{cells}</div>
       </div>

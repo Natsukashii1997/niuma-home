@@ -5,6 +5,6 @@ import { PageHeader } from "../../ui/components.jsx";
 // 路由：kb = 画布；kb/<文档 id>（⌘K 打开某篇文档）也进画布，搜索框预填这篇的标题；旧地址 kb/tree、kb/collect 都回到画布。
 export default function KnowledgePage({ route = [] }) {
   const focus = route[0] && !["tree", "collect"].includes(route[0]) ? route[0] : "";
-  return <><PageHeader title="知识库" subtitle="「常浩的知识库」：分组就是飞书一级目录，在这里拖动就是在飞书里整理" />
+  return <><PageHeader title="飞书知识库" subtitle="「常浩的知识库」：分组就是飞书一级目录，在这里拖动就是在飞书里整理" />
     <KbCanvas key={focus} focus={focus} /></>;
 }

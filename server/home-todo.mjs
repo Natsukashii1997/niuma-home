@@ -14,7 +14,7 @@ export function todoView({ timeline, needs, projects, campaign, matrices, settin
   };
   for (const p of projects) for (const n of p.nodes || []) { node(n, p.name, '#/projects'); for (const child of n.childNodes || []) node(child, p.name, '#/projects'); }
   // 空模板或未完成门禁都不等于已提交审核；来源必须显式提供待审事实。
-  if (campaign) for (const phase of campaign.phases) for (const n of phase.nodes) node({ ...n, dueDate: '' }, campaign.name, '#/marketing/campaign');
+  if (campaign) for (const phase of campaign.phases) for (const n of phase.nodes) node({ ...n, dueDate: '' }, campaign.name, '#/projects/campaign');
   for (const matrix of matrices) for (const scheme of matrix.schemes) {
     if (scheme.status === '历史') continue;
     const broken = matrix.tiers.filter((hours, i) => 1 - settings.costPerHour * (hours + scheme.gifts[i]) / scheme.prices[i] < settings.floorMargin);

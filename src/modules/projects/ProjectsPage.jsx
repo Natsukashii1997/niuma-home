@@ -7,17 +7,34 @@ import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { DeletedList, useSoftRemove } from "../../ui/soft-delete.jsx";
 import { localDate } from "../../constants.js";
 import { nodeState, projectSummary } from "./project-view.js";
+import CampaignView from "../marketing/CampaignView.jsx";
 
 // 项目（v3）：项目推进读飞书「AI管培工作台 / 任务事项」；管培带教读两位管培生近 30 天日志，回复确认后挂回飞书原话。
 // 节点改动只存工作台本地（不回写飞书），每次都走「预览 → 确认 → 回读」。来源没填的完成状态、截止日期、当前阶段显示「未填写 / 未知」，不当成未完成。
+// 页签（用户 2026-10-19）：项目看板（所有项目总览，先留空位）· 项目推进 · 营销战役（从营销移来）。管培带教单列为侧栏「带教」。
 const TABS = [
+  ["overview", "项目看板", "所有项目的总览：怎么呈现回头再讨论，先留空位"],
   ["board", "项目推进", "各项目的阶段、节点和负责人；节点改动只存在工作台，不回写飞书"],
-  ["mentor", "管培带教", "管培生近 30 天日志里的卡点与提问：在右侧回复或让机械邪龙兽回答，确认后作为评论挂回飞书原话"],
+  ["campaign", "营销战役", "本月战役的节点、物料决定与复盘"],
 ].map(([key, label, desc]) => ({ key, label, desc, href: href("projects", key) }));
 
 export default function ProjectsPage({ route }) {
-  const [tab = "board"] = route;
-  return <><PageHeader title="项目" /><Tabs items={TABS} active={tab === "mentor" ? "mentor" : "board"} />{tab === "mentor" ? <Mentor /> : <Board />}</>;
+  const [tab = "board", ...rest] = route;
+  if (tab === "mentor") { location.replace(href("mentor")); return null; } // 旧地址：管培带教已单列为「带教」
+  const key = TABS.some((t) => t.key === tab) ? tab : "board";
+  return (
+    <>
+      <PageHeader title="项目" />
+      <Tabs items={TABS} active={key} />
+      {key === "overview" ? <Placeholder icon="project" title="项目看板 · 待设计">所有项目的总览放在这里，具体怎么做回头再讨论。</Placeholder>
+        : key === "campaign" ? <CampaignView route={rest} /> : <Board />}
+    </>
+  );
+}
+
+// 带教（侧栏单列）：管培生近 30 天日志里的卡点与提问。
+export function MentorPage() {
+  return <><PageHeader title="带教" /><p className="tab-desc">管培生近 30 天日志里的卡点与提问：在右侧回复或让机械邪龙兽回答，确认后作为评论挂回飞书原话</p><Mentor /></>;
 }
 
 const STATE_TEXT = { done: "已完成", open: "未完成", unknown: "未填写" };

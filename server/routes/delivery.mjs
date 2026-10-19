@@ -60,7 +60,7 @@ export function deliveryView(db, month, data) {
     priceStep(db, month, data.needs),
     { key: 'materials', label: '物料交付', state: 'pending', meta: '', note: 'NAS 尚未接入', href: '#/marketing/materials' },
     briefStep(db, month),
-    { key: 'campaign', label: '营销战役', state: instance && nodes.size && completed === nodes.size ? 'done' : instance ? 'part' : 'todo', meta: instance ? `${completed}/${nodes.size} 节点完成` : '该月尚未创建战役', href: '#/marketing/campaign' },
+    { key: 'campaign', label: '营销战役', state: instance && nodes.size && completed === nodes.size ? 'done' : instance ? 'part' : 'todo', meta: instance ? `${completed}/${nodes.size} 节点完成` : '该月尚未创建战役', href: '#/projects/campaign' },
   ] };
 }
 

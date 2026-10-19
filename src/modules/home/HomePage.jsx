@@ -72,7 +72,7 @@ function DeliveryCard({ month, plans }) {
         <div className="delivery-days"><FlipNumber value={left} /><small>天</small></div>
         <p className="small muted">{deadlineLabel(month)} 截止 · {state.data ? `已完成 ${done}/${steps.length}` : state.error ? "环节状态读取失败" : "读取中"}</p>
         <div className="delivery-pips" aria-hidden="true">{steps.map((s) => <i key={s.key} className={`is-${s.state}`} />)}</div>
-        {campaign && <a className="delivery-campaign" href="#/marketing/campaign"><PixelIcon name="bolt" />{campaign.name}<span className="mono small">{campaign.start.slice(5)} → {campaign.end.slice(5)}</span></a>}
+        {campaign && <a className="delivery-campaign" href="#/projects/campaign"><PixelIcon name="bolt" />{campaign.name}<span className="mono small">{campaign.start.slice(5)} → {campaign.end.slice(5)}</span></a>}
       </div>
       {!state.data ? <div className="delivery-steps is-state"><Loadable state={state} name="交付月环节">{() => null}</Loadable></div> : <ul className="delivery-steps">
         {steps.map((s) => (

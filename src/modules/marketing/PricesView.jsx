@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PixelIcon } from "../../ui/bitmap.jsx";
 import { apiRead, apiSend, useApi } from "../../api.js";
 import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { deliveryMonth } from "../../constants.js";
-import { Button, Loadable, SampleBadge, Tag } from "../../ui/components.jsx";
+import { Button, Loadable, Placeholder, SampleBadge, Tag } from "../../ui/components.jsx";
 
 // 价格（v3）：一张课时卡（5–200 小时）× 多套价格方案的矩阵。
 // 比较方式：同一档跨方案（相对基准方案的差价）、同一方案跨档位（单价阶梯，倒挂标出）。
@@ -92,7 +92,6 @@ function PriceBoard({ sku, data, onSaved, onEdit }) {
   const tiers = sku.tiers;
   const visible = schemes.filter((s) => s.id === base || !hidden.includes(s.id));
   const baseScheme = schemes.find((s) => s.id === base);
-  const markOf = (s) => MARKS[schemes.indexOf(s) % MARKS.length];
   const c = (s, i) => calc(s, i, tiers, unitOrig, data.costPerHour);
   const save = (schemeId, i, value) => setSchemes((old) => old.map((s) => s.id !== schemeId ? s : { ...s, prices: s.prices.map((p, j) => (j === i ? value : p)) }));
   // 在 after 这一列右边插入新方案：价格复制左边一列、赠课清零；空表的第一列全部留空。只改草稿。
@@ -226,7 +225,11 @@ function PriceBoard({ sku, data, onSaved, onEdit }) {
       </div>
       <p className="small muted price-note">单价 = 总价 ÷（课时 + 赠送）；付费单价 = 总价 ÷ 课时；折扣 = 总价 ÷ 原价；差价相对基准方案。点击总价可以直接改，Enter 保存，Tab / ⇧Tab 换到下 / 上一档，Esc 取消。点列头顶部的细条打开方案面板（改名称、状态、日期，设为基准或删除）；鼠标移到两列之间的竖线上点「+」插入新方案。</p>
 
-      <UnitChart schemes={visible} base={base} tiers={tiers} c={c} markOf={markOf} hover={hover} setHover={setHover} />
+      {/* 定价模拟器（用户 2026-10-19）：替换原来的课时单价折线图，先留空位，具体做法回头再讨论。 */}
+      <section className="card price-sim">
+        <div className="card-head"><h2><PixelIcon name="spark" /> 定价模拟器</h2></div>
+        <div className="card-body"><Placeholder icon="price" title="待设计">定价模拟器放在这里，具体怎么做回头再讨论。</Placeholder></div>
+      </section>
     </>
   );
 }
@@ -297,72 +300,7 @@ function PriceInput({ value, onDone }) {
 const md = (d) => d.slice(5).replace("-", ".");
 function periodText(s) { return !s.from ? "未设日期" : s.to ? `${md(s.from)}–${md(s.to)}` : "长期生效"; }
 
-// 课时单价阶梯：每套方案一条折线，放在矩阵下面。四套常用方案固定配色（用户 2026-10-18 指定，10-19 改名）：常规价格墨色、双11价格红、
-// 新春价格橙黄、赠课价格绿；按方案名对应（编号兜底），别的表里新建同名方案也同色。其余方案维持浅灰点线，基准更粗。
-// 悬停或点选图例：该线加粗、其余变淡（不再染橙色，免得和橙黄撞色）；悬停某一档时竖线对齐并列出各方案数值。
-const MARKS = ["square", "ring", "diamond", "dot", "square", "ring"];
+// 方案配色（用户 2026-10-18 指定，10-19 改名）：常规价格墨色、双11价格红、新春价格橙黄、赠课价格绿；按方案名对应（编号兜底），别的表里新建同名方案也同色。
 const SERIES_COLORS = { 常规价格: "ink", 双11价格: "red", 新春价格: "amber", 赠课价格: "green" };
 const SERIES_IDS = { regular: "ink", d11: "red", cny: "amber", gift: "green" };
 function seriesClass(s) { const color = SERIES_COLORS[s.name] || SERIES_IDS[s.id]; return color ? `has-color c-${color}` : ""; }
-
-function UnitChart({ schemes, base, tiers, c, markOf, hover, setHover }) {
-  const W = 1000, H = 340, L = 56, R = 16, T = 16, B = 30;
-  const values = schemes.flatMap((s) => tiers.map((_, i) => c(s, i)).filter((v) => !v.empty).map((v) => v.unit));
-  const min = values.length ? Math.floor(Math.min(...values) / 50) * 50 : 0, max = values.length ? Math.ceil(Math.max(...values) / 50) * 50 : 0;
-  const step = (W - L - R) / Math.max(1, tiers.length - 1);
-  const x = (i) => L + i * step;
-  const y = (v) => T + ((max - v) * (H - T - B)) / Math.max(1, max - min);
-  const ticks = useMemo(() => { const out = []; for (let v = min; v <= max; v += 50) out.push(v); return out; }, [min, max]);
-  const [pin, setPin] = useState(null);
-  const [peek, setPeek] = useState(null);
-  const focus = peek || pin;
-  const order = [...schemes].sort((a, b) => rank(a.id) - rank(b.id)); // 突出的线画在最上面
-  function rank(id) { return id === focus ? 2 : id === base ? 1 : 0; }
-  const cls = (s) => `${seriesClass(s)}${s.id === base ? " is-base" : ""}${s.id === focus ? " is-focus" : ""}`;
-  return (
-    <div className="unit-chart">
-      <div className="unit-chart-head"><span className="label">课时单价阶梯（元/小时，含赠送）</span>
-        {values.length > 0 && <span className="unit-legend">{schemes.map((s) => (
-          <button type="button" key={s.id} className={cls(s)} aria-pressed={pin === s.id} title="点一下固定高亮，再点取消"
-            onMouseEnter={() => setPeek(s.id)} onMouseLeave={() => setPeek(null)} onClick={() => setPin(pin === s.id ? null : s.id)}><Mark kind={markOf(s)} />{s.name}</button>
-        ))}</span>}</div>
-      {!values.length ? <div className="unit-chart-empty">还没有可画的价格：填写原价和至少一个方案的总价后显示</div> : (
-        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="课时单价随课时档位变化" className={focus ? "has-focus" : ""} onMouseLeave={() => setHover(-1)}>
-          {ticks.map((v) => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} className="grid-line" /><text x={L - 8} y={y(v) + 4} className="axis" textAnchor="end">{v}</text></g>)}
-          {tiers.map((h, i) => <text key={h} x={x(i)} y={H - 8} className={`axis${hover === i ? " is-hot" : ""}`} textAnchor="middle">{h}h</text>)}
-          {hover >= 0 && <line x1={x(hover)} x2={x(hover)} y1={T - 6} y2={H - B} className="cross" />}
-          {order.map((s) => {
-            const pts = tiers.map((_, i) => [i, c(s, i)]).filter(([, v]) => !v.empty);
-            return (
-              <g key={s.id} className={`series ${cls(s)}`}>
-                <polyline points={pts.map(([i, v]) => `${x(i)},${y(v.unit)}`).join(" ")} />
-                {pts.map(([i, v]) => <MarkAt key={i} kind={markOf(s)} cx={x(i)} cy={y(v.unit)} />)}
-              </g>
-            );
-          })}
-          {tiers.map((_, i) => <rect key={i} x={x(i) - step / 2} y={0} width={step} height={H} fill="transparent" onMouseEnter={() => setHover(i)} />)}
-          {hover >= 0 && (() => {
-            const bx = Math.min(x(hover) + 10, W - 190), rows = schemes.map((s) => { const v = c(s, hover); return [s.name, v.empty ? "—" : money(v.unit)]; });
-            return (
-              <g className="tip" pointerEvents="none">
-                <rect x={bx} y={T} width={180} height={18 + rows.length * 16} />
-                <text x={bx + 8} y={T + 14} className="tip-title">{tiers[hover]} 小时</text>
-                {rows.map(([n, v], j) => <text key={n + j} x={bx + 8} y={T + 30 + j * 16} className="tip-row">{n}<tspan x={bx + 172} textAnchor="end">{v}</tspan></text>)}
-              </g>
-            );
-          })()}
-        </svg>
-      )}
-    </div>
-  );
-}
-
-function Mark({ kind }) {
-  return <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><MarkAt kind={kind} cx={5} cy={5} /></svg>;
-}
-function MarkAt({ kind, cx, cy }) {
-  if (kind === "ring") return <rect x={cx - 3.5} y={cy - 3.5} width={7} height={7} className="mk ring" />;
-  if (kind === "diamond") return <rect x={cx - 3} y={cy - 3} width={6} height={6} transform={`rotate(45 ${cx} ${cy})`} className="mk" />;
-  if (kind === "dot") return <rect x={cx - 2} y={cy - 2} width={4} height={4} className="mk" />;
-  return <rect x={cx - 3.5} y={cy - 3.5} width={7} height={7} className="mk" />;
-}
