@@ -1,20 +1,19 @@
-import { Fragment, useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Button, DateInput, Loadable, MonthSwitch, PageHeader, Placeholder, Segmented, Tabs, Tag } from "../../ui/components.jsx";
-import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
-import { FeishuExport } from "../../ui/feishu-export.jsx";
-import { ManualNeedForm } from "./ManualNeedForm.jsx";
+import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
+import { Strategy } from "./StrategyView.jsx";
 import { deliveryMonth } from "../../constants.js";
 
-// 用户（v3）：时间线 → 用户策略（主线需求是策略的起点）。Voice 已独立成侧栏模块。
+// 用户（v3）：时间线 → 用户策略（月度，结构见 docs/用户策略规范.md）。Voice 已独立成侧栏模块。
 // 时间线的第一要求是严谨：写全「学校 · 事件 · 起止日期」；冲突和推测单独标出，工作台不自行猜测；
 // 来源单元格默认收起，打开「显示来源」或悬停才看，避免干扰阅读。
 // 用户时间线的说明在视图里（右侧带来源），所以这里不写 desc
 const TABS = [
   ["timeline", "用户时间线"],
-  ["strategy", "用户策略", "主线需求由「事件 → 需求」对照表从时间线推导；采纳后才拆解策略、才能被促销关联"],
+  ["strategy", "用户策略", "按月梳理各地区用户的节点、任务、痛点与决策障碍，收敛为机会点和促销建议"],
 ].map(([key, label, desc]) => ({ key, label, desc, href: href("user", key) }));
 
 export default function UserPage({ route }) {
@@ -447,230 +446,5 @@ function AnomalyCard({ a, reread }) {
         </WriteBox>
       </div>
     </section>
-  );
-}
-
-/* ================= 用户策略：主线需求 → 拆解 → 行动 ================= */
-const AREAS = ["营销", "产品", "运营"];
-
-// user/strategy/<需求 id>：⌘K 打开某条主线需求时直接选中它
-function Strategy({ route = [] }) {
-  const state = useApi(`/api/v3/needs?month=${deliveryMonth()}`);
-  return <Loadable state={state} name="主线需求" big>{(data) => <StrategyBoard key={route[0] || ""} initial={data} initialSel={route[0]} />}</Loadable>;
-}
-
-const STATUS_TAG = { 已采纳: "green", 草稿: "amber", 待复核: "red" };
-const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-
-// 采纳和策略修改都只写工作台本地：预览 → 确认 → 回读。草稿里的策略目标是规则生成的一句话，采纳前要你确认。
-function StrategyBoard({ initial, initialSel }) {
-  const [data, setData] = useState(initial);
-  const { needs, month } = data;
-  const [sel, setSel] = useState(needs.some((n) => n.id === initialSel) ? initialSel : needs[0]?.id);
-  const [derive, setDerive] = useState({ busy: false, note: "", error: "" });
-  const [writing, setWriting] = useState(false);
-  const [note, setNote] = useState(""); // 添加草稿后表单关闭，结果放在外层
-  const adopt = useWriteFlow();
-  const remove = useWriteFlow();
-  const cur = needs.find((n) => n.id === sel) || needs[0];
-  const adopted = needs.filter((n) => n.status === "已采纳").length;
-  const reload = async () => { const fresh = await apiSend("GET", `/api/v3/needs?month=${month}`); setData(fresh); return fresh; };
-  async function rederive() {
-    setDerive({ busy: true, note: "", error: "" });
-    try { const f = await reload(); setDerive({ busy: false, note: `已按当前时间线重新推导：${f.needs.length} 条 · ${f.needs.filter((n) => n.status === "已采纳").length} 已采纳 · ${f.needs.filter((n) => n.status === "待复核").length} 待复核`, error: "" }); }
-    catch (e) { setDerive({ busy: false, note: "", error: e.message }); }
-  }
-  const pick = (id) => { if ([adopt, remove].some((f) => f.busy || f.phase === "unknown")) return; setSel(id); adopt.reset(); remove.reset(); };
-  const previewAdopt = () => adopt.preview(() => apiSend("POST", `/api/v3/needs/${encodeURIComponent(cur.id)}/preview`, { month }));
-  const confirmAdopt = () => adopt.confirm(
-    (pv) => apiSend("POST", `/api/v3/needs/${encodeURIComponent(cur.id)}/adopt`, { previewId: pv.previewId, confirm: true }),
-    async (receipt, pv) => { const f = await reload(); const n = f.needs.find((x) => x.id === pv.need.id); return n?.status === "已采纳" && sameJson(n.strategy, pv.need.strategy); },
-  );
-  const rereadAdopt = async () => { try { await reload(); adopt.resolve(); } catch (e) { setDerive({ busy: false, note: "", error: e.message }); } };
-  // 手写 / Voice 转来的草稿（编号 manual-…）没采纳前可以删；采纳后不能删。
-  const removable = cur && /^manual-/.test(cur.id) && cur.status === "草稿";
-  const previewRemove = () => remove.preview(() => apiSend("POST", `/api/v3/manual-needs/${encodeURIComponent(cur.id.slice(7))}/remove-preview`));
-  const confirmRemove = () => remove.confirm(
-    (pv) => apiSend("POST", "/api/v3/manual-needs/confirm", { previewId: pv.previewId, confirm: true }),
-    async (receipt, pv) => { const f = await reload(); return !f.needs.some((x) => x.id === pv.value.need.id); },
-  );
-  const rereadRemove = async () => { try { await reload(); remove.resolve(); } catch (e) { setDerive({ busy: false, note: "", error: e.message }); } };
-  // 添加草稿：回读到的需求和预览完全一致才算保存，然后选中它。
-  const added = async (need) => {
-    const f = await reload(); const n = f.needs.find((x) => x.id === need.id);
-    if (!sameJson(n, need)) return false;
-    setSel(need.id); adopt.reset(); remove.reset(); setWriting(false); setNote(`已添加需求草稿「${need.need}」，回读核对一致`);
-    return true;
-  };
-  return (
-    <>
-      <ol className="flow-chain">
-        {[["用户时间线", "事件与日期", href("user", "timeline")], ["主线需求", `${needs.length} 条 · ${adopted} 已采纳`, null], ["策略拆解", `${needs.filter((n) => n.strategy && Object.values(n.strategy.actions).flat().length).length} 条已拆解`, "#need-strategy"], ["营销行动", "价格 · 物料 · brief", href("marketing")]].map(([a, b, to], i) => (
-          <li key={a} className={i === 1 ? "is-here" : ""}>{to === "#need-strategy"
-            ? <button type="button" title="当前这条需求的策略目标和行动拆解，在下方详情里" onClick={() => (document.getElementById("need-strategy") || document.querySelector(".need-detail"))?.scrollIntoView({ block: "start" })}><b>{a}</b><span>{b}</span></button>
-            : to ? <a href={to}><b>{a}</b><span>{b}</span></a> : <span><b>{a}</b><span>{b}</span></span>}</li>
-        ))}
-      </ol>
-      <div className="toolbar">
-        <span className="small muted">{month} · 按「事件 → 需求」对照表从时间线推导，不调用模型</span>
-        <span className="spacer" />
-        {derive.note && <span className="small ok-text">{derive.note}</span>}
-        {derive.error && <span className="small risk-text">读取失败：{derive.error}</span>}
-        <Button onClick={rederive} disabled={derive.busy}><PixelIcon name="refresh" />{derive.busy ? "推导中" : "重新推导"}</Button>
-        <Button onClick={() => { setWriting(true); setNote(""); }} disabled={writing}><PixelIcon name="plus" />手写主线需求</Button>
-      </div>
-      <SavedNote text={note} onClose={() => setNote("")} />
-      {writing && <ManualNeedForm month={month} onSaved={added} onReread={reload} onClose={() => setWriting(false)} />}
-      {!needs.length ? <Placeholder icon="target" title={`${month} 没有推导出主线需求`}>时间线里这个月没有确定的考试、选课等事件，或者事件都在异常清单里待确认。</Placeholder> : (
-      <div className="strategy-layout cols-3-9">
-        <ol className="need-list">
-          {needs.map((n) => (
-            <li key={n.id}>
-              <button type="button" className={n.id === cur?.id ? "is-sel" : ""} onClick={() => pick(n.id)}>
-                <span className="need-top"><strong>{n.seg} · {n.node}</strong><Tag tone={STATUS_TAG[n.status] || "neutral"}>{n.status}</Tag></span>
-                <span className="need-need">{n.need}</span>
-                <span className="need-meta tnum small muted">{n.when.replace(/\b20\d\d-/g, "")} · {n.schools ? `${n.schools} 校 · ` : ""}{n.strategy ? `${Object.values(n.strategy.actions).flat().length} 个行动` : "未拆解"}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-        {cur && (
-          <section className="card need-detail">
-            <div className="need-detail-inner">
-            <div className="card-head">
-              <h2><PixelIcon name="target" />{cur.seg} · {cur.node}</h2>
-              <span className="tnum small muted">{cur.when} · 来源 {cur.source}</span>
-            </div>
-            <div className="card-body">
-              <div className="need-facts">
-                <div><span className="label">需求</span><p>{cur.need}</p></div>
-                <div><span className="label">痛点</span><p>{cur.pain}</p></div>
-                <div><span className="label">学生的待办</span><p>{cur.todo}</p></div>
-              </div>
-              {cur.status !== "已采纳" && (
-                <div className="need-draft">
-                  <p>{cur.status === "待复核" ? "采纳后时间线来源变了，这条需求要重新确认；确认前不计入交付月完成数。" : "这条需求还是草稿。先确认它成立，再拆解策略；采纳后促销方案才能关联它。"}</p>
-                  <div className="row"><Button variant="primary" onClick={previewAdopt} disabled={adopt.busy || adopt.phase === "unknown"}><PixelIcon name="eye" />{cur.status === "待复核" ? "重新采纳（预览）" : "预览采纳"}</Button>
-                    {removable && <Button onClick={previewRemove} disabled={remove.busy || remove.phase === "unknown"}><PixelIcon name="close" />删除这条草稿</Button>}</div>
-                </div>
-              )}
-              <WriteBox flow={remove} title="删除草稿预览" confirmLabel="确认删除" savedText="已删除这条需求草稿，回读核对不在列表里了" onConfirm={confirmRemove} onRepreview={previewRemove} onReread={rereadRemove}>
-                {(pv) => <dl className="kv">
-                  <dt>删除</dt><dd>{pv.value.need.seg} · {pv.value.need.node} · {pv.value.need.need}</dd>
-                  <dt>来源</dt><dd>{pv.value.need.source}</dd>
-                  <dt>写到哪里</dt><dd>只删工作台本地的草稿，不影响飞书和其他需求</dd>
-                </dl>}
-              </WriteBox>
-              {/* 采纳成功后这条需求不再是草稿，预览框放在外面，「已采纳」结果才看得到 */}
-                  <WriteBox flow={adopt} title="采纳预览" confirmLabel="确认采纳" savedText="已采纳，回读核对一致" onConfirm={confirmAdopt} onRepreview={previewAdopt} onReread={rereadAdopt}>
-                    {(pv) => <dl className="kv">
-                      <dt>需求</dt><dd>{pv.need.seg} · {pv.need.node} · {pv.need.when}</dd>
-                      <dt>状态</dt><dd><span className="diff-old">{cur.status}</span> → <span className="diff-new">已采纳</span></dd>
-                      <dt>策略目标</dt><dd>{pv.need.strategy.goal}<span className="small muted">（{cur.strategy ? "沿用已存的策略" : "规则生成的草稿，采纳后可以改"}）</span></dd>
-                      <dt>行动</dt><dd>{Object.values(pv.need.strategy.actions).flat().length} 条</dd>
-                      <dt>写到哪里</dt><dd>工作台本地，不回写飞书</dd>
-                    </dl>}
-                  </WriteBox>
-              {cur.strategy && <StrategyEditor key={cur.id} need={cur} month={month} editable={cur.status === "已采纳"} reload={reload} />}
-              {cur.status === "已采纳" && (
-                <div className="strategy-foot">
-                  <span className="small muted">已关联：{cur.links || "—"}</span>
-                  <FeishuExport key={cur.id} what="策略" extra={{ month }}
-                    previewPath={`/api/v3/needs/${encodeURIComponent(cur.id)}/strategy/export-preview`}
-                    confirmPath={`/api/v3/needs/${encodeURIComponent(cur.id)}/strategy/export`}
-                    statusBase={`/api/v3/needs/${encodeURIComponent(cur.id)}/strategy/exports`} />
-                </div>
-              )}
-            </div>
-            </div>
-          </section>
-        )}
-      </div>
-      )}
-      <details className="rule-box">
-        <summary><PixelIcon name="right" />推导规则 · 事件 → 需求对照表（{data.map.length} 类，AI 起草，你确认后基本不动）</summary>
-        <div className="table-wrap">
-          <table className="grid">
-            <thead><tr><th>事件类型</th><th className="r">提前天数</th><th>需求</th><th>痛点</th><th>待办</th><th>状态</th></tr></thead>
-            <tbody>{data.map.map((r) => (
-              <tr key={r.type}><td><strong>{r.type}</strong></td><td className="r">{r.lead}</td><td>{r.need}</td><td className="small">{r.pain}</td><td className="small">{r.todo}</td>
-                <td>{r.ok ? <span className="state state-done">已确认</span> : <span className="state state-todo">AI 草拟</span>}</td></tr>
-            ))}</tbody>
-          </table>
-        </div>
-      </details>
-    </>
-  );
-}
-
-
-// 策略：一句目标 + 营销 / 产品 / 运营 三组「做什么、为什么」。改动先预览，确认后回读核对。
-function StrategyEditor({ need, month, editable, reload }) {
-  const [edit, setEdit] = useState(false);
-  const fromNeed = () => ({ goal: need.strategy.goal, actions: Object.fromEntries(AREAS.map((a) => [a, need.strategy.actions[a] || []])) });
-  const [draft, setDraft] = useState(fromNeed);
-  const flow = useWriteFlow();
-  const change = (fn) => { setDraft((d) => fn(structuredClone(d))); flow.reset(); };
-  const dirty = !sameJson(draft, { goal: need.strategy.goal, actions: Object.fromEntries(AREAS.map((a) => [a, need.strategy.actions[a] || []])) });
-  const valid = draft.goal.trim() && AREAS.every((a) => draft.actions[a].every(([w, y]) => w.trim() && y.trim()));
-  const preview = () => flow.preview(() => apiSend("POST", `/api/v3/needs/${encodeURIComponent(need.id)}/preview`, { month, strategy: draft }));
-  const confirm = () => flow.confirm(
-    (pv) => apiSend("PATCH", `/api/v3/needs/${encodeURIComponent(need.id)}/strategy`, { previewId: pv.previewId, confirm: true }),
-    async (receipt, pv) => { const f = await reload(); const ok = sameJson(f.needs.find((x) => x.id === need.id)?.strategy, pv.need.strategy); if (ok) setEdit(false); return ok; },
-  );
-  const reread = async () => { await reload(); flow.resolve(); };
-  const box = (
-    <WriteBox flow={flow} title="策略修改预览" onConfirm={confirm} onRepreview={preview} onReread={reread}>
-      {(pv) => <dl className="kv">
-        <dt>需求</dt><dd>{need.seg} · {need.node}</dd>
-        <dt>策略目标</dt><dd>{pv.need.strategy.goal === need.strategy.goal ? pv.need.strategy.goal : <><span className="diff-old">{need.strategy.goal}</span><br /><span className="diff-new">{pv.need.strategy.goal}</span></>}</dd>
-        {AREAS.map((a) => <Fragment key={a}><dt>{a}</dt><dd>{(pv.need.strategy.actions[a] || []).length ? <ol className="plain-list">{pv.need.strategy.actions[a].map(([w, y], k) => <li key={k}>{w}（{y}）</li>)}</ol> : "暂无"}{(need.strategy.actions[a] || []).length !== (pv.need.strategy.actions[a] || []).length && <span className="small muted">（原 {(need.strategy.actions[a] || []).length} 条）</span>}</dd></Fragment>)}
-        <dt>写到哪里</dt><dd>工作台本地，不回写飞书</dd>
-      </dl>}
-    </WriteBox>
-  );
-  if (!edit) return (
-    <div className="strategy-view" id="need-strategy">
-      {box}
-      <div className="strategy-goal"><span className="label">策略目标</span><strong>{need.strategy.goal}</strong>{editable && <Button className="btn btn-xs" onClick={() => { flow.resolve(); setDraft(fromNeed()); setEdit(true); }}><PixelIcon name="edit" />编辑策略</Button>}</div>
-      <div className="strategy-cols">
-        {AREAS.map((area) => {
-          const acts = need.strategy.actions[area] || [];
-          return (
-            <div key={area} className="strategy-col">
-              <h3>{area}<span className="tnum">{acts.length}</span></h3>
-              {!acts.length ? <p className="small muted">暂无行动</p> : <ol>{acts.map(([what, why], k) => <li key={k}><strong>{what}</strong><span>为什么：{why}</span></li>)}</ol>}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-  return (
-    <div className="strategy-edit">
-      <label className="strategy-goal-edit"><span className="label">策略目标</span><textarea value={draft.goal} onChange={(e) => change((d) => { d.goal = e.target.value; return d; })} /></label>
-      <div className="strategy-cols">
-        {AREAS.map((area) => (
-          <div key={area} className="strategy-col">
-            <h3>{area}<span className="tnum">{draft.actions[area].length}</span></h3>
-            <ol>{draft.actions[area].map(([what, why], k) => (
-              <li key={k} className="action-edit">
-                <input value={what} placeholder="做什么" onChange={(e) => change((d) => { d.actions[area][k][0] = e.target.value; return d; })} />
-                <input value={why} placeholder="为什么" onChange={(e) => change((d) => { d.actions[area][k][1] = e.target.value; return d; })} />
-                <button type="button" className="icon-btn" title="删掉这一条" onClick={() => change((d) => { d.actions[area].splice(k, 1); return d; })}><PixelIcon name="close" /></button>
-              </li>
-            ))}</ol>
-            <button type="button" className="link-btn" onClick={() => change((d) => { d.actions[area].push(["", ""]); return d; })}><PixelIcon name="plus" />加一条</button>
-          </div>
-        ))}
-      </div>
-      <div className="row">
-        <span className="small muted">{!valid ? "目标和每条行动的「做什么 / 为什么」都要填" : dirty ? "有改动，预览确认后才保存" : "没有改动"}</span>
-        <span className="spacer" />
-        <Button onClick={() => { if (!flow.busy && flow.phase !== "unknown") { setEdit(false); flow.reset(); setDraft(fromNeed()); } }}>放弃改动</Button>
-        <Button variant="primary" disabled={!dirty || !valid || flow.busy || flow.phase === "unknown"} onClick={preview}><PixelIcon name="eye" />预览保存策略</Button>
-      </div>
-      {box}
-    </div>
   );
 }

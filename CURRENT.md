@@ -1598,3 +1598,18 @@ SKU规范-1-方案汇总-按月份-特殊活动.png、SKU规范-2-方案汇总-�
 - 回读（只读）：首页与快照 `dist/index.html` 一致；`/api/v3/status`、`/api/plans`、`/api/v3/home/todo`、`/api/v3/projects`、`/api/v3/kb/tree`、`/api/v3/mentor`、`/api/v3/nas` 均 200；快照里 `server/mentor.mjs` 是新提示词，线上样式表 `.type-hot` 无背景、橙色字，`.mq-answer` 为普通段落；浏览器：知识库搜索行为「搜索框 | 刷新 | 最近收藏」，项目页签为「项目推进 · 营销战役 · 项目看板」，底栏版本 864b403。
 - 回滚：`bash scripts/release-app.sh --use nm-20261019-155435-388ec23`。
 
+
+## 用户策略重做（2026-10-19，Claude，未提交、未发布）
+
+与用户四轮拷问后定稿结构，见 `docs/用户策略规范.md`。本次只交付结构、示例页面和飞书示例文档；生成接口另起派单。
+
+- 规范 `docs/用户策略规范.md`：结论摘要 + 4 段（全局研判 / 用户洞察 / 机会收敛 / 促销策略）+ 附录；地区 6 格（用户节点、待办任务、核心痛点、需求温度、决策障碍、机会点）；Fogg 三类 9 项障碍词表；分档 = 权重 × 节点密度；来源标注；写作规范 6 条。
+- 派单 `docs/tasks/T13-用户策略生成.md`：读、生成（本机 Codex）、逐格修改、定稿四个接口，前置是打法库。
+- 页面：`src/modules/user/StrategyView.jsx` 新建，采用 A 版式（纵向四段 + 地区矩阵 + 吸顶段落导航）；`UserPage.jsx` 删去旧「主线需求 → 拆解 → 行动」视图，只保留时间线；`styles-v3.css` 删掉旧 need-* / strategy-* 等样式，新增 us-* 样式；`styles-layout.css` 去掉 `.strategy-layout`。
+- 接口：`server/routes/user.mjs` 新增 `GET /api/v3/user-strategy` → `pending('T13-用户策略生成')`；前端显示 `src/samples.js` 中的 `USER_STRATEGY`（2026-11 示例，节点日期取自时间线 10-19 快照）。
+- 飞书：在「🧭 策略思考」下新建目录「用户策略」（https://vm94j8bzy7.feishu.cn/wiki/PaZOwO4RIiKWuukGfN5cj1yXnid）。用户原话是「新建 策略/用户策略」，因为已有「策略思考」目录，就放在它下面，没有在顶层新建「策略」。目录下新建《用户策略 · 2026-11》（https://vm94j8bzy7.feishu.cn/docx/Y8nBdBATBoW0pZxyhO8cqigunqc），包含时间全景甘特图（画板）、7 个地区的事实依据表（由时间线接口生成）、心理机制展开、候选打法对比、28 条推测项、47 条待确认项。已回读核对。
+- 测试：`npm test` 420 项全部通过；`vite build` 通过。隔离目录 5296 浏览器核对：吸顶导航停在 64px，滚动时段落高亮跟着切换，矩阵 7 列各 147px，无页面报错。
+- 遗留：
+  - 飞书画板会打乱甘特图的地区顺序。已改为带序号的分区名并重写画板（接口返回成功），但缩略图没有更新，无法确认，需用户在飞书里看一眼。
+  - Voice「转为主线需求草稿」和 ⌘K「审主线需求」仍指向旧的主线需求概念，现在会落到新页面；后端 `/api/v3/needs*` 保留未动。需要决定是下线还是并入新结构。
+  - `.claude/launch.json` 新增 `work-desk-iso-5296`，因为 5290 等端口被其他会话占用。

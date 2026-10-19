@@ -1,4 +1,4 @@
-import { json, readJson, route } from '../http.mjs';
+import { json, pending, readJson, route } from '../http.mjs';
 import { createTimelineReader } from '../timeline.mjs';
 import { createNeedsService } from '../needs.mjs';
 import { failure } from '../v3-common.mjs';
@@ -23,6 +23,8 @@ export function createUserServices(db, options = {}) {
 export function userRoutes(services) {
   const { timeline, needs, strategyExports, manualNeeds, rulings } = services;
   return [
+    // 月度用户策略（docs/用户策略规范.md）：生成与保存待 T13，未实现前前端显示 2026-11 示例。
+    route('GET', '/api/v3/user-strategy', pending('T13-用户策略生成')),
     route('POST', '/api/v3/timeline/anomalies/:key/preview', handleV3(async (req, { params }) => rulings.preview(params.key, await body(req)))),
     route('POST', '/api/v3/timeline/anomalies/confirm', handleV3(async req => rulings.confirm(await body(req)))),
     // 手写 / Voice 转来的需求草稿：路径与 /api/v3/needs/:id 分开，避免被当成需求编号。

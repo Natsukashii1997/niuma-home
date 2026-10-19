@@ -78,7 +78,7 @@ button.stat.is-on .stat-label, button.stat.is-on .stat-foot, button.stat.is-on .
 .cols-3-9 { grid-template-columns: minmax(0, 3fr) minmax(0, 9fr); }
 .cols-5-7 { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
 .cols-4-4-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.voice-top, .voice-layout, .campaign-grid, .plan-editor .split, .strategy-layout, .proj-layout, .mentor-layout, .kb-layout, .chat-layout { display: grid; gap: var(--gap); align-items: stretch; }
+.voice-top, .voice-layout, .campaign-grid, .plan-editor .split, .proj-layout, .mentor-layout, .kb-layout, .chat-layout { display: grid; gap: var(--gap); align-items: stretch; }
 .voice-top { margin-bottom: var(--gap); }
 .voice-layout { margin-bottom: var(--gap); }
 /* 栏里叠多张卡时，最后一张吸收剩余高度，底边与相邻栏齐平 */

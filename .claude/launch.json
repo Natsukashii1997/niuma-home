@@ -39,6 +39,15 @@
         "5293"
       ],
       "port": 5293
+    },
+    {
+      "name": "work-desk-iso-5296",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "WORKDESK_DATA_DIR=$(mktemp -d) PORT=5296 npm start"
+      ],
+      "port": 5296
     }
   ]
 }
