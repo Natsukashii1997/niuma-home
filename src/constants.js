@@ -1,14 +1,16 @@
 export const LINES = ["大学辅导", "国际课程", "申诉服务"];
+// 月度促销只有这两条业务线（用户 2026-10-19 去掉申诉服务）；固定 SKU 见 server/plan-parser.mjs。
+export const PROMO_LINES = ["大学辅导", "国际课程"];
 
 // 交付月的 6 个环节：接口返回其余 5 个，「方案录入」由前端用 /api/plans 算出，固定放在第 2 位。
 // 未接入的环节（state 为 pending，或旧接口在 meta 里写「未接入」）统一显示「待接入」，原文放悬停提示。
 export function deliverySteps(steps = [], plans, month) {
-  const done = plans ? LINES.filter((l) => plans.some((p) => p.month === month && p.line === l)) : [];
+  const done = plans ? PROMO_LINES.filter((l) => plans.some((p) => p.month === month && p.line === l)) : [];
   const plan = {
     key: "plans", label: "方案录入", href: "#/marketing/plans",
-    state: done.length === LINES.length ? "done" : done.length ? "part" : "todo",
-    meta: plans ? `${done.length}/${LINES.length} 条业务线已录` : "读取中", // 一行写完；待录的业务线名放悬停提示
-    note: plans && done.length < LINES.length ? `待录 ${LINES.filter((l) => !done.includes(l)).join("、")}` : undefined,
+    state: done.length === PROMO_LINES.length ? "done" : done.length ? "part" : "todo",
+    meta: plans ? `${done.length}/${PROMO_LINES.length} 条业务线已录` : "读取中", // 一行写完；待录的业务线名放悬停提示
+    note: plans && done.length < PROMO_LINES.length ? `待录 ${PROMO_LINES.filter((l) => !done.includes(l)).join("、")}` : undefined,
   };
   const rest = steps.filter((s) => s.key !== "plans").map((s) => (s.state === "pending" || /未接入/.test(s.meta || "")
     ? { ...s, state: "todo", meta: "待接入", note: s.note || s.meta } : s));
@@ -20,6 +22,7 @@ export const PROMO_FIELDS = [
   ["price", "正价价格"],
   ["newDeal", "新签活动"],
   ["renewal", "续费活动"],
+  ["special", "特殊活动"],
 ];
 
 export function currentMonth() {

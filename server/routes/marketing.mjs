@@ -1,6 +1,6 @@
 import { json, readJson, route } from "../http.mjs";
 import { listPromos, listPlans, getPlan, listPlanAliases, comparePlan, savePlan } from "../db.mjs";
-import { parsePlan } from "../plan-parser.mjs";
+import { parsePlan, PROMO_SKUS } from "../plan-parser.mjs";
 import { routes as materialRoutes } from "./materials.mjs";
 
 const fail = (message) => { throw Object.assign(new Error(message), { status: 400 }); };
@@ -16,7 +16,7 @@ const planHandler = (handler) => async (req, res, context) => {
 
 function validatePlan(month, line, body) {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) fail("月份须为 YYYY-MM");
-  if (!["大学辅导", "国际课程", "申诉服务"].includes(line)) fail("业务线无效");
+  if (!Object.hasOwn(PROMO_SKUS, line)) fail("业务线无效");
   if (!body || typeof body.rawText !== "string" || !body.rawText.trim()) fail("请先粘贴方案原文");
 }
 
@@ -46,11 +46,12 @@ export function routes(db) {
       if (!Array.isArray(body.rows) || !body.rows.length) fail("没有可入库的 SKU，请先解析预览");
       const names = body.rows.map((row) => row?.sku);
       if (new Set(names).size !== names.length) fail("存在重复 SKU，请修改后重新解析");
-      const keys = ["sku", "trial", "price", "newDeal", "renewal"];
+      const keys = ["sku", "trial", "price", "newDeal", "renewal", "special"];
       if (body.rows.length !== parsed.rows.length || body.rows.some((row, index) =>
         !row || keys.some((key) => typeof row[key] !== "string" || row[key] !== parsed.rows[index][key]))) {
         fail("确认内容与原文不一致，请重新解析预览");
       }
+      if (body.special !== parsed.special) fail("整月特殊活动与原文不一致，请重新解析预览");
       return json(res, 200, savePlan(db, month, line, body));
     })),
 

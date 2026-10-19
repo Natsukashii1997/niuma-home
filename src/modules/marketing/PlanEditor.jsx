@@ -3,6 +3,7 @@ import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend } from "../../api.js";
 import { Button, Card, PhaseSteps, Tag } from "../../ui/components.jsx";
 import { PROMO_FIELDS } from "../../constants.js";
+import { MonthSpecial } from "./PromosView.jsx";
 
 // 方案录入：嵌在「月度促销」上半部分，四步 粘贴 → 解析 → 处理 → 确认。
 export default function PlanEditor({ month, line, onSaved }) {
@@ -100,12 +101,12 @@ function PlanForm({ month, line, onSaved }) {
     setProgress({ label: "入库并回读核对" });
     setBusy("save"); setError(""); setMessage("");
     try {
-      const counts = await apiSend("PUT", path, { rawText, rawHtml, rows: preview.rows });
+      const counts = await apiSend("PUT", path, { rawText, rawHtml, rows: preview.rows, special: preview.special });
       const [plan, verified] = await Promise.all([
         apiSend("GET", path),
         apiSend("POST", "/api/plans/parse", { month, line, rawText }),
       ]);
-      if (plan.rawText !== rawText || (plan.rawHtml || "") !== rawHtml ||
+      if (plan.rawText !== rawText || (plan.rawHtml || "") !== rawHtml || plan.special !== preview.special || verified.special !== preview.special ||
           verified.removed.length || verified.rows.some((row) => row.status !== "same")) {
         throw new Error("写后回读与确认内容不一致");
       }
@@ -178,6 +179,7 @@ function PlanForm({ month, line, onSaved }) {
                 </tr>)}</tbody>
               </table>
             </div>
+            {preview.special !== "无" && <MonthSpecial line={line} month={month} text={preview.special} />}
             {!preview.rows.length && <div className="warn">没有识别到 SKU，请检查原文中的编号行。</div>}
             {preview.removed.length > 0 && <div className="warn"><PixelIcon name="alert" size={14} /><span>将删除的 SKU：{preview.removed.join("、")}。确认入库后删除。</span></div>}
             {mismatch && <div className="warn"><PixelIcon name="alert" size={14} /><span>{preview.line ? "原文业务线为「" + preview.line + "」，与当前「" + line + "」不一致。" : "未识别到业务线，请补充正确的【…板块】标题。"} 请修改原文后重新解析。</span></div>}

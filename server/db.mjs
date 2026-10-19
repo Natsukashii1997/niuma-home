@@ -19,6 +19,7 @@ const SCHEMA = `
     new_deal TEXT NOT NULL DEFAULT '无',
     renewal TEXT NOT NULL DEFAULT '无',
     updated_at TEXT NOT NULL,
+    special TEXT NOT NULL DEFAULT '无', -- 特殊活动：该 SKU 下不属于试听/正价/新签/续费的活动
     UNIQUE (month, line, sku)
   );
 
@@ -29,6 +30,7 @@ const SCHEMA = `
     raw_text TEXT NOT NULL,
     raw_html TEXT,
     saved_at TEXT NOT NULL,
+    special TEXT NOT NULL DEFAULT '无', -- 整月特殊活动：不挂在某个 SKU 下面的活动块（如双11）
     PRIMARY KEY (month, line)
   );
 
@@ -127,6 +129,10 @@ export function openDb(dir = dataDir) {
     for (const column of ["model", "effort", "preset"]) {
       if (!columns.has(column)) db.exec(`ALTER TABLE assistants ADD COLUMN ${column} TEXT`);
     }
+    for (const table of ["promos", "plans"]) {
+      const names = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((column) => column.name));
+      if (!names.has("special")) db.exec(`ALTER TABLE ${table} ADD COLUMN special TEXT NOT NULL DEFAULT '无'`);
+    }
     db.exec("COMMIT");
   } catch (error) { db.exec("ROLLBACK"); db.close(); throw error; }
   seed(db);
@@ -136,7 +142,7 @@ export function openDb(dir = dataDir) {
 // 只补缺，不覆盖本人已改的内容。
 function seed(db) {
   const now = new Date().toISOString();
-  db.prepare("INSERT OR IGNORE INTO sku_aliases (line, alias, sku) VALUES (?, ?, ?)").run("国际课程", "课时卡", "灵活学Lite");
+  for (const line of ["国际课程", "大学辅导"]) db.prepare("INSERT OR IGNORE INTO sku_aliases (line, alias, sku) VALUES (?, ?, ?)").run(line, "课时卡", "灵活学Lite");
   if (!db.prepare("SELECT 1 FROM assistants WHERE kind = 'copywriter'").get()) {
     db.prepare("INSERT INTO assistants (name, kind, created_at) VALUES (?, 'copywriter', ?)").run("文案助手", now);
   }
@@ -150,30 +156,30 @@ function seed(db) {
 
 export function savePromo(db, p) {
   db.prepare(`
-    INSERT INTO promos (month, line, sku, trial, price, new_deal, renewal, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO promos (month, line, sku, trial, price, new_deal, renewal, special, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT (month, line, sku) DO UPDATE SET
       trial = excluded.trial, price = excluded.price, new_deal = excluded.new_deal,
-      renewal = excluded.renewal, updated_at = excluded.updated_at
-  `).run(p.month, p.line, p.sku, p.trial, p.price, p.newDeal, p.renewal, new Date().toISOString());
+      renewal = excluded.renewal, special = excluded.special, updated_at = excluded.updated_at
+  `).run(p.month, p.line, p.sku, p.trial, p.price, p.newDeal, p.renewal, p.special || "无", new Date().toISOString());
 }
 
 export function listPromos(db) {
   return db
     .prepare(`
-      SELECT month, line, sku, trial, price, new_deal AS newDeal, renewal, updated_at AS updatedAt
+      SELECT month, line, sku, trial, price, new_deal AS newDeal, renewal, special, updated_at AS updatedAt
       FROM promos ORDER BY month DESC, line, id
     `)
     .all();
 }
 
 export function listPlans(db) {
-  return db.prepare("SELECT month, line, saved_at AS savedAt FROM plans ORDER BY month DESC, line").all();
+  return db.prepare("SELECT month, line, special, saved_at AS savedAt FROM plans ORDER BY month DESC, line").all();
 }
 
 export function getPlan(db, month, line) {
   return db
-    .prepare("SELECT month, line, raw_text AS rawText, raw_html AS rawHtml, saved_at AS savedAt FROM plans WHERE month = ? AND line = ?")
+    .prepare("SELECT month, line, raw_text AS rawText, raw_html AS rawHtml, special, saved_at AS savedAt FROM plans WHERE month = ? AND line = ?")
     .get(month, line);
 }
 
@@ -186,7 +192,7 @@ export function comparePlan(db, month, line, parsed) {
   const current = all.filter((row) => row.month === month);
   const previousMonth = all.find((row) => row.month < month)?.month;
   const baseline = current.length ? current : all.filter((row) => row.month === previousMonth);
-  const fields = ["trial", "price", "newDeal", "renewal"];
+  const fields = ["trial", "price", "newDeal", "renewal", "special"];
   const rows = parsed.rows.map((row) => {
     const previous = baseline.find((old) => old.sku === row.sku);
     const changed = previous ? fields.filter((key) => row[key] !== previous[key]) : [];
@@ -195,7 +201,7 @@ export function comparePlan(db, month, line, parsed) {
   return { ...parsed, rows, removed: current.filter((old) => !rows.some((row) => row.sku === old.sku)).map((row) => row.sku) };
 }
 
-export function savePlan(db, month, line, { rawText, rawHtml = "", rows }) {
+export function savePlan(db, month, line, { rawText, rawHtml = "", rows, special = "无" }) {
   db.exec("BEGIN IMMEDIATE");
   try {
     const existing = db.prepare("SELECT sku FROM promos WHERE month = ? AND line = ?").all(month, line);
@@ -204,10 +210,10 @@ export function savePlan(db, month, line, { rawText, rawHtml = "", rows }) {
     const updated = rows.filter((row) => oldSkus.has(row.sku)).length;
     const removed = existing.filter((row) => !newSkus.has(row.sku)).length;
     db.prepare(`
-      INSERT INTO plans (month, line, raw_text, raw_html, saved_at) VALUES (?, ?, ?, ?, ?)
+      INSERT INTO plans (month, line, raw_text, raw_html, special, saved_at) VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT (month, line) DO UPDATE SET raw_text = excluded.raw_text,
-        raw_html = excluded.raw_html, saved_at = excluded.saved_at
-    `).run(month, line, rawText, rawHtml, new Date().toISOString());
+        raw_html = excluded.raw_html, special = excluded.special, saved_at = excluded.saved_at
+    `).run(month, line, rawText, rawHtml, special, new Date().toISOString());
     db.prepare("DELETE FROM promos WHERE month = ? AND line = ?").run(month, line);
     for (const row of rows) savePromo(db, { ...row, month, line });
     db.exec("COMMIT");

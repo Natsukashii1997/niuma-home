@@ -5,7 +5,6 @@ import PricesView from "./PricesView.jsx";
 import MaterialsHub from "./MaterialsHub.jsx";
 import BriefView from "./BriefView.jsx";
 import CampaignView from "./CampaignView.jsx";
-import SkuView from "./SkuView.jsx";
 
 // 页签顺序（用户 2026-10-18）：月度促销 · 价格记录 · 物料沉淀 · 营销战役 · 设计 brief；默认进月度促销。
 const TABS = [
@@ -19,17 +18,17 @@ const TABS = [
 const VIEWS = { campaign: CampaignView, plans: PlansView, promos: PlansView, prices: PricesView, materials: MaterialsHub, brief: BriefView };
 
 // 路由：marketing/<页签>[/…]；marketing/plans/<月份>/<业务线> 选中月度促销的月份和业务线；旧地址 promos 并入月度促销。
-// marketing/sku/<业务线>/<SKU> 是 SKU 档案：一个 SKU 一页，有自己的页头和返回链接，不显示页签。
+// marketing/sku/<业务线>/<SKU>（旧的 SKU 档案地址）：打开月度促销，并在右侧侧栏打开该 SKU 的档案。
 export default function MarketingPage({ route }) {
   const [tab = "plans", ...rest] = route;
-  if (tab === "sku") return <SkuView route={rest} />;
-  const View = VIEWS[tab] || PlansView;
-  const active = tab === "promos" ? "plans" : VIEWS[tab] ? tab : "plans";
+  const dossier = tab === "sku" ? { line: rest[0] || "", sku: rest[1] || "" } : null;
+  const View = dossier ? PlansView : VIEWS[tab] || PlansView;
+  const active = dossier || tab === "promos" ? "plans" : VIEWS[tab] ? tab : "plans";
   return (
     <>
       <PageHeader title="营销" />
       <Tabs items={TABS} active={active} />
-      <View route={rest} />
+      <View route={dossier ? [] : rest} dossier={dossier} />
     </>
   );
 }

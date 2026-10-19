@@ -1,20 +1,24 @@
 # 接口约定
 
 全部为 JSON；出错返回 `{ error: "中文说明" }` 与相应状态码；未实现返回 501 `{ error, task }`。
-字段名用 camelCase；月份 `YYYY-MM`；业务线取值：大学辅导 / 国际课程 / 申诉服务。
+字段名用 camelCase；月份 `YYYY-MM`；业务线取值：大学辅导 / 国际课程 / 申诉服务（促销表和方案只有大学辅导 / 国际课程，2026-10-19 起）。
 
 ## 营销 · 促销表（已实现）
 
 `GET /api/promos` → `Promo[]`，按月份倒序
 
 ```ts
-type Promo = { month: string; line: string; sku: string; trial: string; price: string; newDeal: string; renewal: string; updatedAt: string };
+type Promo = { month: string; line: string; sku: string; trial: string; price: string; newDeal: string; renewal: string;
+  special: string;                  // 特殊活动：该 SKU 下不属于试听/正价/新签活动/续费活动的条目，没有为「无」
+  updatedAt: string };
 ```
+
+固定 SKU（`server/plan-parser.mjs` 的 `PROMO_SKUS`）：大学辅导 = 灵活学Lite、安心学Max、学考无忧Pass、补考护航Pass、选课指导、论文稳Pass、先修班课；国际课程 = 灵活学Lite、安心学Max。「课时卡」两条线都记作灵活学Lite。
 
 ## 营销 · 方案（T01）
 
-- `GET /api/plans` → `{ month, line, savedAt }[]`（已实现）
-- `GET /api/plans/:month/:line` → `{ month, line, rawText, rawHtml, savedAt }`；无则 404（已实现）
+- `GET /api/plans` → `{ month, line, special, savedAt }[]`（已实现）；`special` 是该 业务线×月份 的整月特殊活动，没有为「无」
+- `GET /api/plans/:month/:line` → `{ month, line, rawText, rawHtml, special, savedAt }`；无则 404（已实现）
 - `POST /api/plans/parse` 请求 `{ month, line, rawText }` → `ParseResult`；只解析，不写库
 
 ```ts
@@ -23,17 +27,19 @@ type ParseResult = {
   rows: Array<{
     sku: string;                    // 已按 sku_aliases 换成库中名称
     alias?: string;                 // 原文写法（发生别名替换时）
-    trial: string; price: string; newDeal: string; renewal: string;
+    trial: string; price: string; newDeal: string; renewal: string; special: string;
     status: "new" | "changed" | "same";   // 对比库中「同月同业务线」已有行；若本月无数据则对比上一个有数据的月份
-    changed?: Array<"trial" | "price" | "newDeal" | "renewal">;
+    changed?: Array<"trial" | "price" | "newDeal" | "renewal" | "special">;
     previous?: Partial<Promo>;      // 对比对象，用于悬停显示旧值
-  }>;
+  }>;                              // 按固定 SKU 清单排序；原文没提到的 SKU 也有一行，各栏「无」
+  special: string;                  // 整月特殊活动：不是固定 SKU 的编号块（如「双11活动」）连同子项原文，多块空行分隔；没有为「无」
   removed: string[];                // 库中该 月份×业务线 有、本次原文没有的 SKU（确认后将删除）
   unrecognized: Array<{ lineNo: number; text: string }>;
 };
 ```
 
-- `PUT /api/plans/:month/:line` 请求 `{ rawText, rawHtml?, rows }`（rows 为本人确认后的解析结果）→ `{ inserted, updated, removed }`
+- 解析规则：编号行是固定 SKU（「A/B」合写拆成两行、字段相同）→ SKU 块；SKU 下「试听/正价/新签活动/续费活动：」进对应栏，其他「标签：内容」进该 SKU 的 `special`；不是固定 SKU 的编号块进整月 `special`，但块里出现四种标签时视为清单外 SKU，记未识别。
+- `PUT /api/plans/:month/:line` 请求 `{ rawText, rawHtml?, rows, special }`（rows、special 为本人确认后的解析结果，须与原文重新解析一致）→ `{ inserted, updated, removed }`
   - 单事务：保存原文；按 rows 覆盖该 月份×业务线 的促销行（不在 rows 内的删除）。
 
 ## 营销 · 物料（T03）
