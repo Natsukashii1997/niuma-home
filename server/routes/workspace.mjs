@@ -73,7 +73,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     }
   };
   return [
-    route("GET", "/api/v3/status", handleV3(() => sourceStatus(db, { implemented:['daily','weekly','timeline','kb', ...(voice.identity() ? ['voice'] : [])], voiceIdentity:voice.identity() }))),
+    route("GET", "/api/v3/status", handleV3(() => sourceStatus(db, { implemented:['daily','weekly','timeline','kb','nas', ...(voice.identity() ? ['voice'] : [])], voiceIdentity:voice.identity() }))),
     route('GET', '/api/v3/voice', async (req,res) => {
       try { json(res,200,await voice()); }
       catch(error) { json(res,error.status||500,{error:error.status?error.message:'留学之声读取失败',code:error.code||'VOICE_READ_FAILED'}); }

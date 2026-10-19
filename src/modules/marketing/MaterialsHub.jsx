@@ -3,16 +3,18 @@ import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { href } from "../../router.js";
-import { Button, Loadable, Modal, PendingButton, SampleStrip, Segmented, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Loadable, Modal, Segmented, Tag, useToast } from "../../ui/components.jsx";
 import Thumb from "../../ui/Thumb.jsx";
-import { deliveryMonth } from "../../constants.js";
-import { SAMPLE_NAS } from "../../samples/v3.js";
 import MaterialsView from "./MaterialsView.jsx";
 import { DigiworldImport } from "./DigiworldImport.jsx";
 
-// 物料（v3）：原件在公司 NAS，工作台只读扫描、本地只存缩略图。
-// 页签：物料墙（产品物料，类型 × 月份）· 营销物料（朋友圈，按场景）· 设计参考（画布）· 本地物料（原 T03，NAS 不可用时的兜底）。
-const VIEWS = [["wall", "物料墙"], ["marketing", "营销物料"], ["refs", "设计参考"], ["local", "本地物料"]];
+// 物料（v3）：原件在公司 NAS（用户在 Finder 用 SMB 挂载），工作台只读扫描、本地只存缩略图。
+// 页签：物料墙（大学辅导 / 国际课程，类型 × 月份，按文件名关键词识别）· 设计参考（画布）· 本地物料（原 T03，NAS 不可用时的兜底）。
+const VIEWS = [["wall", "物料墙"], ["refs", "设计参考"], ["local", "本地物料"]];
+const NAS_LINES = [["大学辅导", "大学辅导"], ["国际课程", "国际课程"]];
+// 物料上传走网页中台（群晖 File Station），直接打开「月度物料」文件夹；工作台本身不写 NAS。
+const NAS_WEB = "https://172-16-1-10.lumistedu.direct.quickconnect.cn:10001/";
+const NAS_UPLOAD_URL = `${NAS_WEB}?launchApp=SYNO.SDS.App.FileStation3.Instance&launchParam=${encodeURIComponent(`openfile=${encodeURIComponent("/跨部门综合资料/8.月度物料/")}`)}`;
 
 export default function MaterialsHub({ route = [] }) {
   const view = VIEWS.some(([k]) => k === route[0]) ? route[0] : "wall";
@@ -21,105 +23,100 @@ export default function MaterialsHub({ route = [] }) {
       <div className="toolbar">
         <Segmented options={VIEWS} value={view} onChange={(v) => { location.hash = href("marketing", "materials", v); }} />
       </div>
-      {view === "local" ? <MaterialsView /> : view === "refs" ? <RefCanvas /> : <NasViews view={view} />}
+      {view === "local" ? <MaterialsView /> : view === "refs" ? <RefCanvas /> : <NasWall />}
     </>
   );
 }
 
-function NasViews({ view }) {
-  const state = useApi("/api/v3/nas", SAMPLE_NAS);
-  return <Loadable state={state} name="物料墙" big>{(nas) => <NasBoard nas={nas} view={view} sample={state.isSample ? state.task : null} />}</Loadable>;
+function NasWall() {
+  const state = useApi("/api/v3/nas");
+  const [fresh, setFresh] = useState(null);
+  return <Loadable state={state} name="NAS 物料（首次会扫描 NAS，约半分钟）" big>{(data) => <NasBoard nas={fresh || data} onScanned={setFresh} />}</Loadable>;
 }
 
-function NasBar({ nas, sample }) {
+function NasBar({ nas, onScanned }) {
   const [scan, setScan] = useState(null);
+  const [error, setError] = useState("");
+  const run = async () => {
+    setScan("run"); setError("");
+    try { onScanned(await apiSend("POST", "/api/v3/nas/scan")); setScan("done"); setTimeout(() => setScan(null), 1200); }
+    catch (e) { setScan(null); setError(e.message); }
+  };
   return (
-    <div className={`nas-bar${sample ? " is-sample" : ""}`}>
-      <span className={`nas-state${nas.reachable ? "" : " is-off"}`}>{nas.reachable ? `NAS 已连接 · ${nas.network}` : "NAS 不可达 · 显示缓存缩略图"}</span>
-      <span className="mono small"><PixelIcon name="folder" /> {nas.root}/YYYY-MM/产品物料｜营销物料/类型/</span>
-      <span className="small muted">缩略图缓存 {Math.round(nas.thumbBytes / 1024 / 1024)} MB · 只存缩略图</span>
-      <span className="small muted">上次扫描 {nas.lastScanAt}</span>
+    <div className="nas-bar">
+      <span className={`nas-state${nas.reachable ? "" : " is-off"}`}>{nas.reachable ? "NAS 已挂载 · 只读" : "NAS 未挂载 · 显示上次扫描的缩略图"}</span>
+      <span className="mono small" title={nas.root}><PixelIcon name="folder" /> {nas.root.split("/").slice(-2).join("/")}/YYYY-M月/</span>
+      <span className="small muted">上次扫描 {nas.lastScanAt} · 缩略图 {(nas.thumbBytes / 1048576).toFixed(1)} MB</span>
       <span className="spacer" />
+      {error && <span className="small nas-error">{error}</span>}
       {scan ? <div className="nas-scan"><StepProgress label="扫描 NAS" done={scan === "done"} /></div> : null}
-      <Button onClick={() => { setScan("run"); setTimeout(() => setScan("done"), 2600); }}><PixelIcon name="refresh" />重新扫描</Button>
+      <Button onClick={run} disabled={scan === "run"}><PixelIcon name="refresh" />重新扫描</Button>
+      <a className="btn btn-default" href={NAS_UPLOAD_URL} target="_blank" rel="noreferrer" title="在网页中台打开 跨部门综合资料/8.月度物料"><PixelIcon name="upload" />物料上传</a>
     </div>
   );
 }
 
-function NasBoard({ nas, view, sample }) {
+function NasBoard({ nas, onScanned }) {
+  const [line, setLine] = useState("大学辅导");
   const [open, setOpen] = useState(null);
-  const [toast, showToast] = useToast();
-  const dm = deliveryMonth();
+  const data = nas.lines[line];
   return (
     <>
-      {sample && <SampleStrip task={`待 ${sample} 接入`} />}
-      <NasBar nas={nas} sample={sample} />
-      {view === "wall" ? (
-        <div className={`wall${sample ? " is-sample" : ""}`} style={{ "--cols": nas.months.length }}>
-          <div className="wall-h">类型</div>
-          {nas.months.map((m) => <div key={m} className={`wall-h${m === dm ? " is-dm" : ""}`}><span className="tnum">{m}</span>{m === dm && <em className="month-flag">交付月</em>}</div>)}
-          {nas.types.map((t) => (
-            <Row key={t.key}>
-              <div className="wall-t"><strong>{t.key}</strong><span className="small muted">{t.fixed ? "每月固定" : "活动时出"}</span></div>
-              {nas.months.map((m) => <WallCell key={m} cell={nas.cells[`${m}|${t.key}`]} source={nas.cells[`${nas.cells[`${m}|${t.key}`]?.from}|${t.key}`]} type={t.key} month={m} isDm={m === dm} onOpen={() => setOpen({ month: m, type: t.key, cell: nas.cells[`${m}|${t.key}`] })} />)}
-            </Row>
-          ))}
-        </div>
-      ) : (
-        <div className="mk-grid">
-          {nas.marketing.map((x, i) => (
-            <button key={i} type="button" className="mk-card" data-dither="" onClick={() => setOpen({ month: x.month, type: x.scene, cell: { state: "file", kind: x.kind === "九宫格" ? "grid9" : "grid3", path: `${x.month}/营销物料/${x.scene}/`, count: x.count } })}>
-              <Thumb kind={x.kind === "九宫格" ? "grid9" : "grid3"} title={x.scene} big={i === 0 ? "冲分" : ""} accent={i === 0} />
-              <span className="mk-info"><strong>{x.scene}</strong><span className="row"><span className="tnum small muted">{x.month} · {x.kind} · {x.count} 张</span><span className="spacer" /><Tag tone={x.state === "已交付" ? "green" : "orange"}>{x.state}</Tag></span></span>
-            </button>
-          ))}
-        </div>
-      )}
-      <Modal open={!!open} onClose={() => setOpen(null)} wide icon="image" title={open ? `${open.month} · ${open.type}` : ""}
-        footer={open?.cell?.state === "file" && <>
-          <PendingButton task="V3-接口清单"><PixelIcon name="external" />打开原图（NAS 暂缓接入）</PendingButton>
-          <PendingButton task="V3-接口清单" variant="primary"><PixelIcon name="brief" />在 {dm.slice(5)} 月 brief 中沿用</PendingButton>
-        </>}>
+      <NasBar nas={nas} onScanned={onScanned} />
+      <div className="toolbar">
+        <Segmented options={NAS_LINES} value={line} onChange={setLine} />
+        <span className="small muted">按文件名关键词识别：{data.types.map((t) => `${t.key}「${t.keyword}」`).join(" · ")}；同名活动只留第一张，不扫「营销物料」文件夹</span>
+      </div>
+      <div className="wall" style={{ "--cols": nas.months.length }}>
+        <div className="wall-h">类型</div>
+        {nas.months.map((m) => <div key={m} className="wall-h"><span className="tnum">{m}</span></div>)}
+        {data.types.map((t) => (
+          <Row key={t.key}>
+            <div className="wall-t"><strong>{t.key}</strong><span className="small muted">关键词「{t.keyword}」{t.many ? " · 每个活动一张" : ""}</span></div>
+            {nas.months.map((m) => <WallCell key={m} items={data.cells[`${m}|${t.key}`] || []} many={t.many} onOpen={(item) => setOpen({ month: m, type: t.key, item })} />)}
+          </Row>
+        ))}
+      </div>
+      <Modal open={!!open} onClose={() => setOpen(null)} wide icon="image" title={open ? `${line} · ${open.month} · ${open.type}${open.item.name !== open.type ? ` · ${open.item.name}` : ""}` : ""}
+        footer={open && (nas.reachable
+          ? <a className="btn btn-default" href={`/api/v3/nas/original/${open.item.id}`} target="_blank" rel="noreferrer"><PixelIcon name="external" />打开原图</a>
+          : <span className="small muted">NAS 未挂载，暂时打不开原图</span>)}>
         {open && (
           <div className="viewer">
-            <div className="viewer-stage"><Thumb kind={open.cell?.kind || "poster"} title={open.type} big={open.cell?.big} accent={open.cell?.accent} /></div>
+            <div className="viewer-stage"><Thumb src={open.item.thumb} title={open.item.file} /></div>
             <dl className="kv">
-              <dt>NAS 路径</dt><dd className="mono small">{nas.root}/{open.cell?.path || "—"}</dd>
-              <dt>状态</dt><dd>{{ file: "已上传", pending: "待交付", reuse: `沿用 ${open.cell?.from}`, skip: "本月不出" }[open.cell?.state] || "未出"}</dd>
-              {open.cell?.version && <><dt>版本</dt><dd>{Array.from({ length: open.cell.version }, (_, i) => <Tag key={i} tone={i === open.cell.version - 1 ? "green" : "neutral"}>v{i + 1}</Tag>)}</dd></>}
-              {open.cell?.count && <><dt>张数</dt><dd>{open.cell.count} 张</dd></>}
-              <dt>说明</dt><dd className="small muted">本地只缓存缩略图；不在公司内网时可以看缩略图，原图需要连公司网络。</dd>
+              <dt>文件</dt><dd>{open.item.file}</dd>
+              <dt>NAS 路径</dt><dd className="mono small">{open.item.path}</dd>
+              <dt>大小</dt><dd className="tnum">{(open.item.size / 1048576).toFixed(1)} MB</dd>
+              {open.item.others.length > 0 && <><dt>同类未选</dt><dd className="small muted">{open.item.others.map((p) => p.split("/").pop()).join("、")}</dd></>}
+              <dt>说明</dt><dd className="small muted">本地只缓存缩略图；原图从 NAS 读取，需要连公司网络并挂载 NAS。</dd>
             </dl>
           </div>
         )}
       </Modal>
-      {toast}
     </>
   );
 }
 
 const Row = ({ children }) => <>{children}</>;
 
-function WallCell({ cell, source, isDm, onOpen, type, month }) {
-  if (!cell) return <div className="wall-c"><span className="wall-empty"><PixelIcon name="close" />本月不出</span></div>;
-  if (cell.state === "pending") return <div className={`wall-c${isDm ? " is-dm" : ""}`}><button type="button" className="wall-empty is-pending" onClick={onOpen}><PixelIcon name="clock" /><span className="tag tag-amber">待交付</span><span className="small">{cell.note}</span></button></div>;
-  if (cell.state === "skip") return <div className={`wall-c${isDm ? " is-dm" : ""}`}><span className="wall-empty"><PixelIcon name="close" />本月不出</span></div>;
-  // 沿用：画被沿用那张的线框缩略图，写明来自哪个月、哪一版（二次评审 P2-7）
-  if (cell.state === "reuse") return (
-    <div className={`wall-c${isDm ? " is-dm" : ""}`}>
-      <button type="button" className="wall-file" data-dither="" onClick={onOpen} aria-label={`${month} ${type} 沿用 ${cell.from}`}>
-        <Thumb kind="poster" title={type} big={source?.big} outline />
-        <span className="wall-meta"><span>沿用 {cell.from.slice(5)} 月{source?.version ? ` · v${source.version}` : ""}</span></span>
-      </button>
+// 活动海报一格多张：固定两列网格、统一尺寸，名字最多两行，按名称排序（与 NAS 里看到的顺序一致）。
+function WallCell({ items, many, onOpen }) {
+  if (!items.length) return <div className="wall-c"><span className="wall-empty"><PixelIcon name="close" />没识别到</span></div>;
+  return (
+    <div className={`wall-c${many ? " is-many" : ""}`}>
+      {many ? <div className="wall-acts">{items.map((item) => <PosterCard key={item.id} item={item} label={item.name} onOpen={() => onOpen(item)} />)}</div>
+        : items.map((item) => <PosterCard key={item.id} item={item} label={item.file.replace(/\.[^.]+$/, "")} onOpen={() => onOpen(item)} />)}
     </div>
   );
+}
+
+function PosterCard({ item, label, onOpen }) {
   return (
-    <div className={`wall-c${isDm ? " is-dm" : ""}`}>
-      <button type="button" className="wall-file" data-dither="" onClick={onOpen} aria-label={`${month} ${type}`}>
-        <Thumb kind="poster" title={type} big={cell.big} accent={cell.accent} />
-        <span className="wall-meta"><span>v{cell.version}</span><span>新做</span></span>
-      </button>
-    </div>
+    <button type="button" className="wall-file" onClick={onOpen} aria-label={item.file} title={item.path}>
+      <Thumb src={item.thumb} title={item.file} />
+      <span className="wall-meta"><span className="wall-name">{label}</span>{item.others.length > 0 && <span className="tnum">+{item.others.length}</span>}</span>
+    </button>
   );
 }
 

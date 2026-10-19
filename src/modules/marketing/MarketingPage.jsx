@@ -10,7 +10,7 @@ import CampaignView from "./CampaignView.jsx";
 const TABS = [
   { key: "plans", label: "月度促销", desc: "按月份、业务线录入促销方案，下方是全部月份的方案汇总" },
   { key: "prices", label: "价格记录", desc: "各 SKU 的价格方案：按课时档对比总价、单价和毛利，标出低于毛利底线的格子" },
-  { key: "materials", label: "物料沉淀", desc: "按月份沉淀的产品物料、营销物料和设计参考：每月交付了什么、沿用了哪一版" },
+  { key: "materials", label: "物料沉淀", desc: "按月份沉淀大学辅导、国际课程的产品物料（从公司 NAS 识别）和设计参考" },
   { key: "campaign", label: "营销战役", desc: "本月战役的节点、物料决定与复盘" },
   { key: "brief", label: "设计 Brief", desc: "交付月物料的设计需求：逐节填写，九宫格可直接改，右侧文案助手可以起草" },
 ].map((t) => ({ ...t, href: href("marketing", t.key) }));

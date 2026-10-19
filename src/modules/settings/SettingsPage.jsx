@@ -77,7 +77,7 @@ export default function SettingsPage() {
     if (type === "rules") return <CollectRulesRow key="rules" v3={v3} />;
     if (type === "pairing") return <PairingRow key="pairing" />;
     if (type === "push") return <PushRow key="push" v3={v3} />;
-    return <div key="nas" className="set-row"><div className="set-row-head"><span className="set-label">NAS 物料目录</span><span className="set-value muted">暂缓接入（你会重新整理目录）；工作台不扫描、不挂载 NAS</span><Tag>暂缓</Tag></div></div>;
+    return <div key="nas" className="set-row"><div className="set-row-head"><span className="set-label">NAS 物料目录</span><span className="set-value muted">/Volumes/跨部门综合资料/8.月度物料（Finder 用 SMB 挂载；工作台只读扫描、只存缩略图）</span><Tag>只读</Tag></div></div>;
   };
   return <>
     <PageHeader title="设置" subtitle="按用途分组；每项单独编辑、预览确认后保存并回读；飞书身份固定只读" />

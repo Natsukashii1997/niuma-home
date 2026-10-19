@@ -2,6 +2,7 @@ import { json, readJson, route } from "../http.mjs";
 import { listPromos, listPlans, getPlan, listPlanAliases, comparePlan, savePlan } from "../db.mjs";
 import { parsePlan, PROMO_SKUS } from "../plan-parser.mjs";
 import { routes as materialRoutes } from "./materials.mjs";
+import { routes as nasRoutes } from "./nas.mjs";
 
 const fail = (message) => { throw Object.assign(new Error(message), { status: 400 }); };
 const planHandler = (handler) => async (req, res, context) => {
@@ -59,5 +60,6 @@ export function routes(db) {
 
     // 物料
     ...materialRoutes(db),
+    ...nasRoutes(db),
   ];
 }

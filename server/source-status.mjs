@@ -17,7 +17,7 @@ export function recordSource(db, kind, { identity = '', attemptAt = Date.now(), 
     .run(kind, identity, attemptAt, success, error || null, JSON.stringify(details));
 }
 
-export function sourceStatus(db, { now = Date.now, implemented = ['daily', 'weekly', 'timeline', 'kb'], voiceIdentity } = {}) {
+export function sourceStatus(db, { now = Date.now, implemented = ['daily', 'weekly', 'timeline', 'kb', 'nas'], voiceIdentity } = {}) {
   const settings = getSettings(db), enabled = new Set(implemented), sources = {};
   for (const kind of ['daily', 'weekly', 'timeline', 'kb', 'nas', 'voice']) {
     if (!enabled.has(kind)) { sources[kind] = { state: 'off' }; continue; }

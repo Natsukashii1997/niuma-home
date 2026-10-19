@@ -1,3 +1,4 @@
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Card, Loadable, Placeholder, SampleBadge, StatusMark } from "../../ui/components.jsx";
@@ -97,23 +98,58 @@ const daysUntil = (due) => { const t = new Date(); const m = /^(?:(\d{4})-)?(\d{
 function TodoCard() {
   const state = useApi("/api/v3/home/todo");
   return (
-    <Card className="col-4" dither title={<><PixelIcon name="alert" /> 待我处理</>} extra={state.isSample ? <SampleBadge task={state.task} /> : null}>
+    <Card className="col-4 todo-card" dither title={<><PixelIcon name="alert" /> 待我处理</>} extra={state.isSample ? <SampleBadge task={state.task} /> : null}>
       <Loadable state={state} name="待我处理">
-        {(items) => !items.length ? <p className="muted">没有待处理的事</p> : (
-          <ul className="list todo-list">
-            {items.map((t, i) => (
-              <li key={i}>
-                <span className={`todo-kind${t.urgent ? ` is-${TODO_TONE[t.kind] || "warn"}` : ""}`}>{t.kind}</span>
-                <a href={t.href} className="todo-text">{t.text}</a>
-                {t.due && <span className={`tnum small ${daysUntil(t.due) !== null && daysUntil(t.due) <= 0 ? "risk-text" : t.urgent ? "warn-text" : "muted"}`}>{t.due}</span>}
-              </li>
-            ))}
-          </ul>
-        )}
+        {(items) => !items.length ? <p className="muted">没有待处理的事</p> : <TodoList items={items} />}
       </Loadable>
     </Card>
   );
 }
+
+// 卡片高度跟着同一行（不被待办撑长，用户 2026-10-19）：放得下几条显示几条，其余按去处汇总成「还有 N 项」链接，点了跳到对应页面。
+// 先全部渲染量一次能放几条，再截断；卡片尺寸变了重新量。
+function TodoList({ items }) {
+  const box = useRef(null);
+  const [fit, setFit] = useState(null);
+  useEffect(() => {
+    const ro = new ResizeObserver(() => setFit(null));
+    ro.observe(box.current);
+    return () => ro.disconnect();
+  }, []);
+  useLayoutEffect(() => { setFit(null); }, [items]);
+  useLayoutEffect(() => {
+    if (fit !== null) return;
+    const el = box.current, lis = [...el.querySelectorAll(".todo-list > li")];
+    const bottom = (n) => (n ? lis[n - 1].offsetTop + lis[n - 1].offsetHeight : 0);
+    if (bottom(lis.length) <= el.clientHeight) { setFit(lis.length); return; }
+    let n = lis.length;
+    while (n > 0 && bottom(n) > el.clientHeight - TODO_MORE_H) n--;
+    setFit(n);
+  }, [fit, items]);
+  const shown = fit === null ? items : items.slice(0, fit);
+  const rest = items.slice(shown.length);
+  const groups = [...rest.reduce((m, t) => m.set(t.href, { kind: t.kind, href: t.href, n: (m.get(t.href)?.n || 0) + 1 }), new Map()).values()];
+  return (
+    <div className="todo-box" ref={box}>
+      <ul className="list todo-list">
+        {shown.map((t, i) => (
+          <li key={i}>
+            <span className={`todo-kind${t.urgent ? ` is-${TODO_TONE[t.kind] || "warn"}` : ""}`}>{t.kind}</span>
+            <a href={t.href} className="todo-text">{t.text}</a>
+            {t.due && <span className={`tnum small ${daysUntil(t.due) !== null && daysUntil(t.due) <= 0 ? "risk-text" : t.urgent ? "warn-text" : "muted"}`}>{t.due}</span>}
+          </li>
+        ))}
+      </ul>
+      {rest.length > 0 && (
+        <div className="todo-more">
+          <span className="muted">还有 <span className="tnum">{rest.length}</span> 项</span>
+          {groups.map((g) => <a key={g.href} href={g.href} className="link">{g.kind} <span className="tnum">{g.n}</span><PixelIcon name="right" /></a>)}
+        </div>
+      )}
+    </div>
+  );
+}
+const TODO_MORE_H = 40;
 
 // 「当前或下一条」日程标橙：结束时间晚于现在的第一条。
 function TodayCard({ now }) {

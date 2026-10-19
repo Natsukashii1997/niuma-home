@@ -39,7 +39,7 @@ test('状态接口零外部读取，日报/周报成功时间落库且重开数�
   const first=(await invoke(all,'GET','/api/v3/status')).body;
   assert.equal(first.sources.daily.at,'2026-10-16 12:00');assert.equal(first.sources.weekly.at,first.sources.daily.at);assert.equal(reads,1);
   const reopened=openDb(dir);try { assert.deepEqual(sourceStatus(reopened).sources,first.sources); } finally {reopened.close();}
-  assert.equal((await invoke(all,'GET','/api/v3/status')).body.sources.nas.state,'off');assert.equal(reads,1);
+  assert.equal((await invoke(all,'GET','/api/v3/status')).body.sources.nas.state,'never');assert.equal(reads,1);
 });
 
 test('状态失败保留成功水位，切换配置不沿用旧来源成功；旧请求不能覆盖新请求', t=>{
