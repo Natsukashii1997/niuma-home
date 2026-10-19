@@ -106,6 +106,18 @@ const SCHEMA = `
     extra TEXT NOT NULL DEFAULT '{}'
   );
 
+  -- 机械邪龙兽推送 Codex 重置：每个重置事件一行。sent / unknown / skipped 不再推；failed 最多试 3 次。
+  CREATE TABLE IF NOT EXISTS codex_push (
+    event_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    stage TEXT NOT NULL DEFAULT '',
+    summary TEXT NOT NULL DEFAULT '',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    error TEXT,
+    message_id TEXT,
+    updated_at TEXT NOT NULL
+  );
+
   -- V3：本地业务记录；外部原件只读，用户确认后保存本地版本。
   CREATE TABLE IF NOT EXISTS v3_documents (
     kind TEXT NOT NULL,
