@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend } from "../../api.js";
-import { Button, Card, PhaseSteps, Tag } from "../../ui/components.jsx";
+import { Button, Card, PhaseSteps } from "../../ui/components.jsx";
 import { SpecialBlock, TABLE_FIELDS } from "./PromosView.jsx";
 
 // 方案录入：嵌在「月度促销」上半部分，四步 粘贴 → 解析 → 处理 → 确认。
@@ -146,15 +146,14 @@ function PlanForm({ month, onSaved, onLine }) {
             <p className="muted small">优先对比本月已有数据；本月无数据时对比该业务线上一个有数据的月份。标「改」的格子下方是旧值。</p>
             <div className="table-wrap">
               <table className="grid compact plan-preview-table">
-                <colgroup>{["16%", "13%", "21%", "19%", "19%", "12%"].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
-                <thead><tr><th>SKU</th>{TABLE_FIELDS.map(([, label]) => <th key={label}>{label}</th>)}<th>对比状态</th></tr></thead>
+                <colgroup>{["17%", "14%", "23%", "23%", "23%"].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
+                <thead><tr><th>SKU</th>{TABLE_FIELDS.map(([, label]) => <th key={label}>{label}</th>)}</tr></thead>
                 <tbody>{preview.rows.map((row, index) => <tr key={row.sku + "-" + index}>
                   <td>{row.sku}{row.alias && <div className="muted small">原文：{row.alias}</div>}</td>
                   {TABLE_FIELDS.map(([key]) => <td key={key} className={row.changed?.includes(key) ? "changed" : ""}>
                     {row[key]}
                     {row.changed?.includes(key) && <span className="prev-value">{row.previous?.month}：<s>{row.previous?.[key] ?? "无"}</s></span>}
                   </td>)}
-                  <td>{row.status === "new" ? <Tag tone="orange">新 SKU</Tag> : row.status === "changed" ? <Tag tone="blue">有变化</Tag> : <Tag>无变化</Tag>}</td>
                 </tr>)}</tbody>
               </table>
             </div>
