@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>底栏四版对比</title>
+<link rel="stylesheet" href="../../../src/styles.css">
+<link rel="stylesheet" href="../../../src/styles-layout.css">
+<style>
+  body { margin: 0; padding: var(--s6) var(--s6) 80px; }
+  .wrap { max-width: 1480px; margin: 0 auto; }
+  h1 { margin: 0 0 var(--s2); font: 24px var(--font-pixel); }
+  h2 { margin: 0; font: 20px var(--font-pixel); }
+  h2 small { margin-left: var(--s3); font: 13px var(--font-sans); color: var(--muted); }
+  .lead { max-width: 920px; color: var(--text-2); }
+  .ver { margin-top: var(--s6); padding: var(--s4); background: var(--panel); border: var(--border) solid var(--text); }
+  .ver.is-now { border-color: var(--line); }
+  .tagline { margin: var(--s1) 0 var(--s3); font-size: 14px; color: var(--text); }
+  .tagline b { color: var(--signal); font-weight: 500; }
+  .shots { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: var(--s3); align-items: start; }
+  figure { margin: 0; }
+  figure img { display: block; width: 100%; border: 1px solid var(--line); }
+  figure + figure { margin-top: var(--s2); }
+  figcaption { margin-top: 2px; font: 11px var(--font-mono); color: var(--muted); }
+  .spec { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px var(--s3); margin-top: var(--s3); font-size: 13px; }
+  .spec dt { font: 11px/20px var(--font-mono); color: var(--muted); }
+  .spec dd { margin: 0; }
+  .spec ul { margin: 0; padding-left: 1.2em; }
+  .pro { color: var(--ok); } .con { color: var(--risk); }
+  table { width: 100%; border-collapse: collapse; margin-top: var(--s3); font-size: 13px; background: var(--panel); }
+  th, td { padding: 6px var(--s2); border: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { background: var(--panel-soft); font: 500 12px var(--font-mono); }
+  code { font: 12px var(--font-mono); }
+  @media (max-width: 900px) { body { padding: var(--s4); } .shots { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>底栏重新设计 · 四个版本</h1>
+  <p class="lead">2026-10-18 第三轮。先想清楚底栏该承担什么，再谈排版：顶部已经有路径、时钟和 Codex 横条，首页有待办卡和交付月卡，所以底栏不该再堆一遍。下面四版各自只回答一个问题——<b>A 还剩多少时间</b>、<b>B 有多少事等我</b>、<b>C 这一页的数据新不新、能按什么键</b>、<b>D 现在最该看哪一件</b>。截图是把样稿挂到真实页面上拍的（数据为 22:27 只读快照），每版上面是 1440 宽，右边是 390 宽。</p>
+
+  <section class="ver is-now">
+    <h2>现状<small>第二轮实现 · 用户不满意</small></h2>
+    <p class="tagline">左「数据源正常」，中「交付月 2026-11 · 还有 13 天」，右「⌘K 命令」和版本号。三块信息互不相关，中间大片空白，交付月和首页卡重复。</p>
+    <div class="shots">
+      <div><figure><img src="../../handoff/V4/底栏-now-1440.png" alt="现状 1440"></figure><figure><img src="../../handoff/V4/底栏-now-1440-open.png" alt="现状 点开数据源"><figcaption>点开数据源的浮层</figcaption></figure></div>
+      <figure><img src="../../handoff/V4/底栏-now-390.png" alt="现状 390"><figcaption>390 宽</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="ver">
+    <h2>A 截止条<small>时间维度 · 高 30px</small></h2>
+    <p class="tagline">底栏只回答一件事：<b>还剩多少时间</b>。本月 31 格日历条 + 交付倒数，旁边是当前战役进度；数据源收成右边一个小方点。</p>
+    <div class="shots">
+      <div><figure><img src="../../handoff/V4/底栏-A-1440.png" alt="A 1440"></figure><figure><img src="../../handoff/V4/底栏-A-1440-pop.png" alt="A 悬停截止"><figcaption>悬停 / 点击交付倒数：本月和下月截止</figcaption></figure></div>
+      <figure><img src="../../handoff/V4/底栏-A-390.png" alt="A 390"><figcaption>390 宽：只留日历条 + 剩几天 + 数据源点 + ⌘K</figcaption></figure>
+    </div>
+    <dl class="spec">
+      <dt>放哪些</dt><dd>① 本月日历格：已过墨色、今天信号橙、截止日描黑框；② 交付 11 月 · 截止 10-31 · 剩 13 天（≤3 天整句变琥珀）；③ 当前战役名 + 网点进度条 + 第 4/28 天 · 剩 24 天；④ 数据源小方点（异常时才出字「2 个来源异常」）；⑤ ⌘K。版本号移进数据源浮层底部。</dd>
+      <dt>数据来源</dt><dd>交付：<code>src/constants.js</code> 的 <code>deliveryMonth / daysToDeadline</code>（已有）；战役：<code>/api/v3/campaigns/current</code>（已有，底栏多拉一次）；数据源：<code>/api/v3/status</code>（已有）。不需要新接口。</dd>
+      <dt>交互</dt><dd>悬停日历格看日期；点交付倒数→营销页当月方案，浮层列本月 / 下月截止；点战役→战役页；点方点→各来源时间浮层（沿用现有明细）。没有战役时这一块不出现。</dd>
+      <dt>窄屏</dt><dd>战役整块隐藏，日历格变 3px 宽；一行放得下，不横向滚动。</dd>
+      <dt>优缺点</dt><dd><span class="pro">＋ 有一眼能读的「时间感」，位图风味道最足；信息互相相关。</span><br><span class="con">－ 交付倒数和首页交付月卡重复；数据源降级成一个点，平时不显眼；底栏高度从 26 增到 30。</span></dd>
+    </dl>
+  </section>
+
+  <section class="ver">
+    <h2>B 计数托盘<small>待处理维度 · 高 26px</small></h2>
+    <p class="tagline">底栏像系统托盘，回答：<b>有多少事等我处理</b>。一格一个数字，0 是灰的，需要动手的用信号橙下划线；点格子直接跳过去。</p>
+    <div class="shots">
+      <div><figure><img src="../../handoff/V4/底栏-B-1440.png" alt="B 1440"></figure><figure><img src="../../handoff/V4/底栏-B-1440-pop.png" alt="B 点开待办"><figcaption>点「待办」：列出待办，点一条直接去处理</figcaption></figure></div>
+      <figure><img src="../../handoff/V4/底栏-B-390.png" alt="B 390"><figcaption>390 宽：只留图标 + 数字，五格均分</figcaption></figure>
+    </div>
+    <dl class="spec">
+      <dt>放哪些</dt><dd>① 待办数（现在 1：时间线 330 条异常）；② 项目推进中个数；③ 项目节点逾期数；④ 距交付截止天数；⑤ 数据源 4/4 正常；右侧 ⌘K、版本号。</dd>
+      <dt>数据来源</dt><dd>待办 <code>/api/v3/home/todo</code>、项目 <code>/api/v3/projects</code>、数据源 <code>/api/v3/status</code>，都已有。但每页底栏都去拉整份项目列表偏重，实现时建议在 <code>/api/v3/status</code> 里加一个 <code>counts</code> 汇总字段（只查库，不触发飞书）——要改 API.md。</dd>
+      <dt>交互</dt><dd>点待办→浮层列出各条，再点进对应页；点项目 / 逾期→项目页（逾期时带筛选）；点交付→营销页；点数据源→各来源时间浮层。数字变化时用 FlipNumber 翻一下。</dd>
+      <dt>窄屏</dt><dd>文字标签隐藏，五格均分整行，⌘K 和版本号隐藏（手机上没有键盘）。</dd>
+      <dt>优缺点</dt><dd><span class="pro">＋ 最「有用」，每格都能点进去干活；扩展方便（以后加 Agent 运行中、Voice 预算等）。</span><br><span class="con">－ 和首页待办卡部分重复；格子多了会变成一排数字墙，需要克制只放会变的；可能需要后端加汇总字段。</span></dd>
+    </dl>
+  </section>
+
+  <section class="ver">
+    <h2>C 跟着页面<small>情境维度 · 高 26px</small></h2>
+    <p class="tagline">参考编辑器底栏：左边写<b>这一页的数据从哪来、新不新、要注意什么</b>，右边写这一页能按的快捷键。换页内容就换。</p>
+    <div class="shots">
+      <div>
+        <figure><img src="../../handoff/V4/底栏-C-1440-home.png" alt="C 首页"><figcaption>首页：来源总状态 + 交付倒数</figcaption></figure>
+        <figure><img src="../../handoff/V4/底栏-C-1440-user.png" alt="C 用户页"><figcaption>用户 / 时间线：时间线同步时间 + 异常数</figcaption></figure>
+        <figure><img src="../../handoff/V4/底栏-C-1440-kb.png" alt="C 知识库"><figcaption>知识库：同步时间 + 这页的快捷键（⌘Z / ⇧⌘N / F2 / ⌘X ⌘V，页面里本来就支持，只是没地方提示）</figcaption></figure>
+        <figure><img src="../../handoff/V4/底栏-C-1440-pop.png" alt="C 浮层"><figcaption>点左边：仍可看全部数据源</figcaption></figure>
+      </div>
+      <figure><img src="../../handoff/V4/底栏-C-390.png" alt="C 390"><figcaption>390 宽：页面名只留图标，快捷键全部隐藏</figcaption></figure>
+    </div>
+    <dl class="spec">
+      <dt>放哪些</dt><dd>① 当前页图标 + 名称（浅底块）；② 本页相关的数据源和同步时间（首页=全部来源，用户=时间线，知识库=知识库，日/周报=日报周报，营销=交付倒数）；③ 本页一条要注意的数（异常、未读等）；④ 本页快捷键；⑤ 版本号（灰）。</dd>
+      <dt>数据来源</dt><dd><code>/api/v3/status</code>（已有）+ 路由（<code>App.jsx</code> 把当前模块传给底栏）+ 一张「模块 → 显示什么」的对照表写在 StatusBar 里。异常数沿用 <code>/api/v3/home/todo</code>。不需要新接口。</dd>
+      <dt>交互</dt><dd>点左侧→全部数据源浮层；快捷键只是提示，不可点；没有专属信息的页（如 Agent、设置）退回首页那套。</dd>
+      <dt>窄屏</dt><dd>页面名只留图标，快捷键隐藏，只剩「来源 · 时间 · 要注意的数」。</dd>
+      <dt>优缺点</dt><dd><span class="pro">＋ 不和首页重复，信息总是和眼前这页有关；顺手把藏着的快捷键露出来。</span><br><span class="con">－ 底栏内容不固定，不能「随时一眼看交付倒数」；每加一个模块要补一行对照表；和顶部路径「niuma-home / 知识库」有点重复（页面名那块可去掉）。</span></dd>
+    </dl>
+  </section>
+
+  <section class="ver">
+    <h2>D 一句话<small>注意力维度 · 高 26px</small></h2>
+    <p class="tagline">整条只说<b>当下最该看的一件事</b>，用方块光标逐字打出；右边「1/3」可以翻看其余几条。没事时就安静地显示交付倒数。</p>
+    <div class="shots">
+      <div><figure><img src="../../handoff/V4/底栏-D-1440.png" alt="D 1440"></figure><figure><img src="../../handoff/V4/底栏-D-1440-pop.png" alt="D 展开"><figcaption>点「1/3」：按优先级列出全部提醒，最后一行是数据源</figcaption></figure></div>
+      <div><figure><img src="../../handoff/V4/底栏-D-390.png" alt="D 390"><figcaption>390 宽：同一句，太长时省略号</figcaption></figure><figure><img src="../../handoff/V4/底栏-D-390-pop.png" alt="D 390 展开"><figcaption>390 宽展开</figcaption></figure></div>
+    </div>
+    <dl class="spec">
+      <dt>放哪些</dt><dd>一句提醒 + 跳转词（去确认 → / 看方案 →）；左侧方块颜色 = 级别（橙=要处理，绿=一切正常）；右侧条数翻页、⌘K。优先级：数据源异常 > 截止 ≤3 天 > 待办 > 战役节点 > 交付倒数。</dd>
+      <dt>数据来源</dt><dd><code>/api/v3/status</code>、<code>/api/v3/home/todo</code>、<code>/api/v3/campaigns/current</code>、交付月工具，都已有；排序规则写在前端。</dd>
+      <dt>交互</dt><dd>点整句→跳到对应页面；点「1/3」→浮层列全部；新提醒出现时用 TypeText 逐字打出一次，不循环滚动、不自动轮播。</dd>
+      <dt>窄屏</dt><dd>结构不变，句子太长时省略号；⌘K 隐藏。</dd>
+      <dt>优缺点</dt><dd><span class="pro">＋ 最安静、最好读，永远只有一行字；天然把要紧的顶到前面。</span><br><span class="con">－ 信息量最少，别的要点开才看到；优先级规则要靠我们拍脑袋定，定错了会一直提示不重要的事。</span></dd>
+    </dl>
+  </section>
+
+  <section class="ver is-now">
+    <h2>横向对比</h2>
+    <table>
+      <tr><th></th><th>A 截止条</th><th>B 计数托盘</th><th>C 跟着页面</th><th>D 一句话</th></tr>
+      <tr><td>回答的问题</td><td>还剩多少时间</td><td>有多少事等我</td><td>这页数据新不新、能按什么键</td><td>现在最该看哪一件</td></tr>
+      <tr><td>常驻信息量</td><td>中（3 块）</td><td>多（5 格）</td><td>中（随页变化）</td><td>少（1 句）</td></tr>
+      <tr><td>数据源状态</td><td>右侧小方点</td><td>一格 4/4</td><td>左侧本页来源</td><td>只在出错时顶上来</td></tr>
+      <tr><td>和首页重复</td><td>交付倒数重复</td><td>待办重复</td><td>基本不重复</td><td>少量</td></tr>
+      <tr><td>新接口</td><td>不需要</td><td>建议在 status 加 counts</td><td>不需要</td><td>不需要</td></tr>
+      <tr><td>Codex 重置</td><td colspan="4">四版都不放：顶部 Codex 横条已常驻，且横条归另一个会话在改，避免两处同时显示。如果想把横条下沉到底栏、腾出顶部 30px，可以作为单独提议再议。</td></tr>
+      <tr><td>我的建议</td><td colspan="4"><b>C</b>：唯一不和首页、顶栏重复的方案，还能顺手露出知识库这类页面里藏着的快捷键；如果更在意「随时看到交付倒数」，选 <b>A</b>。B、D 也可以组合：B 的计数格放进 C 的右侧。</td></tr>
+    </table>
+  </section>
+</div>
+</body>
+</html>

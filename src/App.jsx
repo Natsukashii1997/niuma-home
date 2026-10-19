@@ -126,7 +126,7 @@ export default function App() {
         </main>
         <SelfTalkDrawer open={drawer} onClose={() => setDrawer(false)} />
       </div>
-      <StatusBar onCommand={() => setCommand(true)} />
+      <StatusBar page={displayed.key} onCommand={() => setCommand(true)} />
       <CommandPalette open={command} onClose={() => setCommand(false)} />
       <canvas ref={canvas} className="dissolve-canvas" aria-hidden="true" />
     </div>

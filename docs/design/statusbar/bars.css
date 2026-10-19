@@ -1,0 +1,73 @@
+/* 底栏重设计样稿（2026-10-18，第三轮）：四个版本共用的样式，只用 src/styles*.css 里已有的变量。
+   类名统一加 sbx- 前缀，注入到真实页面时不和现有 .sb-* 冲突。 */
+
+.sbx { position: fixed; z-index: 6; left: 0; right: 0; bottom: 0; display: flex; align-items: stretch; height: var(--sbx-h, 26px); background: var(--panel); border-top: 1px solid var(--line); font: 11px/1 var(--font-mono); color: var(--text-2); white-space: nowrap; }
+.sbx > * { display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--s3); border: 0; background: none; font: inherit; color: inherit; }
+.sbx button, .sbx a { cursor: pointer; text-decoration: none; }
+.sbx button:hover, .sbx a:hover { color: var(--text); background: var(--panel-soft); }
+.sbx .grow { flex: 1; min-width: 0; padding: 0; }
+.sbx .sep { flex: none; padding: 0; width: 1px; height: 12px; align-self: center; background: var(--line); }
+.sbx .muted { color: var(--muted); }
+.sbx .num { font-variant-numeric: tabular-nums; color: var(--text); }
+.sbx .sig { color: var(--signal); }
+.sbx .warn { color: var(--warn); }
+.sbx .pixel-icon { flex: none; }
+.sbx kbd { line-height: 14px; }
+.sbx-dot { width: 6px; height: 6px; background: var(--ok); flex: none; }
+.sbx-dot.is-warn { background: var(--warn); }
+.sbx-dot.is-off { background: none; border: 1px solid var(--muted); }
+
+/* 浮层：与现有 .sb-panel 一致的墨色 2px 框、无阴影 */
+.sbx-pop { position: fixed; z-index: 7; bottom: calc(var(--sbx-h, 26px) + 4px); min-width: 240px; max-width: calc(100vw - 24px); padding: var(--s2) var(--s3); background: var(--panel); border: var(--border) solid var(--text); font: 11px/1.7 var(--font-mono); color: var(--text-2); white-space: normal; }
+.sbx-pop h4 { margin: 0 0 var(--s1); font: 500 11px var(--font-mono); color: var(--muted); letter-spacing: .04em; }
+.sbx-pop ul { list-style: none; margin: 0; padding: 0; }
+.sbx-pop li { display: flex; align-items: center; gap: 8px; }
+.sbx-pop li + li { border-top: 1px dashed var(--line); }
+.sbx-pop li > :last-child { margin-left: auto; color: var(--muted); }
+.sbx-pop li.is-cur { color: var(--text); }
+.sbx-pop li.is-cur::before { content: ""; width: 3px; align-self: stretch; background: var(--signal); margin: 3px 0; }
+.sbx-pop .foot { margin-top: var(--s1); padding-top: var(--s1); border-top: 1px solid var(--line); color: var(--muted); }
+
+/* ---------- A 截止条 ---------- */
+.sbx-a { --sbx-h: 30px; }
+.sbx-a .lead { font-family: var(--font-pixel); font-size: 13px; color: var(--text); letter-spacing: .02em; }
+.sbx-days { display: inline-grid; grid-auto-flow: column; gap: 1px; height: 12px; }
+.sbx-days i { width: 4px; height: 12px; background-image: var(--dither-1); border: 0; }
+.sbx-days i.past { background: var(--text); }
+.sbx-days i.today { background: var(--signal); }
+.sbx-days i.dead { outline: 1px solid var(--text); outline-offset: -1px; background: var(--panel); }
+.sbx-a .bar { display: inline-block; width: 84px; height: 8px; background-image: var(--dither-1); border: 1px solid var(--line); }
+.sbx-a .bar b { display: block; height: 100%; background-image: var(--dither-ink-3); }
+.sbx-a .big { font: 500 13px var(--font-mono); color: var(--text); }
+
+/* ---------- B 计数托盘 ---------- */
+.sbx-b .cell { gap: 6px; border-right: 1px solid var(--line); }
+.sbx-b .cell .num { font-size: 12px; font-weight: 500; }
+.sbx-b .cell.is-zero, .sbx-b .cell.is-zero .num { color: var(--muted); }
+.sbx-b .cell.is-hot .num { color: var(--signal); }
+.sbx-b .cell.is-hot { border-bottom: 2px solid var(--signal); }
+.sbx-b .tail { border-left: 1px solid var(--line); }
+
+/* ---------- C 跟着页面 ---------- */
+.sbx-c .page { gap: 6px; color: var(--text); background: var(--panel-soft); border-right: 1px solid var(--line); font-weight: 500; }
+.sbx-c .keys { gap: 10px; color: var(--muted); }
+.sbx-c .keys span { display: inline-flex; align-items: center; gap: 4px; }
+
+/* ---------- D 一句话 ---------- */
+.sbx-d .lvl { width: 26px; padding: 0; justify-content: center; }
+.sbx-d .lvl i { width: 8px; height: 8px; background: var(--signal); }
+.sbx-d .lvl.is-ok i { background: var(--ok); }
+.sbx-d .msg { flex: 1; min-width: 0; color: var(--text); }
+.sbx-d .msg .t { overflow: hidden; text-overflow: ellipsis; }
+.sbx-d .msg .cursor { width: 6px; height: 12px; background: var(--text); flex: none; }
+.sbx-d .pager { color: var(--muted); border-left: 1px solid var(--line); }
+
+/* 窄屏（390 宽）：各版本只留最关键的一两项，不横向滚动 */
+@media (max-width: 600px) {
+  .sbx > * { padding: 0 var(--s2); }
+  .sbx .wide { display: none; }
+  .sbx-a .sbx-days i { width: 3px; }
+  .sbx-b .cell { flex: 1; justify-content: center; padding: 0 4px; }
+  .sbx-b .cell .lbl { display: none; }
+  .sbx-pop { left: 12px !important; right: 12px; min-width: 0; }
+}
