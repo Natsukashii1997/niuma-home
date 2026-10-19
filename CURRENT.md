@@ -1570,7 +1570,7 @@ SKU规范-1-方案汇总-按月份-特殊活动.png、SKU规范-2-方案汇总-�
 - 回读（只读）：首页与快照 `dist/index.html` 逐字节一致；`/api/v3/status`、`/api/plans`、`/api/promos`、`/api/v3/home/todo`、`/api/v3/projects` 均 200；正式服务（launchd）能读 NAS 挂载，首次 `/api/v3/nas` 扫描 12.8 秒，识别结果与隔离环境一致，状态栏 NAS ok、缩略图 1.6MB（写在真实 data 的 `nas-thumbs/`，快照存 `v3_snapshots`）；缩略图、原图 200；浏览器首页第一行高 360px（原 1097px），待我处理显示 4 条 +「还有 13 项 · 项目 12 · 时间线 1」，底栏版本 e887e7e。
 - 回滚：`bash scripts/release-app.sh --use nm-20261019-151041-62d717b`（回滚不删 `nas-thumbs/` 与 nas 快照）。
 
-### V4 · 2026-10-19 · 侧栏重排、首页 Codex 还原、价格档案定价模拟器空位、飞书知识库留白（用户确认知识库 UI）
+### V4 · 2026-10-19 · 侧栏重排、首页 Codex 还原、价格档案定价模拟器空位、飞书知识库留白（用户确认知识库 UI；已发布 nm-20261019-155435-388ec23，回读通过）
 
 - 侧栏（`src/App.jsx`）：去掉「工作 / 协作与工具」分组标题，一列排为 首页 · 策略 · 营销 · Voice · 项目 · 带教 · 品牌 · 业务 · Agent · 日/周报 · 飞书知识库。「策略」= 原「用户」模块（地址仍是 `#/user/…`，页签 用户时间线 · 用户策略）；「飞书知识库」= 原知识库。
 - 营销（`MarketingPage.jsx`）：页签 月度促销 · 价格档案（原「价格记录」）· 物料沉淀 · 设计 Brief（用户选留在营销）。营销战役移到项目，旧地址 `#/marketing/campaign` 自动跳 `#/projects/campaign`。
@@ -1580,4 +1580,7 @@ SKU规范-1-方案汇总-按月份-特殊活动.png、SKU规范-2-方案汇总-�
 - 飞书知识库（`KbCanvas.jsx`、`styles-v3.css`）：文件夹最小宽 280、间距 40/64，1440 宽排 3 列；文件夹盒子 182→240px，叠放的预览卡加大；画布内边距 48px、至少撑满一屏；「散卡」从左侧单独的数字改为散卡区顶部一行标题（散卡 · 篇数 · 说明 · 右侧「拖进下面的文件夹」），没有散卡时收成一行。
 - 测试：`npm test` 420 项全部通过；`npm run build`、`git diff --check` 通过。隔离目录 5290 浏览器核对：侧栏顺序与名称、营销/项目页签、两个旧地址跳转、项目看板空位、定价模拟器空位、首页第一行 234px、知识库 3 列与抽屉箭头位置。
 - 截图（`docs/handoff/V4/`）：知识库-散卡与首屏、知识库-文件夹三列、知识库-打开抽屉、首页-Codex还原、价格档案-定价模拟器空位。
+- 发布：提交 `388ec23`；main 从 `0ffe57f` 快进到 `388ec23`，主工作区 `npm test` 420 项全部通过；`bash scripts/release-app.sh` 从 `nm-20261019-153637-e887e7e` 切换到 `nm-20261019-155435-388ec23`（切换前自动备份数据库；保留策略清理快照 `nm-20261019-104512-90e9e03` 和一份 10-18 的数据库备份）。主工作区仍有其他会话的两个未跟踪文档，同上次一样只对本次运行用 `status.showUntrackedFiles=no` 跳过检查，未改动它们。
+- 回读（只读）：首页与快照 `dist/index.html` 一致；`/api/v3/status`、`/api/plans`、`/api/promos`、`/api/v3/home/todo`、`/api/v3/projects`、`/api/v3/nas`、`/api/v3/kb/tree`、`/api/v3/price/skus`、`/api/v3/mentor` 均 200；浏览器：侧栏为新顺序且无分组标题，首页第一行 234px、待我处理 2 条 +「还有 15 项」，知识库 3 列、文件夹 240px、散卡标题在顶部，价格档案无折线图、有定价模拟器空位，`#/marketing/campaign` 跳到 `#/projects/campaign`，底栏版本 388ec23。
+- 回滚：`bash scripts/release-app.sh --use nm-20261019-153637-e887e7e`。
 
