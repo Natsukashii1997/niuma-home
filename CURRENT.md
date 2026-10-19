@@ -1352,3 +1352,156 @@
 - 用户第三轮提了 7 块：月度促销 SKU 规范 + 特殊活动栏 + 录入大学辅导 10 月方案；价格记录页（方案置顶、列增删、4 张产品表、折线配色、删方案设置与档案入口）；方案汇总 SKU 档案改右侧侧栏；Agent 页；设置页重排；机械邪龙兽推送 Codex 重置（飞书卡片）；底栏出 ≥3 版样稿。用户已定：不挂 SKU 的活动（如双11）按业务线整月记一条特殊活动；安心学Max、竞赛课时卡先建空表等用户填；推送每 4 小时检查一次。
 - 除 Agent 页外，其余拆成 4 个并行会话的提议卡（各自 worktree、各自端口，交接写到会话笔记目录，由本会话合并进这里）：促销 SKU 与档案侧栏、价格记录页、设置页 + Codex 推送、底栏样稿。
 - **Agent 页（本会话完成，已提交，未发布）**：删除 / 恢复成功且回读一致后不再留绿色提示（失败、结果不明照常显示）；「已删除的助手」改叫「已删除」，放在左侧助手列表这一栏的右下角、仍在框内。`soft-delete.jsx` 的 `DeletedList` 新增可选 `label`、`quiet`，只有 Agent 页传，项目页、历史战役不变。改动：`src/ui/soft-delete.jsx`、`src/modules/assistants/AssistantsPage.jsx`、`src/styles-v3.css`。5294→5290 隔离环境实测删除→恢复：两次都没有 write-box 残留，助手回到列表。`npm test` 388 通过 / 0 失败；截图 `docs/handoff/V4/Agent已删除右下角-1440.png`、`Agent恢复预览-1440.png`。
+
+### V4 · 2026-10-19 · 第三轮四个分支合并进 ui-v4（用户同意；已提交，未发布）
+
+- 依次合并：`claude/charming-roentgen-f7d8c9`（8d48379 促销 SKU / 特殊活动 / 档案侧栏）→ `claude/vigorous-dirac-732cbd`（49f6d63 价格记录页）→ `claude/unruffled-mclaren-59f89b`（cd75125、c810e3d 底栏 C 版）→ `claude/focused-hellman-be97f9`（174366c、f727a11、dd09aac 设置页 + 推送）。只有 `docs/API.md` 冲突一处（价格记录、推送各新增一节），两节都保留。
+- 合并后 `npm test` 409 通过 / 0 失败；`vite build` 通过。补截价格页：5294→5290 隔离环境给空表安心学Max 填原价 900 和一列 8 档总价，预览→确认→回读一致，保存后和刷新后原价框都是 900，截图 `docs/handoff/V4/prices-10-空表保存后回读-原价保留.png`。
+- 发布后待办：① 10 月大学辅导促销真实数据按用户已批准的预览写入 5280 并回读（见下方促销交接「真实数据录入」）；② 推送开关默认关，需在设置页预览→确认→回读开启。
+- 以下是四个会话的交接原文（会话笔记目录合并而来）。
+
+#### 交接：月度促销 SKU 规范 + 特殊活动 + 档案侧栏（2026-10-19）
+
+- 分支 `claude/charming-roentgen-f7d8c9`（从 ui-v4 51a4f5a 切出），提交 **8d48379**；未发布、未合并、未写真实数据。
+- 用户确认的口径：大学辅导固定 7 个 SKU（灵活学Lite、安心学Max、学考无忧Pass、补考护航Pass、选课指导、论文稳Pass、先修班课）；国际课程 = 灵活学Lite、安心学Max；月度促销去掉申诉服务；10 月原文以截图转录为准（用户确认完整）；侧栏「跨月政策」删掉价格图、关联需求，保留价格方案，新增特殊活动。
+
+##### 改了哪些文件
+- `server/plan-parser.mjs`：导出 `PROMO_SKUS`；编号行是固定 SKU（可「A/B」合写，拆两行字段相同）→ SKU 块；SKU 下非四种标签的「标签：内容」进该 SKU 的 `special`；不是固定 SKU 的编号块（如双11）连同子项进整月 `special`，块里出现试听/正价等四种标签则视为清单外 SKU 记未识别；未提到的固定 SKU 补一行全「无」，行序按清单；无法识别或混入的板块下各行一律记未识别。
+- `server/db.mjs`：promos、plans 各新增 `special TEXT NOT NULL DEFAULT '无'`（建表 + 旧库 ALTER，只加列）；savePromo / listPromos / listPlans / getPlan / comparePlan / savePlan 带上 special；预置别名补「大学辅导 · 课时卡 → 灵活学Lite」。
+- `server/routes/marketing.mjs`：业务线只认 PROMO_SKUS 的两条；PUT 校验 rows 的 special 和整月 special 必须与原文重新解析一致。
+- `docs/API.md`：Promo.special、plans[].special、ParseResult.special、解析规则、PUT 请求体。
+- `src/constants.js`：PROMO_FIELDS 加「特殊活动」；新增 PROMO_LINES（交付月「方案录入」按 2 条线计）。
+- `src/modules/marketing/PromosView.jsx`：特殊活动列；整月特殊活动整行（按月份/业务线分组时在组内，按 SKU 分组时在表尾单独一组）；「xxx 档案 →」改墨底橙边方框块（`.sku-dossier-btn`），SKU 名和档案块都打开右侧侧栏；导出 `MonthSpecial`。
+- `src/modules/marketing/SkuView.jsx`：重写为 `SkuDrawer`（dialog 右侧侧栏），只有跨月政策：按月份从上到下（交付月在顶），字段 = 试听/正价/新签/续费/特殊活动/价格方案，标「改」悬停看旧值；统计条、单价阶梯、价格图版本、复制、页头全部删除。
+- `MarketingPage.jsx` / `PlansView.jsx`：旧地址 `#/marketing/sku/<线>/<SKU>` 显示月度促销并打开该侧栏，关闭后回 `#/marketing/plans`；业务线切换只剩两条。
+- `PlanEditor.jsx`：入库带 special，回读同时核对整月特殊活动；预览下方显示整月特殊活动。
+- `src/styles-v3.css`：删掉旧 SKU 档案页样式（.sku-page/.sku-policy/.sku-split/.sku-scheme/.ver-*），新增侧栏、档案入口块、整月特殊活动样式。
+- 测试：`tests/plan-parser.test.mjs`（重写为真实 SKU 名，含 10 月原文逐格核对）、`tests/plans-api.test.mjs`（新增 10 月预览→确认→回读）、`tests/db.test.mjs`（旧库升级）；样例 `fixtures/2026-10-大学辅导.txt`。
+
+##### 测试
+- `npm test`：394 项，通过 394，失败 0。
+- 隔离环境（真实库只读副本，5320/5321；5310 被别的进程占用）：10 月大学辅导 预览 → 确认 → 回读，7 行 × 6 格 + 原文 + 整月特殊活动全部一致，再解析全部「无变化」。
+
+##### 截图（docs/handoff/V4/）
+SKU规范-1-方案汇总-按月份-特殊活动.png、SKU规范-2-方案汇总-按SKU-档案入口.png、SKU规范-3-SKU档案侧栏.png、SKU规范-4-SKU档案侧栏-滚到底.png（截图时整体下移约 30px 是截图偏差，实测侧栏 top=0）、SKU规范-5-方案录入-解析预览.png、SKU规范-6-窄屏-SKU档案侧栏.png
+
+##### 真实数据录入（待做）
+- 5280 还跑旧代码，旧解析器会把「双11活动」当成 SKU，**必须先合并发布本分支**，再在 5280 预览 → 用户明确同意 → 写入 → 回读。脚本：本会话 scratchpad 里的 flow.mjs（不带 write 参数只预览）。
+- 对照真实库，10 月相比 9 月的变化：灵活学Lite 正价 ¥4300（赠课版）→ ¥4100（双11版）；补考护航Pass 正价 单门8折 → 1门85折，2门及以上8折；论文稳Pass 9 月库里「新签活动：全款立减¥1000」→ 10 月无；先修班课 新增一行全「无」。
+
+##### 范围外发现 / 注意
+- 价格记录页 `PricesView.jsx:50` 仍链接 `#/marketing/sku/…`（由价格记录会话删除入口）；即使不删，现在也会打开侧栏，不会坏。命令面板的 SKU 结果同理。
+- 8、9 月旧数据没有回补「无」行（例如 9 月缺先修班课），按约定不动。
+- 价格方案目前是示例数据，侧栏图例旁标「示例」。
+- styles-v3.css 与其他会话可能同时改，合并时注意「SKU 档案」那一段。
+
+##### 用户批准（2026-10-19，原话）
+「10 月大学辅导预览我核对过了，同意：本分支合并发布到 5280 后，按这份预览写入真实数据并回读核对。」
+- 当前 5280 仍是旧代码（/api/promos 无 special 字段），ui-v4 也还没合并 8d48379，所以尚未写入。
+- 发布后执行：`node <本会话 scratchpad>/flow.mjs http://127.0.0.1:5280`（先只预览，核对与上面的预览一致），再加 `write` 参数写入；脚本会逐格回读核对并再解析确认全部「无变化」。也可以让本会话来做。
+
+#### 价格记录页改造 · 交接（分支 claude/vigorous-dirac-732cbd）
+
+- 日期：2026-10-18。用户已确认的方案：空格子必须填满才能保存；插入的新列复制左边一列的价格；4 张表在代码里写死。
+- 改动文件：
+  - server/price.mjs：用 PRICE_SHEETS 固定 4 张表（uni-lite、uni-max、intl-lite 显示为「课时卡」、intl-comp 竞赛课时卡），不再读飞书 SKU 表；删掉 skuId、PRICE_SKU_TABLE/FIELDS 和预览里的 SKU 来源检查；空表返回 schemes:[]、origin:'empty'；有空格时报错写明「某方案还有 N 档总价没填」。
+  - src/modules/marketing/PricesView.jsx：矩阵在上、折线在下；去掉「方案设置」卡和「档案」入口；点列头细条打开列面板（原方案设置的字段＋设为基准＋删除，基准方案不能删）；列间竖线「+」插入新列，最右虚线「+」追加；原价可以直接填；空格子显示「填写」；折线按方案名固定配色（常规优惠版墨色、双11底价红、新春囤课价橙黄、赠送课时价绿），悬停高亮改为加粗、其余变淡。
+  - src/styles-v3.css：价格相关样式（列头细条、插入线、列面板、原价输入框、配色变量），删掉 .scheme-settings。
+  - tests/v3-marketing.test.mjs：改写目录测试，新增空表保存测试，删掉飞书 SKU 来源相关的断言。
+  - docs/API.md：新增「营销 · 价格记录」一节。
+- 测试：npm test 388 通过、0 失败。
+- 截图（docs/handoff/V4/）：prices-0-mockup、prices-1 矩阵在上折线在下、prices-2 列间插入、prices-3 列面板、prices-4 基准不能删、prices-5 删除两列后的预览、prices-6 删除保存后回读、prices-7 空表安心学Max、prices-8 空表新增第一列、prices-9 空表填写保存后回读。
+- 已知问题：prices-9 是修复前截的，那时原价框保存后又显示成空。已在同一提交里修好（保存后用预览里的原价），但修好之后没有重新截图。
+- 范围外发现：
+  1. 设置页的「SKU 产品目录表」（price_sku_table_id）价格页已经不用了，feishu-export 里也还带着这一项。设置页属于别的会话，这里没动。
+  2. 保存成功的绿色提示切换页签后还在（原有行为）。
+  3. 毛利底线和课时成本没在设置里保存过时，已保存的表仍标「示例」（原有逻辑）。
+- 没有发布，没有合并。
+
+#### V4 · 设置页重排 + 机械邪龙兽推送 Codex 重置 —— 交接记录
+
+- 会话：[设置页｜信息重排与机械邪龙兽 Codex 推送](local_973a9b34-7b69-430f-9701-26a3dcde3613)
+- 分支：`claude/focused-hellman-be97f9`（从 ui-v4 的 51a4f5a 切出），worktree `.claude/worktrees/focused-hellman-be97f9`
+- 完成日期：2026-10-19；**未发布、未合并到 ui-v4 / main，CURRENT.md 未改**
+- 提交：
+  - `174366c` feat(settings): 设置页按用途分组、顶部状态总览，配对码行对齐
+  - `f727a11` feat(push): 机械邪龙兽推送 Codex 重置（后端，默认关闭）
+  - `dd09aac` feat(push): 设置页推送开关与状态、首页推送一句随状态更新
+
+##### 用户确认过的决定
+
+- 设置页从 A/B 两个样稿里选了 **方案 A**（顶部状态总览 + 按用途分组）。
+- 推送规则（2026-10-19 确认）：每 4 小时检查一次；同一次重置（同一个事件）只推一次，服务重启后不重推；开启前已有的重置不推；一次检查发现多条新重置只推最新一条；飞书明确拒绝的最多试 3 次；超时或结果不明的不自动重发。
+- 测试卡：用户看过卡片内容、接收人和发送身份并明确同意后，2026-10-19 09:08 发了一张标「测试」的卡片。message_id `om_x100b62629903d8a4c1e7c06294dbe72`，用 `im +messages-mget --as bot` 回读一致（interactive，发送方是机械邪龙兽 cli_aacf58ab61b85beb，未删除）。测试卡没有写进推送记录。**这次也证实了机器人确实能私聊发给用户本人。**
+
+##### 改了哪些文件
+
+- `src/modules/settings/SettingsPage.jsx`：用 GROUPS 定义 6 个按用途的分组（日报·周报 / 项目与用户 / 知识库收藏 / 营销与品牌 / 推送与预算 / 只读与暂缓），组头显示用途和项数；顶部 StatStrip 显示已保存、默认值、待你确定（列出名称）、飞书身份；配对码行的「显示」改成跟在码后面，「复制」占按钮列，「重新生成」并入说明行；新增 PushRow，开关走预览 → 确认 → 回读，并显示发送身份、接收人、上次和下次检查、上次推送（状态和内容）、失败原因。
+- `src/styles-v3.css`：新增 `.set-count`、`.set-pairing-code`、`.set-pairing-foot .link-btn`、`.set-push-kv`；窄屏下状态条改为 2×2；删掉一条被 `.set-edit` 覆盖、从没生效的配对码缩进规则。
+- `src/modules/home/CodexStrip.jsx`：只改了详情里的「推送」一句（以及顶部注释），改为读取 `/api/v3/codex-push`；横条和其他样式没动。
+- `server/codex-push.mjs`（新增）：负责候选事件挑选、生成卡片 2.0、`sendResetCard`（`lark-cli --profile codex im +messages-send --as bot --user-id <本人> --msg-type interactive --idempotency-key codex-reset-<哈希>`）、`createCodexPush().tick()`，以及 `codexPushStatus`。
+- `server/codex-reset.mjs`：只把 endpoint、stages、monthDay、isTime、userAgent 改成导出，逻辑没变。
+- `server/db.mjs`：SCHEMA 里新增 `codex_push` 表（只新增，没改动已有的表）；检查状态存在 `v3_documents` 的 kind='codex-push' / id='state'。
+- `server/v3-settings.mjs`：新增配置键 `codex_push_enabled`（默认 `'0'`，只接受 0 或 1）。
+- `server/routes/workspace.mjs`：新增 `GET /api/v3/codex-push`。
+- `server/index.mjs`：启动 5 秒后看一次开关，之后每 10 分钟看一次；开着并且距上次检查满 4 小时才去检查（两个定时器都 unref）。
+- `docs/API.md`：新增「机械邪龙兽推送 · Codex 重置」一节。
+- `tests/codex-push.test.mjs`（新增，8 项）。
+
+##### 测试
+
+- `npm test`：396 项，全部通过，0 失败。
+- `npm run build`：通过。
+- 隔离环境（`WORKDESK_DATA_DIR=$(mktemp -d) PORT=5330` + vite 5331）实际走了一遍「开启 → 确认 → 回读」，后端也真实做了一次基线检查：读到 aihot 的 3 条已有重置，全部记为「开启前已有，不推」，没有发送任何消息。
+- 设置页样稿和定稿的截图是在 5331 上用 Playwright 只读访问真实 5280 截的，所有非 GET 的 /api 请求都被拦截了。
+
+##### 截图（docs/handoff/V4/）
+
+- `设置页-改前.png`、`设置页-方案A-总览前置.png`、`设置页-方案B-左侧目录.png`、`设置页-改后-宽屏.png`、`设置页-改后-窄屏390.png`
+- `推送-1-未开启.png`、`推送-2-已开启基线检查后.png`、`推送-3-关闭预览.png`、`推送-4-失败原因-模拟.png`、`推送-5-首页详情-模拟失败.png`、`推送-6-窄屏390-模拟失败.png`（4–6 用的是插入隔离库的模拟失败记录，截完已删除）
+
+##### 上线须知
+
+- 合并并重启 5280 后，推送默认是**关**的。用户在设置页「推送与预算 → 机械邪龙兽推送」点开启才会生效；开启后 10 分钟内做第一次检查，这次只记基线、不推，以后有新的重置才会推。
+- 检查跑在工作台服务进程里，服务没开着就不会检查。
+
+##### 与派单不一致之处 / 范围外发现（都没改）
+
+1. 首页 Codex 详情里「读取：定时检查未启用：打开工作台时读取一次」这句，说的是首页自己的读取方式；推送开启后后台会定时检查，两句话放在一起可能让人误会。按用户要求，这次只改了「推送」那句，这句要不要改由协调会话决定。
+2. `server/codex-reset.mjs` 的视图里还留着 `pushed: false`、`nextCheck: null` 两个字段，前端已经不用了（`tests/v3-batch1.test.mjs` 还在断言 `pushed`），没删。
+3. 已确认的事件有时只收录了预告帖（比如 reset-2111492738025959922 的确认帖不在 activities 里）。卡片在这种情况下主句写「Codex 额度已重置」，预告原话放在灰字里，不把预告原话当成确认结论。
+4. 本机 lark-cli 1.0.96 有新版本 1.0.98 可以升级（没升级）。
+
+#### 底栏重设计 · 样稿阶段交接（2026-10-18）
+
+- 分支：claude/unruffled-mclaren-59f89b（worktree `.claude/worktrees/unruffled-mclaren-59f89b`，基于 51a4f5a），提交 cd75125
+- 只加了文档和截图，正式代码没动（StatusBar.jsx / styles-v3.css 都没改）
+
+##### 文件
+- `docs/design/statusbar/bars.js`：四版底栏的静态渲染 + `mount(v, opts)`（隐藏现有 footer.statusbar，挂样稿）；数据是 22:27 从 5280 只读接口拿的快照
+- `docs/design/statusbar/bars.css`：样稿样式（类名用 sbx- 前缀，只用已有变量，没有阴影、没有 transition）
+- `docs/design/statusbar/mock.html`：单独看（要起 vite，因为用了 ES module）：`/docs/design/statusbar/mock.html?v=A|B|C|D&pop=…&page=…`
+- `docs/design/statusbar/index.html`：四版对比页（含现状、规格、横向对比和建议）
+- 截图 `docs/handoff/V4/底栏-*.png`（底栏-四版对比.png 是整页）
+
+##### 四版
+- A 截止条：本月日历格 + 交付倒数 + 战役进度；数据源收成一个点。不需要新接口（多拉 /api/v3/campaigns/current）
+- B 计数托盘：待办 / 项目推进中 / 节点逾期 / 天到截止 / 数据源 4/4，点格子跳转。建议在 /api/v3/status 加 counts 汇总字段（要改 API.md）
+- C 跟着页面：左边本页数据源 + 同步时间 + 要注意的数，右边本页快捷键（知识库 ⌘Z/⇧⌘N/F2/⌘X⌘V）。需要 App.jsx 把当前模块传给 StatusBar
+- D 一句话：只显示优先级最高的一条提醒，1/3 翻看其余
+- 我的建议：C；在意常驻交付倒数选 A
+- 四版都不放 Codex 重置（顶部横条已有，且横条归另一个会话）
+
+##### 截图方法
+起 `npx vite --host 127.0.0.1 --port 5341 --strictPort`，Playwright 打开真实页面后 `import('/docs/design/statusbar/bars.js').mount(...)`，拦截所有非 GET 的 /api 请求。脚本在本会话 scratchpad（shots.mjs / compare.mjs），用完已关 vite。
+
+##### 待用户决定
+选哪一版（或组合）；选定后先给实现计划，确认后再改 StatusBar.jsx + styles-v3.css、npm test、截图、提交本分支。
+
+##### 实现（2026-10-19，用户选 C，去掉页面图标和页面名）
+- 提交 c810e3d（分支 claude/unruffled-mclaren-59f89b），未合并到 ui-v4 / main，未发布
+- 改动：src/modules/statusbar/page-info.js（新，规则）、StatusBar.jsx（重写）、App.jsx（传 page={displayed.key}，一行）、styles-v3.css（只动底栏几行 + 900px 内 .statusbar 由横向滚动改为 overflow hidden）、tests/statusbar-page-info.test.mjs（新，7 项）
+- npm test 395/395 通过；npm run build 通过
+- 截图 docs/handoff/V4/底栏-C实现-*.png（首页/用户/知识库/营销/日周报/浮层 1440，首页/用户/知识库 390，另有知识库失败的异常示意图，状态接口是 Playwright 伪造的）
+- 范围外发现：知识库页 390 宽本身有 16px 横向溢出（main 上同样存在，不是底栏造成的）
+- 合并注意：styles-v3.css 别的会话也在改，冲突应只在底栏相关行
