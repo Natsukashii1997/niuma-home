@@ -1505,3 +1505,10 @@ SKU规范-1-方案汇总-按月份-特殊活动.png、SKU规范-2-方案汇总-�
 - 截图 docs/handoff/V4/底栏-C实现-*.png（首页/用户/知识库/营销/日周报/浮层 1440，首页/用户/知识库 390，另有知识库失败的异常示意图，状态接口是 Playwright 伪造的）
 - 范围外发现：知识库页 390 宽本身有 16px 横向溢出（main 上同样存在，不是底栏造成的）
 - 合并注意：styles-v3.css 别的会话也在改，冲突应只在底栏相关行
+
+### V4 · 2026-10-19 · 第三轮合并发布（用户同意；回读通过）
+
+- 发布：main 从 `51a4f5a` 快进到 `8cd9eee`，主工作区 `npm test` 409 项全部通过；`bash scripts/release-app.sh` 切换到 `nm-20261019-100506-8cd9eee`；数据库备份 `work-desk-20261019-100507-before-nm-20261019-100506-8cd9eee.db`；保留策略清理了快照 `nm-20261018-163515-348113c` 和最老的一份数据库备份。
+- 回读（只读，脚本拦截写请求，0 条被拦）：首页与快照 `dist/index.html` 逐字节一致；`/api/v3/status`、`/api/promos`、`/api/v3/price/skus`、`/api/v3/price/schemes?sku=uni-lite`、`/api/v3/codex-push`、`/api/v3/codex-reset`、`/api/settings`、`/api/assistants` 均 200；`/api/promos` 15 行全部带 `special`（库迁移生效，8、9 月数据不变，10 月尚未写入）；价格 4 张表为 uni-lite / uni-max(empty) / intl-lite「课时卡」 / intl-comp(empty)；推送 `enabled: false`、每 4 小时。线上截图核对价格记录（矩阵在上、四方案配色、列头细条与「+」）、设置页方案 A、月度促销、新底栏：`docs/handoff/V4/线上5280-第三轮-*.png`。
+- 回滚：`bash scripts/release-app.sh --use nm-20261018-214722-93dd9e6`。
+- 仍待：① 10 月大学辅导促销真实数据写入（用户已批准预览，按促销交接里的流程在 5280 预览→写入→回读）；② 设置页开启机械邪龙兽推送（预览→确认→回读）。
