@@ -44,7 +44,8 @@ export function routes(db) {
       if (parsed.unrecognized.length) fail("原文中有未识别行，请修改后重新解析");
       if (parsed.line !== line) fail("原文板块与当前业务线不一致或未识别，请修改后重新解析");
       if (body.rawHtml !== undefined && typeof body.rawHtml !== "string") fail("原文 HTML 格式无效");
-      if (!Array.isArray(body.rows) || !body.rows.length) fail("没有可入库的 SKU，请先解析预览");
+      // 申诉服务没有固定 SKU，只有整月特殊活动也可入库
+      if (!Array.isArray(body.rows) || (!body.rows.length && parsed.special === "无")) fail("没有可入库的内容，请先解析预览");
       const names = body.rows.map((row) => row?.sku);
       if (new Set(names).size !== names.length) fail("存在重复 SKU，请修改后重新解析");
       const keys = ["sku", "trial", "price", "newDeal", "renewal", "special"];

@@ -14,12 +14,22 @@ const aliases = [
 // 只给出方案里写到的行，其余固定 SKU 按清单顺序补全「无」
 const expectRows = (line, given) => PROMO_SKUS[line].map((sku) => given.find((row) => row.sku === sku) || none(sku));
 
-test("固定 SKU 清单：大学辅导 7 个，国际课程 2 个，没有申诉服务", () => {
+test("固定 SKU 清单：大学辅导 7 个，国际课程 2 个，申诉服务不设固定 SKU", () => {
   assert.deepEqual(PROMO_SKUS, {
     大学辅导: ["灵活学Lite", "安心学Max", "学考无忧Pass", "补考护航Pass", "选课指导", "论文稳Pass", "先修班课"],
     国际课程: ["灵活学Lite", "安心学Max"],
+    申诉服务: [],
   });
-  assert.deepEqual(parsePlan("【申诉服务板块】\n1. 安心学Max\n试听：99").unrecognized.map((item) => item.lineNo), [1, 2, 3]);
+  // 申诉服务下出现试听、正价这类 SKU 字段：不猜测，挡下来
+  assert.deepEqual(parsePlan("【申诉服务板块】\n1. 安心学Max\n试听：99").unrecognized.map((item) => item.lineNo), [2, 3]);
+});
+
+test("申诉服务：双11活动整块记为整月特殊活动，没有 SKU 行", () => {
+  const text = "🟩【申诉服务板块】\n\n1. 双11活动（10.15-11.11）\n   a. 限时赠送：活动期间限时享免费申诉专家诊断 1 次\n   b. 定金抵扣：¥199定金抵扣¥1000 正式申诉服务费用";
+  assert.deepEqual(parsePlan(text), {
+    line: "申诉服务", rows: [], unrecognized: [],
+    special: "双11活动（10.15-11.11）\n限时赠送：活动期间限时享免费申诉专家诊断 1 次\n定金抵扣：¥199定金抵扣¥1000 正式申诉服务费用",
+  });
 });
 
 test("未知行保留原始行号；未知板块与无归属字段不猜测", () => {

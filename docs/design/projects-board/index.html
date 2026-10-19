@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>项目推进 · 三版排版草稿</title>
+<style>
+@font-face { font-family: "Geist"; src: url("../../../src/assets/fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Geist Mono"; src: url("../../../src/assets/fonts/GeistMono-Variable.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Geist Pixel"; src: url("../../../src/assets/fonts/GeistPixel-Square.woff2") format("woff2"); }
+:root {
+  --bg: #EDEEF1; --panel: #FBFBFC; --panel-soft: #F3F4F6; --text: #0D0E10; --text-2: #3D4047;
+  --muted: #686D76; --line: #D5D8DE; --signal: #FF4F1F; --signal-soft: #FFEDE6; --ok: #1E8E4E; --risk: #C23B30; --blue: #2F5BD3;
+  --sans: "Geist", "PingFang SC", -apple-system, sans-serif; --mono: "Geist Mono", "PingFang SC", ui-monospace, monospace; --pixel: "Geist Pixel", "Geist Mono", monospace;
+  --d2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' fill='%230D0E10' opacity='.35'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%230D0E10' opacity='.35'/%3E%3C/svg%3E");
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; }
+button { font: inherit; color: inherit; }
+a { color: inherit; }
+.page { max-width: 1320px; margin: 0 auto; padding: 24px 24px 80px; }
+.switch { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 8px; padding: 10px 24px; background: var(--text); color: var(--panel); }
+.switch b { font-family: var(--pixel); font-weight: 400; font-size: 15px; margin-right: 12px; }
+.switch button { padding: 6px 12px; border: 2px solid #3d4047; background: none; color: var(--panel); cursor: pointer; }
+.switch button.on { background: var(--signal); border-color: var(--signal); }
+.switch span { margin-left: auto; font-family: var(--mono); font-size: 11px; color: #9aa0a8; }
+.note { margin: 0 0 18px; padding: 12px 14px; border-left: 4px solid var(--signal); background: var(--panel); line-height: 1.7; }
+h1 { margin: 0 0 4px; font-size: 26px; }
+.sub { margin: 0 0 16px; color: var(--muted); }
+.tnum { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 11px; }
+
+/* 公共：项目页签 + 摘要 */
+.ptabs { display: flex; gap: 0; border: 2px solid var(--text); background: var(--panel); width: max-content; max-width: 100%; }
+.ptab { display: flex; flex-direction: column; gap: 2px; padding: 8px 14px; border: 0; border-right: 2px solid var(--text); background: none; text-align: left; cursor: pointer; min-width: 220px; }
+.ptab:last-child { border-right: 0; }
+.ptab.on { background: var(--text); color: var(--panel); }
+.ptab.on .muted { color: #9aa0a8; }
+.ptab strong { font-size: 14px; }
+.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 2px solid var(--line); background: var(--panel); margin: 12px 0; }
+.stat { padding: 10px 14px; border-right: 1px solid var(--line); }
+.stat:last-child { border-right: 0; }
+.stat .k { font-size: 11px; color: var(--muted); }
+.stat .v { font-family: var(--pixel); font-size: 26px; line-height: 1.2; }
+.stat .v small { font-size: 14px; color: var(--muted); }
+.stat .f { font-size: 11px; color: var(--muted); }
+.stat.risk .v { color: var(--risk); }
+.stat.warn .v { color: var(--signal); }
+.bar20 { display: flex; gap: 2px; margin-top: 4px; }
+.bar20 i { flex: 1; height: 8px; background: var(--line); }
+.bar20 i.on { background: var(--text); }
+.steps { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); border: 2px solid var(--text); background: var(--panel); margin-bottom: 12px; }
+.step { padding: 8px 12px; border-right: 1px solid var(--line); }
+.step:last-child { border-right: 0; }
+.step b { font-family: var(--pixel); font-weight: 400; font-size: 18px; margin-right: 6px; }
+.step.done { background: var(--panel-soft); color: var(--muted); }
+.step.cur { background: var(--signal); color: var(--panel); }
+.step.cur .muted { color: var(--panel); }
+.tag { display: inline-block; padding: 0 5px; border: 1px solid currentColor; font-size: 11px; line-height: 16px; white-space: nowrap; }
+.tag.risk { color: var(--risk); }
+.tag.warn { color: var(--signal); }
+.tag.ok { color: var(--ok); }
+.tag.gate { color: #7a3fc0; }
+.tag.ms { color: var(--text); background: var(--panel-soft); }
+.chk { display: inline-grid; place-items: center; width: 14px; height: 14px; border: 2px solid var(--text); flex: none; font-size: 10px; line-height: 1; }
+.chk.on { background: var(--text); color: var(--panel); }
+.links a { display: inline-flex; align-items: center; gap: 3px; margin-right: 8px; font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
+
+/* A：通栏表格 + 时间条 */
+.ta { border: 2px solid var(--text); background: var(--panel); }
+.ta-row { display: grid; grid-template-columns: 22px minmax(220px, 2.2fr) 90px minmax(260px, 3fr) 120px 110px; align-items: center; gap: 12px; padding: 8px 12px; border-top: 1px solid var(--line); }
+.ta-head { border-top: 0; font-size: 11px; color: var(--muted); background: var(--panel-soft); }
+.ta-phase { display: flex; align-items: baseline; gap: 10px; padding: 8px 12px; border-top: 2px solid var(--text); background: var(--panel-soft); }
+.ta-phase b { font-family: var(--pixel); font-weight: 400; font-size: 18px; }
+.ta-kid { padding-left: 46px; color: var(--text-2); font-size: 12px; }
+.gantt { position: relative; height: 14px; background: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), var(--line) calc(25% - 1px) 25%); }
+.gantt i { position: absolute; top: 3px; height: 8px; background: var(--text); min-width: 3px; }
+.gantt i.open { background: var(--signal); }
+.gantt i.late { background: var(--risk); }
+.gantt em { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--blue); }
+.ta-toggle { border: 0; background: none; cursor: pointer; padding: 0; font-family: var(--mono); }
+
+/* B：阶段看板 */
+.kb { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.col { border: 2px solid var(--text); background: var(--panel); min-height: 100%; }
+.col-h { display: flex; align-items: baseline; justify-content: space-between; padding: 8px 10px; border-bottom: 2px solid var(--text); }
+.col-h b { font-family: var(--pixel); font-weight: 400; font-size: 18px; }
+.col.cur .col-h { background: var(--signal); color: var(--panel); }
+.col.done .col-h { background: var(--panel-soft); }
+.card { margin: 8px; padding: 8px; border: 1px solid var(--line); background: var(--panel); }
+.card.open { border: 2px solid var(--signal); }
+.card.late { border: 2px solid var(--risk); }
+.card h4 { display: flex; gap: 6px; align-items: center; margin: 0 0 6px; font-size: 13px; }
+.card .meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+.card .kids { margin: 6px 0 0; padding: 0; list-style: none; font-size: 11px; color: var(--text-2); }
+.card .kids li { display: flex; gap: 5px; align-items: center; padding: 1px 0; }
+.lane { margin-top: 10px; border: 2px solid var(--text); background: var(--panel); }
+.lane-h { padding: 8px 12px; border-bottom: 2px solid var(--text); background: var(--panel-soft); }
+.lane-h b { font-family: var(--pixel); font-weight: 400; font-size: 18px; margin-right: 8px; }
+.lane-body { display: flex; gap: 8px; padding: 10px; overflow-x: auto; }
+.gatec { flex: none; width: 180px; padding: 8px; border: 2px solid var(--line); }
+.gatec.open { border-color: var(--signal); }
+
+/* C：左侧时间轴 + 右侧详情 */
+.tc { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 12px; align-items: start; }
+.tl { border: 2px solid var(--text); background: var(--panel); position: sticky; top: 56px; max-height: calc(100vh - 72px); overflow: auto; }
+.tl-month { position: sticky; top: 0; z-index: 1; padding: 4px 12px; background: var(--text); color: var(--panel); font-family: var(--pixel); font-size: 13px; }
+.tl-item { display: grid; grid-template-columns: 54px 16px minmax(0, 1fr); gap: 8px; align-items: start; width: 100%; padding: 7px 12px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; cursor: pointer; }
+.tl-item:hover { background: var(--panel-soft); }
+.tl-item.on { background: var(--signal-soft); box-shadow: inset 4px 0 0 var(--signal); }
+.tl-dot { width: 12px; height: 12px; margin-top: 2px; border: 2px solid var(--text); }
+.tl-dot.done { background: var(--text); }
+.tl-dot.open { border-color: var(--signal); background: var(--signal-soft); }
+.tl-dot.late { border-color: var(--risk); background: var(--risk); }
+.tl-item .t { display: block; font-size: 13px; }
+.tl-item .s { font-size: 11px; color: var(--muted); }
+.detail { border: 2px solid var(--text); background: var(--panel); }
+.detail-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 14px 16px; border-bottom: 2px solid var(--text); }
+.detail-h h2 { margin: 0 0 4px; font-size: 20px; }
+.kv { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 8px 12px; padding: 14px 16px; margin: 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; }
+.sec { padding: 12px 16px; border-top: 1px solid var(--line); }
+.sec h3 { margin: 0 0 8px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.sec ul { margin: 0; padding: 0; list-style: none; }
+.sec li { display: grid; grid-template-columns: 18px minmax(0, 1fr) 90px 90px; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px dashed var(--line); }
+.up { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.up .box { border: 2px solid var(--line); background: var(--panel); padding: 10px 12px; }
+.up .box h3 { margin: 0 0 6px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.up .box li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<div class="switch"><b>项目推进 · 排版草稿</b>
+  <button data-v="A" class="on">A 通栏时间条</button><button data-v="B">B 阶段看板</button><button data-v="C">C 时间轴 + 详情</button>
+  <span>数据：飞书「任务事项」表只读，2026-10-19</span></div>
+<div class="page">
+  <p class="note" id="note"></p>
+  <h1>项目</h1><p class="sub">项目推进 · 管培带教</p>
+  <div id="app"></div>
+</div>
+<script src="data.js"></script>
+<script>
+const TODAY = "2026-10-19";
+const NOTES = {
+  A: "<strong>A · 通栏时间条</strong>：去掉左侧项目列，项目改成顶部页签；下面整页宽度给节点表，每行带一根时间条（开始→截止，蓝线是今天），子项点开展开。信息最全、最像飞书表格，适合逐行核对。",
+  B: "<strong>B · 阶段看板</strong>：五个阶段五列，每个节点一张卡（子项打勾、交付物、逾期标红）；贯穿全程的「监控」审核单独放底部一条泳道。一眼看到卡在哪个阶段，适合周会快速过进度。",
+  C: "<strong>C · 时间轴 + 详情</strong>：左侧一整列按开始日期排的时间轴，从 7 月排到 10 月，正好占满高度，不再留白；点一个节点，右侧显示负责人、日期、子项、交付物链接。适合盯单个节点。",
+};
+const P = window.PROJECTS;
+let pid = P[0].id, view = "A", sel = null, openKids = new Set();
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const md = (d) => d ? d.slice(5).replace("-", ".") : "—";
+const late = (n) => /已逾期/.test(n.overdue || "");
+const st = (n) => n.done ? (late(n) ? "late" : "done") : late(n) ? "late" : "open";
+const statusTag = (n) => n.done ? (late(n) ? '<span class="tag warn">已勾选 · 未填完成日</span>' : '<span class="tag ok">已完成</span>') : late(n) ? '<span class="tag risk">已逾期</span>' : '<span class="tag warn">进行中</span>';
+const typeTags = (n) => (n.milestone ? '<span class="tag ms">里程碑</span> ' : "") + (n.gate ? '<span class="tag gate">审核</span>' : "");
+const links = (n) => n.deliverables?.filter((d) => d.url).map((d) => `<a href="${esc(d.url)}" target="_blank">▤ ${esc(d.title)}</a>`).join("") || "";
+const kidsOf = (n) => (n.childNodes || []).filter((k) => !/^W\d|^\d\./.test(k.t.split(" / ").pop()) || k.phases.length);
+const wbs = (n) => (n.childNodes || []).filter((k) => !k.phases.length);
+const leaf = (t) => t.split(" / ").pop();
+
+function head(p) {
+  const done = p.taskDone, total = p.taskCount, pct = total ? done / total : 0;
+  const open = p.nodes.filter((n) => !n.done);
+  const lateN = [...p.nodes, ...p.nodes.flatMap((n) => n.childNodes || [])].filter((n) => late(n)).length;
+  const week = open.filter((n) => n.dueDate && n.dueDate <= "2026-10-26");
+  return `<div class="ptabs">${P.map((x) => `<button class="ptab${x.id === pid ? " on" : ""}" data-p="${x.id}"><strong>${esc(x.name)}</strong><span class="small muted">${esc(x.status)} · 任务 ${x.taskDone}/${x.taskCount}</span></button>`).join("")}</div>
+  <div class="stats">
+    <div class="stat"><div class="k">任务完成度（飞书）</div><div class="v">${Math.round(pct * 100)}<small>%</small></div><div class="bar20">${Array.from({ length: 20 }, (_, i) => `<i class="${i < Math.round(pct * 20) ? "on" : ""}"></i>`).join("")}</div></div>
+    <div class="stat"><div class="k">任务</div><div class="v">${done}<small>/${total}</small></div><div class="f">含子项 · 一级节点 ${p.nodes.filter((n) => n.done).length}/${p.nodes.length}</div></div>
+    <div class="stat"><div class="k">当前阶段</div><div class="v" style="font-size:22px">${esc(p.phases[p.phase] || "—")}</div><div class="f">第一个还有未完成节点的阶段</div></div>
+    <div class="stat risk"><div class="k">飞书标「逾期」</div><div class="v">${lateN}</div><div class="f">按飞书「逾期状态」公式</div></div>
+    <div class="stat warn"><div class="k">7 天内到期</div><div class="v">${week.length}</div><div class="f">${week.map((n) => esc(n.t)).join("、") || "—"}</div></div>
+  </div>`;
+}
+function steps(p) {
+  return `<div class="steps">${p.phases.map((ph, i) => { const ns = p.nodes.filter((n) => n.phases.includes(ph)); const ok = ns.filter((n) => n.done).length; const cls = ok === ns.length ? "done" : i === p.phase ? "cur" : ""; return `<div class="step ${cls}"><b>${String(i + 1).padStart(2, "0")}</b>${ph}<div class="small muted">${ok}/${ns.length} 完成</div></div>`; }).join("")}</div>`;
+}
+function span(p) {
+  const all = [...p.nodes, ...p.nodes.flatMap((n) => n.childNodes || [])];
+  const s = all.map((n) => n.startDate).filter(Boolean).sort()[0], e = all.map((n) => n.dueDate).filter(Boolean).sort().at(-1);
+  const t = (d) => Date.parse(d), w = t(e) - t(s);
+  return { pos: (d) => Math.max(0, Math.min(100, ((t(d) - t(s)) / w) * 100)), s, e };
+}
+function gantt(n, sp) {
+  if (!n.startDate || !n.dueDate) return '<div class="gantt"></div>';
+  const a = sp.pos(n.startDate), b = sp.pos(n.dueDate);
+  return `<div class="gantt"><i class="${st(n) === "done" ? "" : st(n)}" style="left:${a}%;width:${Math.max(b - a, 0.6)}%"></i><em style="left:${sp.pos(TODAY)}%"></em></div>`;
+}
+function viewA(p) {
+  const sp = span(p);
+  const row = (n, kid) => `<div class="ta-row${kid ? " ta-kid" : ""}"><span class="chk${n.done ? " on" : ""}">${n.done ? "✓" : ""}</span>
+    <span>${kid ? esc(leaf(n.t)) : `<strong>${esc(n.t)}</strong>`} ${typeTags(n)} ${!kid && n.childNodes ? `<button class="ta-toggle small muted" data-k="${n.id}">${openKids.has(n.id) ? "▾" : "▸"} 子项 ${n.childNodes.filter((k) => k.done).length}/${n.childNodes.length}</button>` : ""}${links(n) ? `<div class="links">${links(n)}</div>` : ""}</span>
+    <span class="small">${esc(n.owner)}</span>${gantt(n, sp)}<span class="tnum small">${md(n.startDate)} → ${md(n.dueDate)}${n.doneDate ? `<br><span class="muted">完成 ${md(n.doneDate)}</span>` : ""}</span><span>${statusTag(n)}</span></div>`;
+  return head(p) + steps(p) + `<div class="ta"><div class="ta-row ta-head"><span></span><span>节点</span><span>负责人</span><span class="tnum">${md(sp.s)} ———— 时间（蓝线 = 今天） ———— ${md(sp.e)}</span><span>开始 → 截止</span><span>状态（飞书）</span></div>
+  ${p.phases.map((ph, i) => { const ns = p.nodes.filter((n) => n.phases[0] === ph || (!p.phases.includes(n.phases[0]) && i === 0)); if (!ns.length) return ""; return `<div class="ta-phase"><b>${String(i + 1).padStart(2, "0")}</b><strong>${ph}</strong><span class="small muted tnum">${ns.filter((n) => n.done).length}/${ns.length}</span></div>` + ns.map((n) => row(n) + (openKids.has(n.id) ? (n.childNodes || []).map((k) => row(k, true)).join("") : "")).join(""); }).join("")}</div>`;
+}
+function viewB(p) {
+  const main = p.phases.filter((ph) => ph !== "监控");
+  const card = (n) => `<div class="card ${n.done ? "" : st(n)}"><h4><span class="chk${n.done ? " on" : ""}">${n.done ? "✓" : ""}</span>${esc(n.t)}</h4>
+    <div class="meta"><span>${esc(n.owner)}</span><span class="tnum">${md(n.startDate)}→${md(n.dueDate)}</span></div>
+    <div style="margin-top:4px">${statusTag(n)} ${typeTags(n)}</div>
+    ${n.childNodes ? `<ul class="kids">${n.childNodes.slice(0, 6).map((k) => `<li><span class="chk${k.done ? " on" : ""}">${k.done ? "✓" : ""}</span>${esc(leaf(k.t))}</li>`).join("")}${n.childNodes.length > 6 ? `<li class="muted">…还有 ${n.childNodes.length - 6} 项</li>` : ""}</ul>` : ""}
+    ${links(n) ? `<div class="links" style="margin-top:6px">${links(n)}</div>` : ""}</div>`;
+  const gates = p.nodes.filter((n) => n.phases.includes("监控")).sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""));
+  return head(p) + `<div class="kb">${main.map((ph, i) => { const ns = p.nodes.filter((n) => n.phases[0] === ph); const ok = ns.filter((n) => n.done).length; const cls = ok === ns.length ? "done" : p.phases[p.phase] === ph ? "cur" : ""; return `<div class="col ${cls}"><div class="col-h"><span><b>${String(i + 1).padStart(2, "0")}</b> ${ph}</span><span class="tnum small">${ok}/${ns.length}</span></div>${ns.map(card).join("")}</div>`; }).join("")}</div>
+  <div class="lane"><div class="lane-h"><b>监控</b>审核门禁 · 按截止日期排，贯穿全程</div><div class="lane-body">${gates.map((n) => `<div class="gatec ${n.done ? "" : "open"}"><div style="display:flex;gap:6px;align-items:center"><span class="chk${n.done ? " on" : ""}">${n.done ? "✓" : ""}</span><strong>${esc(n.t)}</strong></div><div class="small muted tnum" style="margin-top:4px">${md(n.dueDate)} · ${esc(n.owner)}</div><div style="margin-top:4px">${statusTag(n)}</div></div>`).join("")}</div></div>`;
+}
+function viewC(p) {
+  const items = [...p.nodes].sort((a, b) => (a.startDate || "9").localeCompare(b.startDate || "9"));
+  if (!sel || !p.nodes.some((n) => n.id === sel)) sel = (items.find((n) => !n.done) || items[0]).id;
+  let month = "";
+  const tl = items.map((n) => { const m = (n.startDate || "").slice(5, 7); const mh = m && m !== month ? `<div class="tl-month">${Number(m)} 月</div>` : ""; month = m || month;
+    return mh + `<button class="tl-item${n.id === sel ? " on" : ""}" data-s="${n.id}"><span class="tnum small muted">${md(n.startDate)}<br>${md(n.dueDate)}</span><i class="tl-dot ${st(n)}"></i><span><span class="t">${esc(n.t)}</span><span class="s">${esc(n.ph)} · ${esc(n.owner)}${n.childNodes ? ` · 子项 ${n.childNodes.filter((k) => k.done).length}/${n.childNodes.length}` : ""}</span></span></button>`; }).join("");
+  const n = p.nodes.find((x) => x.id === sel);
+  const upcoming = items.filter((x) => !x.done).slice(0, 5), lateList = [...p.nodes, ...p.nodes.flatMap((x) => x.childNodes || [])].filter(late);
+  return head(p) + `<div class="tc"><div class="tl">${tl}</div><div>
+    <div class="detail"><div class="detail-h"><div><div class="small muted">${esc(n.ph)} 阶段</div><h2>${esc(n.t)}</h2>${typeTags(n)}</div><div>${statusTag(n)}</div></div>
+    <dl class="kv"><dt>负责人</dt><dd>${esc(n.owner)}</dd><dt>计划</dt><dd class="tnum">${n.startDate || "—"} → ${n.dueDate || "—"}</dd><dt>实际完成</dt><dd class="tnum">${n.doneDate || "未填"}</dd><dt>逾期状态</dt><dd>${esc(n.overdue || "—")}（飞书公式）</dd><dt>交付物</dt><dd class="links">${links(n) || '<span class="muted">未填</span>'}</dd></dl>
+    ${n.childNodes ? `<div class="sec"><h3>子项 ${n.childNodes.filter((k) => k.done).length}/${n.childNodes.length}</h3><ul>${n.childNodes.map((k) => `<li><span class="chk${k.done ? " on" : ""}">${k.done ? "✓" : ""}</span><span>${esc(leaf(k.t))} ${links(k) ? `<span class="links">${links(k)}</span>` : ""}</span><span class="small">${esc(k.owner)}</span><span class="tnum small muted">${md(k.dueDate)}</span></li>`).join("")}</ul></div>` : ""}</div>
+    <div class="up"><div class="box"><h3>接下来（未完成，按开始日期）</h3><ol>${upcoming.map((x) => `<li>${esc(x.t)} <span class="tnum small muted">${md(x.dueDate)}</span></li>`).join("")}</ol></div><div class="box"><h3>飞书标逾期</h3><ul>${lateList.map((x) => `<li>${esc(leaf(x.t))} <span class="tag risk">${esc(x.overdue)}</span></li>`).join("") || "<li class='muted'>无</li>"}</ul></div></div>
+  </div></div>`;
+}
+function render() {
+  const p = P.find((x) => x.id === pid);
+  document.getElementById("note").innerHTML = NOTES[view];
+  document.getElementById("app").innerHTML = { A: viewA, B: viewB, C: viewC }[view](p);
+  document.querySelectorAll(".switch button").forEach((b) => b.classList.toggle("on", b.dataset.v === view));
+}
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-v],[data-p],[data-k],[data-s]"); if (!t) return;
+  if (t.dataset.v) view = t.dataset.v;
+  if (t.dataset.p) { pid = t.dataset.p; sel = null; }
+  if (t.dataset.k) openKids.has(t.dataset.k) ? openKids.delete(t.dataset.k) : openKids.add(t.dataset.k);
+  if (t.dataset.s) sel = t.dataset.s;
+  render();
+});
+const q = new URLSearchParams(location.search).get("v"); if (q && NOTES[q]) view = q;
+render();
+</script>
+</body>
+</html>

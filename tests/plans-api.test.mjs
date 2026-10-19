@@ -104,7 +104,7 @@ test("不合法输入、未知行、业务线错配、重复 SKU、过期预览�
   const { request } = await setup(t);
   const base = { month: "2026-09", line: "大学辅导", rawText };
   const preview = (await request("POST", "/api/plans/parse", base)).body;
-  for (const input of [null, { ...base, month: "2026-13" }, { ...base, line: "其他" }, { ...base, line: "申诉服务" }, { ...base, rawText: 10 }]) {
+  for (const input of [null, { ...base, month: "2026-13" }, { ...base, line: "其他" }, { ...base, rawText: 10 }]) {
     assert.equal((await request("POST", "/api/plans/parse", input)).status, 400);
   }
   const url = `/api/plans/2026-09/${encodeURIComponent("大学辅导")}`;
@@ -165,5 +165,21 @@ test("解析可不带业务线：按原文【…板块】识别，并与识别�
   const unknown = (await request("POST", "/api/plans/parse", { month: "2026-10", rawText: "1. 灵活学Lite\n试听：1" })).body;
   assert.equal(unknown.line, null);
   assert.deepEqual(unknown.rows, []);
-  assert.equal((await request("POST", "/api/plans/parse", { month: "2026-10", line: "申诉服务", rawText: text })).status, 400);
+  assert.equal((await request("POST", "/api/plans/parse", { month: "2026-10", line: "其他", rawText: text })).status, 400);
+});
+
+test("申诉服务：只有整月特殊活动也能入库，原文可回读，促销表不增行", async (t) => {
+  const { request } = await setup(t);
+  const text = "【申诉服务板块】\n1. 双11活动（10.15-11.11）\na. 限时赠送：免费申诉专家诊断 1 次";
+  const preview = (await request("POST", "/api/plans/parse", { month: "2026-10", rawText: text })).body;
+  assert.equal(preview.line, "申诉服务");
+  assert.deepEqual(preview.rows, []);
+  const url = `/api/plans/2026-10/${encodeURIComponent("申诉服务")}`;
+  assert.equal((await request("PUT", url, { rawText: text, rows: [], special: "伪造" })).status, 400);
+  const saved = await request("PUT", url, { rawText: text, rows: preview.rows, special: preview.special });
+  assert.equal(saved.status, 200, JSON.stringify(saved.body));
+  assert.equal((await request("GET", url)).body.rawText, text);
+  assert.deepEqual((await request("GET", "/api/promos")).body, []);
+  // 原文为空的申诉服务（没有活动）仍拒绝
+  assert.equal((await request("PUT", url, { rawText: "【申诉服务板块】", rows: [], special: "无" })).status, 400);
 });

@@ -20,14 +20,15 @@ const FOLDER_MIN = 240, GAP = 26;
 const PATTERNS = ["var(--dither-1)", "var(--dither-2)", "var(--dither-3)"];
 const patternOf = (id) => { let h = 0; for (const ch of String(id)) h = (h * 31 + ch.codePointAt(0)) >>> 0; return PATTERNS[h % PATTERNS.length]; };
 
-export default function KbCanvas() {
+// focus：⌘K 打开某篇文档时（地址 kb/<文档 id>），画布搜索框预填它的标题。
+export default function KbCanvas({ focus = "" }) {
   const tree = useApi("/api/v3/kb/tree");
   const layout = useApi("/api/v3/kb/layout");
   const settings = useApi("/api/v3/settings");
   const ruleIds = useMemo(() => { try { return JSON.parse(settings.data?.values?.kb_collect_rules || "[]").map((r) => r.nodeToken); } catch { return []; } }, [settings.data]);
   return (
     <Loadable state={tree} name="知识库目录" big>
-      {(kb) => <Canvas key={kb.readAt} kb={kb} initialOrder={layout.data?.order || []} ruleIds={ruleIds} reload={tree.reload} />}
+      {(kb) => <Canvas key={kb.readAt} kb={kb} focus={focus} initialOrder={layout.data?.order || []} ruleIds={ruleIds} reload={tree.reload} />}
     </Loadable>
   );
 }
@@ -45,7 +46,7 @@ function useColumns(ref) {
   return cols;
 }
 
-function Canvas({ kb, initialOrder, ruleIds, reload }) {
+function Canvas({ kb, focus, initialOrder, ruleIds, reload }) {
   const docs = kb.docs || {};
   const [base, setBase] = useState(kb.tree);            // 飞书最近一次回读到的目录
   const [queue, setQueue] = useState([]);               // 待写入飞书的变更：{ key, op, label }
@@ -57,7 +58,7 @@ function Canvas({ kb, initialOrder, ruleIds, reload }) {
   const [path, setPath] = useState([]);                 // 抽屉里逐层进入的子目录 id
   const [drag, setDrag] = useState(null);               // { kind: "card" | "group", id }
   const [over, setOver] = useState(null);               // 拖到哪个目标上
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(() => (focus && locate(kb.tree, focus)?.node.name) || "");
   const [naming, setNaming] = useState(null);           // { id | "new", value }
   const [recentOpen, setRecentOpen] = useState(false);
   const recent = useApi("/api/v3/kb/collect/recent");
@@ -257,8 +258,11 @@ function Canvas({ kb, initialOrder, ruleIds, reload }) {
         {model.groups.map((g) => <button key={g.id} type="button" className={`kbf-chip${open === g.id ? " is-on" : ""}`} onClick={() => openGroup(g.id)}>{g.name} <i className="tnum">{g.kids ? countDocs(g) : 0}</i></button>)}
         <button type="button" className="kbf-chip is-add" disabled={!!lock || !!naming} onClick={() => setNaming({ id: "new", value: "" })}><PixelIcon name="plus" />分组</button>
         <span className="spacer" />
-        <label className="search-box kbf-search"><PixelIcon name="search" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`搜 ${total} 篇的标题或摘要`} aria-label="搜索知识库" /></label>
         <Button onClick={() => setRecentOpen(true)}><PixelIcon name="clock" />最近收藏{unknownCount > 0 && <span className="kbf-badge tnum">{unknownCount}</span>}</Button>
+      </div>
+      {/* 搜索和刷新单独一行（用户 2026-10-19） */}
+      <div className="kbf-tools">
+        <label className="search-box kbf-search"><PixelIcon name="search" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`搜 ${total} 篇的标题或摘要`} aria-label="搜索知识库" />{q && <button type="button" className="icon-btn" onClick={() => setQ("")} aria-label="清除搜索"><PixelIcon name="close" /></button>}</label>
         <Button disabled={!!lock || pending > 0} onClick={reload} title="按飞书重新读取（约 20 秒）"><PixelIcon name="refresh" />刷新</Button>
       </div>
       {pending > 0 && !lock && <div className="kbf-syncing"><StepProgress label={`正在写入飞书 · 还剩 ${pending} 项`} /></div>}
@@ -271,7 +275,7 @@ function Canvas({ kb, initialOrder, ruleIds, reload }) {
 
       <div className="kbf-board" data-dragging={drag?.kind || undefined}>
         <div className={`kbf-loose${model.loose.length ? "" : " is-empty"}${over === "loose" ? " is-over" : ""}`} {...dropZone("loose", () => moveTo(ROOT))}>
-          <span className="kbf-loose-label"><b className="tnum">散卡 {model.loose.length}</b>收藏时归类不明确的放这里</span>
+          <span className="kbf-loose-label" title="收藏时归类不明确的放这里"><b className="tnum">散卡 {model.loose.length}</b></span>
           <div className="kbf-loose-cards">{model.loose.length ? model.loose.map(card) : <p className="kbf-empty">没有散卡，文档都在分组里</p>}</div>
           {model.loose.length > 0 && <span className="kbf-loose-hint"><PixelIcon name="down" />拖进下面的文件夹</span>}
         </div>

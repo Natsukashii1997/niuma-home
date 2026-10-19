@@ -6,6 +6,8 @@ import { createServer } from 'node:http';
 import { openDb, saveSetting } from '../server/db.mjs';
 import { createTextDraftGenerator } from '../server/ai-draft.mjs';
 import { createMentorService, mentorView, datedHeadings, readMentorLogs } from '../server/mentor.mjs';
+// 日志正文按带段落 ID 的 DocxXML 读取（2026-10-19）：每行一段
+const logXml = text => '<h1 id="first">10.16 日志</h1>' + text.split('\n').map((line, i) => `<p id="para${i}abcd">${line}</p>`).join('');
 import { fingerprint, getRecord } from '../server/local-records.mjs';
 import { projectRoutes } from '../server/routes/projects.mjs';
 import { json, match } from '../server/http.mjs';
@@ -17,7 +19,7 @@ function database(t) {
   t.after(() => { db.close(); rmSync(dir, { recursive: true, force: true }); }); return db;
 }
 const source = { name: '带教测试', role: '管培生', url: 'https://example.feishu.cn/docx/logs', year: 2026 };
-const person = (text = '已访谈一位用户。\n卡点：数据待确认。') => mentorView(source, datedHeadings('<h1 id="first">10.16 日志</h1>', 2026), '# 10.16 日志\n' + text, instant);
+const person = (text = '已访谈一位用户。\n卡点：数据待确认。') => mentorView(source, datedHeadings('<h1 id="first">10.16 日志</h1>', 2026), logXml(text), instant);
 const draft = evidence => ({ text: 'AI草稿：先确认数据范围，来源10.16。', sourceFingerprint: fingerprint(evidence), generatedAt: new Date(instant).toISOString(), threadId: 'mock-thread', model: 'mock', effort: 'high' });
 
 test('人工草稿复用只读Codex，完整发送证据并保留模型和来源回执', async t => {
@@ -92,7 +94,7 @@ test('带教草稿人工预览及确认HTTP接口保留两阶段门禁', async t
 test('旧来源的慢请求不能覆盖新来源证据或进入新配置的模型输入', async t => {
   const db = database(t); saveSetting(db, 'mentor_sources', JSON.stringify([source])); let releaseOld;
   const changed = { ...source, url: 'https://example.feishu.cn/docx/newsource' };
-  const view = cfg => mentorView(cfg, datedHeadings('<h1 id="first">10.16 日志</h1>', 2026), `# 10.16 日志\n${cfg.url}`, instant);
+  const view = cfg => mentorView(cfg, datedHeadings('<h1 id="first">10.16 日志</h1>', 2026), logXml(cfg.url), instant);
   const service = createMentorService(db, { now: () => instant, readLogs: cfg => cfg.url === source.url ? new Promise(resolve => { releaseOld = () => resolve(view(cfg)); }) : new Promise(resolve => { resolve(view(cfg)); queueMicrotask(releaseOld); }), generate: async ({ evidence }) => { assert.equal(evidence.source.url, changed.url); assert.ok(evidence.logs[0].text.includes(changed.url)); return draft(evidence); } });
   const old = service.list({ refresh: true }).then(() => null, error => error);
   saveSetting(db, 'mentor_sources', JSON.stringify([changed]));
@@ -104,7 +106,7 @@ test('旧来源的慢请求不能覆盖新来源证据或进入新配置的模�
 
 test('日志局部excerpt阻断生成，普通tips保留为来源说明', async () => {
   const read = async (content, tips = '') => readMentorLogs(source, { now: () => instant, run: async (_file, args) => ({ stdout: JSON.stringify({ ok: true, identity: 'user', data: { document: { revision_id: 3, content: args.includes('outline') ? '<h1 id="first">10.16 日志</h1>' : content, tips } } }) }) });
-  await assert.rejects(read('# 10.16 日志\n<excerpt top-block-id="table">部分表格</excerpt>'), /未完整读取/);
-  const result = await read('# 10.16 日志\n完整文字', 'safe replay guidance');
+  await assert.rejects(read('<h1 id="first">10.16 日志</h1><excerpt top-block-id="table">部分表格</excerpt>'), /未完整读取/);
+  const result = await read(logXml('完整文字'), 'safe replay guidance');
   assert.equal(result.evidence[0].sourceNote, 'safe replay guidance');
 });

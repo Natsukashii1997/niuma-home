@@ -1,5 +1,5 @@
 export const LINES = ["大学辅导", "国际课程", "申诉服务"];
-// 月度促销只有这两条业务线（用户 2026-10-19 去掉申诉服务）；固定 SKU 见 server/plan-parser.mjs。
+// 方案汇总只有这两条业务线；申诉服务只存方案原文，不进汇总（用户 2026-10-19）；固定 SKU 见 server/plan-parser.mjs。
 export const PROMO_LINES = ["大学辅导", "国际课程"];
 
 // 交付月的 6 个环节：接口返回其余 5 个，「方案录入」由前端用 /api/plans 算出，固定放在第 2 位。

@@ -228,6 +228,42 @@ export function TypeText({ text, streaming = false, className = "", onReveal }) 
   );
 }
 
+// 重点记号：**…** 包住的是重点，拆成 [{ t, hot }]；记号本身不显示。
+export const markSegments = (text) => String(text || "").split(/\*\*([\s\S]+?)\*\*/).map((t, i) => ({ t, hot: i % 2 === 1 })).filter((x) => x.t);
+export function MarkText({ text }) {
+  return <>{markSegments(text).map((x, i) => (x.hot ? <mark key={i} className="type-hot">{x.t}</mark> : <span key={i}>{x.t}</span>))}</>;
+}
+
+// 机械邪龙兽回答的逐字输出（用户 2026-10-19）：开始前橙色方块光标闪两次，然后每 1 帧出一个字；
+// **…** 包住的重点一出现就是橙色高亮；全部打完光标消失，调 onDone。减少动态效果时直接显示全文。
+export function MarkType({ text, onDone }) {
+  const reduced = useReducedMotion();
+  const segs = markSegments(text);
+  const total = segs.reduce((n, x) => n + x.t.length, 0);
+  const [st, setSt] = useState({ shown: reduced ? total : 0, blinkOn: false, done: reduced });
+  const done = useRef(onDone);
+  done.current = onDone;
+  useEffect(() => {
+    if (reduced) { setSt({ shown: total, blinkOn: false, done: true }); done.current?.(); return undefined; }
+    let shown = 0;
+    return frames((frame) => {
+      if (frame <= 16) { setSt({ shown: 0, blinkOn: Math.floor((frame - 1) / 4) % 2 === 1, done: false }); return true; } // 亮灭两次
+      shown += 1;
+      const end = shown >= total;
+      setSt({ shown, blinkOn: true, done: end });
+      if (end) { done.current?.(); return false; }
+      return true;
+    });
+  }, [text, reduced, total]);
+  let left = st.shown;
+  return (
+    <span className="type-text mark-type">
+      {segs.map((x, i) => { const part = x.t.slice(0, Math.max(0, left)); left -= x.t.length; return part ? (x.hot ? <mark key={i} className="type-hot">{part}</mark> : <span key={i}>{part}</span>) : null; })}
+      {!st.done && <span className={`type-cursor${st.blinkOn ? "" : " off"}`} aria-hidden="true" />}
+    </span>
+  );
+}
+
 // 数字（含 05:12、1.5、30% 这类）包成橙色。
 const withNums = (s) => s.split(/(\d+(?:[.,:]\d+)*%?)/).map((part, i) => (i % 2 ? <span key={i} className="type-num">{part}</span> : part));
 
@@ -277,14 +313,21 @@ export function StepProgress({ progress = null, done = false, error = "", label 
   useEffect(() => {
     if (done || error || progress !== null || reduced) return undefined;
     setAuto(0);
-    return frames((frame) => {
-      if (frame % 3 === 0) setAuto(Math.min(19, frame / 3));
-      if (frame >= 57) return false;
+    // 进度未知时按 1% 一步有序前进，越往后每步隔得越久（用户 2026-10-19：不再冲到 95% 就停住）：
+    // 0–50% 每帧一步（约 3 秒），到 80% 约 9 秒，到 90% 约 15 秒，到 95% 约 21 秒，之后每 4 秒一步，最多 99%，读完才到 100%。
+    let pct = 0, wait = 0;
+    return frames(() => {
+      if (--wait > 0) return undefined;
+      pct += 1;
+      setAuto(pct);
+      wait = pct < 50 ? 1 : pct < 80 ? 3 : pct < 90 ? 8 : pct < 95 ? 20 : 60;
+      if (pct >= 99) return false;
+      return undefined;
     });
   }, [done, error, progress, reduced]);
   const fraction = progress === null ? null : Math.max(0, Math.min(1, progress));
-  const cells = done ? 20 : fraction !== null ? Math.floor(fraction * 20) : reduced ? 19 : auto;
-  const pct = done ? 100 : fraction !== null ? Math.floor(fraction * 100) : cells * 5;
+  const pct = done ? 100 : fraction !== null ? Math.floor(fraction * 100) : reduced ? 95 : auto;
+  const cells = Math.floor(pct / 5);
   const unknown = !done && fraction === null;
   return (
     <div className={`step-progress${error ? " is-error" : ""}`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={unknown ? undefined : pct} aria-valuetext={error || (unknown ? "处理中，进度未知" : `${pct}%`)} aria-label={label || "进度"}>

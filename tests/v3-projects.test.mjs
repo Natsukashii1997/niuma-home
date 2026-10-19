@@ -25,7 +25,7 @@ function projectSource() {
 const source = { name: '人员甲', role: '管培生', year: 2026, url: 'https://example.feishu.cn/docx/abc' };
 const outline = '<fragment><h1 id="a">10.16 工作进展</h1><h1 id="b">9.17 调研</h1><h1 id="c">9.16 旧日志</h1></fragment>';
 const headings = () => datedHeadings(outline, 2026);
-const markdown = '# 10.16 工作进展\n## 四、疑问/结论\n卡点：尚未取得数据\n下一步找谁确认？\n# 9.17 调研\n完成访谈\n# 9.16 旧日志\n旧的卡点';
+const logXml = '<fragment><h1 id="a">10.16 工作进展</h1><h2 id="h2four">四、疑问/结论</h2><p id="pBlock0001">卡点：尚未取得<b>数据</b></p><ul><li id="pAsk000001"><b>困惑 1：</b>下一步找谁确认？</li></ul><h1 id="b">9.17 调研</h1><p id="pDone00001">完成访谈</p><h1 id="c">9.16 旧日志</h1><p id="pOld000001">旧的卡点</p></fragment>';
 function kbSource() {
   const content = '这是一篇真实文档正文用于核验目录节点和正文信息同时保留。'.repeat(3);
   return { nodes: [
@@ -39,11 +39,24 @@ test('V3 项目矩阵完整性、真实阶段、多值门禁与跨年日期不�
   assert.throws(() => matrixRows({ fields: ['a'], data: [[1]], record_id_list: [], has_more: false }), /不完整/);
   assert.throws(() => matrixRows({ fields: ['a'], data: [[1]], record_id_list: ['a'], has_more: true }), /不完整/);
   const [project] = projectView(projectSource());
-  assert.equal(project.phase, -1); assert.equal(project.status, '推进中');
+  assert.equal(project.phase, 0); assert.equal(project.status, '推进中'); assert.deepEqual(project.phases, ['实施', '监控']);
   assert.equal(project.nodes[0].ph, '实施 / 监控'); assert.equal(project.nodes[0].gate, true);
-  assert.equal(project.nodes[0].gateReady, false); assert.equal(project.nodes[0].statusKnown, false);
+  // 勾选框为空 = 未完成（与飞书「任务完成度」同一口径）
+  assert.equal(project.nodes[0].gateReady, false); assert.equal(project.nodes[0].statusKnown, true); assert.equal(project.nodes[0].done, false);
+  assert.equal(project.taskCount, 2); assert.equal(project.taskDone, 1);
   assert.equal(project.nodes[0].dueDate, '2027-01-02'); assert.equal(project.nodes[0].due, '01-02');
   assert.deepEqual(project.nodes[0].kids, [['子任务', true]]);
+  // 阶段按飞书选项顺序；交付物解析链接；营销战役不进项目推进
+  const real = projectSource();
+  real.stages = ['启动阶段', '计划阶段', '实施阶段', '监控阶段'];
+  real.nodes[1]['交付物'] = '[PRD 文档](https://example.feishu.cn/docx/a) [测试用例](https://example.feishu.cn/docx/b)';
+  real.nodes[0]['逾期状态'] = '进行中·已逾期'; real.nodes[0]['开始时间'] = '2026-12-20T00:00:00.000+08:00';
+  real.projects.push({ id: 'p2', '项目名称': '双十一', '状态': ['推进中'], '项目类型': ['营销战役'] });
+  real.projects[0]['项目类型'] = ['产品项目']; real.projects[0]['任务完成度'] = 0.5;
+  const shown = projectView(real);
+  assert.deepEqual(shown.map(p => p.name), ['真实项目']); assert.equal(shown[0].completion, 0.5);
+  assert.equal(shown[0].nodes[0].overdue, '进行中·已逾期'); assert.equal(shown[0].nodes[0].startDate, '2026-12-20');
+  assert.deepEqual(shown[0].nodes[0].childNodes[0].deliverables, [{ title: 'PRD 文档', url: 'https://example.feishu.cn/docx/a' }, { title: '测试用例', url: 'https://example.feishu.cn/docx/b' }]);
   const bad = projectSource(); bad.nodes[0]['截止时间'] = '2026-02-30'; assert.throws(() => projectView(bad), /日期无效/);
   bad.nodes[0]['截止时间'] = null; bad.nodes[0]['父记录'] = [{ id: 'n2' }]; assert.throws(() => projectView(bad), /循环/);
 });
@@ -97,20 +110,23 @@ test('V3 项目勾选和改期先预览后确认、并发与旧回执稳定', as
 });
 
 test('V3 近30天日志按明确年份及倒序跨年、固定章节不假报提问', () => {
-  const person = mentorView(source, headings(), markdown, instant);
+  const person = mentorView(source, headings(), logXml, instant);
   assert.deepEqual(person.logs.map(l => l.date), ['2026-10-16', '2026-09-17']);
   assert.equal(person.logs[0].flag, '卡点'); assert.equal(person.logs[1].flag, '');
   assert.equal(person.qa, null); assert.equal(person.draft, true); assert.equal(person.blocks.length, 1);
+  // 原话逐句保留段落 ID，能跳回飞书那一段
+  assert.deepEqual(person.items.map(i => [i.kind, i.text, i.id]), [['卡点', '卡点：尚未取得数据', 'pBlock0001'], ['提问', '困惑 1：下一步找谁确认？', 'pAsk000001']]);
+  assert.equal(person.items[1].src, `${source.url}#pAsk000001`);
   assert.deepEqual(datedHeadings('<h1 id="a">1.2 新年</h1><h1 id="b">12.30 年末</h1>', 2027).map(h => h.date), ['2027-01-02', '2026-12-30']);
   assert.throws(() => datedHeadings('<h1 id="a">9.2 后文</h1><h1 id="b">10.1 前文</h1>', 2026), /无法可靠补全年份/);
-  assert.throws(() => mentorView(source, headings(), '# 10.16 工作进展\n正文', instant), /未完整读取/);
+  assert.throws(() => mentorView(source, headings(), '<h1 id="a">10.16 工作进展</h1><p id="pBody00001">正文</p>', instant), /未完整读取/);
 });
 
 test('V3 带教目录先读XML并固定版本范围读取，无近30天时不拉全文', async () => {
   const calls = [];
   const run = async (_command, args) => {
     calls.push(args);
-    return { stdout: JSON.stringify({ ok: true, identity: 'user', data: { document: { revision_id: 7, content: args.includes('outline') ? outline : markdown } } }) };
+    return { stdout: JSON.stringify({ ok: true, identity: 'user', data: { document: { revision_id: 7, content: args.includes('outline') ? outline : logXml } } }) };
   };
   const person = await readMentorLogs(source, { run, now: () => instant });
   assert.equal(person.logs.length, 2); assert.equal(calls.length, 2);
@@ -121,7 +137,7 @@ test('V3 带教目录先读XML并固定版本范围读取，无近30天时不拉
 test('V3 带教结论仅本地预览确认回读，来源变更不混用历史', async t => {
   const db = dbFor(t); saveSetting(db, 'mentor_sources', JSON.stringify([source]));
   let reads = 0;
-  const service = createMentorService(db, { now: () => instant, readLogs: async s => { reads++; return mentorView(s, headings(), markdown, instant); } });
+  const service = createMentorService(db, { now: () => instant, readLogs: async s => { reads++; return mentorView(s, headings(), logXml, instant); } });
   const preview = service.preview(source.name, { week: '2026-W42', note: '先核实卡点' });
   assert.equal(reads, 0); assert.deepEqual((await service.list())[0].history, []);
   assert.throws(() => service.confirm(source.name, { week: '2026-W42' }), /先预览/);
@@ -185,7 +201,7 @@ test('V3 知识库引用只来自实际本地设置、Agent指令与已登记知
 
 test('V3 项目带教知识库HTTP读取、同步及各写入预览门禁', async t => {
   const db = dbFor(t); saveSetting(db, 'mentor_sources', JSON.stringify([source]));
-  const services = createProjectServices(db, { projects: { readSource: async () => projectSource() }, mentor: { readLogs: async s => mentorView(s, headings(), markdown, instant) }, kb: { readSource: async () => kbSource() } });
+  const services = createProjectServices(db, { projects: { readSource: async () => projectSource() }, mentor: { readLogs: async s => mentorView(s, headings(), logXml, instant) }, kb: { readSource: async () => kbSource() } });
   const routes = projectRoutes(services);
   const server = createServer(async (req, res) => { const url = new URL(req.url, 'http://localhost'), found = match(routes, req.method, url.pathname); if (!found) return json(res, 404, {}); await found.handler(req, res, { params: found.params, url }); });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -200,4 +216,54 @@ test('V3 项目带教知识库HTTP读取、同步及各写入预览门禁', asyn
   assert.equal((await request('POST', `/api/v3/mentor/${name}/records`, { week: '2026-W42', previewId: m.previewId, confirm: true })).status, 200);
   const k = await request('POST', '/api/v3/kb/preview', { ops: [{ type: 'rename', id: 'child', name: '待确认' }] });
   assert.equal(k.status, 200); assert.equal(k.body.writeEnabled, false);
+});
+
+test('带教回复：AI 回答只读当天日志；预览确认后只发一次评论并回读，结果不明锁住只读核对', async t => {
+  const db = dbFor(t); saveSetting(db, 'mentor_sources', JSON.stringify([source]));
+  const calls = [], comments = [];
+  let failNext = false;
+  const lark = async (args, _run, { as = 'user' } = {}) => {
+    calls.push({ cmd: args[1], as, args });
+    if (args[1] === '+add-comment') {
+      if (failNext) { failNext = false; throw Object.assign(new Error('网络中断'), { status: 502 }); }
+      const text = JSON.parse(args[args.indexOf('--content') + 1])[0].text;
+      const c = { comment_id: `c${comments.length + 1}`, extra: { content_anchor_id: args[args.indexOf('--block-id') + 1] }, reply_list: { replies: [{ content: { elements: [{ type: 'text_run', text_run: { text } }] } }] } };
+      comments.push(c); return { comment_id: c.comment_id };
+    }
+    if (args[1] === '+batch-query-comments') return { items: comments.filter(c => c.comment_id === args[args.indexOf('--comment-ids') + 1]) };
+    if (args[1] === '+list-comments') return { items: comments, has_more: false };
+    throw new Error('unexpected');
+  };
+  let asked;
+  const generate = async input => { asked = input; return { text: '先找**教务**确认数据口径。', generatedAt: 'now', model: 'm' }; };
+  const service = createMentorService(db, { now: () => instant, lark, generate, readLogs: async s => mentorView(s, headings(), logXml, instant) });
+  await service.list();
+  const answer = await service.answer(source.name, 'pAsk000001');
+  assert.equal(answer.text, '先找**教务**确认数据口径。'); assert.match(asked.task, /困惑 1：下一步找谁确认？/);
+  assert.equal(asked.evidence.log.date, '2026-10-16'); assert.equal(calls.length, 0);
+  await assert.rejects(service.answer(source.name, 'notExist01'), /不在最近读取/);
+
+  // 预览不写飞书；确认后用应用身份挂在原话那一段，去掉 ** 记号，回读一致
+  const pv = service.previewReply(source.name, 'pAsk000001', { text: answer.text, as: 'bot' });
+  assert.equal(calls.length, 0); assert.equal(pv.value.text, '先找教务确认数据口径。'); assert.equal(pv.value.quote, '困惑 1：下一步找谁确认？');
+  await assert.rejects(service.confirmReply(source.name, 'pAsk000001', { previewId: pv.previewId }), /明确确认/);
+  const receipt = await service.confirmReply(source.name, 'pAsk000001', { previewId: pv.previewId, confirm: true });
+  assert.equal(receipt.state, 'sent'); assert.equal(receipt.commentId, 'c1');
+  const add = calls.find(c => c.cmd === '+add-comment');
+  assert.equal(add.as, 'bot'); assert.equal(add.args[add.args.indexOf('--block-id') + 1], 'pAsk000001');
+  // 重复确认返回同一回执，不重发
+  assert.deepEqual(await service.confirmReply(source.name, 'pAsk000001', { previewId: pv.previewId, confirm: true }), receipt);
+  assert.equal(calls.filter(c => c.cmd === '+add-comment').length, 1);
+  assert.equal((await service.list())[0].items.find(i => i.id === 'pAsk000001').reply.state, 'sent');
+
+  // 人工回复：发送失败结果不明 → 锁住，不能再预览；只读核对没找到 → 清掉，可重新发送
+  failNext = true;
+  const manual = service.previewReply(source.name, 'pBlock0001', { text: '周三前把数据需求发我', as: 'user' });
+  await assert.rejects(service.confirmReply(source.name, 'pBlock0001', { previewId: manual.previewId, confirm: true }), /结果不明/);
+  assert.throws(() => service.previewReply(source.name, 'pBlock0001', { text: '再试', as: 'user' }), /只读核对/);
+  assert.deepEqual(await service.reconcileReply(source.name, 'pBlock0001'), { state: 'none', checked: true });
+  const again = service.previewReply(source.name, 'pBlock0001', { text: '周三前把数据需求发我', as: 'user' });
+  const ok = await service.confirmReply(source.name, 'pBlock0001', { previewId: again.previewId, confirm: true });
+  assert.equal(ok.state, 'sent'); assert.equal(calls.filter(c => c.cmd === '+add-comment').at(-1).as, 'user');
+  assert.throws(() => service.previewReply(source.name, 'pBlock0001', { text: '', as: 'user' }), /2000 字以内/);
 });

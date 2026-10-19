@@ -2,6 +2,7 @@
 export const PROMO_SKUS = {
   大学辅导: ["灵活学Lite", "安心学Max", "学考无忧Pass", "补考护航Pass", "选课指导", "论文稳Pass", "先修班课"],
   国际课程: ["灵活学Lite", "安心学Max"],
+  申诉服务: [], // 不设固定 SKU：内容（如「双11活动」）记为整月特殊活动；只存原文，不进方案汇总（用户 2026-10-19）
 };
 const LINES = Object.keys(PROMO_SKUS);
 const KEYS = { 试听: "trial", 正价: "price", 新签活动: "newDeal", 新签: "newDeal", 续费活动: "renewal", 续费: "renewal" };

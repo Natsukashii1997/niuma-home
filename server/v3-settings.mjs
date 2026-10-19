@@ -9,7 +9,7 @@ import { COLLECT_SPACE, COLLECT_RULES, collectRules, validateCollectRuleNodes } 
 export const V3_DEFAULTS = {
   timeline_source: JSON.stringify(TIMELINE_SOURCE),
   project_base_url: 'https://vm94j8bzy7.feishu.cn/base/MxB8biSR2aJKenszh4CcprRenmf',
-  project_table_id: 'tblIEuoDOvkHeU3P', campaign_table_id: 'tblDhQCi5CCZCvUT', price_sku_table_id: 'tblwaujJdrNHoVea',
+  project_table_id: 'tblc3pkZfjaOnOwY', campaign_table_id: 'tblDhQCi5CCZCvUT', price_sku_table_id: 'tblwaujJdrNHoVea',
   kb_space_id: '7620758074885835965',
   kb_collect_space: COLLECT_SPACE, kb_collect_rules: JSON.stringify(COLLECT_RULES),
   mentor_sources: JSON.stringify([

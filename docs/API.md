@@ -1,7 +1,7 @@
 # 接口约定
 
 全部为 JSON；出错返回 `{ error: "中文说明" }` 与相应状态码；未实现返回 501 `{ error, task }`。
-字段名用 camelCase；月份 `YYYY-MM`；业务线取值：大学辅导 / 国际课程 / 申诉服务（促销表和方案只有大学辅导 / 国际课程，2026-10-19 起）。
+字段名用 camelCase；月份 `YYYY-MM`；业务线取值：大学辅导 / 国际课程 / 申诉服务（促销表只有大学辅导 / 国际课程；方案原文另有申诉服务：无固定 SKU，内容记为整月特殊活动，不进方案汇总，2026-10-19 起）。
 
 ## 营销 · 促销表（已实现）
 
@@ -39,7 +39,7 @@ type ParseResult = {
 ```
 
 - 解析规则：标题行（编号行，或不带列表符号、不带冒号的单独一行）是固定 SKU（「A/B」合写拆成两行、字段相同）→ SKU 块；SKU 下「试听/正价/新签活动/续费活动：」进对应栏（也认「新签：」「续费（新价格用户）：」「学科正价：」这类变体，变体的标签留在值里，同栏多条换行连接），其他「标签：内容」进该 SKU 的 `special`；不是固定 SKU 的编号行、或空行后的单独一行开一个整月特殊活动块，块里各行（含新签、续费）原样进整月 `special`，但块里出现试听或正价时视为清单外 SKU，记未识别。
-- `PUT /api/plans/:month/:line` 请求 `{ rawText, rawHtml?, rows, special }`（rows、special 为本人确认后的解析结果，须与原文重新解析一致）→ `{ inserted, updated, removed }`
+- `PUT /api/plans/:month/:line` 请求 `{ rawText, rawHtml?, rows, special }`（rows、special 为本人确认后的解析结果，须与原文重新解析一致）→ `{ inserted, updated, removed }`；rows 可为空（申诉服务），此时 special 不能为「无」
   - 单事务：保存原文；按 rows 覆盖该 月份×业务线 的促销行（不在 rows 内的删除）。
 
 ## 营销 · 物料（T03）
@@ -256,3 +256,17 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `GET /api/v3/kb/collect/pairing` → `{ code, createdAt }`：只给牛马之家页面（扩展来源一律 `403`）。
 - `Host` 也要是本机地址（`127.0.0.1`、`localhost`、`[::1]`，任意端口），否则即使没有 `Origin` 也 `403`。`recent`、`pairing` 系列只给本站页面。
 - 重新生成走预览 → 确认 → 回读：`POST /api/v3/kb/collect/pairing/preview` → `{ previewId, expiresAt }`；`POST /api/v3/kb/collect/pairing/rotate` `{ previewId, confirm: true }` → `{ code, createdAt }`，旧码立即失效。
+
+## 项目推进 · 来源（2026-10-19）
+
+- `GET /api/v3/projects` 读飞书「AI管培工作台 / 📑 任务事项」表（`tblc3pkZfjaOnOwY`；原「🅰️ 项目推进」表只是空白模板）。只放「项目类型」为产品项目的项目，营销战役在营销页。
+- 节点新增字段：`startDate`、`doneDate`（实际完成时间）、`overdue`（飞书「逾期状态」公式原文）、`deliverables: [{ title, url? }]`、`milestone`。「是否完成」勾选框为空按未完成（`statusKnown` 恒为 true），与飞书「任务完成度」同一口径。
+- 项目新增：`completion`（飞书「任务完成度」，0–1）、`taskCount` / `taskDone`（含子项的全部任务）；`phases` 按飞书「环节阶段」选项顺序；`phase` 为第一个还有未完成节点的阶段（不含「监控」），全部完成为 -1。
+
+## 管培带教 · 卡点与提问回复（2026-10-19）
+
+- `GET /api/v3/mentor` 每人新增 `items: [{ id, kind: "卡点" | "提问", text, date, log, src, reply }]`：`id` 是飞书文档里原话所在段落的 block ID，`src` 是 `文档链接#blockId`；`reply` 为本机回复记录 `{ state: "sent" | "sending" | "unknown", as, text, display, commentId?, at, error? }` 或 null。
+- `POST /api/v3/mentor/:name/items/:id/answer` 请求 `{}` → `{ text, generatedAt, model }`：机械邪龙兽（本机 Codex）只读这条所在那天的日志作答；`**…**` 为重点。不保存、不发送。
+- `POST /api/v3/mentor/:name/items/:id/reply/preview` 请求 `{ text, as: "user" | "bot" }` → `{ previewId, expiresAt, value: { quote, date, log, doc, as, text, display } }`；`text` 去掉 `**` 记号后发送。这一条结果不明时返回 409 `REPLY_UNKNOWN`。
+- `POST /api/v3/mentor/:name/items/:id/reply` 请求 `{ previewId, confirm: true }` → 回复记录（`state: "sent"`）。用 `lark-cli drive +add-comment --block-id <id>` 在原话那一段挂评论（user = 常浩本人，bot = 机械邪龙兽应用），只发一次，再按评论编号回读核对；同一预览重复确认返回同一回执。授权被拒（确定没执行）清掉记录；其他失败或回读不一致记为 `unknown` 并返回 502 `REPLY_UNKNOWN`。
+- `POST /api/v3/mentor/:name/items/:id/reply/reconcile` 请求 `{}`：只读翻这篇文档的划词评论，找到同一段、同样内容的评论记为 `sent`；没找到清掉记录（`{ state: "none", checked: true }`），可重新发送。

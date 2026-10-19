@@ -5,7 +5,7 @@ import { useApi } from "../../api.js";
 import { href } from "../../router.js";
 import SkuDrawer from "./SkuView.jsx";
 import { Button, Empty, FilterBar, Loadable, Segmented, Select } from "../../ui/components.jsx";
-import { PROMO_FIELDS } from "../../constants.js";
+import { PROMO_FIELDS, PROMO_LINES } from "../../constants.js";
 import { buildPromoView, normalizePromoView, readPromoView, writePromoView } from "./promo-view.js";
 
 const GROUPS = [["sku", "按 SKU"], ["line", "按业务线"], ["month", "按月份"]];
@@ -18,8 +18,8 @@ const COL_W = { month: 88, line: 88, sku: 132, trial: 96, price: 200 };
 // dossier：从旧地址 marketing/sku/<业务线>/<SKU> 进来时，直接打开该 SKU 的档案侧栏。
 export default function PromosView({ dossier = null }) {
   const state = useApi("/api/promos");
-  const plans = useApi("/api/plans"); // 整月特殊活动存在方案原文表里；读不到时只是不显示
-  return <Loadable state={state} name="方案汇总">{(rows) => <PromoTable rows={rows} plans={plans.data || []} dossier={dossier} />}</Loadable>;
+  const plans = useApi("/api/plans"); // 整月特殊活动存在方案原文表里；读不到时只是不显示。申诉服务不进汇总
+  return <Loadable state={state} name="方案汇总">{(rows) => <PromoTable rows={rows.filter((r) => PROMO_LINES.includes(r.line))} plans={(plans.data || []).filter((p) => PROMO_LINES.includes(p.line))} dossier={dossier} />}</Loadable>;
 }
 
 // 特殊活动：按 业务线×月份 一条整行。text 是整月特殊活动（不挂在某个 SKU 下面的活动块，如双11；多块空行分隔，每块首行是标题）；

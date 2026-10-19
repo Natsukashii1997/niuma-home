@@ -7,11 +7,13 @@ import { failure, saveSnapshot } from './v3-common.mjs';
 import { assertLocalLifecycle, createLocalDeletions, deletionFailure, deletionRevision, deletionState, externalOrigin } from './local-deletions.mjs';
 
 const execute = promisify(execFile);
-export const PROJECT_SOURCE = { url: 'https://vm94j8bzy7.feishu.cn/base/MxB8biSR2aJKenszh4CcprRenmf', table: 'tblIEuoDOvkHeU3P' };
-export async function runLark(args, run = execute) {
+// 真实推进记在「📑 任务事项」表（用户 2026-10-19）；「🅰️ 项目推进」只是空白模板，不再读取。
+export const PROJECT_SOURCE = { url: 'https://vm94j8bzy7.feishu.cn/base/MxB8biSR2aJKenszh4CcprRenmf', table: 'tblc3pkZfjaOnOwY' };
+// as：默认用户身份（常浩）；带教的 AI 回答用应用身份 bot（机械邪龙兽）发评论。
+export async function runLark(args, run = execute, { as = 'user' } = {}) {
   let result;
   try {
-    const { stdout } = await run('lark-cli', ['--profile', 'codex', ...args, '--as', 'user', '--format', 'json'], { encoding: 'utf8', timeout: 90_000, maxBuffer: 16 * 1024 * 1024, shell: false });
+    const { stdout } = await run('lark-cli', ['--profile', 'codex', ...args, '--as', as, '--format', 'json'], { encoding: 'utf8', timeout: 90_000, maxBuffer: 16 * 1024 * 1024, shell: false });
     result = JSON.parse(stdout);
   } catch (error) {
     let detail;
@@ -23,7 +25,7 @@ export async function runLark(args, run = execute) {
     if (detail?.subtype === 'permission_denied') throw Object.assign(failure(403, '当前 codex 用户无权读取此飞书资源'), safeCode, { rejected: true });
     throw Object.assign(failure(502, '飞书读取失败，请检查 codex 用户登录、读取权限和网络'), safeCode);
   }
-  if (result.ok !== true || result.identity !== 'user' || !result.data || result.truncated || result.data.truncated) throw failure(502, '飞书没有返回完整的用户身份数据');
+  if (result.ok !== true || result.identity !== as || !result.data || result.truncated || result.data.truncated) throw failure(502, as === 'user' ? '飞书没有返回完整的用户身份数据' : '飞书没有返回完整的应用身份数据');
   return result.data;
 }
 export function matrixRows(data) {
@@ -54,7 +56,8 @@ export async function readProjectSource(config, { run } = {}) {
   const projectTable = schema.fields?.find(f => f.name === '所属项目')?.link_table;
   const peopleTable = schema.fields?.find(f => f.name === '主责任人')?.link_table;
   if (!projectTable || !peopleTable) throw failure(502, '项目表缺少所属项目或主责任人关联');
-  const fields = ['所属项目', '任务事项', '节点类型', '环节阶段', '父记录', '主责任人', '是否完成', '截止时间'];
+  const stages = (schema.fields?.find(f => f.name === '环节阶段')?.options || []).map(o => o?.name).filter(v => typeof v === 'string');
+  const fields = ['所属项目', '任务事项', '节点类型', '环节阶段', '父记录', '主责任人', '是否完成', '截止时间', '开始时间', '实际完成时间', '逾期状态', '交付物'];
   const nodes = []; let revision;
   for (;;) {
     const page = await runLark(['base', '+record-list', ...common, '--table-id', config.table, ...fieldArgs(fields), '--limit', '200', '--offset', String(nodes.length)], run);
@@ -72,15 +75,27 @@ export async function readProjectSource(config, { run } = {}) {
     if (recordIds.some(id => !out.some(row => row.id === id))) throw failure(502, '项目关联记录未完整读取');
     return out;
   };
-  const [projects, people] = await Promise.all([getLinked(projectTable, projectIds, ['项目名称', '状态']), getLinked(peopleTable, peopleIds, ['成员名'])]);
-  return { nodes, projects, people };
+  const [projects, people] = await Promise.all([getLinked(projectTable, projectIds, ['项目名称', '状态', '项目类型', '任务完成度']), getLinked(peopleTable, peopleIds, ['成员名'])]);
+  return { nodes, projects, people, stages };
 }
+
+const day = value => { const date = plain(value).slice(0, 10); if (date && !validDate(date)) throw failure(502, '项目日期无效'); return date; };
+// 交付物是飞书文本：「[标题](链接)」可有多个；没有链接时整段当标题。
+const deliverables = value => {
+  const text = plain(value).trim(); if (!text) return [];
+  const links = [...text.matchAll(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g)].map(([, title, url]) => ({ title: title.trim(), url }));
+  return links.length ? links : [{ title: text.slice(0, 120) }];
+};
 
 export function projectView(source) {
   const people = new Map(source.people.map(p => [p.id, plain(p['成员名'])]));
   const nodesById = new Map(source.nodes.map(n => [n.id, n]));
   if (nodesById.size !== source.nodes.length) throw failure(502, '项目节点标识重复');
-  return source.projects.map(project => {
+  const stageOrder = (source.stages || []).map(v => v.replace(/阶段$/, ''));
+  const rank = ph => { const i = stageOrder.indexOf(ph); return i < 0 ? stageOrder.length : i; };
+  // 项目推进只放产品项目；营销战役在营销页「营销战役」里（项目类型没填的照常显示）。
+  const shown = source.projects.filter(p => { const type = select(p['项目类型']); return !type.length || type.includes('产品项目'); });
+  return shown.map(project => {
     const rows = source.nodes.filter(n => ids(n['所属项目']).includes(project.id));
     const rowIds = new Set(rows.map(n => n.id));
     const parent = n => ids(n['父记录']);
@@ -92,22 +107,24 @@ export function projectView(source) {
       }
     }
     const convert = n => {
-      const rawDate = plain(n['截止时间']);
-      const dueDate = rawDate ? rawDate.slice(0, 10) : '';
-      if (dueDate && !validDate(dueDate)) throw failure(502, '项目截止日期无效');
+      const dueDate = day(n['截止时间']);
       const stage = select(n['环节阶段']).map(v => v.replace(/阶段$/, ''));
-      return { id: n.id, ph: stage.join(' / '), phases: stage, t: plain(n['任务事项']), owner: ids(n['主责任人']).map(id => people.get(id) || '未解析成员').join('、') || '—', done: n['是否完成'] === true, statusKnown: typeof n['是否完成'] === 'boolean', due: dueDate.slice(5), dueDate, gate: select(n['节点类型']).includes('审核门禁'), gateReady: false };
+      // 「是否完成」是勾选框：没勾就是未完成（与飞书「任务完成度」同一口径），不再当成「未填写」。
+      return { id: n.id, ph: stage.join(' / '), phases: stage, t: plain(n['任务事项']).trim(), owner: ids(n['主责任人']).map(id => people.get(id) || '未解析成员').join('、') || '—', done: n['是否完成'] === true, statusKnown: true, due: dueDate.slice(5), dueDate, startDate: day(n['开始时间']), doneDate: day(n['实际完成时间']), overdue: plain(n['逾期状态']), deliverables: deliverables(n['交付物']), gate: select(n['节点类型']).includes('审核门禁'), milestone: select(n['节点类型']).includes('里程碑'), gateReady: false };
     };
     const flatten = (id, prefix = '') => rows.filter(n => parent(n)[0] === id).flatMap(n => {
-      const name = `${prefix}${plain(n['任务事项'])}`;
+      const name = `${prefix}${plain(n['任务事项']).trim()}`;
       return [{ ...convert(n), t: name }, ...flatten(n.id, `${name} / `)];
     });
     const nodes = rows.filter(n => !parent(n).length).map(n => {
       const kids = flatten(n.id);
       return { ...convert(n), ...(kids.length ? { kids: kids.map(k => [k.t, k.done]), childNodes: kids } : {}) };
     });
-    const phases = [...new Set(nodes.map(n => n.ph))];
-    return { id: project.id, name: plain(project['项目名称']), template: '项目推进', status: select(project['状态']).join(' / ') || '状态未填写', phase: -1, phases, nodes };
+    // 阶段按飞书「环节阶段」的选项顺序；当前阶段 = 第一个还有未完成节点的阶段（监控是贯穿全程的审核，不算）。
+    const phases = [...new Set(nodes.flatMap(n => n.phases))].sort((a, b) => rank(a) - rank(b));
+    const phase = phases.findIndex(ph => ph !== '监控' && nodes.some(n => n.phases.includes(ph) && !n.done));
+    const rate = Number(project['任务完成度']), completion = project['任务完成度'] !== null && project['任务完成度'] !== '' && Number.isFinite(rate) ? rate : null; // 公式字段读回来是字符串
+    return { id: project.id, name: plain(project['项目名称']), template: '项目推进', status: select(project['状态']).join(' / ') || '状态未填写', phase, phases, nodes, completion, taskCount: rows.length, taskDone: rows.filter(n => n['是否完成'] === true).length };
   });
 }
 

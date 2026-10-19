@@ -5,7 +5,7 @@ import { Button, Card, PhaseSteps } from "../../ui/components.jsx";
 import { SpecialBlock, TABLE_FIELDS } from "./PromosView.jsx";
 
 // 方案录入：嵌在「月度促销」上半部分，四步 粘贴 → 解析 → 处理 → 确认。
-// 不选业务线：直接粘贴，按原文里的【…板块】自动识别是大学辅导还是国际课程，写入对应业务线（用户 2026-10-19）。
+// 不选业务线：直接粘贴，按原文里的【…板块】自动识别是大学辅导、国际课程还是申诉服务，写入对应业务线（用户 2026-10-19）。
 // onLine(业务线 | null)：解析出、还没入库的业务线，给上方状态块标出「录入中」。
 export default function PlanEditor({ month, onSaved, onLine }) {
   return <PlanForm key={month} month={month} onSaved={onSaved} onLine={onLine} />;
@@ -59,7 +59,8 @@ function PlanForm({ month, onSaved, onLine }) {
 
   const locked = Boolean(busy) || needsReload;
   const mismatch = preview && !line;
-  const canSave = !locked && !saved && preview?.rows.length > 0 && !preview.unrecognized.length && !mismatch;
+  const hasContent = preview && (preview.rows.length > 0 || preview.special !== "无"); // 申诉服务没有 SKU，只有整月特殊活动
+  const canSave = !locked && !saved && hasContent && !preview.unrecognized.length && !mismatch;
 
   async function parse(text = rawText) {
     if (locked || operation.current || !text.trim()) return;
@@ -118,7 +119,7 @@ function PlanForm({ month, onSaved, onLine }) {
     finally { operation.current = false; setBusy(""); }
   }
 
-  const issues = preview ? (!preview.rows.length || preview.unrecognized.length > 0 || mismatch) : false;
+  const issues = preview ? (!hasContent || preview.unrecognized.length > 0 || mismatch) : false;
   const stage = saved ? 4 : preview ? (issues ? 2 : 3) : rawText.trim() ? 1 : 0;
 
   return (
@@ -144,7 +145,7 @@ function PlanForm({ month, onSaved, onLine }) {
         </>}>
           {!preview ? <div className="parse-empty"><p className="small muted">解析后显示：各 SKU 字段、与上月的差异</p><div className="state-loading" aria-hidden="true"><i /><i /><i /></div></div> : <>
             <p className="muted small">优先对比本月已有数据；本月无数据时对比该业务线上一个有数据的月份。标「改」的格子下方是旧值。</p>
-            <div className="table-wrap">
+            {preview.rows.length > 0 && <div className="table-wrap">
               <table className="grid compact plan-preview-table">
                 <colgroup>{["17%", "14%", "23%", "23%", "23%"].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
                 <thead><tr><th>SKU</th>{TABLE_FIELDS.map(([, label]) => <th key={label}>{label}</th>)}</tr></thead>
@@ -156,12 +157,13 @@ function PlanForm({ month, onSaved, onLine }) {
                   </td>)}
                 </tr>)}</tbody>
               </table>
-            </div>
+            </div>}
             {(preview.special !== "无" || preview.rows.some((row) => row.special !== "无")) &&
               <SpecialBlock line={line} month={month} text={preview.special} skus={preview.rows.filter((row) => row.special !== "无")} />}
-            {!preview.rows.length && <div className="warn">没有识别到 SKU，请检查原文中的编号行。</div>}
+            {!hasContent && <div className="warn">没有识别到 SKU 或活动，请检查原文中的编号行。</div>}
+            {line === "申诉服务" && <p className="muted small">申诉服务只存原文和活动，不进方案汇总。</p>}
             {preview.removed.length > 0 && <div className="warn"><PixelIcon name="alert" size={14} /><span>将删除的 SKU：{preview.removed.join("、")}。确认入库后删除。</span></div>}
-            {mismatch && <div className="warn"><PixelIcon name="alert" size={14} /><span>未识别到业务线：原文开头要有「【大学辅导板块】」或「【国际课程板块】」。请修改原文后重新解析。</span></div>}
+            {mismatch && <div className="warn"><PixelIcon name="alert" size={14} /><span>未识别到业务线：原文开头要有「【大学辅导板块】」「【国际课程板块】」或「【申诉服务板块】」。请修改原文后重新解析。</span></div>}
             {preview.unrecognized.length > 0 && <div className="warn"><PixelIcon name="alert" size={14} /><div>
               <strong>有 {preview.unrecognized.length} 行未识别（含重复 SKU），暂不可入库。请修改原文后重新解析：</strong>
               <ul>{preview.unrecognized.map((item) => <li key={item.lineNo}>第 {item.lineNo} 行：<span className="pre">{item.text}</span></li>)}</ul>

@@ -50,7 +50,7 @@ function mentorFixture(t) {
   const mentor = createMentorService(db, {
     now: () => clock.value,
     generate: noModel,
-    readLogs: async person => mentorView(person, datedHeadings('<h1 id="synthetic">10.18 合成日志</h1>', 2026), '# 10.18 合成日志\n合成卡点：待确认下一步。', clock.value),
+    readLogs: async person => mentorView(person, datedHeadings('<h1 id="synthetic">10.18 合成日志</h1>', 2026), '<h1 id="synthetic">10.18 合成日志</h1><p id="para0abcd">合成卡点：待确认下一步。</p>', clock.value),
   });
   return { db, clock, source, routes: projectRoutes({ mentor }), base: `/api/v3/mentor/${encodeURIComponent(source.name)}/records` };
 }
