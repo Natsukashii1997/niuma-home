@@ -257,13 +257,12 @@ function Canvas({ kb, focus, initialOrder, ruleIds, reload }) {
         <button type="button" className={`kbf-chip${open ? "" : " is-on"}`} onClick={() => { setOpen(null); setPath([]); }}>全部 <i className="tnum">{total}</i></button>
         {model.groups.map((g) => <button key={g.id} type="button" className={`kbf-chip${open === g.id ? " is-on" : ""}`} onClick={() => openGroup(g.id)}>{g.name} <i className="tnum">{g.kids ? countDocs(g) : 0}</i></button>)}
         <button type="button" className="kbf-chip is-add" disabled={!!lock || !!naming} onClick={() => setNaming({ id: "new", value: "" })}><PixelIcon name="plus" />分组</button>
-        <span className="spacer" />
-        <Button onClick={() => setRecentOpen(true)}><PixelIcon name="clock" />最近收藏{unknownCount > 0 && <span className="kbf-badge tnum">{unknownCount}</span>}</Button>
       </div>
-      {/* 搜索和刷新单独一行（用户 2026-10-19） */}
+      {/* 搜索一行（用户 2026-10-19）：搜索框占满左侧，右边依次是刷新、最近收藏 */}
       <div className="kbf-tools">
         <label className="search-box kbf-search"><PixelIcon name="search" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`搜 ${total} 篇的标题或摘要`} aria-label="搜索知识库" />{q && <button type="button" className="icon-btn" onClick={() => setQ("")} aria-label="清除搜索"><PixelIcon name="close" /></button>}</label>
         <Button disabled={!!lock || pending > 0} onClick={reload} title="按飞书重新读取（约 20 秒）"><PixelIcon name="refresh" />刷新</Button>
+        <Button onClick={() => setRecentOpen(true)}><PixelIcon name="clock" />最近收藏{unknownCount > 0 && <span className="kbf-badge tnum">{unknownCount}</span>}</Button>
       </div>
       {pending > 0 && !lock && <div className="kbf-syncing"><StepProgress label={`正在写入飞书 · 还剩 ${pending} 项`} /></div>}
       {lock && <div className="write-box is-unknown" role="alert">

@@ -1427,8 +1427,8 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 @media (max-width: 900px) { .plan-raw-board { grid-template-columns: minmax(0, 1fr); } }
 
 /* 知识库画布：搜索和刷新单独一行（用户 2026-10-19） */
-.kbf-tools { display: flex; align-items: center; gap: var(--s2); }
-.kbf-tools .kbf-search { flex: 1; width: auto; max-width: 480px; }
+.kbf-tools { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); }
+.kbf-tools .kbf-search { flex: 1 1 320px; width: auto; }
 
 /* 管培带教 v4（用户 2026-10-19）：左侧卡点与提问原话，右侧反馈栏。卡点数字红色，提问数字蓝色 */
 .mq-count { display: inline-block; min-width: 18px; margin-left: 4px; padding: 0 4px; font: 400 12px var(--font-pixel); text-align: center; color: var(--text); }
@@ -1465,8 +1465,8 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .mq-editor .review-box { padding: var(--s3); }
 .mq-editor .row { flex-wrap: wrap; gap: var(--s2); }
 .mq-editor-head { display: flex; align-items: center; gap: var(--s2); }
-.mq-answer { min-height: 140px; padding: var(--s3); white-space: pre-wrap; line-height: 1.7; }
-.type-hot { background: var(--signal); color: var(--panel); padding: 0 2px; }
+.mq-answer { display: block; min-height: 140px; padding: var(--s3); white-space: pre-wrap; line-height: 1.8; } /* 不用 ai-box 的纵向 flex：否则每段重点各占一行，句子被拆碎 */
+.type-hot { background: none; color: var(--signal); font-weight: 600; } /* 重点只改字色（用户 2026-10-19：不要背景高亮） */
 @media (max-width: 900px) { .mentor-v4 { grid-template-columns: minmax(0, 1fr); } .mq-feedback { position: static; } }
 
 /* 项目推进 · 阶段看板（用户 2026-10-19 选定 B 版） */
