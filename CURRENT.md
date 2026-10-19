@@ -1512,3 +1512,12 @@ SKU规范-1-方案汇总-按月份-特殊活动.png、SKU规范-2-方案汇总-�
 - 回读（只读，脚本拦截写请求，0 条被拦）：首页与快照 `dist/index.html` 逐字节一致；`/api/v3/status`、`/api/promos`、`/api/v3/price/skus`、`/api/v3/price/schemes?sku=uni-lite`、`/api/v3/codex-push`、`/api/v3/codex-reset`、`/api/settings`、`/api/assistants` 均 200；`/api/promos` 15 行全部带 `special`（库迁移生效，8、9 月数据不变，10 月尚未写入）；价格 4 张表为 uni-lite / uni-max(empty) / intl-lite「课时卡」 / intl-comp(empty)；推送 `enabled: false`、每 4 小时。线上截图核对价格记录（矩阵在上、四方案配色、列头细条与「+」）、设置页方案 A、月度促销、新底栏：`docs/handoff/V4/线上5280-第三轮-*.png`。
 - 回滚：`bash scripts/release-app.sh --use nm-20261018-214722-93dd9e6`。
 - 仍待：① 10 月大学辅导促销真实数据写入（用户已批准预览，按促销交接里的流程在 5280 预览→写入→回读）；② 设置页开启机械邪龙兽推送（预览→确认→回读）。
+
+### V4 · 2026-10-19 · 10 月大学辅导促销写入真实数据（用户同意；回读通过，发布 nm-20261019-100506-8cd9eee）
+- 写前快照：/api/promos 15 行（8、9 月），/api/plans 为空。
+- 预览：7 行 × 6 格 + 对比状态 + 整月特殊活动，与用户批准的预览逐格一致（核对脚本最初两次报「整月特殊活动不一致」，原因是脚本自己从样例文件切行推算期望值时写错，不是数据差异；改为写死批准版文本后一致。这两次都只调用了预览接口，没有写入）。
+- 写入一次（未重试）：`PUT /api/plans/2026-10/大学辅导` → 200 `{"inserted":7,"updated":0,"removed":0}`。
+- 回读：10 月大学辅导 7 行 × 6 格、原文、整月特殊活动（双11）全部一致；再解析全部「无变化」；8、9 月 15 行逐字段与写前快照一致。现在 /api/promos 共 22 行，/api/plans 1 条。
+- 截图（只读，拦截所有非 GET 的 /api 请求，拦截记录为空）：工作树 `docs/handoff/V4/线上5280-10月大学辅导-方案汇总.png`、`docs/handoff/V4/线上5280-灵活学Lite档案侧栏.png`（在 `.claude/worktrees/charming-roentgen-f7d8c9` 下，未提交，按要求不提交）。
+- 写前/写后的 promos 快照在本会话 scratchpad（promos-before.json / promos-after.json）。
+- 协调会话复核（只读）：5280 `/api/promos` 共 22 行，2026-10 大学辅导 7 行与用户截图一致（论文稳Pass、先修班课为「无」），8、9 月仍 15 行；`/api/plans` 里 10 月大学辅导整月特殊活动为「双11活动（10.15-11.11）」及四项子活动。
