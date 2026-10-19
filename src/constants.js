@@ -7,7 +7,7 @@ export const PROMO_LINES = ["大学辅导", "国际课程"];
 export function deliverySteps(steps = [], plans, month) {
   const done = plans ? PROMO_LINES.filter((l) => plans.some((p) => p.month === month && p.line === l)) : [];
   const plan = {
-    key: "plans", label: "方案录入", href: "#/marketing/plans",
+    key: "plans", label: "方案录入", href: `#/marketing/plans/${month}`, // 营销默认打开当月，这里指明交付月
     state: done.length === PROMO_LINES.length ? "done" : done.length ? "part" : "todo",
     meta: plans ? `${done.length}/${PROMO_LINES.length} 条业务线已录` : "读取中", // 一行写完；待录的业务线名放悬停提示
     note: plans && done.length < PROMO_LINES.length ? `待录 ${PROMO_LINES.filter((l) => !done.includes(l)).join("、")}` : undefined,

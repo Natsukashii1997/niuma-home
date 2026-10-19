@@ -42,7 +42,7 @@ export default function HomePage() {
           <h1>{greeting(now.getHours())}</h1>
           <p className="label">{WEEKDAYS[now.getDay()]} {String(now.getDate()).padStart(2, "0")} {MONTHS[now.getMonth()]} {now.getFullYear()} · DAY {dayOfYear} · WK {isoWeek(now)} · 交付月 {month}</p>
         </div>
-        <a className="btn btn-primary" href={href("marketing", "plans")}><PixelIcon name="grid" /> {shortMonth(month)}促销</a>
+        <a className="btn btn-primary" href={href("marketing", "plans", month)}><PixelIcon name="grid" /> {shortMonth(month)}促销</a>
       </header>
       <div className="home-grid">
         <CodexCard className="col-8" />

@@ -7,13 +7,14 @@ import PlanEditor from "./PlanEditor.jsx";
 import PromosView from "./PromosView.jsx";
 
 // 月度促销（v3）：上半是当月促销——选月份、业务线，直接在填写框里粘贴 → 解析 → 处理 → 确认；
-// 下半是方案汇总（原促销表）。路由 marketing/plans/<月份>/<业务线>，默认交付月、第一条业务线。
+// 下半是方案汇总（原促销表）。路由 marketing/plans/<月份>/<业务线>，默认当月（用户 2026-10-19）、第一条业务线。
 export default function PlansView({ route = [], dossier = null }) {
   const [m, l] = route;
-  const month = /^\d{4}-\d{2}$/.test(m || "") ? m : deliveryMonth();
+  const month = /^\d{4}-\d{2}$/.test(m || "") ? m : currentMonth();
   const line = LINES.includes(l) ? l : LINES[0];
   const [rev, setRev] = useState(0); // 入库后加一，让状态和汇总重新读取
-  const go = (mm, ll) => { location.hash = href("marketing", "plans", mm, ll); };
+  const [carry, setCarry] = useState(null); // 粘贴的原文属于另一条业务线时，带着原文切过去
+  const go = (mm, ll, next = null) => { setCarry(next && { month: mm, line: ll, ...next }); location.hash = href("marketing", "plans", mm, ll); };
   const mark = month === deliveryMonth() ? "交付月" : month === currentMonth() ? "本月" : null;
   return (
     <>
@@ -23,7 +24,8 @@ export default function PlansView({ route = [], dossier = null }) {
           <MonthSwitch month={month} mark={mark} onChange={(mm) => go(mm, line)} />
           <LineSwitch key={rev} month={month} line={line} onChange={(ll) => go(month, ll)} />
         </div>
-        <PlanEditor month={month} line={line} onSaved={() => setRev((n) => n + 1)} />
+        <PlanEditor month={month} line={line} onSaved={() => setRev((n) => n + 1)}
+          carry={carry && carry.month === month && carry.line === line ? carry : null} onSwitchLine={(ll, next) => go(month, ll, next)} />
       </section>
       <section className="mp-block">
         <div className="mp-head">

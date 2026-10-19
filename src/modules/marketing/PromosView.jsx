@@ -9,9 +9,11 @@ import { PROMO_FIELDS } from "../../constants.js";
 import { buildPromoView, normalizePromoView, readPromoView, writePromoView } from "./promo-view.js";
 
 const GROUPS = [["sku", "按 SKU"], ["line", "按业务线"], ["month", "按月份"]];
-const LONG = new Set(["newDeal", "renewal", "special"]);
-// 定宽列；新签、续费、特殊活动三列不写宽度，平分剩余（二次评审 P2-5）
-const COL_W = { month: 88, line: 88, sku: 120, trial: 88, price: 168 };
+const LONG = new Set(["newDeal", "renewal"]);
+// 表格不单列「特殊活动」（用户 2026-10-19）：SKU 的特殊活动和整月特殊活动一起放在表下的「特殊活动」整行里。
+export const TABLE_FIELDS = PROMO_FIELDS.filter(([field]) => field !== "special");
+// 定宽列；新签、续费两列不写宽度，平分剩余（二次评审 P2-5）
+const COL_W = { month: 88, line: 88, sku: 132, trial: 96, price: 200 };
 
 // dossier：从旧地址 marketing/sku/<业务线>/<SKU> 进来时，直接打开该 SKU 的档案侧栏。
 export default function PromosView({ dossier = null }) {
@@ -20,15 +22,18 @@ export default function PromosView({ dossier = null }) {
   return <Loadable state={state} name="方案汇总">{(rows) => <PromoTable rows={rows} plans={plans.data || []} dossier={dossier} />}</Loadable>;
 }
 
-// 整月特殊活动：不挂在某个 SKU 下面的活动块（如双11），按 业务线×月份 一条，在促销表里整行显示。多块之间空行分隔，每块首行是标题。
-export function MonthSpecial({ line, month, text }) {
+// 特殊活动：按 业务线×月份 一条整行。text 是整月特殊活动（不挂在某个 SKU 下面的活动块，如双11；多块空行分隔，每块首行是标题）；
+// skus 是该月各 SKU 自己的特殊活动，标题用 SKU 名。
+export function SpecialBlock({ line, month, text = "无", skus = [] }) {
+  const blocks = [
+    ...(text !== "无" ? text.split("\n\n").map((block) => { const [title, ...rest] = block.split("\n"); return { title, body: rest.join("\n") }; }) : []),
+    ...skus.map(({ sku, special }) => ({ title: sku, body: special })),
+  ];
   return (
     <div className="month-special">
-      <span className="month-special-tag">整月特殊活动 · {line} · {month}</span>
-      <div>{text.split("\n\n").map((block, i) => {
-        const [title, ...rest] = block.split("\n");
-        return <div key={i} className="month-special-block"><strong>{title}</strong>{rest.length > 0 && <p>{rest.join("\n")}</p>}</div>;
-      })}</div>
+      <span className="month-special-tag">特殊活动 · {line} · {month}</span>
+      <div className="month-special-body">{blocks.map(({ title, body }, i) =>
+        <div key={i} className="month-special-block"><strong>{title}</strong>{body && <p>{body}</p>}</div>)}</div>
     </div>
   );
 }
@@ -56,11 +61,19 @@ function PromoTable({ rows, plans, dossier }) {
     try { await navigator.clipboard.writeText(text); setCopied(key); setTimeout(() => setCopied(""), 1800); }
     catch { setCopied("error"); }
   }
-  const specials = plans.filter((p) => p.special && p.special !== "无" && (!filter.month || p.month === filter.month) && (!filter.line || p.line === filter.line))
+  const specialMap = new Map();
+  const specialOf = (month, line) => {
+    const key = `${month}|${line}`;
+    if (!specialMap.has(key)) specialMap.set(key, { month, line, text: "无", skus: [] });
+    return specialMap.get(key);
+  };
+  for (const p of plans) if (p.special && p.special !== "无") specialOf(p.month, p.line).text = p.special;
+  for (const r of rows) if (r.special && r.special !== "无" && (!filter.sku || r.sku === filter.sku)) specialOf(r.month, r.line).skus.push(r);
+  const specials = [...specialMap.values()].filter((p) => (!filter.month || p.month === filter.month) && (!filter.line || p.line === filter.line))
     .sort((a, b) => b.month.localeCompare(a.month) || a.line.localeCompare(b.line, "zh"));
   const specialsOf = (key) => group === "month" ? specials.filter((p) => p.month === key) : group === "line" ? specials.filter((p) => p.line === key) : [];
-  const cols = BASE.length + PROMO_FIELDS.length;
-  const specialRow = (p) => <tr key={`special-${p.month}-${p.line}`} className="promo-special-row"><td colSpan={cols}><MonthSpecial {...p} text={p.special} /></td></tr>;
+  const cols = BASE.length + TABLE_FIELDS.length;
+  const specialRow = (p) => <tr key={`special-${p.month}-${p.line}`} className="promo-special-row"><td colSpan={cols}><SpecialBlock {...p} /></td></tr>;
   const allExpanded = groups.every((item) => !collapsed.has(item.key));
   const allCollapsed = groups.every((item) => collapsed.has(item.key));
   function toggle(key) {
@@ -86,8 +99,8 @@ function PromoTable({ rows, plans, dossier }) {
       {!groups.length ? <Empty>没有符合条件的记录</Empty> : (
         <div className="table-wrap promo-table-wrap" role="region" aria-label="促销表" tabIndex={0}>
           <table className="grid promo-table">
-            <colgroup>{BASE.map(([k]) => <col key={k} style={{ width: COL_W[k] }} />)}{PROMO_FIELDS.map(([f]) => <col key={f} style={{ width: COL_W[f] }} />)}</colgroup>
-            <thead><tr>{BASE.map(([k, l]) => <th key={k}>{l}</th>)}{PROMO_FIELDS.map(([, label]) => <th key={label}>{label}</th>)}</tr></thead>
+            <colgroup>{BASE.map(([k]) => <col key={k} style={{ width: COL_W[k] }} />)}{TABLE_FIELDS.map(([f]) => <col key={f} style={{ width: COL_W[f] }} />)}</colgroup>
+            <thead><tr>{BASE.map(([k, l]) => <th key={k}>{l}</th>)}{TABLE_FIELDS.map(([, label]) => <th key={label}>{label}</th>)}</tr></thead>
             {groups.map(({ key, name, rows: items, latestChange }) => (
               <tbody key={key}>
                 <tr className="group-row">
@@ -108,15 +121,15 @@ function PromoTable({ rows, plans, dossier }) {
                 {!collapsed.has(key) && items.map((row) => (
                   <tr key={JSON.stringify([row.month, row.line, row.sku])}>
                     {BASE.map(([k]) => <td key={k} className={k === "sku" ? "nowrap promo-sku" : "nowrap"}>{k === "sku" ? <button type="button" className="sku-link" onClick={() => setDrawer({ line: row.line, sku: row.sku })} title="打开 SKU 档案">{row.sku}</button> : row[k]}</td>)}
-                    {PROMO_FIELDS.map(([field], k) => <PromoCell key={field} value={row[field]} field={field} previous={previous.get(row)}
-                      action={k === PROMO_FIELDS.length - 1 && <button type="button" className="icon-btn promo-row-copy" title="复制这一行" onClick={() => copyRows(JSON.stringify([row.month, row.line, row.sku]), [row])}><PixelIcon name={copied === JSON.stringify([row.month, row.line, row.sku]) ? "check" : "copy"} /></button>} />)}
+                    {TABLE_FIELDS.map(([field], k) => <PromoCell key={field} value={row[field]} field={field} previous={previous.get(row)}
+                      action={k === TABLE_FIELDS.length - 1 && <button type="button" className="icon-btn promo-row-copy" title="复制这一行" onClick={() => copyRows(JSON.stringify([row.month, row.line, row.sku]), [row])}><PixelIcon name={copied === JSON.stringify([row.month, row.line, row.sku]) ? "check" : "copy"} /></button>} />)}
                   </tr>
                 ))}
                 {!collapsed.has(key) && specialsOf(key).map(specialRow)}
               </tbody>
             ))}
             {group === "sku" && specials.length > 0 && <tbody>
-              <tr className="group-row"><td colSpan={cols}><div className="promo-group"><span className="promo-group-toggle">整月特殊活动<span className="muted">{specials.length} 条</span></span></div></td></tr>
+              <tr className="group-row"><td colSpan={cols}><div className="promo-group"><span className="promo-group-toggle">特殊活动<span className="muted">{specials.length} 条</span></span></div></td></tr>
               {specials.map(specialRow)}
             </tbody>}
           </table>

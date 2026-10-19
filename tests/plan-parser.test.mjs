@@ -138,3 +138,32 @@ test("大学辅导 10 月方案逐格核对：合写拆分、未提到记无、�
   });
   assert.equal(UNI.length, 7);
 });
+
+test("国际课程 10 月写法：不带编号的标题行、学科/竞赛正价、空行后的双11块（含新签、续费）记整月特殊活动", () => {
+  assert.deepEqual(parsePlan(fixture("2026-10-国际课程"), { aliases }), {
+    line: "国际课程",
+    rows: [
+      { sku: "灵活学Lite", alias: "课时卡", ...empty, trial: "¥99首课试听", price: "学科正价：¥8100版（双11版）\n竞赛正价：¥9050版（双11版）" },
+      none("安心学Max"),
+    ],
+    special: [
+      "双11活动（10.15-11.11）",
+      "新签：试听 48h 内首尾，≥20h 赠 1 课时，≥50h 赠 2 课时，≥100h 赠 3 课时，≥150h 赠 5 课时",
+      "续费（新价格用户）：≥20h 赠 1 课时，≥50h 赠 2 课时，≥100h 赠 3 课时，≥150h 赠 5 课时",
+      "续费（老价格用户）：≥30h 赠 1 课时，≥50h 赠 2 课时",
+    ].join("\n"),
+    unrecognized: [],
+  });
+});
+
+test("SKU 下的「新签：」「续费（老用户）：」记进新签活动、续费活动；空值后的列表接在标签下", () => {
+  const result = parsePlan("【国际课程板块】\n安心学Max\n新签：送 1 课时\n续费（老用户）：\n* 满 30h 送 1\n续费（新用户）：满 20h 送 1");
+  assert.deepEqual(result.rows[1], { sku: "安心学Max", ...empty, newDeal: "送 1 课时", renewal: "老用户：\n满 30h 送 1\n新用户：满 20h 送 1" });
+  assert.deepEqual(result.unrecognized, []);
+});
+
+test("SKU 下紧跟的说明行不当成新块；空行后的单独一行才开新块", () => {
+  const result = parsePlan("【国际课程板块】\n安心学Max\n正价：100\n一段说明\n\n国庆活动\n满 1000 减 100");
+  assert.deepEqual(result.unrecognized, [{ lineNo: 4, text: "一段说明" }]);
+  assert.equal(result.special, "国庆活动\n满 1000 减 100");
+});

@@ -368,9 +368,16 @@ button.sku-link { padding: 0; border: 0; background: none; font: inherit; cursor
 .promo-special-row td { padding: 0; }
 .month-special { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s2) var(--s3); border-left: 3px solid var(--signal); background-image: var(--dither-1); }
 .month-special-tag { flex: none; padding: 1px var(--s1); background: var(--text); color: var(--panel); font: 11px var(--font-mono); white-space: nowrap; }
-.month-special-block + .month-special-block { margin-top: var(--s2); }
-.month-special strong { font-size: 13px; }
+.month-special-body { min-width: 0; }
+.month-special-block + .month-special-block { margin-top: var(--s3); }
+.month-special strong { font-size: 16px; line-height: 1.4; }
 .month-special p { margin: 2px 0 0; font-size: 12px; line-height: 1.6; white-space: pre-line; color: var(--text-2); }
+.plan-preview-table { table-layout: fixed; }
+.plan-preview-table td { min-width: 0; overflow-wrap: anywhere; }
+/* 确认入库：信号橙实底，和其他按钮区分开；不可点时保留浅橙底 */
+.btn-confirm { background: var(--signal); border-color: var(--signal); color: var(--panel); font-weight: 600; }
+.btn-confirm:hover:not(:disabled) { background: var(--text); border-color: var(--text); }
+.btn-confirm:disabled { background: var(--orange-soft); border-color: var(--orange-soft); color: var(--muted); }
 
 /* ---------- 缩略图（版式示意 / 真实图片） ---------- */
 .thumb { container-type: inline-size; position: relative; display: flex; flex-direction: column; gap: 6%; width: 100%; aspect-ratio: 3 / 4; padding: 8%; background: var(--panel); border: 1px solid var(--line); overflow: hidden; color: var(--text); text-align: left; }

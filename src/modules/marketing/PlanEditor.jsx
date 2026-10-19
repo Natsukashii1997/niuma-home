@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend } from "../../api.js";
 import { Button, Card, PhaseSteps, Tag } from "../../ui/components.jsx";
-import { PROMO_FIELDS } from "../../constants.js";
-import { MonthSpecial } from "./PromosView.jsx";
+import { PROMO_LINES } from "../../constants.js";
+import { SpecialBlock, TABLE_FIELDS } from "./PromosView.jsx";
 
 // 方案录入：嵌在「月度促销」上半部分，四步 粘贴 → 解析 → 处理 → 确认。
-export default function PlanEditor({ month, line, onSaved }) {
-  return <PlanForm key={month + "/" + line} month={month} line={line} onSaved={onSaved} />;
+// carry：从另一条业务线带过来的原文（粘贴的原文板块和当前业务线不同时自动切过来）；onSwitchLine(业务线, { rawText, rawHtml }) 发起切换。
+export default function PlanEditor({ month, line, onSaved, carry = null, onSwitchLine }) {
+  return <PlanForm key={month + "/" + line} month={month} line={line} onSaved={onSaved} carry={carry} onSwitchLine={onSwitchLine} />;
 }
 
 const FLOW = [
@@ -17,11 +18,11 @@ const FLOW = [
   ["确认", "确认入库，写入促销表并回读核对"],
 ];
 
-function PlanForm({ month, line, onSaved }) {
+function PlanForm({ month, line, onSaved, carry, onSwitchLine }) {
   const path = "/api/plans/" + encodeURIComponent(month) + "/" + encodeURIComponent(line);
-  const [rawText, setRawText] = useState("");
-  const [rawHtml, setRawHtml] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [rawText, setRawText] = useState(carry?.rawText || "");
+  const [rawHtml, setRawHtml] = useState(carry?.rawHtml || "");
+  const [loading, setLoading] = useState(!carry);
   const [loadError, setLoadError] = useState("");
   const [busy, setBusy] = useState("");
   const [progress, setProgress] = useState(null);
@@ -33,6 +34,7 @@ function PlanForm({ month, line, onSaved }) {
   const operation = useRef(false);
 
   useEffect(() => {
+    if (carry) { parse(carry.rawText, carry.rawHtml).then(() => setMessage(`原文是「${line}」的方案，已自动切到${line}`)); return; }
     let active = true;
     async function load() {
       try {
@@ -71,25 +73,32 @@ function PlanForm({ month, line, onSaved }) {
     const { selectionStart: start, selectionEnd: end } = event.currentTarget;
     const next = rawText.slice(0, start) + text + rawText.slice(end);
     // 整份粘贴保留原始 HTML；局部修改退回纯文本，避免复制出过期格式内容。
-    edit(next, start === 0 && end === rawText.length ? html : "");
+    const nextHtml = start === 0 && end === rawText.length ? html : "";
+    edit(next, nextHtml);
     const input = event.currentTarget;
     requestAnimationFrame(() => input.setSelectionRange(start + text.length, start + text.length));
     // v3：粘贴后自动解析（规则解析，不调用 AI），省去再点一次「解析预览」。
-    if (next.trim()) setTimeout(() => parse(next), 0);
+    if (next.trim()) setTimeout(() => parse(next, nextHtml), 0);
   }
 
   const locked = loading || Boolean(loadError) || Boolean(busy) || needsReload;
   const mismatch = preview && preview.line !== line;
   const canSave = !locked && !saved && preview?.rows.length > 0 && !preview.unrecognized.length && !mismatch;
 
-  async function parse(text = rawText) {
+  async function parse(text = rawText, html = rawHtml) {
     if (locked || operation.current || !text.trim()) return;
     setSaved(false);
     operation.current = true;
     setProgress({ label: "解析预览" });
     setBusy("parse"); setError(""); setMessage(""); setPreview(null);
     try {
-      setPreview(await apiSend("POST", "/api/plans/parse", { month, line, rawText: text }));
+      const result = await apiSend("POST", "/api/plans/parse", { month, line, rawText: text });
+      // 原文是另一条业务线的方案：带着原文切过去，在那条线上重新解析和对比
+      if (result.line && result.line !== line && PROMO_LINES.includes(result.line) && onSwitchLine) {
+        onSwitchLine(result.line, { rawText: text, rawHtml: html });
+        return;
+      }
+      setPreview(result);
       setProgress({ label: "解析预览", done: true });
     } catch (e) { setError(e.message); setProgress({ label: "解析预览", error: e.message }); }
     finally { operation.current = false; setBusy(""); }
@@ -147,9 +156,6 @@ function PlanForm({ month, line, onSaved }) {
       <PhaseSteps items={FLOW.map(([name, hint], i) => ({ key: name, name, note: hint, state: i < stage ? "done" : i === stage ? "cur" : "todo" }))} />
       <div className="toolbar">
         <span className="small muted">写入 {month} · {line}</span>
-        <span className="spacer" />
-        <Button onClick={copy} disabled={locked || !rawText}>复制原文</Button>
-        <Button onClick={save} disabled={!canSave} variant="primary">{busy === "save" ? "入库并核对中…" : "确认入库"}</Button>
       </div>
       {progress && <div className="operation-progress"><StepProgress key={progress.label} {...progress} /></div>}
       {loading && <p className="muted" role="status">正在读取已有原文…</p>}
@@ -163,15 +169,19 @@ function PlanForm({ month, line, onSaved }) {
             placeholder="在此粘贴飞书里的方案，例如「🟥【大学辅导板块】1. 灵活学Lite …」" />
           <p className="muted small">{rawHtml ? "已保留粘贴的原始格式。" : "当前为纯文本。"} 局部修改后按纯文本保存和复制。</p>
         </Card>
-        <Card title="解析预览" extra={preview && <Tag>{preview.rows.length} 个 SKU</Tag>}>
+        <Card title="解析预览" extra={<>
+          <Button onClick={copy} disabled={locked || !rawText}>复制原文</Button>
+          <Button onClick={save} disabled={!canSave} variant="confirm">{busy === "save" ? "入库并核对中…" : "确认入库"}</Button>
+        </>}>
           {!preview ? <div className="parse-empty"><p className="small muted">解析后显示：各 SKU 字段、与上月的差异</p><div className="state-loading" aria-hidden="true"><i /><i /><i /></div></div> : <>
             <p className="muted small">优先对比本月已有数据；本月无数据时对比该业务线上一个有数据的月份。标「改」的格子下方是旧值。</p>
             <div className="table-wrap">
-              <table className="grid compact">
-                <thead><tr><th>SKU</th>{PROMO_FIELDS.map(([, label]) => <th key={label}>{label}</th>)}<th>对比状态</th></tr></thead>
+              <table className="grid compact plan-preview-table">
+                <colgroup>{["16%", "13%", "21%", "19%", "19%", "12%"].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
+                <thead><tr><th>SKU</th>{TABLE_FIELDS.map(([, label]) => <th key={label}>{label}</th>)}<th>对比状态</th></tr></thead>
                 <tbody>{preview.rows.map((row, index) => <tr key={row.sku + "-" + index}>
                   <td>{row.sku}{row.alias && <div className="muted small">原文：{row.alias}</div>}</td>
-                  {PROMO_FIELDS.map(([key]) => <td key={key} className={row.changed?.includes(key) ? "changed" : ""}>
+                  {TABLE_FIELDS.map(([key]) => <td key={key} className={row.changed?.includes(key) ? "changed" : ""}>
                     {row[key]}
                     {row.changed?.includes(key) && <span className="prev-value">{row.previous?.month}：<s>{row.previous?.[key] ?? "无"}</s></span>}
                   </td>)}
@@ -179,7 +189,8 @@ function PlanForm({ month, line, onSaved }) {
                 </tr>)}</tbody>
               </table>
             </div>
-            {preview.special !== "无" && <MonthSpecial line={line} month={month} text={preview.special} />}
+            {(preview.special !== "无" || preview.rows.some((row) => row.special !== "无")) &&
+              <SpecialBlock line={line} month={month} text={preview.special} skus={preview.rows.filter((row) => row.special !== "无")} />}
             {!preview.rows.length && <div className="warn">没有识别到 SKU，请检查原文中的编号行。</div>}
             {preview.removed.length > 0 && <div className="warn"><PixelIcon name="alert" size={14} /><span>将删除的 SKU：{preview.removed.join("、")}。确认入库后删除。</span></div>}
             {mismatch && <div className="warn"><PixelIcon name="alert" size={14} /><span>{preview.line ? "原文业务线为「" + preview.line + "」，与当前「" + line + "」不一致。" : "未识别到业务线，请补充正确的【…板块】标题。"} 请修改原文后重新解析。</span></div>}
