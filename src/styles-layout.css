@@ -41,8 +41,6 @@
 select { height: var(--ctl); }
 .search-box { height: var(--ctl); }
 .check-inline { height: var(--ctl); }
-.line-switch { height: var(--ctl); }
-.line-switch button { height: 100%; padding: 0 var(--s3); gap: 6px; }
 .routine .segmented { height: var(--ctl-sm); }
 .btn-xs { height: 24px; }
 

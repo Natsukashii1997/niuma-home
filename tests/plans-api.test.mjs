@@ -150,3 +150,20 @@ test("大学辅导 10 月方案：预览 → 确认 → 回读，SKU 特殊活�
   const again = (await request("POST", "/api/plans/parse", { month: "2026-10", line: "大学辅导", rawText: text })).body;
   assert.ok(again.rows.every((row) => row.status === "same"));
 });
+
+test("解析可不带业务线：按原文【…板块】识别，并与识别出的业务线对比；识别不出时不对比", async (t) => {
+  const { request, seed } = await setup(t);
+  seed("灵活学Lite", "2026-09", "国际课程", { trial: "¥99" });
+  const text = readFileSync(new URL("../fixtures/2026-10-国际课程.txt", import.meta.url), "utf8");
+  const result = await request("POST", "/api/plans/parse", { month: "2026-10", rawText: text });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.line, "国际课程");
+  assert.deepEqual(result.body.rows.map(({ sku, status, changed }) => ({ sku, status, changed })), [
+    { sku: "灵活学Lite", status: "changed", changed: ["trial", "price"] },
+    { sku: "安心学Max", status: "new", changed: [] },
+  ]);
+  const unknown = (await request("POST", "/api/plans/parse", { month: "2026-10", rawText: "1. 灵活学Lite\n试听：1" })).body;
+  assert.equal(unknown.line, null);
+  assert.deepEqual(unknown.rows, []);
+  assert.equal((await request("POST", "/api/plans/parse", { month: "2026-10", line: "申诉服务", rawText: text })).status, 400);
+});

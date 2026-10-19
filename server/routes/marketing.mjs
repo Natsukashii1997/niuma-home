@@ -31,11 +31,12 @@ export function routes(db) {
       const plan = getPlan(db, params.month, params.line);
       return plan ? json(res, 200, plan) : json(res, 404, { error: "该月该业务线还没有方案原文" });
     }),
+    // line 可省略：按原文【…板块】识别业务线，并与该业务线已有数据对比
     route("POST", "/api/plans/parse", planHandler((res, context, body) => {
       const { month, line } = body || {};
-      validatePlan(month, line, body);
+      validatePlan(month, line ?? "大学辅导", body);
       const parsed = parsePlan(body.rawText, { aliases: listPlanAliases(db) });
-      return json(res, 200, comparePlan(db, month, line, parsed));
+      return json(res, 200, comparePlan(db, month, line ?? parsed.line, parsed));
     })),
     route("PUT", "/api/plans/:month/:line", planHandler((res, { params: { month, line } }, body) => {
       validatePlan(month, line, body);

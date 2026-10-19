@@ -206,14 +206,12 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .mp-block + .mp-block { margin-top: var(--s6); padding-top: var(--s5); border-top: 2px solid var(--text); }
 .mp-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s4); margin-bottom: var(--s3); }
 .mp-head h2 { font-size: 18px; font-weight: 600; margin-right: var(--s1); }
-.line-switch { display: inline-flex; border: var(--border) solid var(--text); background: var(--panel); }
-.line-switch button { display: inline-flex; align-items: center; gap: var(--s2); height: 40px; padding: 0 var(--s3); border: 0; background: none; font: inherit; font-size: 13px; color: var(--text); cursor: pointer; }
-.line-switch button + button { border-left: 1px solid var(--line); }
-.line-switch button:hover { background: var(--panel-soft); }
-.line-switch button.active { background: var(--text); color: var(--panel); }
-.line-switch button.active .status-mark i { border-color: var(--panel); }
-.line-switch em { font-style: normal; font-size: 11px; color: var(--muted); }
-.line-switch button.active em { color: #B4B8C0; }
+/* 业务线录入状态（只读，2026-10-19 起替代 line-switch 的点选） */
+.line-status { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); background: var(--panel-soft); }
+.line-status-item { display: inline-flex; align-items: center; gap: var(--s2); height: 40px; padding: 0 var(--s3); font-size: 13px; color: var(--text); cursor: default; }
+.line-status-item + .line-status-item { border-left: 1px solid var(--line); }
+.line-status-item em { font-style: normal; font-size: 11px; color: var(--muted); }
+.line-status-item b { padding: 0 var(--s1); background: var(--signal); color: var(--panel); font: 400 11px var(--font-mono); }
 
 /* ---------- 营销 · 促销表 ---------- */
 .promo-long { display: block; width: 100%; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
