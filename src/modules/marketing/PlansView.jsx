@@ -79,8 +79,8 @@ function RawBox({ month, line, has, showToast }) {
           <Button className="btn btn-xs" onClick={copy} disabled={!data}><PixelIcon name="copy" />复制</Button>
         </div>
       </div>
-      {!has ? <p className="small muted">本月未录入</p>
-        : plan.error ? <p className="risk-text small">原文读取失败：{plan.error}</p>
+      {!has ? <p className="card-body small muted">本月未录入</p>
+        : plan.error ? <p className="card-body risk-text small">原文读取失败：{plan.error}</p>
         : <pre className="plan-raw-text">{data ? data.rawText : "读取中…"}</pre>}
     </section>
   );

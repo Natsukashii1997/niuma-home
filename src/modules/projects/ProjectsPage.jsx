@@ -368,6 +368,7 @@ function Feedback({ person, item, onReread }) {
   return (
     <section className="card mq-feedback">
       <div className="card-head"><h2><PixelIcon name="send" />反馈</h2><span className="row"><Tag tone={KIND_TONE[item.kind]}>{item.kind}</Tag><span className="small muted tnum">{item.date} · {item.log}</span></span></div>
+      <div className="card-body mq-body">
       <blockquote className="mq-quote">
         <p>{item.text}</p>
         <a className="link" href={item.src} target="_blank" rel="noreferrer">在飞书打开原话<PixelIcon name="link" /></a>
@@ -412,6 +413,7 @@ function Feedback({ person, item, onReread }) {
           <dt>回复</dt><dd className="pre">{pv.value.text}</dd>
         </dl>}
       </WriteBox>
+      </div>
     </section>
   );
 }
