@@ -3,6 +3,7 @@ import { getSettings } from "../db.mjs";
 import { createReportReader, reportDocumentUrl } from "../reports.mjs";
 import { createCalendarReader } from "../calendar.mjs";
 import { createCodexResetReader } from "../codex-reset.mjs";
+import { codexPushStatus } from "../codex-push.mjs";
 import { createUserServices, userRoutes, handleV3 } from "./user.mjs";
 import { deliveryRoutes } from "./delivery.mjs";
 import { recordSource, sourceStatus, reportIdentity } from "../source-status.mjs";
@@ -80,6 +81,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     route("GET", "/api/v3/settings", handleV3(() => settingsChanges.read())),
     route("POST", "/api/settings/:key/preview", handleV3(async (req, { params }) => settingsChanges.preview(params.key, await readJson(req)))),
     route("GET", "/api/v3/codex-reset", handleV3(() => codexReset())),
+    route("GET", "/api/v3/codex-push", handleV3(() => codexPushStatus(db))),
     ...userRoutes(userServices),
     route('GET', '/api/v3/home/todo', handleV3((req, { url }) => todo(url.searchParams.get('month') || undefined))),
     route('GET', '/api/v3/business/revenue', (req, res) => { res.setHeader('x-workdesk-data-origin', 'demo'); json(res, 200, { ...demoRevenue(), origin: 'demo', task: '演示数据（待正式营收表）' }); }),

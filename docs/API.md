@@ -171,6 +171,16 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `GET /api/v3/price/schemes?sku=` → `{ sku, floorMargin, costPerHour, schemes, origin }`；空表返回 `schemes: []`、`origin: "empty"`，不报错。
 - `POST /api/v3/price/schemes/preview?sku=` body `{ unitOrig, tiers, schemes }` → 预览；`PUT /api/v3/price/schemes?sku=` body `{ previewId, confirm: true }` → 写入，页面再回读核对。整张矩阵一起保存：页面里新增、插入、删除方案都只改草稿。必须填满才能保存：原价为空、任一方案有空格（`null`）或一个方案都没有时返回 400，空格的报错写明方案名和缺几档。
 
+## 机械邪龙兽推送 · Codex 重置（2026-10-19）
+
+- 开关是 V3 配置键 `codex_push_enabled`：`"0"` 关（默认）/ `"1"` 开，走上面的预览 → 确认 → 回读；其他值返回 400。
+- `GET /api/v3/codex-push` → `{ enabled, interval, sender, recipient, enabledSince, lastCheck: { at, error } | null, nextCheck, baseline, lastPush: { eventId, status, stage, summary, attempts, error, at } | null }`
+  - 时间均为北京时间文字 `YYYY-MM-DD HH:mm`；`nextCheck` 关闭时为 `null`，刚开启尚未检查时为 `"10 分钟内"`。
+  - `baseline: true` 表示已开启、还没完成第一次成功检查（第一次成功检查只把已有事件记为不推）。
+  - `lastPush.status`：`sent` 已发出 / `failed` 飞书明确拒绝（`error` 为原因，最多试 3 次）/ `unknown` 超时或输出无法确认，不自动重发，需到飞书核对。跳过的事件不出现在这里。
+- 规则（server/codex-push.mjs，服务启动后每 10 分钟看一次开关）：开着且距上次检查满 4 小时才读 aihot.news；同一重置事件只推一次（表 `codex_push`，重启不重推）；一次检查发现多条新事件只推最新一条；关闭期间出现的事件在重新开启时记为基线，不补推。
+- 发送：`lark-cli --profile codex im +messages-send --as bot --user-id <本人 open_id> --msg-type interactive --content <卡片 2.0 JSON> --idempotency-key codex-reset-<事件哈希>`，不在代码里写 token。
+
 ## 业务 · 营收完成度（演示数据）
 
 - `GET /api/v3/business/revenue` → `{ period, timePct, updatedAt, groups: { label, items }[], origin: "demo", task }`，响应头 `x-workdesk-data-origin: demo`；数据取自 `fixtures/v3-demo-revenue.json`，待正式营收表。

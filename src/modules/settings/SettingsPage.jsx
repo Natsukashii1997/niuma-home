@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
-import { Button, Card, Loadable, PageHeader, SampleBadge, Tag } from "../../ui/components.jsx";
+import { Button, Card, Loadable, PageHeader, SampleBadge, StatStrip, Tag } from "../../ui/components.jsx";
 import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { classifyFailure } from "../../ui/write-flow-state.js";
 import { PixelIcon } from "../../ui/bitmap.jsx";
@@ -39,6 +39,30 @@ function previewValue(key, draft) {
   return value;
 }
 
+// 按用途分组：每组对应工作台里用到它的页面。item：old = 旧四键表单，v3 = 工作台配置，其余为专用行。
+const GROUPS = [
+  { id: "reports", title: "日报 · 周报", icon: "reports", use: "首页、日/周报页", items: [["old", "report_doc_url"], ["old", "weekly_doc_url"]] },
+  { id: "project", title: "项目与用户", icon: "project", use: "项目页、用户页、管培生", items: [["v3", "project_base_url"], ["v3", "project_table_id"], ["v3", "timeline_source"], ["v3", "mentor_sources"]] },
+  { id: "kb", title: "知识库收藏", icon: "kb", use: "知识库页、Chrome 扩展", items: [["v3", "kb_space_id"], ["v3", "kb_collect_space"], ["rules"], ["pairing"]] },
+  { id: "marketing", title: "营销与品牌", icon: "marketing", use: "营销页、品牌页、价格", items: [["old", "brand_base_url"], ["old", "material_types"], ["v3", "campaign_table_id"], ["v3", "price_sku_table_id"], ["v3", "price_floor_margin"], ["v3", "price_cost_per_hour"]] },
+  { id: "push", title: "推送与预算", icon: "send", use: "机械邪龙兽、留学之声", items: [["push"], ["v3", "voice_budget"]] },
+  { id: "fixed", title: "只读与暂缓", icon: "lock", use: "固定身份、暂缓接入", items: [["v3", "lark_profile"], ["v3", "lark_app_id"], ["nas"]] },
+];
+const ITEM_LABEL = { rules: "收藏规则", pairing: "扩展配对码", push: "机械邪龙兽推送", nas: "NAS 物料目录" };
+const itemLabel = ([type, key]) => type === "old" ? fields.find((f) => f.key === key).label : type === "v3" ? V3_FIELDS[key].label : ITEM_LABEL[type];
+
+// 行状态：ok 已保存/已配置，default 用默认值，demo 演示口径待确定，missing 未配置，fixed 只读/暂缓/未启用。
+function itemStatus([type, key], settings, v3data) {
+  if (type === "old") return settings[key] ? "ok" : "missing";
+  if (type === "pairing") return "ok";
+  if (type === "nas") return "fixed";
+  if (!v3data) return "loading";
+  const k = type === "rules" ? RULES_KEY : type === "push" ? PUSH_KEY : key;
+  if (v3data.readonly.includes(k)) return "fixed";
+  if (v3data.demoDefaults.includes(k) && v3data.saved[k] === undefined) return "demo";
+  return v3data.saved[k] !== undefined ? "ok" : "default";
+}
+
 export default function SettingsPage() {
   const state = useApi("/api/settings");
   const v3 = useV3Settings();
@@ -46,19 +70,40 @@ export default function SettingsPage() {
   const [dailyPending, setDailyPending] = useState(false);
   const onDailyState = pending => { setDailyPending(pending); setDailyRevision(value => value + 1); };
   const form = (settings, key) => { const field = fields.find((f) => f.key === key); return <SettingForm key={key} field={field} initialValue={settings[key] || ""} dailyRevision={dailyRevision} dailyPending={dailyPending} onDailyState={onDailyState} />; };
+  const row = (settings, item) => {
+    const [type, key] = item;
+    if (type === "old") return form(settings, key);
+    if (type === "v3") return <V3Rows key={key} v3={v3} keys={[key]} />;
+    if (type === "rules") return <CollectRulesRow key="rules" v3={v3} />;
+    if (type === "pairing") return <PairingRow key="pairing" />;
+    if (type === "push") return <PushRow key="push" v3={v3} />;
+    return <div key="nas" className="set-row"><div className="set-row-head"><span className="set-label">NAS 物料目录</span><span className="set-value muted">暂缓接入（你会重新整理目录）；工作台不扫描、不挂载 NAS</span><Tag>暂缓</Tag></div></div>;
+  };
   return <>
-    <PageHeader title="设置" subtitle="每项单独编辑、预览确认后保存并回读；飞书身份固定只读；演示口径标「示例」" />
-    <Loadable state={state} name="设置" big>{(settings) => <div className="settings-page set-groups">
-      <SetGroup title="数据源" icon="link">{form(settings, "report_doc_url")}{form(settings, "weekly_doc_url")}
-        <V3Rows v3={v3} keys={["timeline_source", "project_base_url", "project_table_id", "kb_space_id", "mentor_sources", "kb_collect_space"]} /><CollectRulesRow v3={v3} /><PairingRow /></SetGroup>
-      <SetGroup title="营销" icon="marketing">{form(settings, "material_types")}
-        <V3Rows v3={v3} keys={["campaign_table_id", "price_sku_table_id", "price_floor_margin", "price_cost_per_hour"]} />
-        <div className="set-row"><div className="set-row-head"><span className="set-label">NAS 物料目录</span><span className="set-value muted">暂缓接入（你会重新整理目录）；工作台不扫描、不挂载 NAS</span><Tag>暂缓</Tag></div></div></SetGroup>
-      <SetGroup title="飞书身份与预算" icon="send"><V3Rows v3={v3} keys={["lark_profile", "lark_app_id", "voice_budget"]} />
-        <div className="set-row"><div className="set-row-head"><span className="set-label">机械邪龙兽推送</span><span className="set-value muted">未启用：不新增定时任务，不推送</span><Tag>未启用</Tag></div></div></SetGroup>
-      <SetGroup title="入口" icon="brand">{form(settings, "brand_base_url")}</SetGroup>
-    </div>}</Loadable>
+    <PageHeader title="设置" subtitle="按用途分组；每项单独编辑、预览确认后保存并回读；飞书身份固定只读" />
+    <Loadable state={state} name="设置" big>{(settings) => {
+      const groups = GROUPS.map((g) => ({ ...g, rows: g.items.map((item) => ({ item, label: itemLabel(item), status: itemStatus(item, settings, v3.data) })) }));
+      const all = groups.flatMap((g) => g.rows);
+      const count = (s) => all.filter((r) => r.status === s).length;
+      const todo = all.filter((r) => r.status === "demo" || r.status === "missing");
+      const cards = (list) => list.map((g) => <SetGroup key={g.id} title={g.title} icon={g.icon} extra={<GroupCount group={g} />}>{g.rows.map((r) => row(settings, r.item))}</SetGroup>);
+      return <div className="settings-page set-groups">
+        <StatStrip items={[
+          { label: "已保存", value: count("ok"), tone: "ok", foot: "你保存过的值" },
+          { label: "默认值", value: count("default"), foot: "未改过，用工作台内置值" },
+          { label: "待你确定", value: todo.length, tone: todo.length ? "signal" : "muted", foot: todo.map((r) => r.label).join("、") || "没有待处理项" },
+          { label: "飞书身份", value: "codex", foot: "机械邪龙兽 · 固定只读" },
+        ]} />
+        {cards(groups)}
+      </div>;
+    }}</Loadable>
   </>;
+}
+
+function GroupCount({ group }) {
+  const n = (s) => group.rows.filter((r) => r.status === s).length;
+  const parts = [`${group.rows.length} 项`, n("ok") && `${n("ok")} 已保存`, (n("demo") + n("missing")) && `${n("demo") + n("missing")} 待确定`].filter(Boolean);
+  return <span className="set-count"><span className="muted">{group.use}</span>{parts.join(" · ")}</span>;
 }
 
 function SettingForm({ field, initialValue, dailyRevision, dailyPending, onDailyState }) {
@@ -205,8 +250,8 @@ function SettingForm({ field, initialValue, dailyRevision, dailyPending, onDaily
   </div>;
 }
 
-function SetGroup({ title, icon, children }) {
-  return <Card title={<><PixelIcon name={icon} />{title}</>}><div className="set-rows">{children}</div></Card>;
+function SetGroup({ title, icon, extra, children }) {
+  return <Card title={<><PixelIcon name={icon} />{title}</>} extra={extra}><div className="set-rows">{children}</div></Card>;
 }
 
 // v3 新增的配置项：读 /api/v3/settings 的实际值；每项单独编辑 → 预览 → 确认保存 → 回读。
@@ -369,14 +414,62 @@ function PairingRow() {
   const reread = async () => { const back = await apiSend("GET", "/api/v3/kb/collect/pairing"); flow.resolve(); setFresh(back); };
   return (
     <div className="set-row set-pairing">
-      {head(<span className="set-value"><code>{show ? code : `${code.slice(0, 6)}…${code.slice(-4)}`}</code></span>,
-        <button type="button" className="link-btn" onClick={() => setShow((v) => !v)}>{show ? "隐藏" : "显示"}</button>,
+      {/* 显示/隐藏跟在码后面，复制占按钮列，与上面各行的「状态｜编辑」两列对齐。 */}
+      {head(<span className="set-value set-pairing-code"><code>{show ? code : `${code.slice(0, 6)}…${code.slice(-4)}`}</code><button type="button" className="link-btn" onClick={() => setShow((v) => !v)}>{show ? "隐藏" : "显示"}</button></span>,
+        <Tag tone="green">已生成</Tag>,
         <Button onClick={copy}><PixelIcon name="copy" />复制</Button>)}
-      <div className="set-edit stack-sm">
-        <span className="small muted">Chrome 扩展「牛马之家 · 收藏」第一次使用时填这个码；生成于 {new Date(createdAt).toLocaleString("zh-CN", { hour12: false })}。{note}</span>
-        <div className="row"><span className="spacer" /><Button onClick={preview} disabled={flow.busy || flow.phase === "unknown"}><PixelIcon name="refresh" />重新生成</Button></div>
+      <div className="set-edit stack-sm set-pairing-foot">
+        <span className="small muted">Chrome 扩展「牛马之家 · 收藏」第一次使用时填这个码；生成于 {new Date(createdAt).toLocaleString("zh-CN", { hour12: false })}。<button type="button" className="link-btn" onClick={preview} disabled={flow.busy || flow.phase === "unknown"}>重新生成</button>{note && ` ${note}`}</span>
         <WriteBox flow={flow} title="重新生成配对码 · 预览" confirmLabel="确认重新生成" savedText="已生成新配对码，回读一致；请在扩展里重新填写" onConfirm={confirm} onRepreview={preview} onReread={reread}>
           <p className="small">旧配对码会立即失效，Chrome 扩展要重新填写新码才能收藏。只改工作台本机配置，不改飞书。</p>
+        </WriteBox>
+      </div>
+    </div>
+  );
+}
+
+// 机械邪龙兽推送 Codex 重置：开关写 V3 配置 codex_push_enabled，走预览 → 确认 → 回读；下面照实显示检查与推送记录。
+const PUSH_KEY = "codex_push_enabled";
+const PUSH_STATUS = { sent: "已推送", failed: "推送失败", unknown: "结果不明" };
+function PushRow({ v3 }) {
+  const state = useApi("/api/v3/codex-push");
+  const [fresh, setFresh] = useState(null);
+  const flow = useWriteFlow();
+  if (!v3.data) return null; // 上面的 V3 行已在显示读取状态
+  const on = v3.data.values[PUSH_KEY] === "1";
+  const push = fresh || state.data;
+  const next = on ? "0" : "1";
+  const preview = () => flow.preview(() => apiSend("POST", `/api/settings/${PUSH_KEY}/preview`, { value: next }));
+  const confirm = () => flow.confirm(
+    (pv) => apiSend("PUT", `/api/settings/${PUSH_KEY}`, { previewId: pv.previewId, confirm: true }),
+    async (receipt, pv) => {
+      const back = await apiSend("GET", "/api/v3/settings");
+      const ok = back.values[PUSH_KEY] === pv.value && back.saved[PUSH_KEY] === pv.value;
+      if (ok) { v3.setData(back); setFresh(await apiSend("GET", "/api/v3/codex-push")); }
+      return ok;
+    },
+  );
+  const reread = async () => { const back = await apiSend("GET", "/api/v3/settings"); flow.resolve(); v3.setData(back); setFresh(await apiSend("GET", "/api/v3/codex-push")); };
+  const last = push?.lastPush;
+  return (
+    <div className="set-row">
+      <div className="set-row-head">
+        <span className="set-label">机械邪龙兽推送</span>
+        <span className="set-value">{on ? "已开启 · 每 4 小时检查 Codex 重置，有新重置时私聊发给你" : <span className="muted">未开启：不检查、不推送</span>}</span>
+        <Tag tone={on ? "green" : "neutral"}>{on ? "已开启" : "未开启"}</Tag>
+        <Button onClick={preview} disabled={flow.busy || flow.phase === "unknown"}><PixelIcon name={on ? "close" : "send"} />{on ? "关闭" : "开启"}</Button>
+      </div>
+      <div className="set-edit stack-sm set-push-foot">
+        {state.error && !fresh ? <span className="small warn-text">推送状态读取失败：{state.error}</span> : push && <dl className="kv set-push-kv">
+          <dt>发送</dt><dd>{push.sender} → {push.recipient}</dd>
+          <dt>上次检查</dt><dd>{push.lastCheck ? <>{push.lastCheck.at}{push.lastCheck.error && <span className="warn-text">数据源读取失败：{push.lastCheck.error}</span>}</> : <span className="muted">还没检查过</span>}{on && push.nextCheck && <span className="muted">· 下次 {push.nextCheck}</span>}</dd>
+          <dt>上次推送</dt><dd>{last ? <><span>{last.at}</span><Tag tone={last.status === "sent" ? "green" : last.status === "failed" ? "red" : "amber"}>{PUSH_STATUS[last.status]}</Tag><span>{last.summary}</span></> : <span className="muted">{on ? (push.baseline ? "刚开启：第一次检查只记下已有的重置，不推" : "还没有新的重置需要推送") : "没有推送记录"}</span>}</dd>
+          {last?.error && <><dt>失败原因</dt><dd className="warn-text">{last.error}</dd></>}
+        </dl>}
+        <WriteBox flow={flow} title={`${on ? "关闭" : "开启"}机械邪龙兽推送 · 预览`} confirmLabel={`确认${on ? "关闭" : "开启"}`} savedText={`已${on ? "开启" : "关闭"}推送，回读一致`} onConfirm={confirm} onRepreview={preview} onReread={reread}>
+          {(pv) => <dl className="kv"><dt>原值</dt><dd>{pv.before === "1" ? "开启" : "关闭"}{pv.before === null && "（默认）"}</dd><dt>新值</dt><dd><code className="diff-new">{pv.value === "1" ? "开启" : "关闭"}</code></dd>
+            <dt>之后</dt><dd>{pv.value === "1" ? "10 分钟内做第一次检查，只记下已有的重置、不推；之后每 4 小时检查一次，同一次重置只推一次，由机械邪龙兽（机器人身份）私聊发给你本人。" : "不再检查、不再推送；已有的推送记录保留。"}</dd>
+            <dt>写到哪里</dt><dd>工作台本地配置，不改飞书</dd></dl>}
         </WriteBox>
       </div>
     </div>

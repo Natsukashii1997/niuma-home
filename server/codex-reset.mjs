@@ -3,11 +3,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { beijingText, failure } from './v3-common.mjs';
 
-const endpoint = 'https://aihot.news/api/v1/codex-resets/recent';
-const stages = { announce: '预告', confirm: '确认', amend: '修正', withdraw: '撤回' };
+export const endpoint = 'https://aihot.news/api/v1/codex-resets/recent';
+export const stages = { announce: '预告', confirm: '确认', amend: '修正', withdraw: '撤回' };
 // 北京时间「10月18日 05:12」。
-const monthDay = value => { const t = beijingText(value); return `${Number(t.slice(5, 7))}月${Number(t.slice(8, 10))}日 ${t.slice(11)}`; };
-const isTime = value => typeof value === 'string' && /T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
+export const monthDay = value => { const t = beijingText(value); return `${Number(t.slice(5, 7))}月${Number(t.slice(8, 10))}日 ${t.slice(11)}`; };
+export const isTime = value => typeof value === 'string' && /T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
 
 export function codexResetView(source, { seen = new Set(), now = Date.now() } = {}) {
   if (!Array.isArray(source?.events) || !Array.isArray(source?.activities) || source.checkedAt !== null && !isTime(source.checkedAt)) throw failure(502, 'Codex 重置来源结构不完整');
@@ -49,7 +49,7 @@ export function codexResetView(source, { seen = new Set(), now = Date.now() } = 
   };
 }
 
-async function userAgent() {
+export async function userAgent() {
   const base = 'aihot-skill/2.0.0 (+https://aihot.news/aihot-skill/)';
   const actor = await readFile(path.join(os.homedir(), '.agents/skills/aihot/.aihot-actor-id'), 'utf8').then(s => s.trim()).catch(() => '');
   return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actor) ? `${base} aihot-actor/${actor}` : base;
