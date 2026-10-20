@@ -1,10 +1,11 @@
-import { json, pending, readJson, route } from '../http.mjs';
+import { json, readJson, route } from '../http.mjs';
 import { createTimelineReader } from '../timeline.mjs';
 import { createNeedsService } from '../needs.mjs';
 import { failure } from '../v3-common.mjs';
 import { createStrategyExportService } from '../feishu-export.mjs';
 import { createManualNeeds } from '../manual-needs.mjs';
 import { createRulingService, withRulings } from '../timeline-rulings.mjs';
+import { createUserStrategyService } from '../user-strategy.mjs';
 
 export const handleV3 = fn => async (req, res, context) => {
   try { json(res, 200, await fn(req, context)); }
@@ -18,13 +19,17 @@ export function createUserServices(db, options = {}) {
   // 页面、需求推导、首页待办看到的都是叠加了人工裁定的时间线；裁定本身对照原始快照。
   const timeline = async opts => withRulings(db, await raw(opts));
   const needs = createNeedsService(db, timeline, options.needs);
-  return { timeline, needs, strategyExports: createStrategyExportService(db, needs, options.exports), manualNeeds: createManualNeeds(db, { voice: options.voiceReader, ...options.manualNeeds }), rulings: createRulingService(db, raw, options.rulings) };
+  return { timeline, needs, strategyExports: createStrategyExportService(db, needs, options.exports), manualNeeds: createManualNeeds(db, { voice: options.voiceReader, ...options.manualNeeds }), rulings: createRulingService(db, raw, options.rulings), userStrategy: createUserStrategyService(db, options.userStrategy) };
 }
 export function userRoutes(services) {
-  const { timeline, needs, strategyExports, manualNeeds, rulings } = services;
+  const { timeline, needs, strategyExports, manualNeeds, rulings, userStrategy } = services;
   return [
-    // 月度用户策略（docs/用户策略规范.md）：生成与保存待 T13，未实现前前端显示 2026-11 示例。
-    route('GET', '/api/v3/user-strategy', pending('T13-用户策略生成')),
+    // 月度用户策略（T13，docs/用户策略规范.md）：用户情况内置可改，促销策略按钮生成；修改 / 生成 / 定稿都先预览，再用同一个 confirm 写入并回读。
+    route('GET', '/api/v3/user-strategy', handleV3((req, { url }) => userStrategy.get(url.searchParams.get('month')))),
+    route('POST', '/api/v3/user-strategy/generate/preview', handleV3(async req => userStrategy.previewGenerate(await body(req)))),
+    route('POST', '/api/v3/user-strategy/:month/edit/preview', handleV3(async (req, { params }) => userStrategy.previewEdit(params.month, await body(req)))),
+    route('POST', '/api/v3/user-strategy/:month/finalize/preview', handleV3((req, { params }) => userStrategy.previewFinalize(params.month))),
+    route('POST', '/api/v3/user-strategy/:month/confirm', handleV3(async (req, { params }) => userStrategy.confirm(params.month, await body(req)))),
     route('POST', '/api/v3/timeline/anomalies/:key/preview', handleV3(async (req, { params }) => rulings.preview(params.key, await body(req)))),
     route('POST', '/api/v3/timeline/anomalies/confirm', handleV3(async req => rulings.confirm(await body(req)))),
     // 手写 / Voice 转来的需求草稿：路径与 /api/v3/needs/:id 分开，避免被当成需求编号。

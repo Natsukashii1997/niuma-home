@@ -270,3 +270,20 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `POST /api/v3/mentor/:name/items/:id/reply/preview` 请求 `{ text, as: "user" | "bot" }` → `{ previewId, expiresAt, value: { quote, date, log, doc, as, text, display } }`；`text` 去掉 `**` 记号后发送。这一条结果不明时返回 409 `REPLY_UNKNOWN`。
 - `POST /api/v3/mentor/:name/items/:id/reply` 请求 `{ previewId, confirm: true }` → 回复记录（`state: "sent"`）。用 `lark-cli drive +add-comment --block-id <id>` 在原话那一段挂评论（user = 常浩本人，bot = 机械邪龙兽应用），只发一次，再按评论编号回读核对；同一预览重复确认返回同一回执。授权被拒（确定没执行）清掉记录；其他失败或回读不一致记为 `unknown` 并返回 502 `REPLY_UNKNOWN`。
 - `POST /api/v3/mentor/:name/items/:id/reply/reconcile` 请求 `{}`：只读翻这篇文档的划词评论，找到同一段、同样内容的评论记为 `sent`；没找到清掉记录（`{ state: "none", checked: true }`），可重新发送。
+
+## 策略 · 月度用户策略（T13，2026-10-20）
+
+结构与写作规范见 `docs/用户策略规范.md`。分两层：
+
+- **用户情况**（核心判断、1 全局研判、2 用户洞察、3 机会收敛）按月内置在 `docs/用户情况/YYYY-MM.json`，随版本发布；时间窗、时间全景节点条、各地区节点数、推测节点由 `node scripts/user-insight-facts.mjs YYYY-MM` 按时间线算好写进文件。第一次修改时整月复制到本地 `v3_documents`（kind `user-strategy`，id 为月份），之后以本地为准。
+- **促销策略**（本月目标、核心打法、4.1–4.4）由按钮生成，存在当月记录的 `strategy` 下。
+
+接口：
+
+- `GET /api/v3/user-strategy?month=YYYY-MM` → `{ month, window, origin: "内置" | "已修改", updatedAt?, summary: { judgement }, overview: { markers, common, diff, external, tiers, lanes, counts }, regions: [{ key, name, tier, temp: [起, 止], node, task, pain, tempNote, barrier, opp, master }], opportunities: [[优先级, 机会, 地区, 业务线, 新签/续费, 窗口, 依据]], appendix: { guesses, pending }, strategy: null | { status: "草稿" | "定稿", generatedAt, finalizedAt?, model, goal, plays: [[栏, 文字]], promo: { lines: { 新签, 续费 }, logic, exclude, floor }, warnings } }`；没有内置也没有本地记录时返回 `{ month, status: "未准备" }`。GET 不调用模型。
+  - 普通条目 `[正文, 来源]`，来源 ∈ 时间线 / 规则推导 / 原声 / AI 判断 / 推测 / 你写的；`barrier` 为 `[障碍编号, 描述, 来源]`。
+  - `promo.lines.*` 每行 `[角色, [打法编号], 做法, 适用]`；`logic` 每行 `[障碍编号, 栏, [机制编号], [打法编号], 作用路径]`；`exclude` 每行 `[[打法编号], 理由]`。编号来自 `src/modules/user/playbook.js` 与 `docs/打法库/P*.md`。
+- `POST /api/v3/user-strategy/generate/preview` 请求 `{ month, confirmOverwrite? }` → `{ previewId, expiresAt, before, value, overwrite }`。按当月用户洞察与打法库内部匹配（`matchPromo`，不调用模型，结果确定），规则见 docs/用户策略规范.md 第 7 节；`strategy.model` 为「内部匹配」。匹配结果结构或编号不合规返回 500 `STRATEGY_INVALID`，不保存；字数、禁用词、正文编号、阶段错栏写进 `strategy.warnings`，不拦截。促销已定稿时必须带 `confirmOverwrite: true`，否则 409。用户情况原样保留。
+- `POST /api/v3/user-strategy/:month/edit/preview` 请求 `{ path, lines }` → 预览。`path` 允许 `summary.judgement`、`strategy.goal`（生成后）、`overview.common|diff|external|tiers`、`opportunities`、`regions.<地区>.node|task|pain|temp|barrier|opp|master`。`lines` 一行一条，与原条正文相同的行沿用原来源，其余标「你写的」；`temp` 第一行写温度（「温 → 热」或「热」）；`barrier` 每行「障碍名称：具体描述」（也接受「A2 描述」）；`tiers` 每行「地区 | 分档 | 依据」，7 个地区各一行；`opportunities` 每行「P0 | 机会 | 地区 | 业务线 | 新签/续费 | 窗口 | 依据」。
+- `POST /api/v3/user-strategy/:month/finalize/preview` 请求 `{}` → 预览（促销策略改为定稿；还没生成时 409）。
+- `POST /api/v3/user-strategy/:month/confirm` 请求 `{ previewId, confirm: true }` → 写入后回读的整份记录；记录在预览后被改过返回 409；同一预览重复确认返回同一回执。

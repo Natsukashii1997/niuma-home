@@ -2,12 +2,11 @@ import { useState } from "react";
 import { PixelIcon } from "../../ui/bitmap.jsx";
 import { href } from "../../router.js";
 import { Card, Placeholder, Segmented } from "../../ui/components.jsx";
-import { BARRIERS, CATEGORIES, MECHANISMS, parseCard } from "./playbook.js";
+import { BARRIERS, CATEGORIES, MECHANISMS } from "./playbook.js";
+import { PLAYS } from "./playbook-cards.js";
 
 // 打法库：卡片正文是 docs/打法库/P*.md，结构与分类见 docs/打法库/README.md。
 // 卡片第二行的障碍、阶段是隐藏标签，只用于筛选和排序，页面上不展示（用户 2026-10-20）。
-const RAW = import.meta.glob("../../../docs/打法库/P*.md", { query: "?raw", import: "default", eager: true });
-const PLAYS = Object.keys(RAW).sort().map((k) => parseCard(RAW[k])).filter(Boolean);
 const README = Object.values(import.meta.glob("../../../docs/打法库/README.md", { query: "?raw", import: "default", eager: true }))[0] || "";
 // 列表底部只放库说明里的「价格秩序」「呈现手段」两节
 const NOTES = README.split(/\n(?=## )/).filter((s) => /^## [三四]、/.test(s)).map((s) => {
