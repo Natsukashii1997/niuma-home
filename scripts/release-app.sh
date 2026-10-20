@@ -39,7 +39,8 @@ else
   REL="$BASE/releases/$NAME"
   [ ! -e "$REL" ] || fail "快照已存在：$REL"
   mkdir -p "$REL"
-  git -C "$ROOT" archive HEAD server fixtures package.json | tar -x -C "$REL"
+  # 用户策略在运行时读 docs/用户情况、docs/打法库，并引用 src/modules/user/playbook.js，须随快照带上
+  git -C "$ROOT" archive HEAD server fixtures package.json docs/用户情况 docs/打法库 src/modules/user/playbook.js | tar -x -C "$REL"
   (cd "$ROOT" && npx vite build --outDir "$REL/dist" --emptyOutDir --logLevel warn)
   [ -f "$REL/dist/index.html" ] || fail "构建没有产出 dist/index.html"
 fi
