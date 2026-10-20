@@ -181,7 +181,7 @@ export function checkPromo(raw, cards) {
 // 1. 障碍权重 = 各地区决策障碍按分档累加（主战场 3 / 次要 2 / 平稳 1）。
 // 2. 新签栏用新签 + 通用卡，续费栏用续费 + 通用卡；续费栏不处理「不信任效果」「没被触达」。
 // 3. 从权重最高的障碍起，每个障碍按 PRIORITY 选第一张可用的卡；第一张为主打法，其余为辅助；每栏最多 4 张，已被选中卡主治的障碍不再单独选。
-// 4. 卡片「不宜组合」里点名的打法不进同一栏；同一栏只用一种直接降价。被挡住或障碍已覆盖的首选卡写进 4.3。
+// 4. 卡片「不宜组合」里点名的打法不进同一栏；同一栏只用一种直接降价。被挡住、障碍已覆盖、因满 4 张没轮到的首选卡写进 4.3；仍不足 2 条时补已选障碍的第二候选。
 // 5. 4.2 每行 = 障碍 → 该卡主机制 → 打法 → 作用路径（心理机制词表里的标准释义）。
 // 6. 4.1 做法引用权重最高地区对这个障碍的具体描述；同分障碍先比主战场地区数，再按词表顺序。
 const TIER_WEIGHT = { 主战场: 3, 次要: 2, 平稳: 1 };
@@ -224,8 +224,10 @@ export function matchPromo(doc, cards) {
     const order = Object.entries(weight).filter(([code]) => line === '新签' || !RENEWAL_SKIP.has(code))
       .sort((a, b) => b[1] - a[1] || fronts(b[0]) - fronts(a[0]) || CODES.indexOf(a[0]) - CODES.indexOf(b[0])).map(([code]) => code);
     const chosen = [], covered = new Set(), rows = [];
+    const capped = [];
     for (const code of order) {
-      if (chosen.length >= MAX_PER_LINE || covered.has(code)) continue;
+      if (covered.has(code)) continue;
+      if (chosen.length >= MAX_PER_LINE) { capped.push(code); continue; }
       const candidates = (PRIORITY[line][code] || []).map(id => byId[id]).filter(c => c && (c.stage === '通用' || c.stage === line));
       let pick = null;
       for (const c of candidates) {
@@ -243,17 +245,27 @@ export function matchPromo(doc, cards) {
       logic.push([code, line, [pick.mechs[0]], [pick.id], MECHANISMS[pick.mechs[0]][1]]);
     }
     lines[line] = rows; main[line] = chosen[0];
+    const unused = (id, why) => { const c = byId[id]; if (c && !chosen.includes(c) && !exclude.some(([[x]]) => x === id)) exclude.push([[id], why]); };
+    // 因每栏最多 4 张没轮到的障碍：首选卡不选
+    for (const code of capped) unused((PRIORITY[line][code] || [])[0], `「${NAME_OF[code]}」只涉及${holders[code].map(r => r.name).join('、')}，${line}栏已满 4 张`);
     // 首选卡因障碍已被覆盖而没用上的，也算「不选」
     for (const code of order.filter(c => covered.has(c))) {
       const first = byId[(PRIORITY[line][code] || [])[0]];
       if (first && !chosen.includes(first) && !exclude.some(([[id]]) => id === first.id)) exclude.push([[first.id], `「${NAME_OF[code]}」已由${chosen.find(x => x.barriers.main.includes(code))?.name || '已选打法'}覆盖，只补真实缺口`]);
     }
   }
+  // 兜底：本月没有冲突、覆盖或截断时，取已选障碍的第二候选说明不叠加
+  for (const [code, line] of logic.map(([c, l]) => [c, l])) {
+    if (exclude.length >= 2) break;
+    const second = byId[(PRIORITY[line][code] || [])[1]], picked = byId[logic.find(([c, l]) => c === code && l === line)[3][0]];
+    if (second && !Object.values(lines).flat().some(([, ids]) => ids[0] === second.id) && !exclude.some(([[x]]) => x === second.id)) exclude.push([[second.id], `「${NAME_OF[code]}」已用${picked.name}，不再叠加同类打法`]);
+  }
   const opps = doc.opportunities, focus = opps.filter(o => o[0] === 'P0').map(o => o[1]);
+  const gap = t => (/^[0-9A-Za-z]/.test(t) ? ` ${t}` : t); // 中文后接数字或英文时空一格
   const renewal = opps.find(o => o[4] === '续费') || opps.find(o => o[4].includes('续费'));
   const summary = line => (main[line] ? clip(`${main[line].name}：化解「${NAME_OF[mainCode[line]]}」（${holders[mainCode[line]].map(r => r.name).join('、')}）`) : '本月没有对应的障碍');
   return {
-    goal: `新签以${main['新签']?.name || '—'}主攻${focus.join('、')}；续费以${main['续费']?.name || '—'}承接${renewal ? renewal[1] : '下学期续报'}`,
+    goal: `新签以${main['新签']?.name || '—'}主攻${gap(focus.join('、'))}；续费以${main['续费']?.name || '—'}承接${gap(renewal ? renewal[1] : '下学期续报')}`,
     plays: LINES.map(line => [line, summary(line)]),
     promo: { lines, logic, exclude: exclude.slice(0, 3), floor: FLOOR },
   };
