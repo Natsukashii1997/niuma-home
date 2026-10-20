@@ -183,7 +183,7 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 
 ## 业务 · 营收完成度（演示数据）
 
-- `GET /api/v3/business/revenue` → `{ period, timePct, updatedAt, groups: { label, items }[], origin: "demo", task }`，响应头 `x-workdesk-data-origin: demo`；数据取自 `fixtures/v3-demo-revenue.json`，待正式营收表。
+- `GET /api/v3/business/revenue` → `{ period, timePct, updatedAt, source, groups: { label, items }[] }`；只读飞书多维表格《策略数据表单》的仪表盘「当月策略盘」（`server/revenue.mjs`，按组件名找组件）：6 个进度组件给 `current/target`，「总转化率趋势」给本月 `rate` 与上月 `lastMonthRate`（本月还没有转化率时不返回 `conv`）。`period` 为「YYYY 年 M 月」，`timePct` 为当月已过天数占比。缓存 10 分钟，先给上次结果（含重启前快照）、过期后台重读；组件缺失或数据不全报 502。
 - 一般项 `{ key, name, current, target }`；比率项 `{ key, name, rate, lastMonthRate }`（0–1 的小数），前端按「有 `rate` 即比率项」显示大号百分比和「上月 x%」，不画进度条。2026-10-18 起「总进度」组第 4 项为 `conv`「总转化率」。
 
 ## 品牌数据（2026-10-18，只读）

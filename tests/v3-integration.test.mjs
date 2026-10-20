@@ -121,6 +121,7 @@ test('自言自语转需求进入采纳流程，消息草稿变动会撤销原�
   putRecord(db,'selftalk-need','message',{...manual,text:'更改'});assert.equal((await service.list('2026-11')).needs[0].status,'待复核');
 });
 
-test('营收按已授权演示口径返回，200 并带 origin:demo 示例标记，不伪造实时更新',async t=>{
-  const {db}=database(t),result=await invoke(routes(db),'GET','/api/v3/business/revenue');assert.equal(result.status,200);assert.equal(result.body.origin,'demo');assert.equal(result.headers['x-workdesk-data-origin'],'demo');assert.equal(result.body.groups.length,2);assert.equal(result.body.updatedAt,'10-16 09:30');
+test('营收读飞书仪表盘，200 且不再带演示标记',async t=>{
+  const {db}=database(t),value={period:'2026 年 10 月',timePct:0.5,updatedAt:'10-20 18:40',groups:[{label:'总进度',items:[]},{label:'业务线',items:[]}]};
+  const result=await invoke(routes(db,undefined,undefined,{revenue:{readSource:async()=>value}}),'GET','/api/v3/business/revenue');assert.equal(result.status,200);assert.equal(result.body.origin,undefined);assert.equal(result.headers['x-workdesk-data-origin'],undefined);assert.deepEqual(result.body,value);
 });

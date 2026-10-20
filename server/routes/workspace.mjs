@@ -14,7 +14,7 @@ import { createProjectServices, projectRoutes } from "./projects.mjs";
 import { routes as brandRoutes } from "./brand.mjs";
 import { routes as marketingRoutes } from "./v3-marketing.mjs";
 import { createTodoReader } from "../home-todo.mjs";
-import { demoRevenue } from "../demo-revenue.mjs";
+import { createRevenueService } from "../revenue.mjs";
 import { createVoiceReader } from "../voice.mjs";
 
 const invalid = (message) => { throw Object.assign(new Error(message), { status: 400 }); };
@@ -64,6 +64,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
   const voice = createVoiceReader(db, v3Options.voice);
   const userServices = createUserServices(db, { ...v3Options, voiceReader: voice, timeline: { ...v3Options.timeline, onSource: event => recordSource(db, 'timeline', event) } });
   const projectServices = createProjectServices(db, v3Options);
+  const revenue = createRevenueService(db, v3Options.revenue);
   const todo = createTodoReader(db, { ...userServices, projects: projectServices.projects, ...v3Options.todo });
   const reportHandler = (detail) => async (req, res, { params, url }) => {
     try {
@@ -84,7 +85,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     route("GET", "/api/v3/codex-push", handleV3(() => codexPushStatus(db))),
     ...userRoutes(userServices),
     route('GET', '/api/v3/home/todo', handleV3((req, { url }) => todo(url.searchParams.get('month') || undefined))),
-    route('GET', '/api/v3/business/revenue', (req, res) => { res.setHeader('x-workdesk-data-origin', 'demo'); json(res, 200, { ...demoRevenue(), origin: 'demo', task: '演示数据（待正式营收表）' }); }),
+    route('GET', '/api/v3/business/revenue', handleV3(() => revenue.get())),
     ...deliveryRoutes(userServices.needs, db),
     ...projectRoutes(projectServices),
     ...brandRoutes(db, v3Options.brand),
