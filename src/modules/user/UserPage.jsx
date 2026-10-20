@@ -5,6 +5,7 @@ import { href } from "../../router.js";
 import { Button, DateInput, Loadable, MonthSwitch, PageHeader, Placeholder, Segmented, Tabs, Tag } from "../../ui/components.jsx";
 import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { Strategy } from "./StrategyView.jsx";
+import { Playbook } from "./PlaybookView.jsx";
 import { deliveryMonth } from "../../constants.js";
 
 // 用户（v3）：时间线 → 用户策略（月度，结构见 docs/用户策略规范.md）。Voice 已独立成侧栏模块。
@@ -14,14 +15,16 @@ import { deliveryMonth } from "../../constants.js";
 const TABS = [
   ["timeline", "用户时间线"],
   ["strategy", "用户策略", "按月梳理各地区用户的节点、任务、痛点与决策障碍，收敛为机会点和促销建议"],
+  ["playbook", "打法库", "47 种促销打法的心理机制、适用信号与设计要点；月度用户策略按决策障碍从这里选打法"],
 ].map(([key, label, desc]) => ({ key, label, desc, href: href("user", key) }));
 
 export default function UserPage({ route }) {
   const [tab = "timeline", ...rest] = route;
   if (tab === "voice") { location.replace(href("voice")); return null; } // 旧地址：留学之声已独立为 Voice
   const key = tab === "needs" ? "strategy" : tab;
-  const View = key === "strategy" ? Strategy : Timeline;
-  return <><PageHeader title="策略" /><Tabs items={TABS} active={key === "strategy" ? "strategy" : "timeline"} /><View route={rest} /></>;
+  const View = key === "strategy" ? Strategy : key === "playbook" ? Playbook : Timeline;
+  const active = key === "strategy" || key === "playbook" ? key : "timeline";
+  return <><PageHeader title="策略" /><Tabs items={TABS} active={active} /><View route={rest} /></>;
 }
 
 /* ================= 用户时间线 ================= */

@@ -1544,3 +1544,40 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 @media (max-width: 1100px) { .pb-board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .pb-board { grid-template-columns: minmax(0, 1fr); } .pb-tabs button { min-width: 0; } }
 .pb-anchor { scroll-margin-top: 96px; } /* 滚到节点预览时让开顶栏 */
+
+/* ---------- 策略 · 打法库（docs/打法库/） ---------- */
+.plb-bars { row-gap: var(--s2); }
+.plb-bar-group { display: inline-flex; align-items: center; gap: var(--s2); }
+.plb-bar-group .label { margin-left: var(--s2); }
+.plb-cat-head .plb-cat-count { margin-left: auto; }
+.plb-grid { display: grid; gap: var(--s4); }
+.plb-tile { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; padding: var(--s4); background: var(--panel); border: var(--border) solid var(--line); color: var(--text); text-decoration: none; }
+.plb-tile:hover { border-color: var(--text); }
+.plb-tile-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); }
+.plb-tile-name { font-size: 14px; font-weight: 600; }
+.plb-tile-lead { flex: 1; margin: 0; font-size: 12px; line-height: 1.6; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.plb-tile-mechs { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.plb-tile-mechs span { padding: 0 var(--s1); border: 1px solid var(--line); font-size: 11px; line-height: 18px; color: var(--muted); }
+.plb-tile-mechs span.is-main { border-color: var(--text); color: var(--text); }
+.plb-notes { display: grid; gap: var(--s4); margin-top: var(--s6); padding-top: var(--s5); border-top: 1px solid var(--line); }
+.plb-detail { display: grid; gap: var(--s4); align-items: start; }
+.plb-doc-card .card-head h2 { display: flex; align-items: center; gap: var(--s2); }
+.plb-doc { max-width: 880px; }
+.plb-doc .md-h2 { margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid var(--line); }
+.plb-doc .md-h2:first-of-type { margin-top: var(--s4); }
+.plb-doc ul ul { margin-top: var(--s1); }
+.plb-table { overflow-x: auto; border: 1px solid var(--line); }
+.plb-table .grid { background: var(--panel); }
+.plb-table .grid td { white-space: normal; font-size: 13px; vertical-align: top; }
+.plb-quote { padding: var(--s2) var(--s3); border-left: 4px solid var(--text); background: var(--bg); }
+.plb-code { margin: 0; padding: var(--s3); border: 1px solid var(--line); font: 12px var(--font-mono); white-space: pre-wrap; }
+.plb-side { display: flex; flex-direction: column; gap: var(--s4); position: sticky; top: var(--s4); }
+.plb-mech-list, .plb-sib-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.plb-mech-list { gap: var(--s3); }
+.plb-mech-list li { display: flex; flex-direction: column; gap: 2px; }
+.plb-mech-name { display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
+.plb-side-q { margin: 0 0 var(--s2); }
+.plb-sib-list a { display: flex; align-items: center; gap: var(--s2); padding: var(--s1) var(--s2); color: var(--text); text-decoration: none; border-left: 4px solid transparent; }
+.plb-sib-list a:hover { background: var(--bg); }
+.plb-sib-list a.is-on { background: var(--text); color: var(--panel); border-left-color: var(--signal); }
+.plb-sib-list a.is-on .label { color: var(--panel); }
