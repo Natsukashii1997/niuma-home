@@ -1,0 +1,19 @@
+{
+  "mode": "isolated-browser-with-mocked-feishu",
+  "realFeishuWrites": 0,
+  "checks": {
+    "addedDocument": true,
+    "removedDocument": true,
+    "movedAndRenamedDocument": true,
+    "sameMinuteSecondRefresh": true,
+    "failedSyncKeepsDataAndTime": true,
+    "partialDetailsWarning": true,
+    "syncDisablesNewGroup": true
+  },
+  "regressionTests": {
+    "passed": 48,
+    "failed": 0
+  },
+  "initialHarnessIssue": "Missing selftalk.items caused blank preview; corrected mock response only.",
+  "temporaryServerStopped": true
+}
