@@ -1,0 +1,8 @@
+{
+  "creates": 1,
+  "updates": 9,
+  "docId": "Doc1",
+  "cloudA_preserved": true,
+  "localB_synced": true,
+  "localA_not_overwrite_cloud": true
+}

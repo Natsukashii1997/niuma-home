@@ -1,0 +1,43 @@
+{
+  "scenarios": [
+    {
+      "name": "rename",
+      "mode": "update",
+      "changes": [
+        "考前冲刺海报 · 名称",
+        "考前冲刺海报 （仅预演） · 物料名称",
+        "考前冲刺海报 （仅预演） · 物料名称"
+      ]
+    },
+    {
+      "name": "add",
+      "mode": "update",
+      "changes": [
+        "新增物料",
+        "需求交付时间 · 物料行",
+        "物料目标受众 · 物料行"
+      ]
+    },
+    {
+      "name": "delete",
+      "mode": "update",
+      "changes": [
+        "选课海报 · 名称",
+        "考前冲刺海报 · 删除物料",
+        "需求交付时间 · 物料行",
+        "物料目标受众 · 物料行"
+      ]
+    }
+  ],
+  "at": "2026-10-21T08:12:19.317Z",
+  "mode": "unchanged",
+  "document": {
+    "id": "B9iydf2ocoS67SxyhwtcVlfynPh",
+    "url": "https://vm94j8bzy7.feishu.cn/docx/B9iydf2ocoS67SxyhwtcVlfynPh"
+  },
+  "changed": [],
+  "version": "v1",
+  "reads": 18,
+  "dry": 10,
+  "externalWrites": 0
+}
