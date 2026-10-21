@@ -122,7 +122,7 @@ function MonthTimeline({ tl, q, showSrc }) {
   const now = new Date();
   const todayIdx = now.getFullYear() === y && now.getMonth() + 1 === m ? now.getDate() : 0;
   const { list, calendar, count } = monthTimelineData(tl, month, country, q);
-  const counter = (c) => { const n = count(c); return `本月 ${n.shown} 校${n.pending ? `（${n.pending} 校待确认）` : ""} / 全年 ${n.total} 校`; };
+  const counter = (c) => `${count(c).shown} 校`;
   const groups = useMemo(() => {
     const byC = new Map();
     for (const e of [...list].sort((a, b) => (a.from || "9999").localeCompare(b.from || "9999"))) {
@@ -153,7 +153,6 @@ function MonthTimeline({ tl, q, showSrc }) {
         <span className="spacer" />
         <span className="tl-cats">{CATS.map(([k, label]) => <span key={k}><i className={`ev-${k}`} />{label}</span>)}<span><i className="ev-flag" />冲突待确认</span><span><i className="ev-guess" />推测</span></span>
       </div>
-      <p className="small muted tl-how">本月包含已确认和待确认节点。日期尚未核实的记录保留原文并标注“待确认”，不作为确定日期参与策略推导。</p>
       {!groups.length ? <Placeholder icon="calendar" title={`${country || "全部国家"} · ${month} 暂无节点`}>可展开下方月历原文，或查看“按国家 · 明细表”。</Placeholder> : (
         <section className="card gantt">
           <div className="gantt-head">
