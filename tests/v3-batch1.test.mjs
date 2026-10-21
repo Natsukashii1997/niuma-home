@@ -98,7 +98,7 @@ test('V3 新 GET 覆盖501且保持形状，后续批次仍501，月份校验', 
   const { request } = await setup(t);
   for (const endpoint of ['/api/v3/timeline','/api/v3/codex-reset','/api/v3/needs?month=2026-11','/api/v3/months/2026-11']) assert.equal((await request('GET',endpoint)).status,200);
   const tl = (await request('GET','/api/v3/timeline')).body;
-  assert.deepEqual(Object.keys(tl).sort(), ['source','syncedAt','stage','countries','terms','nodes','table','agenda','anomalies','rulings'].sort());
+  assert.deepEqual(Object.keys(tl).sort(), ['source','syncedAt','stage','countries','terms','nodes','table','agenda','anomalies','rulings','coverage','calendarEntries'].sort());
   const month = (await request('GET','/api/v3/months/2026-11')).body;
   assert.equal(month.steps.length,5); assert.equal(month.campaign,null); assert.ok(month.steps.every(s=>s.key!=='plans')); assert.equal(month.steps.find(s=>s.key==='materials').state,'pending');
   for (const value of ['', '2026-00','2026-13','26-11']) assert.equal((await request('GET',`/api/v3/needs?month=${value}`)).status,400);
@@ -159,14 +159,14 @@ test('V3 数据库写入故障回滚，不污染其他需求', async t => {
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM v3_needs').get().n,0);
 });
 
-test('V3 飞书读取固定 codex user、四张地区表和完整范围，不导入月历', async () => {
-  const calls = [], info = {title:'2026海外大学时间线',revision:8,sheets:REGION_SHEETS.map((name,i)=>({sheet_name:name,sheet_id:`s${i}`,resource_type:'sheet',is_hidden:false,row_count:2,column_count:2}))};
+test('V3 飞书读取固定 codex user、四张地区表和十二张月历完整范围', async () => {
+  const calls = [], info = {title:'2026海外大学时间线',revision:8,sheets:[...REGION_SHEETS,...Array.from({length:12},(_,i)=>`${i+1}月`)].map((name,i)=>({sheet_name:name,sheet_id:`s${i}`,resource_type:'sheet',is_hidden:false,row_count:2,column_count:2}))};
   const run = async (command,args,options) => {
     calls.push(args); assert.equal(command,'lark-cli'); assert.equal(options.shell,false); assert.equal(args[1],'codex'); assert.equal(args[5],'user');
     return {stdout:JSON.stringify({ok:true,identity:'user',data:args[3]==='+workbook-info'?info:{actual_range:'A1:B2',revision:8,row_count:2,col_count:2,col_indices:['A','B'],row_indices:[1,2],has_more:false,annotated_csv:'[row=1] 澳洲,Final\n[row=2] 学校,11.1\n'}})};
   };
-  assert.equal((await readTimelineSheets({run})).length,4); assert.equal(calls.length,6);
-  assert.equal(calls.filter(a=>a[3]==='+csv-get').length,4);
+  assert.equal((await readTimelineSheets({run})).length,16); assert.equal(calls.length,18);
+  assert.equal(calls.filter(a=>a[3]==='+csv-get').length,16);
   await assert.rejects(readTimelineSheets({run:async()=>({stdout:JSON.stringify({ok:true,identity:'bot',data:info})})}));
   await assert.rejects(readTimelineSheets({run:async(c,a,o)=>{ const r=await run(c,a,o); const j=JSON.parse(r.stdout); if(a[3]==='+csv-get')j.data.has_more=true;return{stdout:JSON.stringify(j)}; }}));
 });

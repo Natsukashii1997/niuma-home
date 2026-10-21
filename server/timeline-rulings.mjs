@@ -17,14 +17,26 @@ export function applyRulings(timeline, rulings) {
     const key = anomalyKey(a), r = byKey.get(key), item = { ...a, key };
     if (!r || !a.cell) return item;
     applied++;
-    item.ruling = { decision: r.decision, cell: r.cell, from: r.from, to: r.to, note: r.note, at: r.at };
+    item.ruling = { decision: r.decision, cell: r.cell, from: r.from, to: r.to, note: r.note, at: r.at, ...(r.segments && { segments: r.segments }) };
+    const sourceSet = new Set(a.cell.cells.map(c => c.src));
+    out.agenda = out.agenda.filter(e => !sourceSet.has(e.src));
+    const targetRow = out.table[a.cell.code]?.[a.cell.row];
+    for (const c of a.cell.cells) if (targetRow && c.slot >= 0) {
+      targetRow.cells[c.slot] = null;
+      if (targetRow.cellRanges) delete targetRow.cellRanges[c.slot];
+    }
     if (r.decision === 'exclude') return item;
     const target = a.cell.cells[r.cell];
-    const event = { from: r.from, to: r.to, c: a.cell.c, school: a.school, type: a.cell.type, src: target.src, ruled: true };
-    const i = out.agenda.findIndex(e => e.src === target.src);
-    if (i >= 0) out.agenda[i] = event; else out.agenda.push(event);
+    const selected = r.decision === 'adopt' && r.segments?.length ? r.segments : [{ from: r.from, to: r.to }];
+    for (const part of selected) out.agenda.push({ from: part.from, to: part.to, c: a.cell.c, school: a.school, type: a.cell.type, src: target.src, ruled: true, ...(part.label && { detail: part.label }) });
     const row = out.table[a.cell.code]?.[a.cell.row];
-    if (row && target.slot >= 0) row.cells[target.slot] = [r.from.slice(5), r.to.slice(5), target.src, 'ruled'];
+    if (row && target.slot >= 0) {
+      row.cells[target.slot] = [r.from.slice(5), r.to.slice(5), target.src, 'ruled'];
+      if (selected.length > 1 || selected.some(p => p.label)) {
+        row.cellRanges ||= {};
+        row.cellRanges[target.slot] = selected.map(p => ({ ...p, src: target.src, flag: 'ruled' }));
+      }
+    }
     return item;
   });
   out.agenda.sort((a, b) => a.from.localeCompare(b.from) || a.src.localeCompare(b.src));
@@ -56,6 +68,7 @@ export function createRulingService(db, readTimeline, { now = Date.now } = {}) {
           const c = a.cell.cells[cell];
           if (!c.from) throw failure(400, '这一格没有能解析的日期，请手填');
           value.from = c.from; value.to = c.to;
+          if (c.segments?.length) value.segments = structuredClone(c.segments);
         }
         if (body.decision === 'manual') {
           if (!isDay(body.from) || !isDay(body.to) || body.to < body.from || Date.parse(body.to) - Date.parse(body.from) > 366 * 86400000) throw failure(400, '请填写有效的起止日期（YYYY-MM-DD），结束不早于开始，跨度不超过一年');

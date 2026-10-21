@@ -328,3 +328,11 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - 每步预演、紧邻写前重读、先落发送记录、单次写入、全文回读。收据持久化`steps/completed/checkpoint/attempt`，HTTP不返回XML快照。块操作从下往上执行，标题走drive改名。revision_id不是原子CAS，同步期间须暂缓编辑飞书；需求策略仍new-only。
 - `GET .../exports/pending`找回本月未完成操作；GET/reconcile也可用previewId查找。`POST .../exports/:id/reconcile`只读：全量匹配则success；已发送步骤明确匹配写后状态且剩余从未发送则resumable；回读仍像写前不证明未执行，保持unknown。旧收据无逐步证据只做全文核对。
 - `POST .../exports/:id/resume`仅接受resumable且无未决attempt，继续原冻结快照，当前新草稿保留待下次同步；身份、配置和绑定须一致。核对与继续互斥，防旧状态覆盖新的发送标记。首次发送前失败记aborted，可重新预检；不会因失败另建文档。
+
+### 用户时间线完整读取（2026-10-21）
+
+- `GET /api/v3/timeline` / `POST /api/v3/timeline/sync` 现在须完整读取4张地区明细与12张月历；范围、行列数、截断标记、前后版本均核验，任一读取失败不覆盖上次成功快照。
+- 原有 `agenda/table/anomalies` 兼容。多个明确时段成为独立agenda记录，同一src可有多条；`detail`保留适用条件，条件待确认不参与自动需求推导。`table[].cellRanges[slot]`保留多个窗口及条件；禁止把中间空档并成连续区间。
+- 新增 `coverage:{schools,regionSheets,calendarSheets}`；`anomalies[].c/monthHints`支持原文涉及月份的待确认列表。`*-MM`为历史/未定学年的月索引，不能当成确定日期。
+- 新增 `calendarEntries:[{month,raw,src,schools,countries}]`，只保存月历原文与检索关联，不能通过摆放格位确定日期或替换地区表。不认识的学校原文仍完整保留。
+- 人工采用多时段保留整格segments；单段条件同样保留标签。手填明确替换整格，排除清除所有同源分段。已有裁定仍按原文与问题指纹生效。

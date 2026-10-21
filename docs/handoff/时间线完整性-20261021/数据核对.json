@@ -1,0 +1,70 @@
+{
+  "coverage": {
+    "schools": 77,
+    "regionSheets": 4,
+    "calendarSheets": 12
+  },
+  "beforeEvents": 975,
+  "afterEvents": 1058,
+  "added": 83,
+  "addedWithoutFlag": 22,
+  "addedWithConditions": 61,
+  "calendars": 755,
+  "UK": {
+    "dated": 1,
+    "pending": 10,
+    "total": 23
+  },
+  "countries": [
+    {
+      "country": "美国",
+      "schools": 16,
+      "events": 351
+    },
+    {
+      "country": "加拿大",
+      "schools": 2,
+      "events": 31
+    },
+    {
+      "country": "英国",
+      "schools": 23,
+      "events": 239
+    },
+    {
+      "country": "爱尔兰",
+      "schools": 5,
+      "events": 35
+    },
+    {
+      "country": "澳洲",
+      "schools": 11,
+      "events": 198
+    },
+    {
+      "country": "新西兰",
+      "schools": 2,
+      "events": 11
+    },
+    {
+      "country": "香港",
+      "schools": 8,
+      "events": 111
+    },
+    {
+      "country": "澳门",
+      "schools": 4,
+      "events": 47
+    },
+    {
+      "country": "新加坡",
+      "schools": 3,
+      "events": 29
+    },
+    {
+      "country": "马来西亚",
+      "schools": 3,
+      "events": 6
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { monthTimelineData } from "./timeline-view.js";
 import { SuccessNotice } from "../../ui/SuccessNotice.jsx";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
@@ -114,14 +115,14 @@ function MonthTimeline({ tl, q, showSrc }) {
   const [country, setCountry] = useState("");
   const [folded, setFolded] = useState(() => new Set());
   const fold = (c) => setFolded((o) => { const n = new Set(o); if (n.has(c)) n.delete(c); else n.add(c); return n; });
-  const schoolsOf = (c) => new Set(inMonth.filter((e) => !c || e.c === c).map((e) => e.school)).size;
+
   const [y, m] = month.split("-").map(Number);
   const nDays = new Date(y, m, 0).getDate();
   const first = `${month}-01`, last = `${month}-${pad(nDays)}`;
   const now = new Date();
   const todayIdx = now.getFullYear() === y && now.getMonth() + 1 === m ? now.getDate() : 0;
-  const inMonth = tl.agenda.filter((e) => e.from <= last && (e.to || e.from) >= first);
-  const list = inMonth.filter((e) => (!country || e.c === country) && (!q || `${e.school}${e.type}`.toLowerCase().includes(q.toLowerCase())));
+  const { list, pending, calendar, count } = monthTimelineData(tl, month, country, q);
+  const counter = (c) => { const n = count(c); return `本月 ${n.dated} · 待确认 ${n.pending} / 全年 ${n.total} 校`; };
   const groups = useMemo(() => {
     const byC = new Map();
     for (const e of [...list].sort((a, b) => a.from.localeCompare(b.from))) {
@@ -141,18 +142,19 @@ function MonthTimeline({ tl, q, showSrc }) {
     ro.current.observe(el);
   }, [nDays]);
   const place = (e) => placeBar(e, { first, last, nDays, dayW, showSrc });
-  const countries = [...new Set(inMonth.map((e) => e.c))].sort(byCountry);
+  const countries = tl.countries.map(([, name]) => name).sort(byCountry);
   const cols = { gridTemplateColumns: `repeat(${nDays}, minmax(0, 1fr))` };
   return (
     <>
       <div className="toolbar">
         <MonthSwitch month={month} onChange={setMonth} mark={month === deliveryMonth() ? "交付月" : ""} />
-        <button type="button" className={`chip${!country ? " is-on" : ""}`} onClick={() => setCountry("")}>全部国家 <span className="tnum">{schoolsOf("")} 校</span></button>
-        {countries.map((c) => <button key={c} type="button" className={`chip${country === c ? " is-on" : ""}`} onClick={() => setCountry(country === c ? "" : c)}>{c} <span className="tnum">{schoolsOf(c)} 校</span></button>)}
+        <button type="button" className={`chip${!country ? " is-on" : ""}`} onClick={() => setCountry("")}>全部国家 <span className="tnum">{counter("")}</span></button>
+        {countries.map((c) => <button key={c} type="button" className={`chip${country === c ? " is-on" : ""}`} onClick={() => setCountry(country === c ? "" : c)}>{c} <span className="tnum">{counter(c)}</span></button>)}
         <span className="spacer" />
         <span className="tl-cats">{CATS.map(([k, label]) => <span key={k}><i className={`ev-${k}`} />{label}</span>)}<span><i className="ev-flag" />冲突待确认</span><span><i className="ev-guess" />推测</span></span>
       </div>
-      {!groups.length ? <Placeholder icon="calendar" title="这个月没有节点">换个月份，或清掉筛选条件。</Placeholder> : (
+      <p className="small muted tl-how">“本月”统计能排入时间轴的学校（含已标注的推测或冲突）；“待确认”统计原文涉及本月、但尚不能排期的学校，两者可能重叠。全年学校数来自地区明细。月历原文另列在下方供对照。</p>
+      {!groups.length ? <Placeholder icon="calendar" title={`${country || "全部国家"} · ${month} 暂无可排期节点`}>下方仍保留待确认记录和月历原文，也可查看“按国家 · 明细表”。</Placeholder> : (
         <section className="card gantt">
           <div className="gantt-head">
             <span className="gantt-corner label">{month} · {list.length} 个节点</span>
@@ -174,8 +176,8 @@ function MonthTimeline({ tl, q, showSrc }) {
                   <div className="gantt-track" style={{ ...cols, gridTemplateRows: `repeat(${rows.length}, 28px)` }}>
                     {Array.from({ length: nDays }, (_, i) => { const wd = new Date(y, m - 1, i + 1).getDay(); return <i key={`bg${i}`} className={`gantt-bg${wd === 0 || wd === 6 ? " is-wkd" : ""}${i + 1 === todayIdx ? " is-today" : ""}`} style={{ gridColumn: i + 1, gridRow: `1 / ${rows.length + 1}` }} />; })}
                     {rows.flatMap((items, lane) => items.flatMap(({ e, s, end, side, cols: n, when }, k) => {
-                      const tip = `${e.school} · ${e.type}\n${e.from}${e.to ? ` → ${e.to}（${span(e.from, e.to)} 天）` : "（单日）"}\n来源：${e.src}${e.flag === "conflict" ? "\n冲突待确认" : e.flag === "guess" ? "\n推测，待确认" : e.ruled ? "\n人工裁定（工作台）" : ""}`;
-                      const text = <><b>{e.type}</b><em className="tnum">{when}</em>{e.flag === "guess" && <i className="gantt-guess">推测</i>}</>;
+                      const tip = `${e.school} · ${e.type}${e.detail ? `（${e.detail}）` : ""}\n${e.from}${e.to ? ` → ${e.to}（${span(e.from, e.to)} 天）` : "（单日）"}\n来源：${e.src}${e.flag === "conflict" ? "\n冲突待确认" : e.flag === "guess" ? "\n推测，待确认" : e.ruled ? "\n人工裁定（工作台）" : ""}`;
+                      const text = <><b>{e.type}{e.detail ? ` · ${e.detail}` : ""}</b><em className="tnum">{when}</em>{e.flag === "guess" && <i className="gantt-guess">推测</i>}</>;
                       const bar = side === "single" ? [s, s + n] : [s, end];
                       return [
                         <span key={`${lane}-${k}`} className={`gantt-bar ev-${catOf(e.type)}${!e.to ? " is-single" : ""}${e.flag ? ` is-${e.flag}` : ""}`}
@@ -197,6 +199,16 @@ function MonthTimeline({ tl, q, showSrc }) {
         </section>
       )}
       {list.length > 0 && <MonthList list={list} first={first} showSrc={showSrc} />}
+      {pending.length > 0 && <section className="card tl-pending-month">
+        <div className="card-head"><strong>本月待确认 · {pending.length} 条原文</strong><span className="small muted">原文涉及本月，尚未作为确定日期排期</span></div>
+        <div className="table-wrap"><table className="grid"><thead><tr><th>国家 / 学校</th><th>事件</th><th>原文</th><th>原因与来源</th></tr></thead><tbody>
+          {pending.map((a, i) => <tr key={`${a.src}-${i}`}><td>{a.c}<br /><strong>{a.school}</strong></td><td>{a.cell?.header || "列标题待核对"}</td><td style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{a.a}</td><td>{a.issue}<br /><a href={href("user", "timeline", "anomalies", a.school)}>{a.src} · 查看并核对</a></td></tr>)}
+        </tbody></table></div>
+      </section>}
+      <details className="card tl-calendar-reference"><summary>月历原文对照 · {calendar.length} 条{country ? `（${country}）` : ""}</summary>
+        <p className="small muted">完整保留飞书当月月历的原文格。地区明细未收录的学校、额外事件和不同日期也可在这里核对；不按月历摆放位置推定年份或日期，不直接参与策略推导。选择“全部国家”可查看尚未归类的原文。</p>
+        <div className="table-wrap"><table className="grid"><thead><tr><th>学校 / 地区</th><th>月历原文</th><th>来源</th></tr></thead><tbody>{calendar.map(e => <tr key={e.src}><td>{e.schools.join("、") || "学校待核对"}<br /><span className="small muted">{e.countries.join("、") || "地区待核对"}</span></td><td style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{e.raw}</td><td>{e.src}</td></tr>)}</tbody></table></div>
+      </details>
     </>
   );
 }
@@ -223,7 +235,7 @@ function placeBar(e, { first, last, nDays, dayW, showSrc }) {
   const s = e.from < first ? 1 : Number(e.from.slice(8));
   const end = (e.to || e.from) > last ? nDays : Number((e.to || e.from).slice(8));
   const when = `${md(e.from)}${e.to ? ` → ${md(e.to)}` : ""}${showSrc ? ` · ${e.src}` : ""}`;
-  const w = textWidth(e.type, '600 12px Geist, "PingFang SC"') + 4 + textWidth(when, '11px "Geist Mono", "PingFang SC"')
+  const w = textWidth(e.type + (e.detail ? ` · ${e.detail}` : ''), '600 12px Geist, "PingFang SC"') + 4 + textWidth(when, '11px "Geist Mono", "PingFang SC"')
     + (e.flag === "guess" ? 4 + textWidth("推测", '11px Geist, "PingFang SC"') : 0);
   if (!e.to) { // 单日：菱形 + 文字，文字占的格子也算进分道
     const n = Math.ceil((w + 18) / dayW);
@@ -254,7 +266,7 @@ function MonthList({ list, first, showSrc }) {
               <td className="tnum">{e.from < first ? <span className="muted">上月开始</span> : `${md(e.from)} 周${WD[d.getDay()]}`}</td>
               <td>{e.c}</td>
               <td><strong>{e.school}</strong></td>
-              <td><span className={`ev-dot ev-${catOf(e.type)}`} />{e.type}{e.flag === "conflict" && <Tag tone="red">冲突待确认</Tag>}{e.flag === "guess" && <Tag tone="amber">推测</Tag>}{e.ruled && <Tag tone="frame">人工裁定</Tag>}</td>
+              <td><span className={`ev-dot ev-${catOf(e.type)}`} />{e.type}{e.detail && <small> · {e.detail}</small>}{e.flag === "conflict" && <Tag tone="red">冲突待确认</Tag>}{e.flag === "guess" && <Tag tone="amber">推测</Tag>}{e.ruled && <Tag tone="frame">人工裁定</Tag>}</td>
               <td className="r">{md(e.from)}{e.to ? ` → ${md(e.to)}` : ""}</td>
               <td className="r">{e.to ? `${span(e.from, e.to)} 天` : "单日"}</td>
               {showSrc && <td className="tnum small muted">{e.src}</td>}
@@ -298,6 +310,7 @@ function CountryTable({ tl, q, showSrc }) {
                 <span className={`ev-dot ev-${k}`} />{label} <span className="tnum">{nodes.filter((n) => colCat(n) === k).length}</span>
               </button>
             ))}
+            <button type="button" className="chip" onClick={() => setShowCats(new Set(COL_CATS.map(([k]) => k)))}>显示全部列</button>
             <span className="spacer" />
             <span className="small muted">显示 {visible.length} / {nodes.length} 列 · 列按源表的时间顺序排</span>
           </div>
@@ -316,6 +329,10 @@ function CountryTable({ tl, q, showSrc }) {
                         ? <td key={i} className="tl-cell is-pending" title="原表写了，但日期不完整或有冲突，见「异常待确认」"><a href={href("user", "timeline", "anomalies", r.abbr || r.school)}>待确认</a></td>
                         : excludedKeys.has(k) ? <td key={i} className="tl-cell is-missing" title="原表写了，人工裁定为不采用"><a href={href("user", "timeline", "anomalies", r.abbr || r.school)}>不采用</a></td>
                         : <td key={i} className="tl-cell is-missing" title="原表这一格空白"><span>—</span></td>;
+                      if (r.cellRanges?.[i]?.length > 0) return <td key={i} className="tl-cell" title={`来源：${cell[2]}`}>
+                        {r.cellRanges[i].map((part, j) => <div key={j}><span className="tnum">{part.from} → {part.to}</span>{part.label && <small>{part.label}</small>}{part.flag && <Tag tone={part.flag === "conflict" ? "red" : "amber"}>{part.flag === "ruled" ? "人工裁定" : part.flag === "conflict" ? "冲突" : "待确认"}</Tag>}</div>)}
+                        {showSrc && <small>{cell[2]}</small>}
+                      </td>;
                       const [from, rawTo, src, flag] = cell;
                       const to = rawTo && rawTo !== from ? rawTo : null; // 起止同一天按单日写
                       const inDm = from.startsWith(dm) || (to && to.startsWith(dm));
@@ -367,6 +384,7 @@ const DECISION_TEXT = { adopt: "采用", manual: "手填日期", exclude: "不�
 const cellName = (a, i) => (a.cell?.cells.length > 1 ? (i ? "B" : "A") : "原文");
 function rulingText(a, r) {
   if (r.decision === "exclude") return "不采用：这一格不参与推导";
+  if (r.segments?.length) return `采用原格全部 ${r.segments.length} 个时段：${r.segments.map(p => `${p.label || ""} ${p.from} → ${p.to}`).join("；")}`;
   return `${r.decision === "adopt" ? `采用${cellName(a, r.cell)}` : `手填（写在${cellName(a, r.cell)}格）`}：${r.from} → ${r.to}`;
 }
 
@@ -423,7 +441,7 @@ function AnomalyCard({ a, reread }) {
               <span className="label">裁定</span>
               {cells.map((c, i) => c.from && (
                 <button key={i} type="button" className={`chip${pick === `adopt:${i}` ? " is-on" : ""}`} disabled={locked} onClick={() => choose(`adopt:${i}`)}>
-                  采用{cellName(a, i)} <span className="tnum">{c.from.slice(5)} → {c.to.slice(5)}</span>
+                  采用{cellName(a, i)} {c.segments?.length > 1 ? `全部 ${c.segments.length} 个时段` : <span className="tnum">{c.from.slice(5)} → {c.to.slice(5)}</span>}
                 </button>
               ))}
               <button type="button" className={`chip${pick === "manual" ? " is-on" : ""}`} disabled={locked} onClick={() => choose("manual")}>手填日期</button>
@@ -436,6 +454,7 @@ function AnomalyCard({ a, reread }) {
               <span className="spacer" />
               <Button variant="primary" className="btn btn-xs" disabled={!ready || locked || pick === "clear"} onClick={() => preview()}><PixelIcon name="eye" />预览裁定</Button>
             </div>
+            {pick === "manual" && cells.some(c => c.segments?.length > 1) && <p className="small warn-text">手填会将这一格的全部时段替换为你填写的单一区间；要保留各时段，请选择“采用原文全部时段”。</p>}
             {pick === "manual" && cells.length > 1 && <p className="small muted">手填的日期写在 A 格；B 格仍不参与推导。</p>}
           </>
         )}

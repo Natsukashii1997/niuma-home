@@ -1,0 +1,174 @@
+{
+  "reviewedDistinctDifferences": [
+    {
+      "school": "澳门科技大学",
+      "monthlySrc": "⏰️关键时间表 1月!D8",
+      "monthlyRaw": "澳科技 MUST\n期末考试丨12.26-1.10",
+      "regionSrc": "香港 澳门 新加坡 马来西亚!B14",
+      "regionRaw": "2026.1.12",
+      "finding": "月历独有12.26–1.10期末考试；跨年未写年份，地区表仅有1.12开学，不能直接排期"
+    },
+    {
+      "school": "帝国理工学院",
+      "monthlySrc": "⏰️关键时间表 1月!A14",
+      "monthlyRaw": "帝国理工学院考试丨1.5-1.16\n利物浦大学考试丨1.5-1.23\n伦敦城市大学考试丨1.5-1.23",
+      "regionSrc": "英国 爱尔兰!B9",
+      "regionRaw": "2025.12.8-12.11",
+      "finding": "月历有1.5–1.16考试；地区表首段期末是2025.12.8–12.11，需对照保留"
+    },
+    {
+      "school": "西澳大学",
+      "monthlySrc": "⏰️关键时间表 1月!C23",
+      "monthlyRaw": "西澳 UWA\nS1选课 丨1.14-1.28",
+      "regionSrc": "澳大利亚 新西兰!C8",
+      "regionRaw": "11.3",
+      "finding": "月历S1选课1.14–1.28，地区S1选课开放11.3，事件口径/日期均不同"
+    },
+    {
+      "school": "悉尼大学",
+      "monthlySrc": "⏰️关键时间表 1月!E29",
+      "monthlyRaw": "悉大 USYD\nS1选课丨1.16-1.21",
+      "regionSrc": "澳大利亚 新西兰!C5",
+      "regionRaw": "1.27-3.8",
+      "finding": "月历S1选课1.16–1.21；地区1.27–3.8"
+    },
+    {
+      "school": "麦考瑞大学",
+      "monthlySrc": "⏰️关键时间表 1月!B47",
+      "monthlyRaw": "麦考瑞 Macquarie\nSession 3考试丨1.27-2.2",
+      "regionSrc": "澳大利亚 新西兰!B10",
+      "regionRaw": "12.15-1.25",
+      "finding": "月历独有Session3考试1.27–2.2；地区该时段只有Summer学期12.15–1.25"
+    },
+    {
+      "school": "约克大学",
+      "monthlySrc": "⏰️关键时间表 1月!F47",
+      "monthlyRaw": "约克大学(终)\nSemester 1考试丨1.12-1.31",
+      "regionSrc": "英国 爱尔兰!B6",
+      "regionRaw": "2026.1.12-1.26 ",
+      "finding": "月历S1考试1.12–1.31；地区2026.1.12–1.26"
+    },
+    {
+      "school": "阿德莱德大学",
+      "monthlySrc": "2月!A19",
+      "monthlyRaw": "悉尼大学USYD S1迎新周\n阿德莱德大学Adelaide S1迎新周\n2.9-2.20",
+      "regionSrc": "澳大利亚 新西兰!E9",
+      "regionRaw": "2.9",
+      "finding": "月历迎新周2.9–2.20；地区仅2.9"
+    },
+    {
+      "school": "加州大学圣地亚哥分校UCSD",
+      "monthlySrc": "3月!F17",
+      "monthlyRaw": "UW Winter学期 期末考试\nUCSB Winter学期 期末考试\nUCLA Winter学期 期末考试\nUCSD Winter学期 期末考试\nUCI Winter学期 期末考试\n3.14-3.20",
+      "regionSrc": "美东 美西 加拿大!F5",
+      "regionRaw": "3.14-3.21",
+      "finding": "月历Winter期末3.14–3.20；地区3.14–3.21"
+    },
+    {
+      "school": "加州大学圣塔芭芭拉分校UCSB",
+      "monthlySrc": "3月!G23",
+      "monthlyRaw": "UCSB 春假 3.22-3.29",
+      "regionSrc": "美东 美西 加拿大!G3",
+      "regionRaw": "3.21-3.29",
+      "finding": "月历春假3.22–3.29；地区3.21–3.29"
+    },
+    {
+      "school": "悉尼大学",
+      "monthlySrc": "4月!E5",
+      "monthlyRaw": "墨尔本大学UniMelb 期中假期\n悉尼大学USYD 期中假期\n澳大利亚国立大学ANU 期中假期\n4.3-4.12",
+      "regionSrc": "澳大利亚 新西兰!I5",
+      "regionRaw": "4.6-4.12",
+      "finding": "月历期中假4.3–4.12；地区4.6–4.12"
+    },
+    {
+      "school": "澳大利亚国立大学",
+      "monthlySrc": "4月!E5",
+      "monthlyRaw": "墨尔本大学UniMelb 期中假期\n悉尼大学USYD 期中假期\n澳大利亚国立大学ANU 期中假期\n4.3-4.12",
+      "regionSrc": "澳大利亚 新西兰!I6",
+      "regionRaw": "4.6",
+      "finding": "月历期中假4.3–4.12；地区仅4.6"
+    },
+    {
+      "school": "爱丁堡大学",
+      "monthlySrc": "4月!A25",
+      "monthlyRaw": "格拉斯哥大学 Reading Week\n爱丁堡大学 Reading Week\n4.20-4.26",
+      "regionSrc": "英国 爱尔兰!F5",
+      "regionRaw": "2026.4.20-4.24",
+      "finding": "月历Reading Week4.20–4.26；地区4.20–4.24"
+    },
+    {
+      "school": "新加坡国立大学",
+      "monthlySrc": "4月!F26",
+      "monthlyRaw": "新加坡国立NUS 期末考试\n4.28-5.9",
+      "regionSrc": "香港 澳门 新加坡 马来西亚!E17",
+      "regionRaw": "2026.4.25-2025.5.9",
+      "finding": "月历期末4.28–5.9；地区2026.4.25–2025.5.9（原表年份冲突）；不能用月历悄悄修年份"
+    },
+    {
+      "school": "香港浸会大学",
+      "monthlySrc": "5月!A52",
+      "monthlyRaw": "香港浸会大学HKBU\n学期选课｜5.19-5.29",
+      "regionSrc": "香港 澳门 新加坡 马来西亚!L10",
+      "regionRaw": "2026.5.18-5.29（夏季学期）",
+      "finding": "月历选课5.19–5.29；地区5.18–5.29"
+    },
+    {
+      "school": "奥克兰理工大学",
+      "monthlySrc": "6月!B6",
+      "monthlyRaw": "奥克兰理工大学AUT\nT1考试｜6.1-6.19",
+      "regionSrc": "澳大利亚 新西兰!K16",
+      "regionRaw": "6.2-6.19",
+      "finding": "月历T1期末6.1–6.19；地区6.2–6.19"
+    },
+    {
+      "school": "墨尔本大学",
+      "monthlySrc": "6月!A18",
+      "monthlyRaw": "墨尔本大学UniMelb\n莫纳什大学Monash\n考试｜6.9-6.26",
+      "regionSrc": "澳大利亚 新西兰!K2",
+      "regionRaw": "6.8-6.26",
+      "finding": "月历期末6.9–6.26；地区6.8–6.26"
+    },
+    {
+      "school": "莫纳什大学",
+      "monthlySrc": "6月!A18",
+      "monthlyRaw": "墨尔本大学UniMelb\n莫纳什大学Monash\n考试｜6.9-6.26",
+      "regionSrc": "澳大利亚 新西兰!K3",
+      "regionRaw": "6.8-6.26",
+      "finding": "月历期末6.9–6.26；地区6.8–6.26"
+    },
+    {
+      "school": "马来西亚国立大学",
+      "monthlySrc": "6月!A46",
+      "monthlyRaw": "马来西亚国立大学UKM\n考试｜6.29-7.19",
+      "regionSrc": "香港 澳门 新加坡 马来西亚!E21",
+      "regionRaw": "2026.7.6-7.26",
+      "finding": "月历期末6.29–7.19；地区7.6–7.26"
+    },
+    {
+      "school": "加州大学欧文分校UCI",
+      "monthlySrc": "11月!A23",
+      "monthlyRaw": "UCI Winter学期选课\n11.6-12.4",
+      "regionSrc": "美东 美西 加拿大!V6",
+      "regionRaw": "11.16-12.4",
+      "finding": "月历Winter选课11.6–12.4；地区11.16–12.4；月历12月!E10重复同一差异"
+    }
+  ],
+  "missingRegionalSchools": [
+    {
+      "src": "⏰️关键时间表 1月!A20",
+      "raw": "韦仕敦大学 开学",
+      "finding": "地区表无韦仕敦大学；原格无日期，不能按放置位置猜日期"
+    },
+    {
+      "src": "⏰️关键时间表 1月!A35",
+      "raw": "渥太华大学 开学",
+      "finding": "地区表无渥太华大学；原格无日期，不能按放置位置猜日期"
+    },
+    {
+      "src": "⏰️关键时间表 1月!A23",
+      "raw": "USC开学\nPSU开学\nOSU开学",
+      "finding": "其中PSU地区表无同校记录，缩写未核验；无原格内日期，不能猜为宾州州立大学及日期"
+    }
+  ],
+  "coverage": "12 monthly sheets scanned; literal explicit ranges compared independently to all regional cell text for matched school. These 19 are representative verified differences, not proof all semantic differences exhausted. No calendar-cell date inferred."
+}
