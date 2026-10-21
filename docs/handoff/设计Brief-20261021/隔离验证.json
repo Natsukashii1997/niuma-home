@@ -22,5 +22,11 @@
   ],
   "exportStatus": "success",
   "replaySame": true,
-  "creates": 1
+  "creates": 1,
+  "finalUiButtons": {
+    "rewriteWithInlineConfirmation": true,
+    "oneClickCreate": true,
+    "repeatCreateCount": 1,
+    "resultLinkRetainedAfterSuccessNoticeFaded": true
+  }
 }
