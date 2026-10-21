@@ -29,7 +29,7 @@ export default function KbCanvas({ focus = "", onSpace }) {
   const ruleIds = useMemo(() => { try { return JSON.parse(settings.data?.values?.kb_collect_rules || "[]").map((r) => r.nodeToken); } catch { return []; } }, [settings.data]);
   return (
     <Loadable state={tree} name="知识库目录" big>
-      {(kb) => <Canvas key={`${kb.spaceId}:${kb.readAt}`} kb={kb} focus={focus} initialOrder={layout.data?.order || []} ruleIds={ruleIds} reload={tree.reload} />}
+      {(kb) => <Canvas key={`${kb.spaceId}:${kb.readAt}`} kb={kb} focus={focus} initialOrder={layout.data?.order || []} ruleIds={ruleIds} reload={tree.reload} onSpace={onSpace} />}
     </Loadable>
   );
 }
@@ -47,7 +47,10 @@ function useColumns(ref) {
   return cols;
 }
 
-function Canvas({ kb, focus, initialOrder, ruleIds, reload }) {
+function Canvas({ kb: initialKb, focus, initialOrder, ruleIds, reload, onSpace }) {
+  const [kb, setKb] = useState(initialKb);
+  const [syncing, setSyncing] = useState(false);
+  const syncInFlight = useRef(false);
   const docs = kb.docs || {};
   const [base, setBase] = useState(kb.tree);            // 飞书最近一次回读到的目录
   const [queue, setQueue] = useState([]);               // 待写入飞书的变更：{ key, op, label }
@@ -102,10 +105,27 @@ function Canvas({ kb, focus, initialOrder, ruleIds, reload }) {
   }, [queue, running, lock]);
 
   function push(op, label) {
-    if (lock) return;
+    if (lock || syncInFlight.current) return;
     setQueue((qs) => [...qs, { key: `${Date.now()}-${Math.random()}`, op, label }]);
   }
   function saveOrder(next) { apiSend("PUT", "/api/v3/kb/layout", { order: next }).catch(() => setNote({ tone: "error", text: "分组顺序没保存到本机，刷新后会恢复原顺序" })); }
+
+  async function syncFromFeishu() {
+    if (syncInFlight.current || lock || ops.length || naming) return;
+    syncInFlight.current = true;
+    setSyncing(true); setNote(null); setDrag(null); setOver(null);
+    try {
+      const next = await apiSend("POST", "/api/v3/kb/refresh", {});
+      // 直接采用强制读取的结果，同一分钟内也更新目录和详情，不再走可能命中旧缓存的 GET。
+      setKb(next); setBase(next.tree); setOpen(null); setPath([]);
+      onSpace?.(next.space || "");
+      setNote({ tone: next.sourceError ? "warn" : "ok", text: next.sourceError ? `飞书目录已同步；${next.sourceError}` : "已同步飞书，当前显示最新读取的目录和文档信息" });
+    } catch (error) {
+      setNote({ tone: "error", text: `同步飞书失败，已保留上次内容。${error.message}` });
+    } finally {
+      syncInFlight.current = false; setSyncing(false);
+    }
+  }
 
   async function reconcile() {
     if (!lock?.operationId) { setLock(null); setQueue([]); setNote({ tone: "warn", text: "没有操作编号：已按飞书重新读取目录；后续变更暂停，请核对后重新拖动" }); reload(); return; }
@@ -126,8 +146,8 @@ function Canvas({ kb, focus, initialOrder, ruleIds, reload }) {
 
   // ---- 拖放 ----
   const dragProps = (kind, id) => ({
-    draggable: !lock,
-    onDragStart: (e) => { e.stopPropagation(); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", id); setDrag({ kind, id }); },
+    draggable: !lock && !syncing,
+    onDragStart: (e) => { if (syncInFlight.current) { e.preventDefault(); return; } e.stopPropagation(); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", id); setDrag({ kind, id }); },
     onDragEnd: () => { setDrag(null); setOver(null); },
   });
   const nameOf = (id) => (id === ROOT ? "散卡" : locate(shown, id)?.node.name || "目录");
@@ -140,7 +160,7 @@ function Canvas({ kb, focus, initialOrder, ruleIds, reload }) {
   const dropZone = (key, onDrop, accept = "card") => ({
     onDragOver: (e) => { if (drag?.kind === accept) { e.preventDefault(); e.stopPropagation(); if (over !== key) setOver(key); } },
     onDragLeave: (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOver((o) => (o === key ? null : o)); },
-    onDrop: (e) => { if (drag?.kind !== accept) return; e.preventDefault(); e.stopPropagation(); onDrop(); setDrag(null); setOver(null); },
+    onDrop: (e) => { if (syncInFlight.current || drag?.kind !== accept) return; e.preventDefault(); e.stopPropagation(); onDrop(); setDrag(null); setOver(null); },
   });
   const folderDrop = (g) => (drag?.kind === "group"
     ? dropZone(`tab:${g.id}`, () => { const next = reorder(model.groups.map((x) => x.id), drag.id, g.id); setOrder(next); saveOrder(next); }, "group")
@@ -148,6 +168,7 @@ function Canvas({ kb, focus, initialOrder, ruleIds, reload }) {
 
   // ---- 新建 / 改名 ----
   function commitName() {
+    if (syncInFlight.current) return;
     const name = naming?.value.trim();
     if (!name) { setNaming(null); return; }
     if (naming.id === "new") {
@@ -196,7 +217,7 @@ function Canvas({ kb, focus, initialOrder, ruleIds, reload }) {
         <div className="kbf-tab" {...(editing ? {} : dragProps("group", g.id))} title="拖动排序">
           {editing ? nameInput("分组名称") : <>
             <button type="button" className="kbf-tab-name" onClick={() => openGroup(g.id)} aria-expanded={isOpen}><strong>{g.name}</strong><i className="tnum">{n}</i></button>
-            <button type="button" className="kbf-tab-edit" title="改名（写入飞书）" aria-label={`改名：${g.name}`} disabled={!!lock} onClick={() => setNaming({ id: g.id, value: g.name })}><PixelIcon name="edit" /></button>
+            <button type="button" className="kbf-tab-edit" title="改名（写入飞书）" aria-label={`改名：${g.name}`} disabled={!!lock || syncing} onClick={() => setNaming({ id: g.id, value: g.name })}><PixelIcon name="edit" /></button>
           </>}
         </div>
         <button type="button" className="kbf-case" onClick={() => openGroup(g.id)} aria-label={`${isOpen ? "收起" : "打开"}分组：${g.name}`}>
@@ -224,7 +245,7 @@ function Canvas({ kb, focus, initialOrder, ruleIds, reload }) {
           <h3>{trail.map((f, i) => <span key={f.id}>{i > 0 && <PixelIcon name="right" />}{i < trail.length - 1 ? <button type="button" className="link-btn" onClick={() => setPath(path.slice(0, i))}>{f.name}</button> : f.name}</span>)}</h3>
           <span className="small muted tnum">{countDocs(dir)} 篇 · 文件夹在前 · 把卡片拖到别的文件夹或散卡条就是移动</span>
           <span className="spacer" />
-          <Button disabled={!!lock} onClick={() => setNaming({ id: g.id, value: g.name })}><PixelIcon name="edit" />改名</Button>
+          <Button disabled={!!lock || syncing} onClick={() => setNaming({ id: g.id, value: g.name })}><PixelIcon name="edit" />改名</Button>
           <Button onClick={() => { setOpen(null); setPath([]); }}><PixelIcon name="up" />收起</Button>
         </div>
         <div className="kbf-drawer-grid">{sorted.length ? sorted.map(card) : <p className="kbf-empty">这个{trail.length > 1 ? "文件夹" : "分组"}还是空的，把文档拖进来</p>}</div>
@@ -257,14 +278,16 @@ function Canvas({ kb, focus, initialOrder, ruleIds, reload }) {
       <div className="kbf-bar">
         <button type="button" className={`kbf-chip${open ? "" : " is-on"}`} onClick={() => { setOpen(null); setPath([]); }}>全部 <i className="tnum">{total}</i></button>
         {model.groups.map((g) => <button key={g.id} type="button" className={`kbf-chip${open === g.id ? " is-on" : ""}`} onClick={() => openGroup(g.id)}>{g.name} <i className="tnum">{g.kids ? countDocs(g) : 0}</i></button>)}
-        <button type="button" className="kbf-chip is-add" disabled={!!lock || !!naming} onClick={() => setNaming({ id: "new", value: "" })}><PixelIcon name="plus" />分组</button>
+        <button type="button" className="kbf-chip is-add" disabled={!!lock || !!naming || syncing} onClick={() => setNaming({ id: "new", value: "" })}><PixelIcon name="plus" />分组</button>
       </div>
-      {/* 搜索一行（用户 2026-10-19）：搜索框占满左侧，右边依次是刷新、最近收藏 */}
+      {/* 搜索框右侧：同步飞书、最近收藏。同步只读取飞书，不改原文。 */}
       <div className="kbf-tools">
         <label className="search-box kbf-search"><PixelIcon name="search" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`搜 ${total} 篇的标题或摘要`} aria-label="搜索知识库" />{q && <button type="button" className="icon-btn" onClick={() => setQ("")} aria-label="清除搜索"><PixelIcon name="close" /></button>}</label>
-        <Button disabled={!!lock || pending > 0} onClick={reload} title="按飞书重新读取（约 20 秒）"><PixelIcon name="refresh" />刷新</Button>
+        <Button disabled={!!lock || pending > 0 || !!naming || syncing} onClick={syncFromFeishu} title="重新读取飞书的最新目录、文档名称和详情；完成后更新当前页面"><PixelIcon name="refresh" />{syncing ? "同步中…" : "同步飞书"}</Button>
         <Button onClick={() => setRecentOpen(true)}><PixelIcon name="clock" />最近收藏{unknownCount > 0 && <span className="kbf-badge tnum">{unknownCount}</span>}</Button>
       </div>
+      <p className="small muted">上次同步飞书：{kb.readAt || "—"}</p>
+      {syncing && <div className="kbf-syncing"><StepProgress label="正在读取飞书最新目录和文档信息，请稍候" /></div>}
       {pending > 0 && !lock && <div className="kbf-syncing"><StepProgress label={`正在写入飞书 · 还剩 ${pending} 项`} /></div>}
       {lock && <div className="write-box is-unknown" role="alert">
         <div className="write-head"><PixelIcon name="alert" /><strong>结果不明，画布已锁住</strong></div>
@@ -287,7 +310,7 @@ function Canvas({ kb, focus, initialOrder, ruleIds, reload }) {
       </div>
 
       <Modal open={recentOpen} onClose={() => setRecentOpen(false)} icon="clock" title="最近收藏">
-        <CollectRecent bare onVerified={() => { recent.reload(); reload(); }} />
+        <CollectRecent bare onVerified={() => { recent.reload(); syncFromFeishu(); }} />
       </Modal>
     </section>
   );
