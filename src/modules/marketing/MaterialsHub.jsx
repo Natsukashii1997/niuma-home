@@ -8,6 +8,8 @@ import { Button, Loadable, Modal, Segmented } from "../../ui/components.jsx";
 import Thumb from "../../ui/Thumb.jsx";
 import MaterialsView from "./MaterialsView.jsx";
 import CacheImageWarning from "../../ui/CacheImageWarning.jsx";
+import { currentMonth, shiftMonth } from "../../constants.js";
+import { materialMonths } from "./material-months.js";
 
 
 // 物料（v3）：原件在公司 NAS（用户在 Finder 用 SMB 挂载），工作台只读扫描、本地只存缩略图。
@@ -60,26 +62,39 @@ function NasBar({ nas, onScanned }) {
 
 function NasBoard({ nas, onScanned }) {
   const [line, setLine] = useState("大学辅导");
+  const [month, setMonth] = useState(currentMonth);
   const [open, setOpen] = useState(null);
   const [dismissed, setDismissed] = useState("");
   useEffect(() => { setDismissed(""); }, [nas.warning]);
+  useEffect(() => {
+    const updateMonth = () => setMonth(currentMonth());
+    const timer = setInterval(updateMonth, 60000);
+    window.addEventListener("focus", updateMonth);
+    document.addEventListener("visibilitychange", updateMonth);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", updateMonth);
+      document.removeEventListener("visibilitychange", updateMonth);
+    };
+  }, []);
   const data = nas.lines[line];
+  const months = materialMonths(nas.months, month);
   return (
     <>
       <NasBar nas={nas} onScanned={onScanned} />
-      <p className="small muted">新物料放入对应月份、业务线文件夹后，点击“同步 NAS”；新月份会自动增加一列。例：2026-11月 / 大学辅导。</p>
+      <p className="small muted">默认预留下个月（{shiftMonth(month, 1)}），暂无物料时留空。新物料放入对应月份、业务线文件夹后，点击“同步 NAS”即可填入。</p>
       <CacheImageWarning text={dismissed === nas.warning ? "" : nas.warning} onClose={() => setDismissed(nas.warning)} />
       <div className="toolbar">
         <Segmented options={NAS_LINES} value={line} onChange={setLine} />
         <span className="small muted">按文件名关键词识别：{data.types.map((t) => `${t.key}「${t.keyword}」`).join(" · ")}；同名活动只留第一张，不扫「营销物料」文件夹</span>
       </div>
-      <div className="wall-wrap"><div className="wall" style={{ "--cols": nas.months.length }}>
+      <div className="wall-wrap"><div className="wall" style={{ "--cols": months.length }}>
         <div className="wall-h">类型</div>
-        {nas.months.map((m) => <div key={m} className="wall-h"><span className="tnum">{m}</span></div>)}
+        {months.map((m) => <div key={m} className="wall-h"><span className="tnum">{m}</span></div>)}
         {data.types.map((t) => (
           <Row key={t.key}>
             <div className="wall-t"><strong>{t.key}</strong><span className="small muted">关键词「{t.keyword}」{t.many ? " · 每个活动一张" : ""}</span></div>
-            {nas.months.map((m) => <WallCell key={m} items={data.cells[`${m}|${t.key}`] || []} many={t.many} onOpen={(item) => setOpen({ month: m, type: t.key, item })} />)}
+            {months.map((m) => <WallCell key={m} items={data.cells[`${m}|${t.key}`] || []} reserved={m > month || !nas.months.includes(m)} many={t.many} onOpen={(item) => setOpen({ month: m, type: t.key, item })} />)}
           </Row>
         ))}
       </div>
@@ -107,7 +122,8 @@ function NasBoard({ nas, onScanned }) {
 const Row = ({ children }) => <>{children}</>;
 
 // 活动海报一格多张：固定两列网格、统一尺寸，名字最多两行，按名称排序（与 NAS 里看到的顺序一致）。
-function WallCell({ items, many, onOpen }) {
+function WallCell({ items, many, onOpen, reserved }) {
+  if (!items.length && reserved) return <div className="wall-c" />;
   if (!items.length) return <div className="wall-c"><span className="wall-empty"><PixelIcon name="close" />没识别到</span></div>;
   return (
     <div className={`wall-c${many ? " is-many" : ""}`}>

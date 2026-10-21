@@ -70,7 +70,7 @@ export function pageInfo(page, { data, error, todos, now = new Date() } = {}) {
   if (page === "user") {
     const t = sourceItem("时间线", src.timeline, { stale: true, now });
     const anomaly = (todos || []).find((x) => x.kind === "时间线");
-    const label = anomaly?.text.replace(/条异常待确认$/, "条Ai推测");
+    const label = anomaly?.text.replace(/条异常待确认$/, "条AI推测");
     const n = label && /^(\d+)\s*(.*)$/.exec(label);
     return one(t, n ? [[{ hot: n[1] }, ` ${n[2]}`]] : anomaly ? [[label]] : []);
   }

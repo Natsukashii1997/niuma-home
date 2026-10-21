@@ -26,7 +26,7 @@ test("没有专属来源的页面退回首页那套", () => {
 test("用户页：时间线同步时间 + 异常数（数字高亮）", () => {
   const info = pageInfo("user", { data, now, todos: [{ kind: "时间线", text: "330 条异常待确认" }] });
   assert.equal(info.tone, "ok");
-  assert.equal(text(info), "时间线 22:14 同步 | 330 条Ai推测");
+  assert.equal(text(info), "时间线 22:14 同步 | 330 条AI推测");
   assert.deepEqual(info.segments[1][0], { hot: "330" });
   assert.equal(text(pageInfo("user", { data, now })), "时间线 22:14 同步");
 });
