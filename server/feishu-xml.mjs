@@ -1,6 +1,6 @@
 // Compare document meaning and layout boundaries, ignoring Feishu IDs and default styles.
 // Only the text/table/list subset produced by Brief is accepted; resource directives fail closed.
-export function canonicalXml(source) {
+export function canonicalXml(source, { widths=false }={}) {
   if(typeof source!=='string' || /<!|<\?/.test(source)) throw new Error('Unsupported XML declaration');
   const root={tag:'root',children:[]},stack=[root];
   const decode=s=>s.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi,(_,v)=>v[0]==='#'?String.fromCodePoint(v[1].toLowerCase()==='x'?parseInt(v.slice(2),16):Number(v.slice(1))):({amp:'&',lt:'<',gt:'>',quot:'"',apos:"'"})[v]);
@@ -23,7 +23,8 @@ export function canonicalXml(source) {
   const children=n=>n.children.flatMap(walk);
   function walk(n){
     if(typeof n==='string')return clean(n)?[['text',clean(n)]]:[];
-    if(['colgroup','col'].includes(n.tag))return [];
+    if(n.tag==='colgroup')return widths?[['colgroup',children(n)]]:[];
+    if(n.tag==='col')return widths?[['col',Number(n.attrs.width),Number(n.attrs.span||1)]]:[];
     if(n.tag==='root')return children(n);
     if(['thead','tbody'].includes(n.tag)){const content=children(n);return n.tag==='tbody'&&!content.length?[]:[[n.tag,content]];}
     if(n.tag==='table')return [['table',children(n)]];

@@ -312,7 +312,11 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 ### 设计 Brief 模板（2026-10-21）
 
 - `GET /api/v3/briefs/:month`：七节模板，新增 `materials:[{id,name}]` 主表。`audience/timeline/items` 与主表同序、同名，以稳定编号保留改名后的人工内容。新建不再自动从旧需求或价格方案拼物料；旧记录按精确名称迁移，未配对项独立保留。
-- `POST /api/v3/briefs/:month/generate {patch,overwrite?:false}`：只读草稿建议，不写数据库、不调用 Codex 或大模型；读取同月用户策略，补背景/目标和受众表空白；`overwrite:true` 明确重写第一、二节，其余节不变。缺少同月策略返回409。返回 `value,warnings,source`，人工审阅后仍通过本地preview/confirm保存。
+- `POST /api/v3/briefs/:month/generate {patch,overwrite?:false}`：只读草稿建议，不写数据库、不调用 Codex 或大模型；读取同月用户策略，补背景/目标和受众表空白；`overwrite:true` 明确重写第一、二节，其余节不变。缺少同月策略返回409。返回 `value,warnings,source`，页面自动保存生成结果；旧preview/confirm接口兼容保留。
 - 新物料 `kind:'framework',blocks:[]`；第四节每个物料一个小节和三列表头「涉及板块/内容/说明/示例」。第五节两列「交付物/规格建议」；第六节固定需求对接/内容确认/设计对接；附件可空。
-- Brief 的 export-preview/export 采用原生XML标题和表格（旧收据和需求策略导出仍兼容Markdown）。界面“一键创建”连续调用预检、单次确认及回读；Brief 预检提交 `{}`，服务端固定到路觅策略知识库 / 营销对接Brief（space `7672588453183261977`，node `KiDLwRP8eixgJfkNHvDcGwpQnog`），拒绝前端改目的地。未保存草稿不导出，完全空白物料占位跳过，未命名且已填内容仍须补名。创建后额外核对 Wiki 空间、父节点、文档身份和标题。需求策略仍使用指定文件夹。重复相同内容返回已有成功文档，未知状态只核对原文档，不重建。
+- Brief 的 export-preview/export 采用原生XML标题和表格（旧收据和需求策略导出仍兼容Markdown）。界面“一键创建”连续调用预检、单次确认及回读；Brief 预检提交 `{baseVersion}`（旧客户端 `{}` 兼容），服务端检查当前版本并固定到路觅策略知识库 / 营销对接Brief（space `7672588453183261977`，node `KiDLwRP8eixgJfkNHvDcGwpQnog`），拒绝前端改目的地。点击创建先flush串行自动保存、回读当前版本，再提交预检；保存失败或版本冲突不导出。完全空白物料占位跳过，未命名且已填内容仍须补名。创建后额外核对 Wiki 空间、父节点、文档身份和标题。需求策略仍使用指定文件夹。重复相同内容返回已有成功文档，未知状态只核对原文档，不重建。
 - XML回读保留章节、表头/表体、行列、空格子、合并信息和段落换行，忽略自动ID及默认样式；差异进入unknown。附件仅列文件名，不自动上传本机文件。
+
+- `POST /api/v3/briefs/:month/autosave {baseVersion,requestId,patch}`：只写本地。事务内比较版本、校验全稿、写后回读；成功返回 Brief（含version/editedAt/saveRequestId）。重复同一请求回放，不重复增版；同编号不同内容拒绝400，旧基线409 `BRIEF_SAVE_CONFLICT`。旧preview/confirm仍保留兼容。
+- Brief 编辑停止输入600ms后自动保存；保存期间新增输入串行补存，不用响应替换当前输入框。按月/页面恢复日志，Web Locks隔离复制标签页，回读确认丢失响应；冲突须明确选择，导出不会绕过。切月等待保存，外层避免新月份短暂使用旧接口数据。
+- XML列宽来自模板revision118：受众221/300/300、交付140/140/140/192/192、新物料文案统一使用参考4.1的145/289/377、规格230/450、负责人135/545。七节h1、物料h2，每表至少3正文行，原有多行保留。带列宽的导出用full XML回读核对列宽/行数/层级，旧收据继续原口径。

@@ -41,7 +41,7 @@ test('缺少或不同月策略拒绝生成，不能接受错位物料或坏表�
 test('空框架导出保留七节及每份物料三列表头，文本不能变成资源上传指令',t=>{
  const {base}=fixture(t);const draft=syncBriefMaterials(base,[{id:'a',name:'案例 <img path="@/secret"/> & 说明'},{id:'b',name:'导师介绍'}]);
  const xml=briefXml(draft);assert.equal((xml.match(/<h1>/g)||[]).length,7);assert.equal((xml.match(/<h2>/g)||[]).length,2);assert.equal((xml.match(/说明\/示例/g)||[]).length,2);assert.ok(!xml.includes('<img'));assert.match(xml,/&lt;img/);assert.doesNotThrow(()=>canonicalXml(xml));
- assert.match(briefText(draft),/涉及板块 \| 内容 \| 说明\/示例/);assert.match(xml,/<h1>六、负责人与审批机制<\/h1><table><tbody>/);
+ assert.match(briefText(draft),/涉及板块 \| 内容 \| 说明\/示例/);assert.match(xml,/<h1>六、负责人与审批机制<\/h1><table><colgroup>[\s\S]*?<\/colgroup><tbody>/);
 });
 test('XML核对捕获空格子丢失、列合并和章节降级，忽略飞书ID和默认样式',()=>{
  const source='<title>标题</title><h1>一、项目</h1><table><thead><tr><th><p>名称</p></th><th><p>说明</p></th></tr></thead><tbody><tr><td><p>A <b>B</b></p></td><td><p></p></td></tr></tbody></table>';
@@ -72,4 +72,16 @@ test('旧表名称与顺序不同则按名称迁移，未配对项独立保留',
  const {db,service}=fixture(t);putRecord(db,'brief',month,{revision:1,overrides:{audience:[['私信用户','受众','待办']],timeline:[['朋友圈九宫格','明天','P0','某人','备注']],items:[{id:'old',title:'课时卡价格图',kind:'price',blocks:[],refs:[],reuse:null}]}});
  const read=service.read(month);assert.deepEqual(read.materials.map(x=>x.name),['私信用户','朋友圈九宫格','课时卡价格图']);assert.equal(read.audience[0][1],'受众');assert.equal(read.timeline[1][1],'明天');assert.equal(read.items[2].kind,'price');
  const p=service.preview(month,{patch:{title:'新标题'}});service.confirm(month,{previewId:p.previewId,confirm:true});assert.deepEqual(service.read(month).materials,read.materials);
+});
+
+test('参考列宽与三行正文写进XML，保留多于三行的内容与标题层级',t=>{
+ const {base}=fixture(t);const b=syncBriefMaterials(base,[{id:'a',name:'海报'}]);
+ const x=briefXml(b),tables=[...x.matchAll(/<table>([\s\S]*?)<\/table>/g)].map(m=>m[1]);
+ assert.equal(tables.length,5);
+ for(const table of tables)assert.equal((table.match(/<tbody>([\s\S]*?)<\/tbody>/)[1].match(/<tr>/g)||[]).length,3);
+ assert.match(tables[0],/<col width="221"\/><col width="300"\/><col width="300"\/>/);
+ assert.match(tables[2],/<col width="145"\/><col width="289"\/><col width="377"\/>/);
+ b.items[0].blocks=Array.from({length:5},(_,i)=>['标题'+i,'人工内容','']);
+ assert.match(briefXml(b),/标题4/);
+ assert.notEqual(canonicalXml(x,{widths:true}),canonicalXml(x.replace('width="221"','width="140"'),{widths:true}));
 });

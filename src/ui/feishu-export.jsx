@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PixelIcon } from "./bitmap.jsx";
 import { apiSend } from "../api.js";
 import { Button } from "./components.jsx";
@@ -7,12 +7,13 @@ import { WriteBox, useWriteFlow } from "./write-flow.jsx";
 // 导出到飞书（brief、已采纳需求的策略共用）：只新建文档，不覆盖旧文档。
 // 预览写清楚目标文件夹（真实名称和链接）、新文档标题和全文，确认后才创建；创建后由后端回读全文核对，页面再读一次操作记录确认成功。
 // 结果不明（EXPORT_RESULT_UNKNOWN）时保留操作记录，只提供「只读核对」，绝不自动重试创建。
-export function FeishuExport({ what, previewPath, confirmPath, statusBase, extra = {}, disabled = false, disabledNote = "", oneClick = false, fixedTarget = null, onLockChange }) {
+export function FeishuExport({ what, previewPath, confirmPath, statusBase, extra = {}, disabled = false, disabledNote = "", oneClick = false, fixedTarget = null, onLockChange, beforeCreate }) {
   const [open, setOpen] = useState(oneClick);
   const [target, setTarget] = useState("");
   const [check, setCheck] = useState({ busy: false, note: "", error: "" });
   const [done, setDone] = useState(null); // 只读核对后确认成功的收据
   const flow = useWriteFlow();
+  const creating=useRef(false);
   useEffect(()=>{onLockChange?.(flow.busy || flow.phase==='unknown');},[flow.busy,flow.phase,onLockChange]);
   const previewBody = () => ({ ...(fixedTarget ? {} : { targetUrl: target.trim() }), ...extra });
   const preview = () => { setDone(null); flow.preview(() => apiSend("POST", previewPath, previewBody())); };
@@ -27,10 +28,12 @@ export function FeishuExport({ what, previewPath, confirmPath, statusBase, extra
     },
   );
   const createOnce=async()=>{
-    if(disabled || flow.busy || flow.phase==='unknown')return;
-    setDone(null);
-    const pv=await flow.preview(()=>apiSend('POST',previewPath,previewBody()));
-    if(pv)await confirm();
+    if(disabled || creating.current || flow.busy || flow.phase==='unknown')return;
+    creating.current=true;onLockChange?.(true);setDone(null);
+    try {
+      const pv=await flow.preview(async()=>{const prepared=await beforeCreate?.();return apiSend('POST',previewPath,{...previewBody(),...prepared});});
+      if(pv)await confirm();
+    }finally{creating.current=false;}
   };
   // 结果不明：只读核对原操作记录里的文档，不再调用创建。
   async function reconcile() {
@@ -57,11 +60,11 @@ export function FeishuExport({ what, previewPath, confirmPath, statusBase, extra
             <Button onClick={oneClick?createOnce:preview} disabled={disabled || (!fixedTarget && !target.trim()) || flow.busy || flow.phase === "unknown"}><PixelIcon name="external" />{oneClick?"一键创建飞书文档":"预览导出"}</Button>
             {!oneClick && <button type="button" className="link-btn" onClick={() => { if (!flow.busy && flow.phase !== "unknown") { setOpen(false); flow.reset(); } }}>收起</button>}
           </div>
-          <p className="small muted">{oneClick?"点击后用当前已保存内容创建新文档，保留空白框架；相同内容重复点击会返回原文档链接。":`只在这个文件夹里新建一篇${what}文档，确认前不会写飞书。`}</p>
+          <p className="small muted">{oneClick?"点击后先自动保存最新填写内容，再创建新文档；相同内容重复点击会返回原文档链接。":`只在这个文件夹里新建一篇${what}文档，确认前不会写飞书。`}</p>
         </div>
       )}
       {oneClick && flow.busy && <p className="small muted">正在核对目录、创建并回读文档…</p>}
-      {(!oneClick || !["previewing","preview","confirming"].includes(flow.phase)) && <WriteBox flow={flow} title={`导出${what}预览`} confirmLabel="确认在飞书新建文档" savedText="已在飞书新建文档，回读核对一致" onConfirm={confirm} onRepreview={preview} onReread={reconcile}>
+      {(!oneClick || !["previewing","preview","confirming"].includes(flow.phase)) && <WriteBox flow={flow} title={`导出${what}预览`} confirmLabel="确认在飞书新建文档" savedText="已在飞书新建文档，回读核对一致" onConfirm={confirm} onRepreview={oneClick?createOnce:preview} onReread={reconcile}>
         {(pv) => (
           <>
             <dl className="kv">

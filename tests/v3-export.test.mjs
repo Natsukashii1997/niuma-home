@@ -300,3 +300,19 @@ test('Brief只修标题尾部换行继续返回原文档，实际正文变化仍
  await s.confirm('brief','2026-11',confirmBody(fresh),async()=>changed);assert.equal(state.creates,2);
  assert.equal(listRecords(db,'feishu-export').length,2);
 });
+
+test('Brief列宽必须完整回读，缺列宽锁定未知且不得重复创建',async t=>{
+ const {db,options,state}=setup(t),s=createBriefService(db,{exports:options});
+ const p=await s.exportPreview('2026-11',{baseVersion:'v0'}),xml=state.calls.find(c=>c.args.includes('+create')).input;
+ state.content=xml.replace(/<colgroup>[\s\S]*?<\/colgroup>/g,'');
+ await assert.rejects(s.exportConfirm('2026-11',confirmBody(p)),e=>e.code==='EXPORT_RESULT_UNKNOWN');
+ const fetch=state.calls.find(c=>c.args.includes('+fetch'));assert.equal(fetch.args[fetch.args.indexOf('--detail')+1],'full');
+ await assert.rejects(s.exportConfirm('2026-11',confirmBody(p)));assert.equal(state.creates,1);
+ state.content=null;assert.equal((await s.exportReconcile('2026-11',listRecords(db,'feishu-export')[0].operationId)).status,'success');
+ assert.equal(state.creates,1);
+});
+test('Brief导出拒绝旧页面基线，创建前没有额外飞书调用',async t=>{
+ const {db,options,state}=setup(t),s=createBriefService(db,{exports:options});
+ s.autosave('2026-11',{baseVersion:'v0',requestId:'other',patch:{title:'另一页'}});
+ assert.throws(()=>s.exportPreview('2026-11',{baseVersion:'v0'}),e=>e.code==='BRIEF_SAVE_CONFLICT');assert.equal(state.calls.length,0);
+});

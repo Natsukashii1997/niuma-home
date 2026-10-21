@@ -1,6 +1,6 @@
-import { createLocalChanges, getRecord, fingerprint } from './local-records.mjs';
+import { createLocalChanges, getRecord, putRecord, fingerprint } from './local-records.mjs';
 import { createUserStrategyService } from './user-strategy.mjs';
-import { BRIEF_SECTIONS as SECTIONS, BRIEF_HEADS, BRIEF_NUMBERS } from './brief-template.mjs';
+import { BRIEF_SECTIONS as SECTIONS, BRIEF_HEADS, BRIEF_NUMBERS, BRIEF_WIDTHS, briefRows } from './brief-template.mjs';
 import { generateBriefSuggestions } from './brief-generate.mjs';
 import { BRIEF_DESTINATION } from './brief-destination.mjs';
 import { requireMonth, failure, beijingText } from './v3-common.mjs';
@@ -72,20 +72,20 @@ const specRows = b => b.specs.map(r=>r.length===4?[r[0],r.slice(1).filter(Boolea
 const ownerRows = b => b.owners.map(r=>r.length===3?[r[0],r.slice(1).filter(Boolean).join(' / ')]:r);
 const xml = value => String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\r/g,'').replace(/\n/g,'<br/>');
 const para = value => `<p>${xml(value)}</p>`;
-const xmlTable = (heads, rows) => `<table>${heads.length?`<thead><tr>${heads.map(h=>`<th background-color="light-gray">${para(h)}</th>`).join('')}</tr></thead>`:''}${rows.length?`<tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${para(c)}</td>`).join('')}</tr>`).join('')}</tbody>`:''}</table>`;
+const xmlTable = (heads, rows, widths) => `<table><colgroup>${widths.map(w=>`<col width="${w}"/>`).join('')}</colgroup>${heads.length?`<thead><tr>${heads.map(h=>`<th background-color="light-gray">${para(h)}</th>`).join('')}</tr></thead>`:''}<tbody>${briefRows(rows,widths.length).map(r=>`<tr>${r.map(c=>`<td>${para(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
 
 export function briefXml(brief, attachments=[]) {
   const content = [
     para(brief.background.text)+(brief.background.goals.length?`<ul>${brief.background.goals.map(g=>`<li>${xml(g)}</li>`).join('')}</ul>`:''),
-    xmlTable(BRIEF_HEADS.audience,brief.audience),
-    xmlTable(BRIEF_HEADS.timeline,brief.timeline),
+    xmlTable(BRIEF_HEADS.audience,brief.audience,BRIEF_WIDTHS.audience),
+    xmlTable(BRIEF_HEADS.timeline,brief.timeline,BRIEF_WIDTHS.timeline),
     brief.items.map((it,i)=>`<h2>4.${i+1} ${xml(it.title.trimEnd())}</h2>`+(it.kind==='skip'?para(it.note):[
       it.priceFrom?para(`来源：${it.priceFrom}`):'',
-      it.blocks?xmlTable(BRIEF_HEADS.blocks,it.blocks):`<ol>${(it.cells||[]).map(c=>`<li>${xml(c)}</li>`).join('')}</ol>`,
+      it.blocks?xmlTable(BRIEF_HEADS.blocks,it.blocks,BRIEF_WIDTHS.blocks):`<ol>${(it.cells||[]).map(c=>`<li>${xml(c)}</li>`).join('')}</ol>`,
       ...(it.refs||[]).map(r=>para(`参考：${r.title}`)),it.reuse?para(`沿用：${it.reuse.month} ${it.reuse.title}`):''
     ].join(''))).join(''),
-    xmlTable(BRIEF_HEADS.specs,specRows(brief)),
-    xmlTable([],ownerRows(brief)),
+    xmlTable(BRIEF_HEADS.specs,specRows(brief),BRIEF_WIDTHS.specs),
+    xmlTable([],ownerRows(brief),BRIEF_WIDTHS.owners),
     attachments.map(a=>para(attachmentMarkdownLine(a))).join('') || para(''),
   ];
   return `<title>${xml(brief.title)}</title>\n${SECTIONS.map((name,i)=>`<h1>${BRIEF_NUMBERS[i]}、${name}</h1>${content[i]}`).join('\n')}`;
@@ -99,7 +99,7 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
   function read(month) {
     const base = generatedBrief(db, month, strategy.get(month)), stored = getRecord(db, 'brief', month);
     if (!stored) return base;
-    let value={ ...merge(base, stored.overrides), version: `v${stored.revision}`, editedAt: stored.editedAt };
+    let value={ ...merge(base, stored.overrides), version: `v${stored.revision}`, editedAt: stored.editedAt, saveRequestId:stored.lastSave?.id };
     // Older saved Briefs predate the material-name master list. Hydrate stable rows in memory.
     if(stored.overrides.materials===undefined){
       const slots=[];
@@ -133,6 +133,26 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
   return {
     read,
     attachments,
+    autosave(month, body) {
+      requireMonth(month);
+      if(!plain(body)||!keys(body,['baseVersion','requestId','patch'])||!/^v\d+$/.test(body.baseVersion)||!str(body.requestId,150)||!body.requestId||!plain(body.patch)||!keys(body.patch,editable)) fail('自动保存内容无效');
+      const signature=fingerprint(body);
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const stored=getRecord(db,'brief',month), current=read(month);
+        if(stored?.lastSave?.id===body.requestId){
+          if(stored.lastSave.signature!==signature) fail('保存请求编号不可复用');
+          db.exec('COMMIT');return current;
+        }
+        if(current.version!==body.baseVersion) throw Object.assign(failure(409,'另一页面已更新这份 Brief。当前草稿已保留，请选择保留哪一份。'),{code:'BRIEF_SAVE_CONFLICT'});
+        const next=merge(current,body.patch);validateBrief(next);
+        if(editable.every(k=>JSON.stringify(next[k])===JSON.stringify(current[k]))){db.exec('COMMIT');return current;}
+        const record={overrides:Object.fromEntries(editable.map(k=>[k,next[k]])),revision:(stored?.revision||0)+1,editedAt:beijingText(now()),lastSave:{id:body.requestId,signature}};
+        const back=putRecord(db,'brief',month,record,now());
+        if(fingerprint(back)!==fingerprint(record)) throw failure(500,'自动保存回读不一致');
+        const value=read(month);db.exec('COMMIT');return value;
+      }catch(error){db.exec('ROLLBACK');throw error;}
+    },
     generate(month, body={}) {
       requireMonth(month);
       if(!plain(body)||!keys(body,['patch','overwrite']) || (body.overwrite!==undefined && typeof body.overwrite!=='boolean') || !plain(body.patch)||!keys(body.patch,editable))fail('请提供当前Brief草稿');
@@ -157,7 +177,12 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
       return { previewId: preview.previewId, expiresAt: preview.expiresAt, before: read(month), value: view };
     },
     confirm(month, body) { requireMonth(month); changes.confirm('brief', month, body); return structuredClone(previewViews.get(body.previewId).view); },
-    exportPreview(month, body = {}) { requireMonth(month); return exporter.preview('brief', month, { month }, body, exportContent(month)); },
+    exportPreview(month, body = {}) {
+      requireMonth(month);
+      const {baseVersion,...target}=body;
+      if(baseVersion!==undefined && baseVersion!==read(month).version) throw Object.assign(failure(409,'Brief 已被另一页面更新，请核对后再创建文档'),{code:'BRIEF_SAVE_CONFLICT'});
+      return exporter.preview('brief', month, { month }, target, exportContent(month));
+    },
     exportConfirm(month, body) { requireMonth(month); return exporter.confirm('brief', month, body, exportContent(month)); },
     exportStatus(month, operationId) { requireMonth(month); return exporter.status('brief', month, operationId); },
     exportReconcile(month, operationId) { requireMonth(month); return exporter.reconcile('brief', month, operationId); },

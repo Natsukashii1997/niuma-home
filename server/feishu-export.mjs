@@ -150,7 +150,8 @@ export function createFeishuExporter(db, { now = Date.now, run = defaultRun, fix
   async function verify(p, receipt) {
     const isWiki = p.target.type === 'wiki';
     const link = documentLink({ document_id: receipt.document?.id, url: receipt.document?.url }, isWiki);
-    const fetched = await cli(['docs', '+fetch', '--doc', link.id, '--doc-format', format(p.document), '--detail', 'simple', '--scope', 'full']);
+    const widths=format(p.document)==='xml' && p.document.xml.includes('<colgroup>');
+    const fetched = await cli(['docs', '+fetch', '--doc', link.id, '--doc-format', format(p.document), '--detail', widths?'full':'simple', '--scope', 'full']);
     const doc = fetched.data.document;
     if (doc?.document_id !== link.id || typeof doc.content !== 'string' || fetched.data.warnings?.length) throw new Error('Readback incomplete');
     if (isWiki) {
@@ -162,7 +163,7 @@ export function createFeishuExporter(db, { now = Date.now, run = defaultRun, fix
       const metadata = (await cli(['drive', '+inspect', '--url', link.url, '--format', 'json'])).data;
       if (metadata.type !== 'docx' || metadata.token !== link.id || metadata.title !== p.document.title || documentLink({ document_id: metadata.token, url: metadata.url }).url !== link.url) throw new Error('Document metadata differs');
     }
-    const normalize=format(p.document)==='xml'?canonicalXml:canonicalMarkdown;
+    const normalize=format(p.document)==='xml'?source=>canonicalXml(source,{widths}):canonicalMarkdown;
     const actual=normalize(doc.content), expected=normalize(format(p.document)==='xml'?p.document.xml:p.document.markdown), withoutTitle=normalize(format(p.document)==='xml'?p.document.xml.replace(/^<title>[\s\S]*?<\/title>\s*/,''):bodyContent(p.document));
     if (actual !== expected && actual !== withoutTitle) throw new Error('Readback differs');
     const latest = getRecord(db, RECEIPTS, receipt.operationId);
