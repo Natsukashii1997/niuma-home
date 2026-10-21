@@ -124,6 +124,7 @@ function Canvas({ kb: initialKb, focus, initialOrder, ruleIds, reload, onSpace }
       setNote({ tone: "error", text: `同步飞书失败，已保留上次内容。${error.message}` });
     } finally {
       syncInFlight.current = false; setSyncing(false);
+      window.dispatchEvent(new Event("workdesk:kb-synced"));
     }
   }
 

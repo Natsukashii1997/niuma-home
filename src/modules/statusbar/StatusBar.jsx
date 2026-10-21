@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApi } from "../../api.js";
 import { allSources, pageInfo } from "./page-info.js";
 
@@ -21,6 +21,12 @@ function Group({ name, items }) {
 
 export function StatusBar({ page, onCommand }) {
   const state = useApi("/api/v3/status");
+  useEffect(() => {
+    if (page !== "kb") return undefined;
+    const update = () => state.reload();
+    window.addEventListener("workdesk:kb-synced", update);
+    return () => window.removeEventListener("workdesk:kb-synced", update);
+  }, [page, state.reload]);
   const todos = useApi(page === "user" ? "/api/v3/home/todo" : null).data; // 只有用户页才多读一次待办
   const [open, setOpen] = useState(false);
   const info = pageInfo(page, { data: state.data, error: state.error, todos });
