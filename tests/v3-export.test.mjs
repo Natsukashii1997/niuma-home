@@ -39,18 +39,18 @@ function setup(t) {
       assert.ok(!args.includes(options.input), '内容只通过stdin传入');
       if (args.includes('--dry-run')) {
         state.onDry?.();
-        return { stdout: JSON.stringify({ ok: true, identity: state.identity, dry_run: true, data: { context: { app_id: state.app, user_open_id: state.user }, api: [{ method: 'POST', url: '/open-apis/docs_ai/v1/documents', body: { parent_token: 'Folder123', format: 'markdown', content: `<title>${arg('--title')}</title>\n${options.input}` } }] } }) };
+        return { stdout: JSON.stringify({ ok: true, identity: state.identity, dry_run: true, data: { context: { app_id: state.app, user_open_id: state.user }, api: [{ method: 'POST', url: '/open-apis/docs_ai/v1/documents', body: { parent_token: 'Folder123', format: arg('--doc-format'), content: arg('--doc-format')==='xml'?options.input:`<title>${arg('--title')}</title>\n${options.input}` } }] } }) };
       }
       state.creates++;
       assert.equal(listRecords(db, 'feishu-export').filter(r => r.status === 'started').length, 1, '外部写入前先落started收据');
       state.onCreate?.();
       if (state.fail === 'create') throw new Error('timeout; result unknown');
-      const id = `Doc${state.creates}`, title = arg('--title').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
-      documents.set(id, { title, content: `# ${literalMarkdown(title)}\n\n${options.input}` });
+      const id = `Doc${state.creates}`, title = (arg('--doc-format')==='xml'?options.input.match(/^<title>(.*?)<\/title>/)[1]:arg('--title')).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+      documents.set(id, { title, content: arg('--doc-format')==='xml'?options.input:`# ${literalMarkdown(title)}\n\n${options.input}` });
       return result({ document: { document_id: id, url: `https://example.feishu.cn/docx/${id}`, revision_id: 1 }, warnings: state.warnings });
     }
     if (args.includes('+fetch')) {
-      assert.equal(arg('--scope'), 'full'); assert.equal(arg('--doc-format'), 'markdown');
+      assert.equal(arg('--scope'),'full'); assert.ok(['xml','markdown'].includes(arg('--doc-format')));
       if (state.fail === 'fetch') throw new Error('readback timeout');
       const id = arg('--doc');
       return result({ document: { document_id: id, content: state.content ?? documents.get(id)?.content, revision_id: 1 } });
@@ -229,4 +229,15 @@ test('无文档地址的未知结果不猜标题、不重发；有地址但核�
   state.fail = 'fetch'; await assert.rejects(s.confirm('brief', '2026-12', confirmBody(p2), load), e => { receipt = e.receipt; return true; });
   await assert.rejects(s.reconcile('brief', '2026-12', receipt.operationId), e => e.code === 'EXPORT_RESULT_UNKNOWN');
   assert.equal(s.status('brief', '2026-12', receipt.operationId).status, 'unknown'); assert.equal(state.creates, 2);
+});
+
+test('Brief原生XML丢失表头列不能报成功，恢复后只读核对不再创建', async t => {
+  const {db,options,state}=setup(t), service=createBriefService(db,{exports:options});
+  const p=await service.exportPreview('2026-11',{targetUrl:FOLDER});
+  const xml=state.calls.find(c=>c.args.includes('+create')).input;
+  state.content=xml.replace('<th background-color="light-gray"><p>面向人群</p></th>','');
+  await assert.rejects(service.exportConfirm('2026-11',confirmBody(p)),e=>e.code==='EXPORT_RESULT_UNKNOWN');
+  const receipt=listRecords(db,'feishu-export')[0];assert.equal(state.creates,1);
+  state.content=null;const reconciled=await service.exportReconcile('2026-11',receipt.operationId);assert.equal(reconciled.status,'success');assert.equal(state.creates,1);
+  assert.ok(state.calls.filter(c=>c.args.includes('+create')).every(c=>!c.args.includes('--title')));
 });

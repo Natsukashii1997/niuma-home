@@ -60,7 +60,7 @@ test('brief只有实际保存且七节完成、来源指纹未变才算done', t 
   assert.equal(step(deliveryView(db, month, empty), 'brief').state, 'todo');
   const stored = { overrides: { status: Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map(n => [n, 'done'])) }, revision: 1, editedAt: '2026-10-16 14:00', sourceFingerprint: fingerprint(generatedBrief(db, month)) };
   putRecord(db, 'brief', month, stored); assert.equal(step(deliveryView(db, month, empty), 'brief').state, 'done');
-  putRecord(db, 'price-schemes', 'uni-lite', matrix()); assert.equal(step(deliveryView(db, month, empty), 'brief').state, 'part'); assert.match(step(deliveryView(db, month, empty), 'brief').meta, /来源已变化/);
+  putRecord(db, 'user-strategy', month, {month,summary:{judgement:'策略更新'}}); assert.equal(step(deliveryView(db, month, empty), 'brief').state, 'part'); assert.match(step(deliveryView(db, month, empty), 'brief').meta, /来源已变化/);
   stored.sourceFingerprint = fingerprint(generatedBrief(db, month)); stored.overrides.status[7] = 'part'; putRecord(db, 'brief', month, stored); assert.equal(step(deliveryView(db, month, empty), 'brief').state, 'part');
 });
 

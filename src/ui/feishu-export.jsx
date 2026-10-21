@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PixelIcon } from "./bitmap.jsx";
 import { apiSend } from "../api.js";
 import { Button } from "./components.jsx";
@@ -7,21 +7,30 @@ import { WriteBox, useWriteFlow } from "./write-flow.jsx";
 // 导出到飞书（brief、已采纳需求的策略共用）：只新建文档，不覆盖旧文档。
 // 预览写清楚目标文件夹（真实名称和链接）、新文档标题和全文，确认后才创建；创建后由后端回读全文核对，页面再读一次操作记录确认成功。
 // 结果不明（EXPORT_RESULT_UNKNOWN）时保留操作记录，只提供「只读核对」，绝不自动重试创建。
-export function FeishuExport({ what, previewPath, confirmPath, statusBase, extra = {}, disabled = false, disabledNote = "" }) {
-  const [open, setOpen] = useState(false);
+export function FeishuExport({ what, previewPath, confirmPath, statusBase, extra = {}, disabled = false, disabledNote = "", oneClick = false, onLockChange }) {
+  const [open, setOpen] = useState(oneClick);
   const [target, setTarget] = useState("");
   const [check, setCheck] = useState({ busy: false, note: "", error: "" });
   const [done, setDone] = useState(null); // 只读核对后确认成功的收据
   const flow = useWriteFlow();
+  useEffect(()=>{onLockChange?.(flow.busy || flow.phase==='unknown');},[flow.busy,flow.phase,onLockChange]);
   const preview = () => { setDone(null); flow.preview(() => apiSend("POST", previewPath, { targetUrl: target.trim(), ...extra })); };
   const confirm = () => flow.confirm(
     (pv) => apiSend("POST", confirmPath, { previewId: pv.previewId, confirm: true }),
     async (receipt) => {
       if (!receipt?.operationId) return false;
       const s = await apiSend("GET", `${statusBase}/${encodeURIComponent(receipt.operationId)}`);
-      return s.status === "success" && Boolean(s.document?.url);
+      const ok=s.status === "success" && Boolean(s.document?.url);
+      if(ok)setDone(s);
+      return ok;
     },
   );
+  const createOnce=async()=>{
+    if(disabled || flow.busy || flow.phase==='unknown')return;
+    setDone(null);
+    const pv=await flow.preview(()=>apiSend('POST',previewPath,{targetUrl:target.trim(),...extra}));
+    if(pv)await confirm();
+  };
   // 结果不明：只读核对原操作记录里的文档，不再调用创建。
   async function reconcile() {
     const id = flow.receipt?.operationId;
@@ -42,15 +51,16 @@ export function FeishuExport({ what, previewPath, confirmPath, statusBase, extra
         <div className="export-form">
           <div className="row">
             <label className="export-target"><span className="small muted">目标文件夹链接</span>
-              <input value={target} onChange={(e) => { setTarget(e.target.value); flow.reset(); }} placeholder="https://租户.feishu.cn/drive/folder/…" disabled={flow.busy || flow.phase === "unknown"} />
+              <input value={target} onChange={(e) => { setTarget(e.target.value); flow.reset(); }} placeholder="https://租户.feishu.cn/drive/folder/…" disabled={disabled || flow.busy || flow.phase === "unknown"} />
             </label>
-            <Button onClick={preview} disabled={!target.trim() || flow.busy || flow.phase === "unknown"}><PixelIcon name="eye" />预览导出</Button>
+            <Button onClick={oneClick?createOnce:preview} disabled={disabled || !target.trim() || flow.busy || flow.phase === "unknown"}><PixelIcon name="external" />{oneClick?"一键创建飞书文档":"预览导出"}</Button>
             <button type="button" className="link-btn" onClick={() => { if (!flow.busy && flow.phase !== "unknown") { setOpen(false); flow.reset(); } }}>收起</button>
           </div>
-          <p className="small muted">只在这个文件夹里新建一篇{what}文档，不覆盖、不删除已有文档；用固定的 codex 应用身份写入。确认前不会写飞书。</p>
+          <p className="small muted">只在这个文件夹里新建一篇{what}文档，不覆盖、不删除已有文档；{oneClick?"点击创建会直接写入当前已保存内容；空白框架也会保留。":"确认前不会写飞书。"}</p>
         </div>
       )}
-      <WriteBox flow={flow} title={`导出${what}预览`} confirmLabel="确认在飞书新建文档" savedText="已在飞书新建文档，回读核对一致" onConfirm={confirm} onRepreview={preview} onReread={reconcile}>
+      {oneClick && flow.busy && <p className="small muted">正在核对目录、创建并回读文档…</p>}
+      {(!oneClick || !["previewing","preview","confirming"].includes(flow.phase)) && <WriteBox flow={flow} title={`导出${what}预览`} confirmLabel="确认在飞书新建文档" savedText="已在飞书新建文档，回读核对一致" onConfirm={confirm} onRepreview={preview} onReread={reconcile}>
         {(pv) => (
           <>
             <dl className="kv">
@@ -62,7 +72,7 @@ export function FeishuExport({ what, previewPath, confirmPath, statusBase, extra
             <pre>{pv.markdown}</pre>
           </>
         )}
-      </WriteBox>
+      </WriteBox>}
       {check.busy && <p className="small muted">正在只读核对…</p>}
       {check.note && <p className="small warn-text">{check.note}。可以稍后再核对一次；不会重新创建。</p>}
       {check.error && <p className="small risk-text">{check.error}</p>}

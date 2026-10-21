@@ -37,6 +37,7 @@ export function routes(db, options = {}) {
     route('POST', '/api/v3/campaigns/current/archive-preview', handle(() => campaign.archivePreview())),
     route('POST', '/api/v3/campaigns/current/archive', handle(async req => campaign.archiveConfirm(await body(req)))),
     route('GET', '/api/v3/briefs/:month', handle((req, { params }) => briefs.read(params.month))),
+    route('POST', '/api/v3/briefs/:month/generate', handle(async (req, { params }) => briefs.generate(params.month, await body(req)))),
     route('POST', '/api/v3/briefs/:month/preview', handle(async (req, { params }) => briefs.preview(params.month, await body(req)))),
     route('PUT', '/api/v3/briefs/:month', handle(async (req, { params }) => briefs.confirm(params.month, await body(req)))),
     route('GET', '/api/v3/briefs/:month/attachments', handle((req, { params }) => briefs.attachments.list(params.month))),

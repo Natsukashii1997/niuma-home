@@ -231,24 +231,24 @@ test('战役复盘只在已创建战役上预览确认后保存，节点改动�
   assert.equal(getRecord(db, 'campaign', 'current').review, '甲');
 });
 
-test('brief只带入已采纳需求和正式保存价格；缺价格仍完整返回七节', async t => {
+test('brief初始七节留空，由物料名称和同月用户策略驱动，不自动抄价格', async t => {
   const { request, db } = await setup(t);
   adopted(db, { id: 'draft', status: '草稿', goal: '不能带入' });
   let result = await request('GET', '/api/v3/briefs/2026-11'); assert.equal(result.status, 200); assert.equal(result.body.background.text, ''); assert.deepEqual(result.body.items, []); assert.equal(Object.keys(result.body.status).length, 7);
-  adopted(db); result = await request('GET', '/api/v3/briefs/2026-11'); assert.match(result.body.background.text, /期末冲刺/); assert.deepEqual(result.body.background.goals, ['安排考前复习']);
+  adopted(db); result = await request('GET', '/api/v3/briefs/2026-11'); assert.equal(result.body.background.text, ''); assert.deepEqual(result.body.background.goals, []);
   putRecord(db, 'price-schemes', 'uni-lite', { sku: 'uni-lite', line: '大学辅导', name: '灵活学Lite', ...normal() });
-  result = await request('GET', '/api/v3/briefs/2026-11'); assert.equal(result.body.items.length, 1); assert.match(result.body.items[0].blocks[0][1], /6000元/);
+  result = await request('GET', '/api/v3/briefs/2026-11'); assert.equal(result.body.items.length, 0); assert.deepEqual(result.body.materials, []);
   assert.equal((await request('GET', '/api/v3/briefs/2026-13')).status, 400);
 });
 
-test('brief逐字段保护人工编辑，源变更保留已改文字、更新未改目标；预览确认和导出无飞书写入', async t => {
+test('brief逐字段保护人工编辑，源变更保留已改文字与空框架；预览确认和导出无飞书写入', async t => {
   const { request, db, counts } = await setup(t); adopted(db);
   const p = await request('POST', '/api/v3/briefs/2026-11/preview', { patch: { background: { text: '人工写的背景' }, status: { 1: 'done' } } });
   assert.equal(p.status, 200); assert.equal(getRecord(db, 'brief', '2026-11'), null);
   const firstReceipt = await request('PUT', '/api/v3/briefs/2026-11', { previewId: p.body.previewId, confirm: true }); assert.equal(firstReceipt.status, 200);
   adopted(db, { goal: '重新核对复习时间' });
-  const current = await request('GET', '/api/v3/briefs/2026-11'); assert.equal(current.body.background.text, '人工写的背景'); assert.deepEqual(current.body.background.goals, ['重新核对复习时间']); assert.equal(current.body.status[1], 'done');
-  const p2 = await request('POST', '/api/v3/briefs/2026-11/preview', { patch: { title: '修改标题' } }); adopted(db, { goal: '再次变化' });
+  const current = await request('GET', '/api/v3/briefs/2026-11'); assert.equal(current.body.background.text, '人工写的背景'); assert.deepEqual(current.body.background.goals, []); assert.equal(current.body.status[1], 'done');
+  const p2 = await request('POST', '/api/v3/briefs/2026-11/preview', { patch: { title: '修改标题' } }); putRecord(db,'user-strategy','2026-11',{month:'2026-11',summary:{judgement:'用户策略已更新'}});
   assert.equal((await request('PUT', '/api/v3/briefs/2026-11', { previewId: p2.body.previewId, confirm: true })).status, 409);
   const exportResult = await request('POST', '/api/v3/briefs/2026-11/export-preview', {});
   assert.equal(exportResult.status, 400); assert.equal(exportResult.body.code, 'EXPORT_TARGET_REQUIRED');
@@ -275,7 +275,7 @@ test('自言自语派生需求按完整来源指纹核对，支持已采纳项�
   saveSnapshot(db, 'timeline', { stage: '本科', agenda: [] }, new Date().toISOString());
   adopted(db, { id: 'selftalk-message1' });
   assert.equal(acceptedMarketingNeeds(db, '2026-11').length, 1);
-  assert.match((await request('GET', '/api/v3/briefs/2026-11')).body.background.text, /期末冲刺/);
+  assert.equal((await request('GET', '/api/v3/briefs/2026-11')).body.background.text, '');
   const source = getRecord(db, 'selftalk-need', 'message-selftalk-message1'); source.revision = 2;
   putRecord(db, 'selftalk-need', source.id, source);
   assert.equal(acceptedMarketingNeeds(db, '2026-11').length, 0);

@@ -1,3 +1,4 @@
+import { canonicalXml } from './feishu-xml.mjs';
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { getSettings } from './db.mjs';
@@ -81,16 +82,17 @@ export function createFeishuExporter(db, { now = Date.now, run = defaultRun } = 
     if (actual.token !== expected.token || new URL(actual.url).origin !== new URL(expected.url).origin) throw error(409, 'EXPORT_TARGET_CHANGED', '飞书返回的目录与指定目标不一致');
     return { ...actual, title: data.title };
   }
-  const createArgs = p => ['docs', '+create', '--doc-format', 'markdown', '--title', xmlText(p.document.title), '--content', '-', '--parent-token', p.target.token];
+  const format = doc => doc.format || 'markdown';
+  const createArgs = p => ['docs', '+create', '--doc-format', format(p.document), ...(format(p.document)==='xml'?[]:['--title',xmlText(p.document.title)]), '--content', '-', '--parent-token', p.target.token];
   // Avoid a duplicated title: docs +create adds --title before the Markdown body.
-  const bodyContent = document => document.markdown.replace(/^# [^\n]*\n+(?=\S)/, '');
+  const bodyContent = document => format(document)==='xml' ? document.xml : document.markdown.replace(/^# [^\n]*\n+(?=\S)/, '');
   async function actor(p) {
     const user = await whoami();
     const result = await cli([...createArgs(p), '--dry-run'], bodyContent(p.document)), context = result.data.context;
     if (result.dry_run !== true || context?.app_id !== APP_ID || context.user_open_id !== user) throw error(503, 'EXPORT_IDENTITY_INVALID', '无法核对机械邪龙兽应用与当前用户，未创建文档');
     const writes = result.data.api?.filter(api => !['GET', 'HEAD'].includes(api.method));
-    const expected = `<title>${xmlText(p.document.title)}</title>\n${bodyContent(p.document)}`;
-    if (writes?.length !== 1 || writes[0].method !== 'POST' || writes[0].url !== '/open-apis/docs_ai/v1/documents' || writes[0].body?.parent_token !== p.target.token || writes[0].body?.format !== 'markdown' || writes[0].body?.content !== expected) throw error(503, 'EXPORT_PROTOCOL_CHANGED', '飞书创建命令的预演内容或目录与预览不一致，未创建文档');
+    const expected = format(p.document)==='xml'?p.document.xml:`<title>${xmlText(p.document.title)}</title>\n${bodyContent(p.document)}`;
+    if (writes?.length !== 1 || writes[0].method !== 'POST' || writes[0].url !== '/open-apis/docs_ai/v1/documents' || writes[0].body?.parent_token !== p.target.token || writes[0].body?.format !== format(p.document) || writes[0].body?.content !== expected) throw error(503, 'EXPORT_PROTOCOL_CHANGED', '飞书创建命令的预演内容或目录与预览不一致，未创建文档');
     return context.user_open_id;
   }
   function blocked(scope) {
@@ -109,6 +111,8 @@ export function createFeishuExporter(db, { now = Date.now, run = defaultRun } = 
   async function current(scope, load) {
     const config = exportSourceIdentity(db), document = await load(scope.context);
     if (!plain(document) || typeof document.title !== 'string' || !document.title.trim() || document.title.length > 500 || /[\r\n\x00-\x1f]/.test(document.title) || typeof document.markdown !== 'string' || document.markdown.length > 1_000_000) throw error(400, 'EXPORT_CONTENT_INVALID', '导出内容或标题格式无效');
+    if(!['markdown','xml'].includes(format(document)) || (format(document)==='xml' && (typeof document.xml!=='string'||document.xml.length>1_000_000)))throw error(400,'EXPORT_CONTENT_INVALID','文档结构格式无效');
+    if(format(document)==='xml') { try{canonicalXml(document.xml);}catch{throw error(400,'EXPORT_CONTENT_INVALID','文档结构无法校验');} }
     if (exportSourceIdentity(db) !== config) throw error(409, 'EXPORT_SOURCE_CHANGED', '来源配置已变化，请重新预览');
     return { document, config, source: exportSourceConfig(db), fingerprint: fingerprint(document) };
   }
@@ -128,12 +132,13 @@ export function createFeishuExporter(db, { now = Date.now, run = defaultRun } = 
   }
   async function verify(p, receipt) {
     const link = documentLink({ document_id: receipt.document?.id, url: receipt.document?.url });
-    const fetched = await cli(['docs', '+fetch', '--doc', link.id, '--doc-format', 'markdown', '--detail', 'simple', '--scope', 'full']);
+    const fetched = await cli(['docs', '+fetch', '--doc', link.id, '--doc-format', format(p.document), '--detail', 'simple', '--scope', 'full']);
     const doc = fetched.data.document;
     if (doc?.document_id !== link.id || typeof doc.content !== 'string' || fetched.data.warnings?.length) throw new Error('Readback incomplete');
     const metadata = (await cli(['drive', '+inspect', '--url', link.url, '--format', 'json'])).data;
     if (metadata.type !== 'docx' || metadata.token !== link.id || metadata.title !== p.document.title || documentLink({ document_id: metadata.token, url: metadata.url }).url !== link.url) throw new Error('Document metadata differs');
-    const actual = canonicalMarkdown(doc.content), expected = canonicalMarkdown(p.document.markdown), withoutTitle = canonicalMarkdown(bodyContent(p.document));
+    const normalize=format(p.document)==='xml'?canonicalXml:canonicalMarkdown;
+    const actual=normalize(doc.content), expected=normalize(format(p.document)==='xml'?p.document.xml:p.document.markdown), withoutTitle=normalize(format(p.document)==='xml'?p.document.xml.replace(/^<title>[\s\S]*?<\/title>\s*/,''):bodyContent(p.document));
     if (actual !== expected && actual !== withoutTitle) throw new Error('Readback differs');
     const latest = getRecord(db, RECEIPTS, receipt.operationId);
     if (latest?.status === 'success') return latest;

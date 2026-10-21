@@ -1,0 +1,26 @@
+{
+  "mode": "isolated mock external writes",
+  "materials": [
+    "澳洲考前冲刺套图",
+    "用户案例长图"
+  ],
+  "retainedDate": "2026-10-25",
+  "audience": [
+    "澳洲考前冲刺套图",
+    "近期有考试、补考或复习任务的学生，按当月学校节点分层触达（澳洲）",
+    "当月关注：澳洲：停课前交齐期末作业。时间与任务相互挤压，需要判断薄弱点、复习顺序和剩余准备时间，再选择合适的辅导组合。"
+  ],
+  "frameworks": [
+    {
+      "title": "澳洲考前冲刺套图",
+      "rows": 0
+    },
+    {
+      "title": "用户案例长图",
+      "rows": 0
+    }
+  ],
+  "exportStatus": "success",
+  "replaySame": true,
+  "creates": 1
+}

@@ -1,11 +1,12 @@
 import { createLocalChanges, getRecord, fingerprint } from './local-records.mjs';
-import { acceptedMarketingNeeds, availablePriceMatrices } from './price.mjs';
+import { createUserStrategyService } from './user-strategy.mjs';
+import { BRIEF_SECTIONS as SECTIONS, BRIEF_HEADS, BRIEF_NUMBERS } from './brief-template.mjs';
+import { generateBriefSuggestions } from './brief-generate.mjs';
 import { requireMonth, failure, beijingText } from './v3-common.mjs';
 import { createFeishuExporter, literalMarkdown, markdownTable } from './feishu-export.mjs';
 import { attachmentMarkdownLine, createBriefAttachments } from './brief-attachments.mjs';
 
-const SECTIONS = ['项目背景与目标', '目标受众', '项目时间线', '详细文案与框架', '交付物清单与规格', '负责人与审批', '附件'];
-const editable = ['title', 'background', 'audience', 'timeline', 'items', 'specs', 'owners', 'status'];
+const editable = ['title', 'background', 'materials', 'audience', 'timeline', 'items', 'specs', 'owners', 'status'];
 const plain = value => value && typeof value === 'object' && !Array.isArray(value);
 const fail = message => { throw failure(400, message); };
 const str = (value, max = 12000) => typeof value === 'string' && value.length <= max;
@@ -21,41 +22,28 @@ function merge(base, patch) {
   return result;
 }
 
-export function generatedBrief(db, month) {
+export function generatedBrief(db, month, source = createUserStrategyService(db).get(month)) {
   requireMonth(month);
-  const needs = acceptedMarketingNeeds(db, month);
-  const monthEnd = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 0)).toISOString().slice(0, 10);
-  const items = [];
-  for (const matrix of availablePriceMatrices(db)) {
-    for (const scheme of matrix.schemes) {
-      if (scheme.status !== '生效中' || scheme.from > monthEnd || scheme.to && scheme.to < `${month}-01`) continue;
-      if (scheme.needId && !needs.some(n => n.id === scheme.needId)) continue;
-      items.push({
-        id: `price-${matrix.sku}-${scheme.id}`, kind: 'price', title: `${matrix.name} · ${scheme.name}`,
-        priceFrom: `${matrix.line} · ${matrix.name} · ${scheme.name}`,
-        blocks: matrix.tiers.map((hours, i) => [`${hours}课时`, `${scheme.prices[i]}元${scheme.gifts[i] ? `，赠${scheme.gifts[i]}课时` : ''}`, `${scheme.from} 至 ${scheme.to || '长期有效'}`]),
-        refs: [], reuse: null,
-      });
-    }
-  }
   return {
     month, title: `${month} 设计 brief`, version: 'v0', editedAt: '',
-    background: { from: needs.length ? '主线需求' : '', text: needs.map(n => `${n.seg} · ${n.node}：${n.need}`).join('\n'), goals: needs.map(n => n.strategy?.goal).filter(Boolean) },
-    audience: needs.map(n => ['', `${n.seg}（${n.node}）`, [n.pain, n.todo].filter(Boolean).join('；')]),
-    timeline: [], items, specs: [], owners: [], status: Object.fromEntries(SECTIONS.map((_, i) => [String(i + 1), 'todo'])),
+    strategySource:{month,available:!!source?.summary?.judgement,origin:source?.origin || '',fingerprint:fingerprint(source)},
+    background: { from:'', text:'', goals:[] }, materials:[], audience:[],
+    timeline: [], items:[], specs: [], owners: [['需求对接',''],['内容确认',''],['设计对接','']], status: Object.fromEntries(SECTIONS.map((_, i) => [String(i + 1), 'todo'])),
   };
 }
 
 function validateBrief(value) {
   if (!str(value.title, 500) || !value.title.trim() || !plain(value.background) || !keys(value.background, ['from', 'text', 'goals']) || !str(value.background.from, 500) || !str(value.background.text) || !Array.isArray(value.background.goals) || value.background.goals.length > 100 || value.background.goals.some(g => !str(g, 2000))) fail('brief 标题、背景或目标格式无效');
-  if (!rows(value.audience, 3) || !rows(value.timeline, 5) || !rows(value.specs, 4) || !rows(value.owners, 3)) fail('brief 受众、时间线、规格或负责人表格列数不正确');
+  if (!rows(value.audience, 3) || !rows(value.timeline, 5) || !(rows(value.specs, 2)||rows(value.specs, 4)) || !(rows(value.owners, 2)||rows(value.owners, 3))) fail('brief 受众、时间线、规格或负责人表格列数不正确');
+  if (!Array.isArray(value.materials) || value.materials.length > 100 || value.materials.some(m=>!plain(m)||!keys(m,['id','name'])||!str(m.id,150)||!m.id||!str(m.name,500)) || new Set(value.materials.map(m=>m.id)).size!==value.materials.length) fail('物料名称与编号无效');
+  if(value.materials.length && (value.audience.length!==value.materials.length || value.timeline.length!==value.materials.length || !Array.isArray(value.items) || value.items.length!==value.materials.length || value.materials.some((m,i)=>value.audience[i][0]!==m.name || value.timeline[i][0]!==m.name || value.items[i]?.id!==m.id || value.items[i]?.title!==m.name))) fail('物料名称须与受众、交付时间和详细框架一致');
   if (!plain(value.status) || Object.keys(value.status).length !== 7 || !Object.entries(value.status).every(([k, v]) => /^[1-7]$/.test(k) && ['todo', 'part', 'done'].includes(v))) fail('brief 须包含七节完成状态');
   if (!Array.isArray(value.items) || value.items.length > 100 || new Set(value.items.map(it => it?.id)).size !== value.items.length) fail('brief 物料编号须唯一');
   for (const it of value.items) {
-    if (!plain(it) || !keys(it, ['id', 'kind', 'title', 'priceFrom', 'blocks', 'refs', 'reuse', 'cells', 'note']) || !str(it.id, 150) || !it.id || !str(it.title, 500) || !['price', 'grid9', 'skip'].includes(it.kind)) fail('brief 物料类型、编号或标题无效');
+    if (!plain(it) || !keys(it, ['id', 'kind', 'title', 'priceFrom', 'blocks', 'refs', 'reuse', 'cells', 'note']) || !str(it.id, 150) || !it.id || !str(it.title, 500) || !['framework','price', 'grid9', 'skip'].includes(it.kind)) fail('brief 物料类型、编号或标题无效');
     if (it.kind === 'skip') { if (!str(it.note)) fail('不出物料的说明须为文字'); continue; }
     if (it.priceFrom !== undefined && !str(it.priceFrom, 1000)) fail('价格来源说明须为文字');
-    if (it.kind === 'price' && !rows(it.blocks, 3)) fail('价格物料须包含三列内容表格');
+    if (['price','framework'].includes(it.kind) && !rows(it.blocks, 3)) fail('物料须包含三列内容表格');
     if (it.kind === 'grid9' && (!Array.isArray(it.cells) || it.cells.length !== 9 || it.cells.some(c => !str(c, 4000)))) fail('九宫格须包含九项文字');
     if (!Array.isArray(it.refs) || it.refs.length > 30 || it.refs.some(r => !plain(r) || !keys(r, ['kind', 'big', 'title', 'accent']) || !str(r.kind, 100) || !str(r.title, 500) || (r.big !== undefined && !str(r.big, 1000)) || (r.accent !== undefined && typeof r.accent !== 'boolean'))) fail('参考图信息格式无效');
     if (it.reuse !== null && (!plain(it.reuse) || !keys(it.reuse, ['month', 'title', 'big']) || !str(it.reuse.title, 500) || !/^20\d{2}-(0[1-9]|1[0-2])$/.test(it.reuse.month) || (it.reuse.big !== undefined && !str(it.reuse.big, 1000)))) fail('沿用物料信息格式无效');
@@ -69,43 +57,88 @@ const tableMarkdown = markdownTable;
 export function briefMarkdown(brief, attachments = []) {
   const content = [
     [markdownText(brief.background.text), ...brief.background.goals.map(g => `- ${markdownText(g)}`)].join('\n\n'),
-    tableMarkdown(['物料', '面向人群', '当前状态与待办'], brief.audience),
-    tableMarkdown(['物料', '交付时间', '优先级', '对接人', '说明'], brief.timeline),
-    brief.items.map(it => `### ${markdownText(it.title)}\n\n${it.kind === 'skip' ? markdownText(it.note) : [it.priceFrom ? `来源：${markdownText(it.priceFrom)}` : '', it.blocks ? tableMarkdown(['涉及板块', '内容', '说明'], it.blocks) : it.cells.map((c, i) => `${i + 1}. ${markdownText(c)}`).join('\n'), ...(it.refs || []).map(r => `参考：${markdownText(r.title)}`), it.reuse ? `沿用：${it.reuse.month} ${markdownText(it.reuse.title)}` : ''].filter(Boolean).join('\n\n')}`).join('\n\n'),
-    tableMarkdown(['物料', '比例', '尺寸', '格式'], brief.specs),
-    tableMarkdown(['角色', '负责人', '状态'], brief.owners),
+    tableMarkdown(BRIEF_HEADS.audience, brief.audience),
+    tableMarkdown(BRIEF_HEADS.timeline, brief.timeline),
+    brief.items.map(it => `### ${markdownText(it.title)}\n\n${it.kind === 'skip' ? markdownText(it.note) : [it.priceFrom ? `来源：${markdownText(it.priceFrom)}` : '', it.blocks ? tableMarkdown(BRIEF_HEADS.blocks, it.blocks) : it.cells.map((c, i) => `${i + 1}. ${markdownText(c)}`).join('\n'), ...(it.refs || []).map(r => `参考：${markdownText(r.title)}`), it.reuse ? `沿用：${it.reuse.month} ${markdownText(it.reuse.title)}` : ''].filter(Boolean).join('\n\n')}`).join('\n\n'),
+    tableMarkdown(BRIEF_HEADS.specs, specRows(brief)),
+    tableMarkdown(BRIEF_HEADS.owners, ownerRows(brief)),
     attachments.map(a => `- ${markdownText(attachmentMarkdownLine(a))}`).join('\n'),
   ];
   return `# ${markdownText(brief.title)}\n\n${SECTIONS.map((title, i) => `## ${i + 1}. ${title}\n\n${content[i]}`).join('\n\n')}\n`;
 }
 
-export function createBriefService(db, { now = Date.now, exports: exportOptions = {} } = {}) {
+const specRows = b => b.specs.map(r=>r.length===4?[r[0],r.slice(1).filter(Boolean).join(' / ')]:r);
+const ownerRows = b => b.owners.map(r=>r.length===3?[r[0],r.slice(1).filter(Boolean).join(' / ')]:r);
+const xml = value => String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\r/g,'').replace(/\n/g,'<br/>');
+const para = value => `<p>${xml(value)}</p>`;
+const xmlTable = (heads, rows) => `<table>${heads.length?`<thead><tr>${heads.map(h=>`<th background-color="light-gray">${para(h)}</th>`).join('')}</tr></thead>`:''}${rows.length?`<tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${para(c)}</td>`).join('')}</tr>`).join('')}</tbody>`:''}</table>`;
+
+export function briefXml(brief, attachments=[]) {
+  const content = [
+    para(brief.background.text)+(brief.background.goals.length?`<ul>${brief.background.goals.map(g=>`<li>${xml(g)}</li>`).join('')}</ul>`:''),
+    xmlTable(BRIEF_HEADS.audience,brief.audience),
+    xmlTable(BRIEF_HEADS.timeline,brief.timeline),
+    brief.items.map((it,i)=>`<h2>4.${i+1} ${xml(it.title)}</h2>`+(it.kind==='skip'?para(it.note):[
+      it.priceFrom?para(`来源：${it.priceFrom}`):'',
+      it.blocks?xmlTable(BRIEF_HEADS.blocks,it.blocks):`<ol>${(it.cells||[]).map(c=>`<li>${xml(c)}</li>`).join('')}</ol>`,
+      ...(it.refs||[]).map(r=>para(`参考：${r.title}`)),it.reuse?para(`沿用：${it.reuse.month} ${it.reuse.title}`):''
+    ].join(''))).join(''),
+    xmlTable(BRIEF_HEADS.specs,specRows(brief)),
+    xmlTable([],ownerRows(brief)),
+    attachments.map(a=>para(attachmentMarkdownLine(a))).join('') || para(''),
+  ];
+  return `<title>${xml(brief.title)}</title>\n${SECTIONS.map((name,i)=>`<h1>${BRIEF_NUMBERS[i]}、${name}</h1>${content[i]}`).join('\n')}`;
+}
+
+export function createBriefService(db, { now = Date.now, exports: exportOptions = {}, strategy = createUserStrategyService(db) } = {}) {
   const changes = createLocalChanges(db, { now });
   const exporter = createFeishuExporter(db, { now, ...exportOptions });
   const previewViews = new Map();
   const attachments = createBriefAttachments(db, { now });
   function read(month) {
-    const base = generatedBrief(db, month), stored = getRecord(db, 'brief', month);
+    const base = generatedBrief(db, month, strategy.get(month)), stored = getRecord(db, 'brief', month);
     if (!stored) return base;
-    return { ...merge(base, stored.overrides), version: `v${stored.revision}`, editedAt: stored.editedAt };
+    let value={ ...merge(base, stored.overrides), version: `v${stored.revision}`, editedAt: stored.editedAt };
+    // Older saved Briefs predate the material-name master list. Hydrate stable rows in memory.
+    if(stored.overrides.materials===undefined){
+      const slots=[];
+      for(const key of ['audience','timeline','items']) for(const row of value[key]) {
+        const name=key==='items'?row.title:row[0];
+        let slot=slots.find(x=>x.name===name && !x[key]);
+        if(!slot){slot={name};slots.push(slot);} slot[key]=structuredClone(row);
+      }
+      const used=new Set(value.items.map(it=>it.id));let serial=0;
+      value.materials=slots.map(x=>{let id=x.items?.id;while(!id){const candidate=`legacy-${serial++}`;if(!used.has(candidate)){id=candidate;used.add(id);}}return{id,name:x.name};});
+      value.audience=slots.map(x=>x.audience || [x.name,'','']);
+      value.timeline=slots.map(x=>x.timeline || [x.name,'','','','']);
+      value.items=slots.map((x,i)=>x.items || {id:value.materials[i].id,kind:'framework',title:x.name,blocks:[],refs:[],reuse:null});
+    }
+    return value;
   }
   const exportContent = month => () => {
     const brief = read(month);
     validateBrief(brief);
-    return { title: brief.title, sections: SECTIONS, markdown: briefMarkdown(brief, attachments.list(month).items) };
+    if(brief.materials.some(m=>!m.name.trim()))fail('请先填好已添加物料的名称，再创建飞书文档');
+    return { title: brief.title, sections: SECTIONS, markdown: briefMarkdown(brief, attachments.list(month).items), format:'xml', xml:briefXml(brief,attachments.list(month).items) };
   };
   return {
     read,
     attachments,
+    generate(month, body={}) {
+      requireMonth(month);
+      if(!plain(body)||!keys(body,['patch','overwrite']) || (body.overwrite!==undefined && typeof body.overwrite!=='boolean') || !plain(body.patch)||!keys(body.patch,editable))fail('请提供当前Brief草稿');
+      const draft=merge(read(month),body.patch); validateBrief(draft);
+      return generateBriefSuggestions(draft,strategy.get(month),{overwrite:body.overwrite===true});
+    },
     preview(month, body) {
       requireMonth(month);
       if (!plain(body) || !keys(body, ['patch']) || !plain(body.patch) || !keys(body.patch, editable) || !Object.keys(body.patch).length) fail('请提交要修改的 brief 字段 patch');
       if (body.patch.background !== undefined && (!plain(body.patch.background) || !keys(body.patch.background, ['from', 'text', 'goals']))) fail('背景只接受来源、文字与目标字段');
-      const stored = getRecord(db, 'brief', month), base = generatedBrief(db, month);
+      const stored = getRecord(db, 'brief', month), base = generatedBrief(db, month,strategy.get(month));
       const sourceFingerprint = fingerprint(base);
-      const value = { overrides: merge(stored?.overrides || {}, body.patch), revision: (stored?.revision || 0) + 1, editedAt: beijingText(now()), sourceFingerprint };
+      const value = { overrides: merge(stored && stored.overrides.materials===undefined ? Object.fromEntries(editable.map(k=>[k,read(month)[k]])) : stored?.overrides || {}, body.patch), revision: (stored?.revision || 0) + 1, editedAt: beijingText(now()), sourceFingerprint };
       const validate = candidate => {
-        if (fingerprint(generatedBrief(db, month)) !== sourceFingerprint) throw failure(409, '需求或价格来源已变化，请重新读取 brief 后预览');
+        if (fingerprint(generatedBrief(db, month,strategy.get(month))) !== sourceFingerprint) throw failure(409, '同月用户策略已变化，请重新读取 brief 后预览');
         validateBrief(merge(base, candidate.overrides));
       };
       const preview = changes.preview('brief', month, value, { validate });
