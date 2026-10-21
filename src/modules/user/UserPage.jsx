@@ -142,7 +142,7 @@ function MonthTimeline({ tl, q, showSrc }) {
     ro.current.observe(el);
   }, [nDays]);
   const place = (e) => placeBar(e, { first, last, nDays, dayW, showSrc });
-  const countries = tl.countries.map(([, name]) => name).sort(byCountry);
+  const countries = tl.countries.map(([, name]) => name).filter(name => count(name).shown > 0 || name === country).sort(byCountry);
   const cols = { gridTemplateColumns: `repeat(${nDays}, minmax(0, 1fr))` };
   return (
     <>
@@ -153,7 +153,7 @@ function MonthTimeline({ tl, q, showSrc }) {
         <span className="spacer" />
         <span className="tl-cats">{CATS.map(([k, label]) => <span key={k}><i className={`ev-${k}`} />{label}</span>)}<span className="timeline-estimate">AI推测</span></span>
       </div>
-      {!groups.length ? <Placeholder icon="calendar" title={`${country || "全部国家"} · ${month} 暂无节点`}>可展开下方月历原文，或查看“按国家 · 明细表”。</Placeholder> : (
+      {!groups.length ? <Placeholder icon="calendar" title={`${country || "全部国家"} · ${month} 暂无节点`}>换个月份或清掉筛选；勾选“显示来源单元格”可查看月历原文。</Placeholder> : (
         <section className="card gantt">
           <div className="gantt-head">
             <span className="gantt-corner label">{month} · {list.length} 个节点</span>
@@ -177,7 +177,7 @@ function MonthTimeline({ tl, q, showSrc }) {
                     {rows.flatMap((items, lane) => items.flatMap(({ e, s, end, side, cols: n, when }, k) => {
                       const tip = `${e.school} · ${e.type}${e.detail ? `（${e.detail}）` : ""}\n${e.pending ? e.raw : e.from}${e.to ? ` → ${e.to}（${span(e.from, e.to)} 天）` : e.pending ? "" : "（单日）"}${e.verification?.scope ? `\n适用范围：${e.verification.scope}` : ""}\n来源：${e.src}${e.flag === "conflict" ? "\n冲突待确认" : e.flag === "guess" ? "\n推测，待确认" : e.verified ? "\n官网核实" : e.ruled ? "\n人工裁定（工作台）" : ""}`;
                       if (e.pending && !e.displaySpan) return [<span key={`${lane}-${k}`} className="gantt-pending-event" style={{gridColumn:"1 / -1",gridRow:lane+1}} title={`${tip}\n${e.issue}`}><b>{e.type}</b><span>{timelineReferenceText(e.raw)}</span><small className="timeline-estimate">AI推测</small></span>];
-                      const text = <><b>{e.type}{e.detail ? ` · ${e.detail}` : ""}</b><em className="tnum">{when}</em>{(e.flag === "guess" || e.flag === "conflict") && <i className="gantt-guess timeline-estimate">AI推测</i>}</>;
+                      const text = <><b>{e.type}</b><em className="tnum">{when}</em>{(e.flag === "guess" || e.flag === "conflict") && <i className="gantt-guess timeline-estimate">AI推测</i>}</>;
                       const bar = side === "single" ? [s, s + n] : [s, end];
                       return [
                         <span key={`${lane}-${k}`} className={`gantt-bar ev-${catOf(e.type)}${(e.pending ? e.displaySpan.single : !e.to) ? " is-single" : ""}${e.flag ? ` is-${e.flag}` : ""}`}
@@ -199,10 +199,10 @@ function MonthTimeline({ tl, q, showSrc }) {
         </section>
       )}
       {list.length > 0 && <MonthList list={list} first={first} showSrc={showSrc} />}
-      <details className="card tl-calendar-reference"><summary>月历原文对照 · {calendar.length} 条{country ? `（${country}）` : ""}</summary>
+      {showSrc && <details className="card tl-calendar-reference"><summary>月历原文对照 · {calendar.length} 条{country ? `（${country}）` : ""}</summary>
         <p className="small muted">完整保留飞书当月月历的原文格。地区明细未收录的学校、额外事件和不同日期也可在这里核对；不按月历摆放位置推定年份或日期，不直接参与策略推导。选择“全部国家”可查看尚未归类的原文。</p>
         <div className="table-wrap"><table className="grid"><thead><tr><th>学校 / 地区</th><th>月历原文</th><th>来源</th></tr></thead><tbody>{calendar.map(e => <tr key={e.src}><td>{e.schools.join("、") || "学校待核对"}<br /><span className="small muted">{e.countries.join("、") || "地区待核对"}</span></td><td style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{e.raw}</td><td>{e.src}</td></tr>)}</tbody></table></div>
-      </details>
+      </details>}
     </>
   );
 }
@@ -230,7 +230,7 @@ function placeBar(e, { first, last, nDays, dayW, showSrc }) {
   const s = e.pending ? e.displaySpan.start : e.from < first ? 1 : Number(e.from.slice(8));
   const end = e.pending ? e.displaySpan.end : (e.to || e.from) > last ? nDays : Number((e.to || e.from).slice(8));
   const when = `${e.pending ? timelineReferenceText(e.raw) : `${md(e.from)}${e.to ? ` → ${md(e.to)}` : ""}`}${showSrc ? ` · ${e.src}` : ""}`;
-  const w = textWidth(e.type + (e.detail ? ` · ${e.detail}` : ''), '600 12px Geist, "PingFang SC"') + 4 + textWidth(when, '11px "Geist Mono", "PingFang SC"')
+  const w = textWidth(e.type, '600 12px Geist, "PingFang SC"') + 4 + textWidth(when, '11px "Geist Mono", "PingFang SC"')
     + (e.flag === "guess" || e.flag === "conflict" ? 4 + textWidth("AI推测", '11px Geist, "PingFang SC"') : 0);
   if (e.pending ? e.displaySpan.single : !e.to) { // 单日：菱形 + 文字，文字占的格子也算进分道
     const n = Math.ceil((w + 18) / dayW);
@@ -261,11 +261,11 @@ function MonthList({ list, first, showSrc }) {
         <tbody>{rows.map((e, i) => {
           const d = e.from ? toDate(e.from) : null;
           return (
-            <tr key={i} title={`来源：${e.src}${e.raw ? `\n原文：${e.raw}` : ""}${e.issue ? `\n${e.issue}` : ""}${e.verification?.reason ? `\n官网核查：${e.verification.reason}` : ""}`} className={e.flag ? `is-${e.flag}` : ""}>
+            <tr key={i} title={`${e.school} · ${e.type}${e.detail ? `\n场次：${e.detail}` : ""}${e.verification?.scope ? `\n适用范围：${e.verification.scope}` : ""}${e.verified ? "\n官网核实" : e.ruled ? "\n人工裁定" : e.flag === "guess" || e.flag === "conflict" ? "\nAI推测" : ""}\n来源：${e.src}${e.raw ? `\n原文：${e.raw}` : ""}${e.issue ? `\n${e.issue}` : ""}${e.verification?.reason ? `\n官网核查：${e.verification.reason}` : ""}`} className={e.flag ? `is-${e.flag}` : ""}>
               <td className="tnum">{e.pending ? (e.displaySpan ? `${first.slice(5,7)}-${pad(e.displaySpan.start)}` : "—") : e.from < first ? <span className="muted">上月开始</span> : `${md(e.from)} 周${WD[d.getDay()]}`}</td>
               <td>{e.c}</td>
               <td><strong>{e.school}</strong></td>
-              <td><span className={`ev-dot ev-${catOf(e.type)}`} />{e.type}{e.detail && <small> · {e.detail}</small>}{(e.flag === "conflict" || e.flag === "guess") && <small className="timeline-estimate">AI推测</small>}{e.verified && <Tag tone="frame">官网核实</Tag>}{e.ruled && <Tag tone="frame">人工裁定</Tag>}{!e.pending && e.verification?.scope && <small className="tl-scope">{e.verification.scope}</small>}</td>
+              <td><span className={`ev-dot ev-${catOf(e.type)}`} />{e.type}{(e.flag === "conflict" || e.flag === "guess") && <small className="timeline-estimate">AI推测</small>}{e.ruled && <Tag tone="frame">人工裁定</Tag>}</td>
               <td className="r">{e.pending ? <span className="tl-pending-raw">{timelineReferenceText(e.raw)}</span> : <>{md(e.from)}{e.to ? ` → ${md(e.to)}` : ""}</>}</td>
               <td className="r">{e.pending ? "—" : e.to ? `${span(e.from, e.to)} 天` : "单日"}</td>
               {showSrc && <td className="tnum small muted">{e.src}<OfficialLinks verification={e.verification} /></td>}
