@@ -15,6 +15,7 @@ import { routes as brandRoutes } from "./brand.mjs";
 import { routes as marketingRoutes } from "./v3-marketing.mjs";
 import { createTodoReader } from "../home-todo.mjs";
 import { createRevenueService } from "../revenue.mjs";
+import { createBusinessChartsService } from "../business-charts.mjs";
 import { createVoiceReader } from "../voice.mjs";
 
 const invalid = (message) => { throw Object.assign(new Error(message), { status: 400 }); };
@@ -65,6 +66,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
   const userServices = createUserServices(db, { ...v3Options, voiceReader: voice, timeline: { ...v3Options.timeline, onSource: event => recordSource(db, 'timeline', event) } });
   const projectServices = createProjectServices(db, v3Options);
   const revenue = createRevenueService(db, v3Options.revenue);
+  const businessCharts = createBusinessChartsService(db, v3Options.businessCharts);
   const todo = createTodoReader(db, { ...userServices, projects: projectServices.projects, ...v3Options.todo });
   const reportHandler = (detail) => async (req, res, { params, url }) => {
     try {
@@ -86,6 +88,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     ...userRoutes(userServices),
     route('GET', '/api/v3/home/todo', handleV3((req, { url }) => todo(url.searchParams.get('month') || undefined))),
     route('GET', '/api/v3/business/revenue', handleV3(() => revenue.get())),
+    route('GET', '/api/v3/business/charts', handleV3((req, { url }) => businessCharts.get({ refresh: url.searchParams.get('refresh') === '1' }))),
     ...deliveryRoutes(userServices.needs, db),
     ...projectRoutes(projectServices),
     ...brandRoutes(db, v3Options.brand),

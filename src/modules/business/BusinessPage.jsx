@@ -1,23 +1,19 @@
 import { useApi } from "../../api.js";
-import { Card, Loadable, PageHeader, Placeholder, SampleStrip, Tag } from "../../ui/components.jsx";
+import { Card, Loadable, PageHeader, SampleStrip } from "../../ui/components.jsx";
+import { BusinessCharts } from "./BusinessCharts.jsx";
 import { PixelBar, PixelIcon } from "../../ui/bitmap.jsx";
 import { LINES } from "../../constants.js";
 
 // 业务线名称统一用全称（与月度促销一致），不用接口返回的简称。
 const LINE_NAME = { uni: LINES[0], intl: LINES[1], appeal: LINES[2] };
 
-const METRICS = ["本月", "年度累计", "同比", "环比"];
-
-// 业务：上面是业务营收完成度（v3，从首页挪来，数据来自飞书多维表格）；下面三条业务线的指标卡仍是占位。
+// 指标与图表分别读取，图表故障不会影响上方营收卡。
 export default function BusinessPage() {
   return (
     <>
-      <PageHeader title="业务" subtitle="营收完成度，以及三条业务线的月度、年度数据与同环比" />
+      <PageHeader title="业务" subtitle="营收完成度、月度趋势与当月营收分布 · 来源：飞书「当月策略盘」" />
       <RevenueCard />
-      <div className="section-head"><h2>业务线指标</h2><Tag tone="amber">待建设</Tag></div>
-      <Placeholder icon="business" title="业务线指标待建设">
-        {LINES.join("、")}各看{METRICS.join(" / ")}；等飞书表格的字段确定后接入。
-      </Placeholder>
+      <BusinessCharts />
     </>
   );
 }

@@ -125,3 +125,24 @@ test('营收读飞书仪表盘，200 且不再带演示标记',async t=>{
   const {db}=database(t),value={period:'2026 年 10 月',timePct:0.5,updatedAt:'10-20 18:40',groups:[{label:'总进度',items:[]},{label:'业务线',items:[]}]};
   const result=await invoke(routes(db,undefined,undefined,{revenue:{readSource:async()=>value}}),'GET','/api/v3/business/revenue');assert.equal(result.status,200);assert.equal(result.body.origin,undefined);assert.equal(result.headers['x-workdesk-data-origin'],undefined);assert.deepEqual(result.body,value);
 });
+
+test('图表接口复用缓存，显式刷新回报失败且不影响营收卡', async t => {
+  const { db } = database(t);
+  let reads = 0, fail = false;
+  const value = { source: 'test', period: '2026-10', updatedAt: '2026-10-16 12:00', charts: [] };
+  const all = routes(db, undefined, undefined, {
+    businessCharts: { now: () => instant, readSource: async () => { reads++; if (fail) throw Object.assign(new Error('图表读取失败'), { status: 502 }); return value; } },
+    revenue: { readSource: async () => ({ groups: [{ label: '总进度', items: [] }] }) },
+  });
+  const first = await invoke(all, 'GET', '/api/v3/business/charts');
+  assert.equal(first.status, 200);
+  assert.equal(first.body.stale, false);
+  await invoke(all, 'GET', '/api/v3/business/charts');
+  assert.equal(reads, 1);
+  fail = true;
+  assert.equal((await invoke(all, 'GET', '/api/v3/business/charts?refresh=1')).status, 502);
+  const last = await invoke(all, 'GET', '/api/v3/business/charts');
+  assert.equal(last.body.updatedAt, value.updatedAt);
+  assert.equal(last.body.sourceError, '图表读取失败');
+  assert.equal((await invoke(all, 'GET', '/api/v3/business/revenue')).status, 200);
+});

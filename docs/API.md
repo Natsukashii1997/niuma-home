@@ -181,9 +181,13 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - 规则（server/codex-push.mjs，服务启动后每 10 分钟看一次开关）：开着且距上次检查满 4 小时才读 aihot.news；同一重置事件只推一次（表 `codex_push`，重启不重推）；一次检查发现多条新事件只推最新一条；关闭期间出现的事件在重新开启时记为基线，不补推。
 - 发送：`lark-cli --profile codex im +messages-send --as bot --user-id <本人 open_id> --msg-type interactive --content <卡片 2.0 JSON> --idempotency-key codex-reset-<事件哈希>`，不在代码里写 token。
 
-## 业务 · 营收完成度（演示数据）
+## 业务 · 营收完成度与图表（飞书只读）
 
 - `GET /api/v3/business/revenue` → `{ period, timePct, updatedAt, source, groups: { label, items }[] }`；只读飞书多维表格《策略数据表单》的仪表盘「当月策略盘」（`server/revenue.mjs`，按组件名找组件）：6 个进度组件给 `current/target`，「总转化率趋势」给本月 `rate` 与上月 `lastMonthRate`（本月还没有转化率时不返回 `conv`）。`period` 为「YYYY 年 M 月」，`timePct` 为当月已过天数占比。缓存 10 分钟，先给上次结果（含重启前快照）、过期后台重读；组件缺失或数据不全报 502。
+- `GET /api/v3/business/charts[?refresh=1]` → `{ source, period: "YYYY-MM", updatedAt: "YYYY-MM-DD HH:mm", charts, stale, refreshing, sourceError? }`。仅 codex/user 读取同一「当月策略盘」，独立于上方指标缓存；完整枚举所有分页并按源布局读取 5 张折线图与 9 张占比图（后续新增 line/pie 自动纳入，当前 14 张缺失/重名/改变统计口径导致不完整时明确报错）。所有图保留 `id/name/type/sourceType/unit/sourceTable/filter/dimension/measure`；`unit` 为 currency 或 percent。折线为 `categories + series[{name,values}]`，年份是独立系列，缺月为 null；占比为 `items[{label,value}] + total + pieAvailable`，空类别显示「未填写」，零值不丢，负值/缺失值保留为明细并停止画占比。大学地区图 CLI 类型 unknown 已按真实一维实收金额结果核对并作为 pie 展示。
+  - 图表按原组件配置中的字段、聚合和筛选读取；趋势与占比分别来自原图各自的数据表，不自行统一为上方营收卡口径，不派生同比/环比。完整批次成功才保存 `business-charts-v1` 快照，缓存 10 分钟；过期返回明确 stale 的旧快照并后台更新，刷新失败回传 sourceError，保持原更新时间，60 秒后才后台重试；`refresh=1` 显式现读，失败返回错误。页面在 refreshing 期间每 2 秒回读缓存，完成后更新图形。无成功快照时首次读取失败报错，不显示空图。跨月读取拒绝混合月份结果。
+  - 飞书错误码 1 或限流在单个只读请求上有限重试一次；权限拒绝、无效结构不重试。持续失败提示具体图名和错误码。占比含任意缺失值时 `total=null`，显示「数据不完整」；页面占比图和列表按金额降序展示全部分类，完整数值保留源顺序。
+
 - 一般项 `{ key, name, current, target }`；比率项 `{ key, name, rate, lastMonthRate }`（0–1 的小数），前端按「有 `rate` 即比率项」显示大号百分比和「上月 x%」，不画进度条。2026-10-18 起「总进度」组第 4 项为 `conv`「总转化率」。
 
 ## 品牌数据（2026-10-18，只读）

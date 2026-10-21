@@ -1,0 +1,43 @@
+.business-charts { min-width: 0; }
+.bc-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s3); }
+.bc-actions a { text-decoration: underline; }
+.bc-lines, .bc-pies { display: grid; gap: var(--s4); align-items: stretch; }
+.bc-lines { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.bc-lines > :first-child { grid-column: 1 / -1; }
+.bc-pies { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.bc-chart { min-width: 0; }
+.bc-chart .card-head h2 { min-width: 0; line-height: 1.35; }
+.bc-chart .card-body { display: flex; flex-direction: column; min-width: 0; }
+.bc-legend { display: flex; flex-wrap: wrap; gap: var(--s4); margin-bottom: var(--s2); font-size: 12px; }
+.bc-legend > span { display: inline-flex; gap: 6px; align-items: center; }
+.bc-legend i, .bc-pie-legend i { display: inline-block; width: 8px; height: 8px; flex-shrink: 0; }
+.bc-line-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.bc-line-svg text { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+.bc-grid { stroke: var(--line); stroke-dasharray: 2 4; }
+.bc-line-svg rect, .bc-pie-svg path, .bc-pie-svg circle { cursor: crosshair; }
+.bc-line-svg rect:focus, .bc-pie-svg :focus { outline: 2px solid var(--signal); }
+.bc-readout { display: flex; align-items: start; justify-content: space-between; gap: var(--s2); min-height: 40px; padding: var(--s2) 0; }
+.bc-readout b { overflow-wrap: anywhere; }
+.bc-readout .tnum { flex-shrink: 0; }
+.bc-source { margin-top: auto; padding-top: var(--s3); border-top: 1px solid var(--line); }
+.bc-source summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.bc-source p { margin: var(--s2) 0; overflow-wrap: anywhere; }
+.bc-table-scroll { max-height: 320px; overflow: auto; margin-top: var(--s2); }
+.bc-data { width: 100%; border-collapse: collapse; font-size: 12px; }
+.bc-data caption { text-align: left; padding: var(--s2) 0; }
+.bc-data th, .bc-data td { padding: var(--s2); border-bottom: 1px solid var(--line); text-align: left; }
+.bc-data td.tnum { text-align: right; white-space: nowrap; }
+.bc-data th { background: var(--panel-soft); }
+.bc-scope-note { margin-top: calc(-1 * var(--s2)); margin-bottom: var(--s4); }
+.bc-pie-summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s2); }
+.bc-pie-summary b { font-size: 14px; }
+.bc-pie-svg { display: block; width: 184px; height: 184px; margin: var(--s3) auto; flex-shrink: 0; }
+.bc-pie-readout { min-height: 64px; flex-direction: column; gap: var(--s1); }
+.bc-pie-empty { height: 208px; display: grid; place-items: center; }
+.bc-pie-legend { max-height: 224px; overflow: auto; margin-bottom: var(--s4); border-top: 1px solid var(--line); }
+.bc-pie-legend button { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: var(--s2); align-items: baseline; width: 100%; padding: var(--s2) var(--s1); background: none; color: var(--text); border: 0; border-bottom: 1px solid var(--line); text-align: left; font: inherit; cursor: pointer; }
+.bc-pie-legend button > span:nth-child(2) { overflow-wrap: anywhere; font-size: 12px; }
+.bc-pie-legend button.active { background: var(--panel-soft); }
+.bc-pie-legend small { display: block; color: var(--muted); font-size: 11px; }
+@media (max-width: 1100px) { .bc-pies { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bc-section-head { flex-wrap: wrap; } }
+@media (max-width: 800px) { .bc-lines, .bc-pies { grid-template-columns: 1fr; } }
