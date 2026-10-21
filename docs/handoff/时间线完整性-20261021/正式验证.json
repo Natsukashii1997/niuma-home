@@ -1,0 +1,101 @@
+{
+  "release": "nm-20261021-164213-e1a761f",
+  "syncedAt": "2026-10-21 16:42",
+  "coverage": {
+    "schools": 77,
+    "regionSheets": 4,
+    "calendarSheets": 12
+  },
+  "events": 1058,
+  "calendarCells": 755,
+  "UK": {
+    "dated": 1,
+    "pending": 10,
+    "total": 23
+  },
+  "UKPending": [
+    {
+      "school": "曼彻斯特大学",
+      "raw": "11.18（去年）",
+      "source": "英国 爱尔兰!M2"
+    },
+    {
+      "school": "格拉斯哥大学",
+      "raw": "11.18（去年）",
+      "source": "英国 爱尔兰!M3"
+    },
+    {
+      "school": "伦敦大学国王学院 KCL",
+      "raw": "11.18（去年）",
+      "source": "英国 爱尔兰!M4"
+    },
+    {
+      "school": "爱丁堡大学",
+      "raw": "11.18（去年）",
+      "source": "英国 爱尔兰!M5"
+    },
+    {
+      "school": "约克大学",
+      "raw": "11.4（去年）",
+      "source": "英国 爱尔兰!M6"
+    },
+    {
+      "school": "谢菲尔德大学",
+      "raw": "11.18（去年）",
+      "source": "英国 爱尔兰!M7"
+    },
+    {
+      "school": "利物浦大学",
+      "raw": "11.18（去年）",
+      "source": "英国 爱尔兰!M15"
+    },
+    {
+      "school": "杜伦大学",
+      "raw": "11.2（去年）",
+      "source": "英国 爱尔兰!M25"
+    },
+    {
+      "school": "兰卡斯特大学",
+      "raw": "11.3（去年）",
+      "source": "英国 爱尔兰!M27"
+    },
+    {
+      "school": "华威大学",
+      "raw": "11.3（去年）",
+      "source": "英国 爱尔兰!M31"
+    }
+  ],
+  "UKCalendarCells": 5,
+  "readbackEqual": true,
+  "testsPassed": 507,
+  "businessData": {
+    "v3_documents": {
+      "unchanged": true,
+      "rows": 41
+    },
+    "promos": {
+      "unchanged": true,
+      "rows": 24
+    },
+    "plans": {
+      "unchanged": true,
+      "rows": 3
+    },
+    "sku_aliases": {
+      "unchanged": true,
+      "rows": 2
+    },
+    "materials": {
+      "unchanged": true,
+      "rows": 0
+    },
+    "material_images": {
+      "unchanged": true,
+      "rows": 0
+    },
+    "assistants": {
+      "unchanged": true,
+      "rows": 5
+    }
+  }
+}
