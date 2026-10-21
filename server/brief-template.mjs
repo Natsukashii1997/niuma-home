@@ -6,8 +6,11 @@ export const BRIEF_WIDTHS = { audience:[221,300,300], timeline:[140,140,140,192,
 export function briefRows(rows, width) { return [...rows, ...Array.from({length:Math.max(0,3-rows.length)},()=>Array(width).fill(''))]; }
 export const BRIEF_NUMBERS = ['一','二','三','四','五','六','七'];
 
+export const normalizeMaterialName=value=>String(value||'').replace(/\s+/g,' ').trim();
+
 // Stable IDs bind all three sections. A rename only changes labels, never entered cells.
 export function syncBriefMaterials(brief, materials) {
+  materials=materials.map(m=>({...m,name:normalizeMaterialName(m.name)}));
   const old = brief.materials || [];
   const position = new Map(old.map((m,i)=>[m.id,i]));
   const next = structuredClone(brief);

@@ -63,6 +63,7 @@ export function createBriefAutosave({ initial, send, read, storage, journalId='d
       await flush();
       const latest=await read();
       if(latest.version!==saved.version){error=conflict();emit();throw error;}
+      saved=latest;emit();
       return {baseVersion:saved.version};
     },
     async resolve(keepMine){

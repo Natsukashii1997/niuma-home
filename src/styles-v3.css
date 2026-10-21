@@ -1707,3 +1707,31 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .brief-save-error { display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--line); margin-bottom:12px; }
 .brief-layout .doc h3 { font-size:16px; }
 .brief-layout .doc h4 { font-size:14px; }
+
+/* Brief: one persistent action bar, seven sections remain in document flow. */
+.brief-sync-toolbar { position:sticky; top:var(--sticky-top); z-index:8; padding:var(--s2); border:var(--border) solid var(--line); background:var(--panel); flex-wrap:wrap; }
+.brief-sync-status { display:flex; flex-wrap:wrap; gap:4px 12px; align-items:center; }
+.brief-sync-destination { margin:var(--s2) 0 var(--s3); }
+.brief-sync-toolbar ~ .brief-layout .brief-outline,.brief-sync-toolbar ~ .brief-layout .brief-rail { top:calc(var(--sticky-top) + var(--brief-toolbar-height,64px) + 12px); }
+.brief-edit-fields { border:0; margin:0; padding:0; min-width:0; }
+.brief-edit-fields:disabled .doc-input { color:var(--text); opacity:.75; }
+.brief-conflict-item { border-top:1px solid var(--line); padding:var(--s2) 0; }
+.brief-conflict-item .row { gap:var(--s4); margin-top:var(--s2); }
+.brief-conflict-columns { display:grid; grid-template-columns:1fr 1fr; gap:var(--s3); }
+.brief-conflict-columns>div { min-width:0; }
+.brief-conflict-columns pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:240px; overflow:auto; }
+@media(max-width:1000px){ .brief-sync-toolbar { gap:var(--s2); } .brief-sync-status { flex:1 1 240px; } }
+@media(max-width:650px){ .brief-conflict-columns { grid-template-columns:1fr; } .brief-sync-status { order:2; flex-basis:100%; } }
+
+@media(max-width:1100px){
+  .brief-layout { grid-template-columns:160px minmax(0,1fr); }
+  .brief-layout .brief-outline { grid-column:1; grid-row:1 / span 2; }
+  .brief-layout .brief-rail { grid-column:2; grid-row:1; position:static; }
+  .brief-layout .doc { grid-column:2; grid-row:2; }
+}
+@media(max-width:650px){
+  .brief-layout { grid-template-columns:minmax(0,1fr); }
+  .brief-layout .brief-outline { grid-column:1; grid-row:1; position:static; }
+  .brief-layout .brief-rail { grid-column:1; grid-row:2; }
+  .brief-layout .doc { grid-column:1; grid-row:3; }
+}

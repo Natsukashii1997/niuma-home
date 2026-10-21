@@ -60,7 +60,7 @@ test('物料名称尾部回车不生成标题后空行，正文的有效换行�
    const xml=briefXml(draft);
    assert.match(xml,/<h2>4\.1 考前冲刺海报<\/h2><table>/);
    assert.match(xml,/<p>第一段<br\/>第二段<\/p>/);assert.match(xml,/<p>第一行<br\/>第二行<\/p>/);
-   assert.equal(draft.materials[0].name,'考前冲刺海报'+tail);
+   assert.equal(draft.materials[0].name,'考前冲刺海报');
  }
 });
 test('旧版Brief人工内容在物料主表迁移、增加条目并保存后保留',t=>{
@@ -84,4 +84,12 @@ test('参考列宽与三行正文写进XML，保留多于三行的内容与标�
  b.items[0].blocks=Array.from({length:5},(_,i)=>['标题'+i,'人工内容','']);
  assert.match(briefXml(b),/标题4/);
  assert.notEqual(canonicalXml(x,{widths:true}),canonicalXml(x.replace('width="221"','width="140"'),{widths:true}));
+});
+
+test('选课独立匹配非主战场事实，名称无换行，人工内容保留',t=>{
+ const {service,base,source}=fixture(t);source.strategy=null;source.regions.push({name:'美国',tier:'主战场',task:[['期中后评估风险科目，选定春季课程','时间线']]},{name:'加拿大',tier:'次战场',task:[['UBC 10/23 选课','推测']]});
+ const draft=syncBriefMaterials(base,[{id:'a',name:'选课海报\n'},{id:'b',name:'考前冲刺海报'}]);draft.audience[1][1]='指定人群';
+ const r=service.generate(month,{patch:briefPatch(base,draft)});
+ assert.equal(r.warnings.length,0);assert.match(r.value.audience[0][1],/规划下一学期/);assert.match(r.value.audience[0][2],/美国.*加拿大/);assert.match(r.value.audience[0][2],/推测，待确认/);assert.match(r.value.audience[0][2],/待办建议/);assert.equal(r.value.audience[1][1],'指定人群');assert.ok(!r.value.background.text.includes('\n'));
+ assert.equal(new Set(r.value.background.goals).size,r.value.background.goals.length);
 });

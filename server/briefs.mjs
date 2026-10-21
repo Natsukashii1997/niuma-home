@@ -1,6 +1,6 @@
 import { createLocalChanges, getRecord, putRecord, fingerprint } from './local-records.mjs';
 import { createUserStrategyService } from './user-strategy.mjs';
-import { BRIEF_SECTIONS as SECTIONS, BRIEF_HEADS, BRIEF_NUMBERS, BRIEF_WIDTHS, briefRows } from './brief-template.mjs';
+import { BRIEF_SECTIONS as SECTIONS, BRIEF_HEADS, BRIEF_NUMBERS, BRIEF_WIDTHS, briefRows, syncBriefMaterials } from './brief-template.mjs';
 import { generateBriefSuggestions } from './brief-generate.mjs';
 import { BRIEF_DESTINATION } from './brief-destination.mjs';
 import { requireMonth, failure, beijingText } from './v3-common.mjs';
@@ -97,9 +97,16 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
   const exporter = createBriefSync(db, { now, ...exportOptions, fixedTarget: BRIEF_DESTINATION });
   const previewViews = new Map();
   const attachments = createBriefAttachments(db, { now });
+  function linkedView(month,value){
+    const normalized=syncBriefMaterials(value,value.materials||[]),keep=normalized.materials.map((m,i)=>m.name?i:-1).filter(i=>i>=0);
+    for(const key of ['materials','audience','timeline','items'])normalized[key]=keep.map(i=>normalized[key][i]);
+    const link=exporter.linked(month,{xml:briefXml(normalized,attachments.list(month).items)});
+    const unnamed=(value.materials||[]).some((m,i)=>!m.name.trim()&&([...(value.audience[i]||[]).slice(1),...(value.timeline[i]||[]).slice(1),...(value.items[i]?.blocks||[]).flat(),...(value.items[i]?.cells||[]),value.items[i]?.note||''].some(v=>String(v).trim())));
+    return link&&unnamed?{...link,synced:false}:link;
+  }
   function read(month) {
     const base = generatedBrief(db, month, strategy.get(month)), stored = getRecord(db, 'brief', month);
-    if (!stored) return {...base,feishuDocument:exporter.linked(month)};
+    if (!stored) return {...base,feishuDocument:linkedView(month,base)};
     let value={ ...merge(base, stored.overrides), version: `v${stored.revision}`, editedAt: stored.editedAt, saveRequestId:stored.lastSave?.id };
     // Older saved Briefs predate the material-name master list. Hydrate stable rows in memory.
     if(stored.overrides.materials===undefined){
@@ -115,12 +122,13 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
       value.timeline=slots.map(x=>x.timeline || [x.name,'','','','']);
       value.items=slots.map((x,i)=>x.items || {id:value.materials[i].id,kind:'framework',title:x.name,blocks:[],refs:[],reuse:null});
     }
-    return {...value,feishuDocument:exporter.linked(month)};
+    return {...value,feishuDocument:linkedView(month,value)};
   }
   const exportContent = month => () => {
-    const brief = read(month);
+    let brief = read(month);
     validateBrief(brief);
     if(!brief.materials.length && [brief.audience,brief.timeline,brief.items].some(rows=>rows.length)) fail('物料名称与正文未对应，请先补全物料名称再创建');
+    brief=syncBriefMaterials(brief,brief.materials);
     // 空白占位行不算物料；未命名但已填内容的行仍须补名，避免丢失正文。
     const keep = brief.materials.map((m,i)=>{
       if(m.name.trim())return i;
@@ -129,7 +137,8 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
       return -1;
     }).filter(i=>i>=0);
     for(const key of ['materials','audience','timeline','items']) brief[key]=keep.map(i=>brief[key][i]);
-    return { title: brief.title, sections: SECTIONS, markdown: briefMarkdown(brief, attachments.list(month).items), format:'xml', xml:briefXml(brief,attachments.list(month).items) };
+    if(new Set(brief.materials.map(m=>m.name)).size!==brief.materials.length)fail('物料名称重复，请给每份物料一个不同的名称');
+    return { title: brief.title, materials:brief.materials.map(({id,name})=>({id,name})), sections: SECTIONS, markdown: briefMarkdown(brief, attachments.list(month).items), format:'xml', xml:briefXml(brief,attachments.list(month).items) };
   };
   return {
     read,
@@ -186,6 +195,7 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
     },
     exportConfirm(month, body) { requireMonth(month); return exporter.confirm('brief', month, body, exportContent(month)); },
     exportStatus(month, operationId) { requireMonth(month); return exporter.status('brief', month, operationId); },
+    exportResume(month, operationId) { requireMonth(month); return exporter.resume('brief', month, operationId,exportContent(month)); },
     exportReconcile(month, operationId) { requireMonth(month); return exporter.reconcile('brief', month, operationId); },
   };
 }

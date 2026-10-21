@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {openDb} from '../../server/db.mjs';
 import {createBriefService} from '../../server/briefs.mjs';
 import {BRIEF_DESTINATION as WIKI} from '../../server/brief-destination.mjs';
-import {briefSections,replaceBriefSection} from '../../server/brief-sync-plan.mjs';
+import {briefSections,replaceBriefSection,applyBriefEdit} from '../../server/brief-sync-plan.mjs';
 
 export function fixture(dir){
   const db=openDb(dir),documents=new Map(),state={creates:0,updates:0,calls:[],failAfterUpdate:false,parent:WIKI.token,user:'ou_isolated'};
@@ -28,12 +28,11 @@ export function fixture(dir){
     }
     if(args.includes('+update')){
       const id=arg('--doc'),doc=documents.get(id),single=args.includes('--block-id'),start=arg(single?'--block-id':'--start-block-id'),end=single?start:arg('--end-block-id');
-      const body={command:'block_replace',format:'xml',content:options.input,revision_id:Number(arg('--revision-id')),...(single?{block_id:start}:{start_block_id:start,end_block_id:end})};
+      const body={command:arg('--command'),...(arg('--command')==='block_delete'?{}:{format:'xml',content:options.input}),revision_id:Number(arg('--revision-id')),...(single?{block_id:start}:{start_block_id:start,end_block_id:end})};
       if(args.includes('--dry-run')){state.onUpdateDry?.();return dry({method:'PUT',url:`/open-apis/docs_ai/v1/documents/${id}`,body});}
       assert.equal(body.revision_id,doc.revision);const remote=stamp(doc);
-      const section=briefSections(remote).find(s=>s.nodes.some(n=>n.id===start));assert.ok(section,'replace exact chapter start');
-      const ids=section.nodes.flatMap(n=>n.id?[n.id]:n.children.map(c=>c.id));assert.equal(ids.at(-1),end,'replace exact chapter end');
-      doc.content=replaceBriefSection(remote,section.key,options.input);doc.revision++;doc.title=briefSections(doc.content)[0].label;state.updates++;
+      if(state.failBeforeUpdate)throw Error('Unknown response before applying');
+      doc.content=applyBriefEdit(remote,{start,end,content:options.input,command:body.command});doc.revision++;doc.title=briefSections(doc.content)[0].label;state.updates++;
       if(state.failAfterUpdate===true||state.failAfterUpdate===state.updates)throw Error('Lost response after apply');
       return result({result:'success'});
     }

@@ -56,6 +56,7 @@ export function routes(db, options = {}) {
     route('POST', '/api/v3/briefs/:month/export-preview', handle(async (req, { params }) => briefs.exportPreview(params.month, await body(req)))),
     route('POST', '/api/v3/briefs/:month/export', handle(async (req, { params }) => briefs.exportConfirm(params.month, await body(req)))),
     route('GET', '/api/v3/briefs/:month/exports/:operationId', handle((req, { params }) => briefs.exportStatus(params.month, params.operationId))),
+    route('POST', '/api/v3/briefs/:month/exports/:operationId/resume', handle((req, { params }) => briefs.exportResume(params.month, params.operationId))),
     route('POST', '/api/v3/briefs/:month/exports/:operationId/reconcile', handle((req, { params }) => briefs.exportReconcile(params.month, params.operationId))),
   ];
 }

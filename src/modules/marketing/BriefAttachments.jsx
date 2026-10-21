@@ -15,7 +15,7 @@ const readFile = (file) => new Promise((resolve, reject) => {
   r.readAsDataURL(file);
 });
 
-export function BriefAttachments({ month }) {
+export function BriefAttachments({ month, onChanged }) {
   const state = useApi(`/api/v3/briefs/${month}/attachments`);
   const [items, setItems] = useState(null); // 保存后用回读到的列表
   const [what, setWhat] = useState(""); // "upload" / "remove"
@@ -25,7 +25,7 @@ export function BriefAttachments({ month }) {
   const list = items || state.data?.items || [];
   const locked = flow.busy || flow.phase === "unknown";
   const base = `/api/v3/briefs/${month}/attachments`;
-  const reread = async () => { const back = await apiSend("GET", base); setItems(back.items); return back.items; };
+  const reread = async () => { const back = await apiSend("GET", base); setItems(back.items); await onChanged?.(); return back.items; };
 
   async function pick(file) {
     if (!file || locked) return;

@@ -4,12 +4,12 @@ import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Button, Loadable, MonthSwitch, StatusMark, Tag, useToast } from "../../ui/components.jsx";
 import { BriefAttachments } from "./BriefAttachments.jsx";
-import { FeishuExport } from "../../ui/feishu-export.jsx";
+import { BriefSync } from "./BriefSync.jsx";
 import Thumb from "../../ui/Thumb.jsx";
 import { currentMonth } from "../../constants.js";
-import { BRIEF_SECTIONS as SECTIONS, BRIEF_HEADS, BRIEF_WIDTHS, BRIEF_NUMBERS, briefRows, syncBriefMaterials } from "../../../server/brief-template.mjs";
+import { BRIEF_SECTIONS as SECTIONS, BRIEF_HEADS, BRIEF_WIDTHS, BRIEF_NUMBERS, briefRows, syncBriefMaterials, normalizeMaterialName } from "../../../server/brief-template.mjs";
 import { briefText } from "./brief-edit.js";
-import { BRIEF_DESTINATION } from "../../../server/brief-destination.mjs";
+
 
 import { acquireBriefJournal, createBriefAutosave } from './brief-autosave.js';
 
@@ -47,6 +47,7 @@ function Brief({ brief, month, setMonth, journal }) {
   const {draft,saved}=saving;
   useEffect(()=>{
     const unsub=saver.subscribe(setSaving);
+    if(saver.state().draft.materials.some(m=>m.name!==normalizeMaterialName(m.name)))saver.update(d=>Object.assign(d,syncBriefMaterials(d,d.materials)));
     const flush=()=>{saver.flush().catch(()=>{});};
     window.addEventListener('pagehide',flush);
     return()=>{unsub();window.removeEventListener('pagehide',flush);flush();};
@@ -66,10 +67,9 @@ function Brief({ brief, month, setMonth, journal }) {
     try {
       await saver.flush();
       const result=await apiSend('POST',`/api/v3/briefs/${month}/generate`,{patch:{},overwrite});
-      saver.update(d=>Object.assign(d,result.value));setGeneration(result);
+      saver.update(d=>Object.assign(d,result.value));await saver.flush();setGeneration(result);
     }catch(e){setGenerationError(e.message);}finally{setGenerating(false);}
   };
-  const done = Object.values(draft.status).filter((s) => s === "done").length;
   const show = (n) => all || sec === n;
   const copy = async (text, label) => { try { await navigator.clipboard.writeText(text); showToast(`已复制${label}`); } catch { showToast("复制失败：浏览器不允许写剪贴板"); } };
   const head = (n, extra) => (
@@ -80,12 +80,10 @@ function Brief({ brief, month, setMonth, journal }) {
   );
   return (
     <>
-      <div className="toolbar">
-        <MonthSwitch month={month} onChange={async m=>{if(!locked){try{await saver.flush();setMonth(m);}catch{/* Keep the current draft visible. */}}}} mark={month === currentMonth() ? "本月" : ""} />
-        <span className="small muted" role="status">{saving.error?'自动保存未完成':saving.busy?'正在保存…':saving.dirty?'等待自动保存…':'已自动保存'} · {saved.version} · 7 节完成 {done} 节</span>
-        <span className="spacer" />
-        <Button onClick={() => copy(briefText(draft), " brief 全文")}><PixelIcon name="copy" />复制全文</Button>
-      </div>
+      <BriefSync month={month} saver={saver} saving={saving} disabled={generating||saving.resolving} onLockChange={setExportLocked}>
+        <MonthSwitch month={month} onChange={async m=>{if(!locked){try{await saver.flush();setMonth(m);}catch{/* Preserve draft. */}}}} mark={month===currentMonth()?"本月":""}/>
+        <Button onClick={()=>copy(briefText(draft)," brief 全文")} title="复制全文"><PixelIcon name="copy"/></Button>
+      </BriefSync>
       {saving.error && <div className="brief-save-error" role="alert"><span>{saving.error.message} 填写内容仍在当前页面。</span>
         {saving.error.code==='BRIEF_SAVE_CONFLICT'?<><Button disabled={saving.resolving} onClick={()=>saver.resolve(true).catch(()=>{})}>保存我的草稿</Button><Button disabled={saving.resolving} onClick={()=>saver.resolve(false).catch(()=>{})}>使用另一页面的版本</Button></>:<Button onClick={()=>saver.flush().catch(()=>{})}>重试自动保存</Button>}
       </div>}
@@ -99,7 +97,7 @@ function Brief({ brief, month, setMonth, journal }) {
           ))}
         </nav>
 
-        <article className="doc">
+        <article className="doc"><fieldset className="brief-edit-fields" disabled={locked}>
           <span className="label">design brief · {month}</span>
           <h2><Text value={draft.title} onChange={(v) => edit((d) => { d.title = v; })} placeholder="标题" className="is-title" /></h2>
           {show(1) && <section>{head(1)}{draft.background.from && <p className="small muted">来源：{draft.background.from}</p>}
@@ -119,18 +117,14 @@ function Brief({ brief, month, setMonth, journal }) {
               : draft.items.map((it,k)=>({it,k})).filter(({it})=>it.title.trim()).map(({it,k},index) => <BriefItem key={it.id} it={it} index={index} onChange={(fn) => edit((d) => fn(d.items[k]))} />)}</section>}
           {show(5) && <section>{head(5)}<RowsTable widths={draft.specs[0]?.length===4?[140,140,140,140]:BRIEF_WIDTHS.specs} cols={draft.specs[0]?.length===4?['物料','比例','尺寸','格式']:BRIEF_HEADS.specs} rows={draft.specs} onChange={fn=>edit(d=>fn(d.specs))} /></section>}
           {show(6) && <section>{head(6)}<RowsTable widths={draft.owners[0]?.length===3?[135,350,195]:BRIEF_WIDTHS.owners} cols={draft.owners[0]?.length===3?['角色','负责人','状态']:BRIEF_HEADS.owners} header={false} rows={draft.owners} onChange={fn=>edit(d=>fn(d.owners))} allowRows={false} fixedFirst /></section>}
-          {show(7) && <section>{head(7)}<BriefAttachments month={month} /></section>}
+          {show(7) && <section>{head(7)}<BriefAttachments month={month} onChanged={()=>saver.verify()} /></section>}
           {!all && (
             <div className="doc-pager">
               <Button disabled={sec === 1} onClick={() => setSec(sec - 1)}><PixelIcon name="left" />{sec > 1 ? SECTIONS[sec - 2] : "上一节"}</Button>
               <Button disabled={sec === 7} onClick={() => setSec(sec + 1)}>{sec < 7 ? SECTIONS[sec] : "下一节"}<PixelIcon name="right" /></Button>
             </div>
           )}
-          <div className="doc-export">
-            <FeishuExport key={month} syncExisting linkedDocument={brief.feishuDocument} oneClick fixedTarget={BRIEF_DESTINATION} onLockChange={setExportLocked} beforeCreate={()=>saver.verify()} what=" Brief " disabled={generating || saving.resolving} disabledNote="正在生成建议"
-              previewPath={`/api/v3/briefs/${month}/export-preview`} confirmPath={`/api/v3/briefs/${month}/export`} statusBase={`/api/v3/briefs/${month}/exports`} />
-          </div>
-        </article>
+        </fieldset></article>
 
         <aside className="brief-rail">
           <section className="card">
@@ -142,7 +136,7 @@ function Brief({ brief, month, setMonth, journal }) {
               {brief.strategySource?.available && <button className="link-btn" disabled={locked} onClick={()=>setRewrite(!rewrite)}>重新生成第一、二部分</button>}
               {rewrite && <div className="stack-sm"><p className="small warn-text">将替换背景、目的和受众文字，其他部分保留。</p><Button disabled={locked} onClick={()=>generate(true)}>确认重新生成</Button><button className="link-btn" onClick={()=>setRewrite(false)}>取消</button></div>}
               {!brief.strategySource?.available && <p className="small warn-text">这个月份还没有用户策略，请先在用户策略页补充。</p>}
-              {generation && <p className="small muted">已补充草稿 · 来源：{generation.source.month} 用户策略。内容已自动保存，可直接创建飞书文档。</p>}
+              {generation && <p className="small muted">已补充草稿 · 来源：{generation.source.month} 用户策略。已保存到工作台，可在顶部同步到飞书。</p>}
               {generation?.warnings.map(w=><p className="small warn-text" key={w}>{w}</p>)}
               {generationError && <p role="alert" className="small risk-text">{generationError}</p>}
               <a className="link" href={href('user','strategy')}>查看用户策略</a>
@@ -168,7 +162,7 @@ function RowsTable({ cols, rows, onChange, allowRows=true, fixedFirst=false, onN
         {header && <thead><tr>{cols.map((c) => <th key={c}>{c}</th>)}{(allowRows || onRemove) && <th aria-label="操作" />}</tr></thead>}
         <tbody>
           {display.map((r, i) => (
-            <tr key={i}>{r.map((c, j) => <td key={j}>{j===0 && fixedFirst?<span>{c}</span>:<Text value={c} placeholder={j===0 && onName?"输入物料名称":""} onChange={(v) => j===0 && onName?onName(i,v):change((list) => { list[i][j] = v; })} />}</td>)}
+            <tr key={i}>{r.map((c, j) => <td key={j}>{j===0 && fixedFirst?<span>{c}</span>:j===0&&onName?<MaterialName value={c} index={i} onChange={v=>onName(i,v)} />:<Text value={c} placeholder="" onChange={v=>change(list=>{list[i][j]=v;})}/>}</td>)}
               {(allowRows || onRemove) && <td className="row-del">{i<rows.length&&<button type="button" className="icon-btn" title="删掉这一行" onClick={() => onRemove?onRemove(i):onChange((list) => { list.splice(i, 1); })}><PixelIcon name="close" /></button>}</td>}</tr>
           ))}
         </tbody>
@@ -201,4 +195,10 @@ function BriefItem({ it, index, onChange }) {
       {it.kind === "price" && <Tag tone="neutral">价格来自生效中的价格方案</Tag>}
     </div>
   );
+}
+
+function MaterialName({value,index,onChange}){
+  const [typing,setTyping]=useState(value);
+  useEffect(()=>{setTyping(current=>normalizeMaterialName(current)===value?current:value);},[value]);
+  return <input className="doc-input" aria-label={`物料名称 ${index+1}`} value={typing} placeholder="输入物料名称" onChange={e=>{setTyping(e.target.value);onChange(e.target.value);}} onBlur={()=>setTyping(normalizeMaterialName(typing))}/>;
 }
