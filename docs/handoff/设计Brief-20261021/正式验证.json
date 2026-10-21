@@ -1,0 +1,12 @@
+{
+  "release": "nm-20261021-125449-4df1a17",
+  "sourceFilesMatch": true,
+  "businessRecordsUnchanged": true,
+  "briefCount": 0,
+  "testsPassed": 460,
+  "realFeishuCreate": false,
+  "xmlDryRunVerified": true,
+  "generation": "internal deterministic rules; no Codex/model call",
+  "pending": "independent model service decision and real document creation acceptance",
+  "screenshot": "正式-Brief框架.png"
+}
