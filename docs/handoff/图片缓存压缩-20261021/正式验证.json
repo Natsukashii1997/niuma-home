@@ -1,0 +1,23 @@
+{
+  "release": "nm-20261021-121011-84443bf",
+  "homepageMatches": true,
+  "serverMatches": true,
+  "cacheFilesUnchanged": true,
+  "cache": {
+    "refs": {
+      "count": 2,
+      "maxBytes": 579215
+    },
+    "design-refs": {
+      "count": 0,
+      "maxBytes": 0
+    },
+    "nas-thumbs": {
+      "count": 22,
+      "maxBytes": 88395
+    }
+  },
+  "posterCacheHttpBytes": 38082,
+  "nasMounted": false,
+  "detailsHaveSizeField": false
+}
