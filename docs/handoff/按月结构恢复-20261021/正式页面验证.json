@@ -1,0 +1,128 @@
+{
+  "all": {
+    "bars": 86,
+    "corner": "2026-11 · 86 个节点",
+    "listRows": 86,
+    "longScopeVisible": false,
+    "referenceVisible": false,
+    "scrollWidth": 1280,
+    "width": 1280
+  },
+  "uk": {
+    "corner": "2026-11 · 11 个节点",
+    "listRows": 11,
+    "rows": [
+      {
+        "bars": [
+          {
+            "start": "23",
+            "text": "",
+            "title": "卡迪夫大学 · Withdraw 截止\n2026-11-23 → 2026-11-23（1 天）\n来源：英国 爱尔兰!M14"
+          }
+        ],
+        "school": "卡迪夫大学"
+      },
+      {
+        "bars": [
+          {
+            "start": "18",
+            "text": "Withdraw 截止\n11.18\nAI推测",
+            "title": "曼彻斯特大学 · Withdraw 截止\n11.18（去年）\n适用范围：原表未明确Withdraw所指课程退出、退学或学费责任节点\n来源：英国 爱尔兰!M2\n推测，待确认"
+          }
+        ],
+        "school": "曼彻斯特大学"
+      },
+      {
+        "bars": [
+          {
+            "start": "18",
+            "text": "Withdraw 截止\n11.18\nAI推测",
+            "title": "格拉斯哥大学 · Withdraw 截止\n11.18（去年）\n适用范围：原表未明确Withdraw所指课程退出、退学或学费责任节点\n来源：英国 爱尔兰!M3\n推测，待确认"
+          }
+        ],
+        "school": "格拉斯哥大学"
+      },
+      {
+        "bars": [
+          {
+            "start": "18",
+            "text": "Withdraw 截止\n11.18\nAI推测",
+            "title": "伦敦大学国王学院 KCL · Withdraw 截止\n11.18（去年）\n适用范围：原表未明确Withdraw所指课程退出、退学或学费责任节点\n来源：英国 爱尔兰!M4\n推测，待确认"
+          }
+        ],
+        "school": "伦敦大学国王学院\nKCL"
+      },
+      {
+        "bars": [
+          {
+            "start": "18",
+            "text": "Withdraw 截止\n11.18\nAI推测",
+            "title": "爱丁堡大学 · Withdraw 截止\n11.18（去年）\n适用范围：原表未明确Withdraw所指课程退出、退学或学费责任节点\n来源：英国 爱尔兰!M5\n推测，待确认"
+          }
+        ],
+        "school": "爱丁堡大学"
+      },
+      {
+        "bars": [
+          {
+            "start": "4",
+            "text": "Withdraw 截止\n11.4\nAI推测",
+            "title": "约克大学 · Withdraw 截止\n11.4（去年）\n适用范围：原表未明确Withdraw所指课程退出、退学或学费责任节点\n来源：英国 爱尔兰!M6\n推测，待确认"
+          }
+        ],
+        "school": "约克大学"
+      },
+      {
+        "bars": [
+          {
+            "start": "18",
+            "text": "Withdraw 截止\n11.18\nAI推测",
+            "title": "谢菲尔德大学 · Withdraw 截止\n11.18（去年）\n适用范围：原表未明确Withdraw所指课程退出、退学或学费责任节点\n来源：英国 爱尔兰!M7\n推测，待确认"
+          }
+        ],
+        "school": "谢菲尔德大学"
+      },
+      {
+        "bars": [
+          {
+            "start": "18",
+            "text": "Withdraw 截止\n11.18\nAI推测",
+            "title": "利物浦大学 · Withdraw 截止\n11.18（去年）\n适用范围：原表未明确Withdraw所指课程退出、退学或学费责任节点\n来源：英国 爱尔兰!M15\n推测，待确认"
+          }
+        ],
+        "school": "利物浦大学"
+      },
+      {
+        "bars": [
+          {
+            "start": "2",
+            "text": "Withdraw 截止\n11.2\nAI推测",
+            "title": "杜伦大学 · Withdraw 截止\n11.2（去年）\n适用范围：原表未明确Withdraw所指课程退出、退学或学费责任节点\n来源：英国 爱尔兰!M25\n推测，待确认"
+          }
+        ],
+        "school": "杜伦大学"
+      },
+      {
+        "bars": [
+          {
+            "start": "3",
+            "text": "Withdraw 截止\n11.3\nAI推测",
+            "title": "兰卡斯特大学 · Withdraw 截止\n11.3（去年）\n适用范围：原表未明确Withdraw所指课程退出、退学或学费责任节点\n来源：英国 爱尔兰!M27\n推测，待确认"
+          }
+        ],
+        "school": "兰卡斯特大学"
+      },
+      {
+        "bars": [
+          {
+            "start": "3",
+            "text": "Withdraw 截止\n11.3\nAI推测",
+            "title": "华威大学 · Withdraw 截止\n11.3（去年）\n适用范围：原表未明确Withdraw所指课程退出、退学或学费责任节点\n来源：英国 爱尔兰!M31\n推测，待确认"
+          }
+        ],
+        "school": "华威大学"
+      }
+    ],
+    "version": "3695b66"
+  }
+}
