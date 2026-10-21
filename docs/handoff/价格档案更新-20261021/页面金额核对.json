@@ -1,0 +1,254 @@
+{
+  "release": "nm-20261021-110246-f8d675e",
+  "checkedAt": "2026-10-21T03:04:07.613Z",
+  "amountCells": 92,
+  "products": [
+    {
+      "id": "intl-lite",
+      "name": "课程课时卡",
+      "ok": true,
+      "rows": [
+        {
+          "hours": 10,
+          "original": 9500,
+          "prices": [
+            8500,
+            8100
+          ]
+        },
+        {
+          "hours": 20,
+          "original": 19000,
+          "prices": [
+            15400,
+            14800
+          ]
+        },
+        {
+          "hours": 30,
+          "original": 28500,
+          "prices": [
+            22200,
+            21450
+          ]
+        },
+        {
+          "hours": 50,
+          "original": 47500,
+          "prices": [
+            35500,
+            34500
+          ]
+        },
+        {
+          "hours": 100,
+          "original": 95000,
+          "prices": [
+            68000,
+            66500
+          ]
+        },
+        {
+          "hours": 150,
+          "original": 142500,
+          "prices": [
+            102000,
+            99750
+          ]
+        },
+        {
+          "hours": 200,
+          "original": 190000,
+          "prices": [
+            136000,
+            133000
+          ]
+        }
+      ]
+    },
+    {
+      "id": "intl-comp",
+      "name": "竞赛课时卡",
+      "ok": true,
+      "rows": [
+        {
+          "hours": 10,
+          "original": 10500,
+          "prices": [
+            9500,
+            9050
+          ]
+        },
+        {
+          "hours": 20,
+          "original": 21000,
+          "prices": [
+            17200,
+            16500
+          ]
+        },
+        {
+          "hours": 30,
+          "original": 31500,
+          "prices": [
+            24900,
+            24000
+          ]
+        },
+        {
+          "hours": 50,
+          "original": 52500,
+          "prices": [
+            40000,
+            39000
+          ]
+        },
+        {
+          "hours": 100,
+          "original": 105000,
+          "prices": [
+            76000,
+            74500
+          ]
+        },
+        {
+          "hours": 150,
+          "original": 157500,
+          "prices": [
+            114000,
+            111750
+          ]
+        },
+        {
+          "hours": 200,
+          "original": 210000,
+          "prices": [
+            152000,
+            149000
+          ]
+        }
+      ]
+    },
+    {
+      "id": "uni-max",
+      "name": "稳分系列-安心学Max",
+      "ok": true,
+      "rows": [
+        {
+          "hours": 18,
+          "original": 24300,
+          "prices": [
+            23085,
+            21870,
+            20655,
+            19440
+          ]
+        },
+        {
+          "hours": 20,
+          "original": 27000,
+          "prices": [
+            25650,
+            24300,
+            22950,
+            21600
+          ]
+        },
+        {
+          "hours": 24,
+          "original": 32400,
+          "prices": [
+            30780,
+            29160,
+            27540,
+            25920
+          ]
+        },
+        {
+          "hours": 36,
+          "original": 48600,
+          "prices": [
+            46170,
+            43740,
+            41310,
+            38880
+          ]
+        }
+      ]
+    },
+    {
+      "id": "uni-exam-pass",
+      "name": "稳分系列-学考无忧Pass",
+      "ok": true,
+      "rows": [
+        {
+          "hours": 16,
+          "original": 19600,
+          "prices": [
+            18620,
+            17640,
+            16660,
+            15680
+          ]
+        },
+        {
+          "hours": 20,
+          "original": 24500,
+          "prices": [
+            23275,
+            22050,
+            20825,
+            19600
+          ]
+        },
+        {
+          "hours": 24,
+          "original": 29400,
+          "prices": [
+            27930,
+            26460,
+            24990,
+            23520
+          ]
+        },
+        {
+          "hours": 30,
+          "original": 36750,
+          "prices": [
+            34913,
+            33075,
+            31238,
+            29400
+          ]
+        }
+      ]
+    },
+    {
+      "id": "uni-resit-pass",
+      "name": "稳分系列-补考护航Pass",
+      "ok": true,
+      "rows": [
+        {
+          "hours": 20,
+          "original": 27000,
+          "prices": [
+            25650,
+            24300,
+            22950,
+            21600
+          ]
+        },
+        {
+          "hours": 24,
+          "original": 32400,
+          "prices": [
+            30780,
+            29160,
+            27540,
+            25920
+          ]
+        }
+      ]
+    }
+  ]
+}
