@@ -250,7 +250,7 @@ test('brief逐字段保护人工编辑，源变更保留已改文字与空框架
   const current = await request('GET', '/api/v3/briefs/2026-11'); assert.equal(current.body.background.text, '人工写的背景'); assert.deepEqual(current.body.background.goals, []); assert.equal(current.body.status[1], 'done');
   const p2 = await request('POST', '/api/v3/briefs/2026-11/preview', { patch: { title: '修改标题' } }); putRecord(db,'user-strategy','2026-11',{month:'2026-11',summary:{judgement:'用户策略已更新'}});
   assert.equal((await request('PUT', '/api/v3/briefs/2026-11', { previewId: p2.body.previewId, confirm: true })).status, 409);
-  const exportResult = await request('POST', '/api/v3/briefs/2026-11/export-preview', {});
+  const exportResult = await request('POST', '/api/v3/briefs/2026-11/export-preview', { targetUrl: 'https://example.feishu.cn/drive/folder/OldFolder' });
   assert.equal(exportResult.status, 400); assert.equal(exportResult.body.code, 'EXPORT_TARGET_REQUIRED');
   assert.equal((await request('POST', '/api/v3/briefs/2026-11/export', { confirm: true })).status, 400);
   assert.deepEqual(counts(), { campaignReads: 0, priceReads: 0 });

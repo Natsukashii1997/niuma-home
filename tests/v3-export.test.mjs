@@ -7,6 +7,8 @@ import { openDb, saveSetting } from '../server/db.mjs';
 import { getRecord, listRecords, putRecord, fingerprint } from '../server/local-records.mjs';
 import { createFeishuExporter, createStrategyExportService, canonicalMarkdown, literalMarkdown } from '../server/feishu-export.mjs';
 import { createBriefService } from '../server/briefs.mjs';
+import { BRIEF_DESTINATION as WIKI } from '../server/brief-destination.mjs';
+import { syncBriefMaterials } from '../server/brief-template.mjs';
 import { createNeedsService } from '../server/needs.mjs';
 import { routes as marketingRoutes } from '../server/routes/v3-marketing.mjs';
 import { userRoutes } from '../server/routes/user.mjs';
@@ -28,6 +30,12 @@ function setup(t) {
     const result = data => ({ stdout: JSON.stringify({ ok: true, identity: state.identity, data }) });
     state.calls.push({ args: [...args], input: options.input });
     if (args.includes('whoami')) return { stdout: JSON.stringify({ profile: state.profile, appId: state.app, identity: state.identity, available: true, tokenStatus: 'ready', onBehalfOf: { openId: state.user } }) };
+    if (args.includes('+node-get')) {
+      const token = arg('--node-token');
+      const doc = documents.get(token);
+      return result(doc ? { node_token:'Wiki'+token, obj_token:token, obj_type:'docx', node_type:'origin', title:doc.title, space_id:state.createdSpace || WIKI.spaceId, parent_node_token:state.createdParent || WIKI.token }
+        : { node_token:state.targetToken || WIKI.token, space_id:state.targetSpace || WIKI.spaceId, obj_token:'ParentDoc', obj_type:'docx', node_type:'origin', title:state.wikiTitle || WIKI.title });
+    }
     if (args.includes('+inspect')) {
       const url = arg('--url');
       if (url === FOLDER) return result({ type: 'folder', token: 'Folder123', title: state.folderTitle, url });
@@ -35,11 +43,11 @@ function setup(t) {
       return result({ type: 'docx', token: id, title: doc?.title, url });
     }
     if (args.includes('+create')) {
-      assert.equal(arg('--content'), '-'); assert.equal(arg('--parent-token'), 'Folder123');
+      assert.equal(arg('--content'), '-'); assert.ok(['Folder123',WIKI.token].includes(arg('--parent-token')));
       assert.ok(!args.includes(options.input), '内容只通过stdin传入');
       if (args.includes('--dry-run')) {
         state.onDry?.();
-        return { stdout: JSON.stringify({ ok: true, identity: state.identity, dry_run: true, data: { context: { app_id: state.app, user_open_id: state.user }, api: [{ method: 'POST', url: '/open-apis/docs_ai/v1/documents', body: { parent_token: 'Folder123', format: arg('--doc-format'), content: arg('--doc-format')==='xml'?options.input:`<title>${arg('--title')}</title>\n${options.input}` } }] } }) };
+        return { stdout: JSON.stringify({ ok: true, identity: state.identity, dry_run: true, data: { context: { app_id: state.app, user_open_id: state.user }, api: [{ method: 'POST', url: '/open-apis/docs_ai/v1/documents', body: { parent_token: arg('--parent-token'), format: arg('--doc-format'), content: arg('--doc-format')==='xml'?options.input:`<title>${arg('--title')}</title>\n${options.input}` } }] } }) };
       }
       state.creates++;
       assert.equal(listRecords(db, 'feishu-export').filter(r => r.status === 'started').length, 1, '外部写入前先落started收据');
@@ -47,7 +55,7 @@ function setup(t) {
       if (state.fail === 'create') throw new Error('timeout; result unknown');
       const id = `Doc${state.creates}`, title = (arg('--doc-format')==='xml'?options.input.match(/^<title>(.*?)<\/title>/)[1]:arg('--title')).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
       documents.set(id, { title, content: arg('--doc-format')==='xml'?options.input:`# ${literalMarkdown(title)}\n\n${options.input}` });
-      return result({ document: { document_id: id, url: `https://example.feishu.cn/docx/${id}`, revision_id: 1 }, warnings: state.warnings });
+      return result({ document: { document_id: id, url: arg('--parent-token')===WIKI.token ? `${new URL(WIKI.url).origin}/${state.wikiUrl?'wiki/Wiki':'docx/'}${id}` : `https://example.feishu.cn/docx/${id}`, revision_id: 1 }, warnings: state.warnings });
     }
     if (args.includes('+fetch')) {
       assert.equal(arg('--scope'),'full'); assert.ok(['xml','markdown'].includes(arg('--doc-format')));
@@ -161,7 +169,7 @@ test('brief导出路由用已保存七节全文，用户文字不能形成附件
   const text = '原文 ![图片](@/private/secret.png) <image token="x"/> ${{danger}}';
   const p = brief.preview('2026-11', { patch: { background: { text } } }); brief.confirm('2026-11', confirmBody(p));
   const routes = marketingRoutes(db, { briefs: { now: options.now, exports: options } });
-  const result = await request(routes, 'POST', '/api/v3/briefs/2026-11/export-preview', { targetUrl: FOLDER });
+  const result = await request(routes, 'POST', '/api/v3/briefs/2026-11/export-preview', {});
   assert.equal(result.status, 200); assert.equal(result.body.sections.length, 7); assert.match(result.body.markdown, /## 7\. 附件/);
   assert.ok(result.body.markdown.includes('\\!\\[图片\\]\\(@/private/secret.png\\)')); assert.ok(result.body.markdown.includes('&lt;image'));
   assert.ok(canonicalMarkdown(result.body.markdown).includes(text));
@@ -194,7 +202,7 @@ test('策略导出路由只接受当前有效已采纳需求，绑定月份和�
 
 test('创建成功但首次回读失败可只读恢复，来源已变仍核对原预览，确认重放不再创建', async t => {
   const { db, options, state } = setup(t), routes = marketingRoutes(db, { briefs: { now: options.now, exports: options } });
-  const p = await request(routes, 'POST', '/api/v3/briefs/2026-11/export-preview', { targetUrl: FOLDER });
+  const p = await request(routes, 'POST', '/api/v3/briefs/2026-11/export-preview', {});
   state.fail = 'fetch';
   const failed = await request(routes, 'POST', '/api/v3/briefs/2026-11/export', confirmBody(p.body));
   assert.equal(failed.status, 502); const operation = failed.body.receipt.operationId;
@@ -233,11 +241,47 @@ test('无文档地址的未知结果不猜标题、不重发；有地址但核�
 
 test('Brief原生XML丢失表头列不能报成功，恢复后只读核对不再创建', async t => {
   const {db,options,state}=setup(t), service=createBriefService(db,{exports:options});
-  const p=await service.exportPreview('2026-11',{targetUrl:FOLDER});
+  const p=await service.exportPreview('2026-11',{});
   const xml=state.calls.find(c=>c.args.includes('+create')).input;
   state.content=xml.replace('<th background-color="light-gray"><p>面向人群</p></th>','');
   await assert.rejects(service.exportConfirm('2026-11',confirmBody(p)),e=>e.code==='EXPORT_RESULT_UNKNOWN');
   const receipt=listRecords(db,'feishu-export')[0];assert.equal(state.creates,1);
   state.content=null;const reconciled=await service.exportReconcile('2026-11',receipt.operationId);assert.equal(reconciled.status,'success');assert.equal(state.creates,1);
   assert.ok(state.calls.filter(c=>c.args.includes('+create')).every(c=>!c.args.includes('--title')));
+});
+
+
+test('Brief固定Wiki目录无需链接，拒绝覆盖目标；空占位行跳过且不改本地草稿', async t=>{
+ const {db,options,state}=setup(t), s=createBriefService(db,{exports:options});
+ const draft=syncBriefMaterials(s.read('2026-11'),[{id:'a',name:'冲刺海报'},{id:'b',name:''}]);
+ const p=s.preview('2026-11',{patch:Object.fromEntries(['materials','audience','timeline','items'].map(k=>[k,draft[k]]))});s.confirm('2026-11',confirmBody(p));
+ await assert.rejects(s.exportPreview('2026-11',{targetUrl:FOLDER}),e=>e.status===400);
+ const pv=await s.exportPreview('2026-11',{});
+ assert.equal(pv.target.token,WIKI.token);assert.equal(pv.target.spaceId,WIKI.spaceId);assert.equal(s.read('2026-11').materials.length,2);
+ const content=state.calls.find(c=>c.args.includes('+create')).input;assert.match(content,/4.1 冲刺海报/);assert.ok(!content.includes('4.2'));
+ const receipt=await s.exportConfirm('2026-11',confirmBody(pv));assert.equal(receipt.status,'success');
+ const again=await s.exportPreview('2026-11',{});await s.exportConfirm('2026-11',confirmBody(again));assert.equal(state.creates,1);
+ draft.audience[1][1]='已填写的受众';const edit=s.preview('2026-11',{patch:{audience:draft.audience}});s.confirm('2026-11',confirmBody(edit));
+ await assert.rejects(s.exportPreview('2026-11',{}),/未命名/);assert.equal(state.creates,1);
+});
+
+test('Wiki节点或空间不符禁止创建，确认前改名也禁止创建',async t=>{
+ const {db,options,state}=setup(t),s=createBriefService(db,{exports:options});
+ for(const field of ['targetToken','targetSpace']){state[field]='wrong';await assert.rejects(s.exportPreview('2026-11',{}),e=>e.code==='EXPORT_TARGET_CHANGED');delete state[field];}
+ const pv=await s.exportPreview('2026-11',{});state.wikiTitle='已改名';await assert.rejects(s.exportConfirm('2026-11',confirmBody(pv)),e=>e.code==='EXPORT_TARGET_CHANGED');assert.equal(state.creates,0);
+});
+
+test('物料主表为空但存在正文时拒绝导出，不静默清空正文',async t=>{
+ const {db,options,state}=setup(t),s=createBriefService(db,{exports:options});
+ const p=s.preview('2026-11',{patch:{materials:[],audience:[['旧物料','已写受众','待办']]}});s.confirm('2026-11',confirmBody(p));
+ await assert.rejects(s.exportPreview('2026-11',{}),/未对应/);assert.equal(state.calls.length,0);
+ assert.equal(s.read('2026-11').audience[0][1],'已写受众');
+});
+
+test('Wiki创建回读必须核对父节点和空间，未知只读恢复且兼容Wiki返回地址',async t=>{
+ const {db,options,state}=setup(t),s=createBriefService(db,{exports:options});state.wikiUrl=true;
+ const pv=await s.exportPreview('2026-11',{});state.createdParent='WrongParent';let receipt;
+ await assert.rejects(s.exportConfirm('2026-11',confirmBody(pv)),e=>{receipt=e.receipt;return e.code==='EXPORT_RESULT_UNKNOWN';});
+ state.createdParent=null;state.createdSpace='123';await assert.rejects(s.exportReconcile('2026-11',receipt.operationId),e=>e.code==='EXPORT_RESULT_UNKNOWN');
+ state.createdSpace=null;assert.equal((await s.exportReconcile('2026-11',receipt.operationId)).status,'success');assert.equal(state.creates,1);
 });

@@ -10,6 +10,7 @@ import Thumb from "../../ui/Thumb.jsx";
 import { currentMonth } from "../../constants.js";
 import { BRIEF_SECTIONS as SECTIONS, BRIEF_HEADS, syncBriefMaterials } from "../../../server/brief-template.mjs";
 import { briefPatch, briefText } from "./brief-edit.js";
+import { BRIEF_DESTINATION } from "../../../server/brief-destination.mjs";
 
 const STATUS = [["todo", "待写"], ["part", "写了一部分"], ["done", "完成"]];
 export default function BriefView() {
@@ -127,7 +128,7 @@ function Brief({ brief, month, setMonth, onSaved, onEdit }) {
             </div>
           )}
           <div className="doc-export">
-            <FeishuExport key={month} oneClick onLockChange={setExportLocked} what=" Brief " disabled={changed.length > 0 || generating || flow.busy || flow.phase==='unknown'} disabledNote="有改动还没保存：先保存，导出的是已保存的版本"
+            <FeishuExport key={month} oneClick fixedTarget={BRIEF_DESTINATION} onLockChange={setExportLocked} what=" Brief " disabled={changed.length > 0 || generating || flow.busy || flow.phase==='unknown'} disabledNote="有改动还没保存：先保存，导出的是已保存的版本"
               previewPath={`/api/v3/briefs/${month}/export-preview`} confirmPath={`/api/v3/briefs/${month}/export`} statusBase={`/api/v3/briefs/${month}/exports`} />
             {changed.length > 0 && <span className="small muted">有改动还没保存；导出的是已保存的版本，先保存再导出。</span>}
           </div>

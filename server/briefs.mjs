@@ -2,6 +2,7 @@ import { createLocalChanges, getRecord, fingerprint } from './local-records.mjs'
 import { createUserStrategyService } from './user-strategy.mjs';
 import { BRIEF_SECTIONS as SECTIONS, BRIEF_HEADS, BRIEF_NUMBERS } from './brief-template.mjs';
 import { generateBriefSuggestions } from './brief-generate.mjs';
+import { BRIEF_DESTINATION } from './brief-destination.mjs';
 import { requireMonth, failure, beijingText } from './v3-common.mjs';
 import { createFeishuExporter, literalMarkdown, markdownTable } from './feishu-export.mjs';
 import { attachmentMarkdownLine, createBriefAttachments } from './brief-attachments.mjs';
@@ -92,7 +93,7 @@ export function briefXml(brief, attachments=[]) {
 
 export function createBriefService(db, { now = Date.now, exports: exportOptions = {}, strategy = createUserStrategyService(db) } = {}) {
   const changes = createLocalChanges(db, { now });
-  const exporter = createFeishuExporter(db, { now, ...exportOptions });
+  const exporter = createFeishuExporter(db, { now, ...exportOptions, fixedTarget: BRIEF_DESTINATION });
   const previewViews = new Map();
   const attachments = createBriefAttachments(db, { now });
   function read(month) {
@@ -118,7 +119,15 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
   const exportContent = month => () => {
     const brief = read(month);
     validateBrief(brief);
-    if(brief.materials.some(m=>!m.name.trim()))fail('请先填好已添加物料的名称，再创建飞书文档');
+    if(!brief.materials.length && [brief.audience,brief.timeline,brief.items].some(rows=>rows.length)) fail('物料名称与正文未对应，请先补全物料名称再创建');
+    // 空白占位行不算物料；未命名但已填内容的行仍须补名，避免丢失正文。
+    const keep = brief.materials.map((m,i)=>{
+      if(m.name.trim())return i;
+      const item=brief.items[i];
+      if(brief.audience[i].slice(1).some(v=>v.trim()) || brief.timeline[i].slice(1).some(v=>v.trim()) || item.kind!=='framework' || item.blocks.some(r=>r.some(v=>v.trim())) || item.refs.length || item.reuse || item.priceFrom?.trim()) fail('有一份物料已填写内容但未命名，请补充物料名称');
+      return -1;
+    }).filter(i=>i>=0);
+    for(const key of ['materials','audience','timeline','items']) brief[key]=keep.map(i=>brief[key][i]);
     return { title: brief.title, sections: SECTIONS, markdown: briefMarkdown(brief, attachments.list(month).items), format:'xml', xml:briefXml(brief,attachments.list(month).items) };
   };
   return {

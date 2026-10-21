@@ -32,10 +32,10 @@ function folderUrl(raw) {
   if (!match) throw error(400, 'EXPORT_TARGET_INVALID', '只能在指定文件夹创建新文档；请提供文件夹链接');
   return { url: `${url.origin}${url.pathname.replace(/\/$/, '')}`, token: match[1] };
 }
-function documentLink(document) {
+function documentLink(document, allowWiki = false) {
   if (!/^[a-zA-Z0-9_]+$/.test(document?.document_id || '')) throw new Error('Missing document id');
   const url = trustedUrl(document.url);
-  if (url.pathname !== `/docx/${document.document_id}`) throw new Error('Invalid document URL');
+  if (url.pathname !== `/docx/${document.document_id}` && !(allowWiki && /^\/wiki\/[a-zA-Z0-9]+$/.test(url.pathname))) throw new Error('Invalid document URL');
   return { id: document.document_id, url: url.href };
 }
 function defaultRun(command, args, { input, ...options }) {
@@ -56,7 +56,7 @@ export function canonicalMarkdown(text) {
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 }
 
-export function createFeishuExporter(db, { now = Date.now, run = defaultRun } = {}) {
+export function createFeishuExporter(db, { now = Date.now, run = defaultRun, fixedTarget = null } = {}) {
   async function invoke(args, input) {
     let result;
     try {
@@ -75,7 +75,14 @@ export function createFeishuExporter(db, { now = Date.now, run = defaultRun } = 
     if (result.profile !== 'codex' || result.appId !== APP_ID || result.identity !== 'user' || result.available !== true || result.tokenStatus !== 'ready' || typeof result.onBehalfOf?.openId !== 'string' || !result.onBehalfOf.openId) throw error(503, 'EXPORT_IDENTITY_INVALID', '请先确认机械邪龙兽 codex 的 user 身份已就绪；不会切换机器人');
     return result.onBehalfOf.openId;
   }
-  async function target(raw) {
+  async function target(raw, wiki = null) {
+    if (wiki) {
+      const url = trustedUrl(raw);
+      if (url.pathname !== `/wiki/${wiki.token}` || !/^\d+$/.test(wiki.spaceId)) throw error(400, 'EXPORT_TARGET_INVALID', 'Brief 创建目录配置无效');
+      const node = (await cli(['wiki', '+node-get', '--node-token', wiki.token, '--space-id', wiki.spaceId])).data;
+      if (node.node_token !== wiki.token || node.space_id !== wiki.spaceId || node.node_type !== 'origin' || node.obj_type !== 'docx' || typeof node.title !== 'string' || !node.title.trim()) throw error(409, 'EXPORT_TARGET_CHANGED', '无法核对 Brief 所在知识库和目录，请先检查目录权限');
+      return { type: 'wiki', url: url.href, token: node.node_token, spaceId: node.space_id, title: node.title };
+    }
     const expected = folderUrl(raw), result = await cli(['drive', '+inspect', '--url', expected.url, '--format', 'json']), data = result.data;
     if (data.type !== 'folder' || data.token !== expected.token || typeof data.title !== 'string' || !data.title.trim()) throw error(409, 'EXPORT_TARGET_CHANGED', '导出文件夹不存在、类型不符或无法核对名称');
     const actual = folderUrl(data.url);
@@ -131,12 +138,20 @@ export function createFeishuExporter(db, { now = Date.now, run = defaultRun } = 
     return { ...receipt, sourceChanged, verificationNote: '核对仅针对原预览的内容、来源与目标目录，不会重新创建文档' };
   }
   async function verify(p, receipt) {
-    const link = documentLink({ document_id: receipt.document?.id, url: receipt.document?.url });
+    const isWiki = p.target.type === 'wiki';
+    const link = documentLink({ document_id: receipt.document?.id, url: receipt.document?.url }, isWiki);
     const fetched = await cli(['docs', '+fetch', '--doc', link.id, '--doc-format', format(p.document), '--detail', 'simple', '--scope', 'full']);
     const doc = fetched.data.document;
     if (doc?.document_id !== link.id || typeof doc.content !== 'string' || fetched.data.warnings?.length) throw new Error('Readback incomplete');
-    const metadata = (await cli(['drive', '+inspect', '--url', link.url, '--format', 'json'])).data;
-    if (metadata.type !== 'docx' || metadata.token !== link.id || metadata.title !== p.document.title || documentLink({ document_id: metadata.token, url: metadata.url }).url !== link.url) throw new Error('Document metadata differs');
+    if (isWiki) {
+      const node = (await cli(['wiki', '+node-get', '--node-token', link.id, '--space-id', p.target.spaceId])).data;
+      if (node.obj_token !== link.id || node.obj_type !== 'docx' || node.node_type !== 'origin' || node.title !== p.document.title || node.space_id !== p.target.spaceId || node.parent_node_token !== p.target.token || !/^[a-zA-Z0-9]+$/.test(node.node_token || '')) throw new Error('Document wiki parent differs');
+      const url = new URL(link.url);
+      if (url.origin !== new URL(p.target.url).origin || (url.pathname.startsWith('/wiki/') && url.pathname !== `/wiki/${node.node_token}`)) throw new Error('Document wiki URL differs');
+    } else {
+      const metadata = (await cli(['drive', '+inspect', '--url', link.url, '--format', 'json'])).data;
+      if (metadata.type !== 'docx' || metadata.token !== link.id || metadata.title !== p.document.title || documentLink({ document_id: metadata.token, url: metadata.url }).url !== link.url) throw new Error('Document metadata differs');
+    }
     const normalize=format(p.document)==='xml'?canonicalXml:canonicalMarkdown;
     const actual=normalize(doc.content), expected=normalize(format(p.document)==='xml'?p.document.xml:p.document.markdown), withoutTitle=normalize(format(p.document)==='xml'?p.document.xml.replace(/^<title>[\s\S]*?<\/title>\s*/,''):bodyContent(p.document));
     if (actual !== expected && actual !== withoutTitle) throw new Error('Readback differs');
@@ -167,10 +182,11 @@ export function createFeishuExporter(db, { now = Date.now, run = defaultRun } = 
       catch { return receiptView(unknown(receipt)); }
     },
     async preview(kind, id, context, body, load) {
-      if (!plain(body) || Object.keys(body).some(k => k !== 'targetUrl') || typeof body.targetUrl !== 'string') throw error(400, 'EXPORT_TARGET_REQUIRED', '请先选择新文档的飞书文件夹');
-      folderUrl(body.targetUrl);
+      if (!plain(body) || Object.keys(body).some(k => k !== 'targetUrl') || (fixedTarget ? body.targetUrl !== undefined && body.targetUrl !== fixedTarget.url : typeof body.targetUrl !== 'string')) throw error(400, 'EXPORT_TARGET_REQUIRED', fixedTarget ? 'Brief 默认创建到路觅策略知识库的营销对接Brief，请刷新页面后重试' : '请先选择新文档的飞书文件夹');
+      const targetUrl = fixedTarget?.url || body.targetUrl;
+      if (!fixedTarget) folderUrl(targetUrl);
       const scope = { kind, id: String(id), context }; assertUnblocked(scope);
-      const value = await current(scope, load), destination = await target(body.targetUrl);
+      const value = await current(scope, load), destination = await target(targetUrl, fixedTarget);
       const p = { scope, ...value, target: destination, mode: 'new-only', previewId: randomUUID(), expiresAt: new Date(now() + 600000).toISOString() };
       p.actor = await actor(p); await unchanged(p, load);
       p.operationId = fingerprint([kind, String(id), destination.url, destination.token, p.fingerprint]);
@@ -185,7 +201,8 @@ export function createFeishuExporter(db, { now = Date.now, run = defaultRun } = 
       let receipt = existing(p); if (receipt) return receipt;
       if (Date.parse(p.expiresAt) <= now()) throw error(409, 'EXPORT_PREVIEW_EXPIRED', '导出预览已超过10分钟，请重新预览');
       await unchanged(p, load);
-      if (fingerprint(await target(p.target.url)) !== fingerprint(p.target)) throw error(409, 'EXPORT_TARGET_CHANGED', '目标目录已变化，请重新预览');
+      if (fixedTarget && (p.target.type !== 'wiki' || p.target.url !== fixedTarget.url || p.target.token !== fixedTarget.token || p.target.spaceId !== fixedTarget.spaceId)) throw error(409, 'EXPORT_TARGET_CHANGED', 'Brief 默认目录已变化，请刷新后重新创建');
+      if (fingerprint(await target(p.target.url, p.target.type === 'wiki' ? p.target : null)) !== fingerprint(p.target)) throw error(409, 'EXPORT_TARGET_CHANGED', '目标目录已变化，请重新预览');
       if (await actor(p) !== p.actor) throw error(409, 'EXPORT_IDENTITY_CHANGED', '当前飞书用户已变化，请重新预览');
       await unchanged(p, load);
       if (Date.parse(p.expiresAt) <= now()) throw error(409, 'EXPORT_PREVIEW_EXPIRED', '导出预览已超过10分钟，请重新预览');
@@ -203,7 +220,7 @@ export function createFeishuExporter(db, { now = Date.now, run = defaultRun } = 
           receipt = { ...receipt, document: { id: created.data.document.document_id } };
           putRecord(db, RECEIPTS, p.operationId, receipt, now());
         }
-        receipt = { ...receipt, document: documentLink(created.data.document) };
+        receipt = { ...receipt, document: documentLink(created.data.document, p.target.type === 'wiki') };
         putRecord(db, RECEIPTS, p.operationId, receipt, now());
         if (created.data.warnings?.length) throw new Error('Creation warnings require review');
         return await verify(p, receipt);

@@ -7,14 +7,15 @@ import { WriteBox, useWriteFlow } from "./write-flow.jsx";
 // 导出到飞书（brief、已采纳需求的策略共用）：只新建文档，不覆盖旧文档。
 // 预览写清楚目标文件夹（真实名称和链接）、新文档标题和全文，确认后才创建；创建后由后端回读全文核对，页面再读一次操作记录确认成功。
 // 结果不明（EXPORT_RESULT_UNKNOWN）时保留操作记录，只提供「只读核对」，绝不自动重试创建。
-export function FeishuExport({ what, previewPath, confirmPath, statusBase, extra = {}, disabled = false, disabledNote = "", oneClick = false, onLockChange }) {
+export function FeishuExport({ what, previewPath, confirmPath, statusBase, extra = {}, disabled = false, disabledNote = "", oneClick = false, fixedTarget = null, onLockChange }) {
   const [open, setOpen] = useState(oneClick);
   const [target, setTarget] = useState("");
   const [check, setCheck] = useState({ busy: false, note: "", error: "" });
   const [done, setDone] = useState(null); // 只读核对后确认成功的收据
   const flow = useWriteFlow();
   useEffect(()=>{onLockChange?.(flow.busy || flow.phase==='unknown');},[flow.busy,flow.phase,onLockChange]);
-  const preview = () => { setDone(null); flow.preview(() => apiSend("POST", previewPath, { targetUrl: target.trim(), ...extra })); };
+  const previewBody = () => ({ ...(fixedTarget ? {} : { targetUrl: target.trim() }), ...extra });
+  const preview = () => { setDone(null); flow.preview(() => apiSend("POST", previewPath, previewBody())); };
   const confirm = () => flow.confirm(
     (pv) => apiSend("POST", confirmPath, { previewId: pv.previewId, confirm: true }),
     async (receipt) => {
@@ -28,7 +29,7 @@ export function FeishuExport({ what, previewPath, confirmPath, statusBase, extra
   const createOnce=async()=>{
     if(disabled || flow.busy || flow.phase==='unknown')return;
     setDone(null);
-    const pv=await flow.preview(()=>apiSend('POST',previewPath,{targetUrl:target.trim(),...extra}));
+    const pv=await flow.preview(()=>apiSend('POST',previewPath,previewBody()));
     if(pv)await confirm();
   };
   // 结果不明：只读核对原操作记录里的文档，不再调用创建。
@@ -50,13 +51,13 @@ export function FeishuExport({ what, previewPath, confirmPath, statusBase, extra
       ) : (
         <div className="export-form">
           <div className="row">
-            <label className="export-target"><span className="small muted">目标文件夹链接</span>
+            {fixedTarget ? <span className="export-target small muted">默认创建到 <a className="link" href={fixedTarget.url} target="_blank" rel="noreferrer">{fixedTarget.label}</a></span> : <label className="export-target"><span className="small muted">目标文件夹链接</span>
               <input value={target} onChange={(e) => { setTarget(e.target.value); flow.reset(); }} placeholder="https://租户.feishu.cn/drive/folder/…" disabled={disabled || flow.busy || flow.phase === "unknown"} />
-            </label>
-            <Button onClick={oneClick?createOnce:preview} disabled={disabled || !target.trim() || flow.busy || flow.phase === "unknown"}><PixelIcon name="external" />{oneClick?"一键创建飞书文档":"预览导出"}</Button>
-            <button type="button" className="link-btn" onClick={() => { if (!flow.busy && flow.phase !== "unknown") { setOpen(false); flow.reset(); } }}>收起</button>
+            </label>}
+            <Button onClick={oneClick?createOnce:preview} disabled={disabled || (!fixedTarget && !target.trim()) || flow.busy || flow.phase === "unknown"}><PixelIcon name="external" />{oneClick?"一键创建飞书文档":"预览导出"}</Button>
+            {!oneClick && <button type="button" className="link-btn" onClick={() => { if (!flow.busy && flow.phase !== "unknown") { setOpen(false); flow.reset(); } }}>收起</button>}
           </div>
-          <p className="small muted">只在这个文件夹里新建一篇{what}文档，不覆盖、不删除已有文档；{oneClick?"点击创建会直接写入当前已保存内容；空白框架也会保留。":"确认前不会写飞书。"}</p>
+          <p className="small muted">{oneClick?"点击后用当前已保存内容创建新文档，保留空白框架；相同内容重复点击会返回原文档链接。":`只在这个文件夹里新建一篇${what}文档，确认前不会写飞书。`}</p>
         </div>
       )}
       {oneClick && flow.busy && <p className="small muted">正在核对目录、创建并回读文档…</p>}
