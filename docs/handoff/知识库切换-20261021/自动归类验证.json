@@ -1,0 +1,216 @@
+{
+  "mode": "isolated-service-with-mocked-feishu",
+  "realFeishuWrites": 0,
+  "cases": [
+    {
+      "title": "路觅教育品牌手册",
+      "parentTitle": "",
+      "expected": "01｜公司与行业认知",
+      "actual": "01｜公司与行业认知",
+      "pass": true
+    },
+    {
+      "title": "留学行业报告",
+      "parentTitle": "",
+      "expected": "01｜公司与行业认知",
+      "actual": "01｜公司与行业认知",
+      "pass": true
+    },
+    {
+      "title": "2026海外大学时间线",
+      "parentTitle": "",
+      "expected": "02｜用户时间线",
+      "actual": "02｜用户时间线",
+      "pass": true
+    },
+    {
+      "title": "英国大学校历",
+      "parentTitle": "",
+      "expected": "02｜用户时间线",
+      "actual": "02｜用户时间线",
+      "pass": true
+    },
+    {
+      "title": "用户链路重塑方法论",
+      "parentTitle": "",
+      "expected": "03｜业务链路梳理",
+      "actual": "03｜业务链路梳理",
+      "pass": true
+    },
+    {
+      "title": "客户旅程梳理",
+      "parentTitle": "",
+      "expected": "03｜业务链路梳理",
+      "actual": "03｜业务链路梳理",
+      "pass": true
+    },
+    {
+      "title": "T1项目交付文档",
+      "parentTitle": "",
+      "expected": "04｜实战项目推进",
+      "actual": "04｜实战项目推进",
+      "pass": true
+    },
+    {
+      "title": "T1问题拆解文档",
+      "parentTitle": "",
+      "expected": "04｜实战项目推进",
+      "actual": "04｜实战项目推进",
+      "pass": true
+    },
+    {
+      "title": "双十一促销方案",
+      "parentTitle": "",
+      "expected": "05｜营销战役策划",
+      "actual": "05｜营销战役策划",
+      "pass": true
+    },
+    {
+      "title": "营销策略方案",
+      "parentTitle": "",
+      "expected": "05｜营销战役策划",
+      "actual": "05｜营销战役策划",
+      "pass": true
+    },
+    {
+      "title": "标准工作流设计",
+      "parentTitle": "",
+      "expected": "06｜标准工作流与组织 Skill",
+      "actual": "06｜标准工作流与组织 Skill",
+      "pass": true
+    },
+    {
+      "title": "组织 Skill 使用规范",
+      "parentTitle": "",
+      "expected": "06｜标准工作流与组织 Skill",
+      "actual": "06｜标准工作流与组织 Skill",
+      "pass": true
+    },
+    {
+      "title": "管培生培训手册",
+      "parentTitle": "",
+      "expected": "07｜管培生培养机制",
+      "actual": "07｜管培生培养机制",
+      "pass": true
+    },
+    {
+      "title": "管培生绩效考核方案",
+      "parentTitle": "",
+      "expected": "07｜管培生培养机制",
+      "actual": "07｜管培生培养机制",
+      "pass": true
+    },
+    {
+      "title": "王同学-管培生日志",
+      "parentTitle": "",
+      "expected": "08｜成员成长档案",
+      "actual": "08｜成员成长档案",
+      "pass": true
+    },
+    {
+      "title": "季度阶段答辩",
+      "parentTitle": "",
+      "expected": "08｜成员成长档案",
+      "actual": "08｜成员成长档案",
+      "pass": true
+    },
+    {
+      "title": "标准文档模板",
+      "parentTitle": "",
+      "expected": "10｜标准文档模版",
+      "actual": "10｜标准文档模版",
+      "pass": true
+    },
+    {
+      "title": "思考拆解文档-标准模版",
+      "parentTitle": "",
+      "expected": "10｜标准文档模版",
+      "actual": "10｜标准文档模版",
+      "pass": true
+    },
+    {
+      "title": "策略数据表单",
+      "parentTitle": "",
+      "expected": "97｜数据大盘",
+      "actual": "97｜数据大盘",
+      "pass": true
+    },
+    {
+      "title": "月度营收报表",
+      "parentTitle": "",
+      "expected": "97｜数据大盘",
+      "actual": "97｜数据大盘",
+      "pass": true
+    },
+    {
+      "title": "课程介绍",
+      "parentTitle": "",
+      "expected": "98｜产品内容文档",
+      "actual": "98｜产品内容文档",
+      "pass": true
+    },
+    {
+      "title": "prD需求说明",
+      "parentTitle": "",
+      "expected": "98｜产品内容文档",
+      "actual": "98｜产品内容文档",
+      "pass": true
+    },
+    {
+      "title": "AI个人笔记",
+      "parentTitle": "",
+      "expected": "根目录",
+      "actual": "根目录",
+      "pass": true
+    },
+    {
+      "title": "周末随记",
+      "parentTitle": "",
+      "expected": "根目录",
+      "actual": "根目录",
+      "pass": true
+    },
+    {
+      "title": "营销标准模板",
+      "parentTitle": "",
+      "expected": "根目录",
+      "actual": "根目录",
+      "pass": true
+    },
+    {
+      "title": "项目交付文档标准模版",
+      "parentTitle": "",
+      "expected": "根目录",
+      "actual": "根目录",
+      "pass": true
+    },
+    {
+      "title": "营销转化率报表",
+      "parentTitle": "",
+      "expected": "根目录",
+      "actual": "根目录",
+      "pass": true
+    },
+    {
+      "title": "会议记录",
+      "parentTitle": "",
+      "expected": "根目录",
+      "actual": "根目录",
+      "pass": true
+    },
+    {
+      "title": "十月复盘",
+      "parentTitle": "营销战役策划",
+      "expected": "05｜营销战役策划",
+      "actual": "05｜营销战役策划",
+      "pass": true
+    },
+    {
+      "title": "本周记录",
+      "parentTitle": "成员日志",
+      "expected": "08｜成员成长档案",
+      "actual": "08｜成员成长档案",
+      "pass": true
+    }
+  ]
+}
