@@ -70,8 +70,9 @@ export function pageInfo(page, { data, error, todos, now = new Date() } = {}) {
   if (page === "user") {
     const t = sourceItem("时间线", src.timeline, { stale: true, now });
     const anomaly = (todos || []).find((x) => x.kind === "时间线");
-    const n = anomaly && /^(\d+)\s*(.*)$/.exec(anomaly.text);
-    return one(t, n ? [[{ hot: n[1] }, ` ${n[2]}`]] : anomaly ? [[anomaly.text]] : []);
+    const label = anomaly?.text.replace(/条异常待确认$/, "条Ai推测");
+    const n = label && /^(\d+)\s*(.*)$/.exec(label);
+    return one(t, n ? [[{ hot: n[1] }, ` ${n[2]}`]] : anomaly ? [[label]] : []);
   }
   if (page === "kb") return { ...one(sourceItem("知识库", src.kb, { now }), [["只建快捷方式，不动原文"]]), keys: KB_KEYS };
   if (page === "reports") {

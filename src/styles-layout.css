@@ -130,3 +130,10 @@ button.stat.is-on .stat-label, button.stat.is-on .stat-foot, button.stat.is-on .
 .reports-page .chat-list { max-height: calc(100vh - var(--sticky-top) - var(--s4) - var(--statusbar-h)); }
 .kb-stage { bottom: var(--statusbar-h); }
 .toast { bottom: calc(var(--statusbar-h) + var(--s3)); }
+
+/* 时间线参考日期只用低调的小字说明；具体月日位置仍保留事件标记。 */
+.timeline-estimate { color: var(--warn); font-size: 11px; font-weight: 400; font-style: normal; white-space: nowrap; flex-shrink: 0; }
+.tl-cell .timeline-estimate, .tl-cell.is-guess .timeline-estimate, .tl-cell.is-pending .timeline-estimate { color: var(--warn); font-size: 11px; font-weight: 400; }
+.month-list td > .timeline-estimate, .tl-cell .timeline-estimate { margin-left: var(--s1); }
+.gantt-bar.is-guess, .gantt-bar.is-conflict { outline: none; }
+.tl-cell.is-pending { background: none; }

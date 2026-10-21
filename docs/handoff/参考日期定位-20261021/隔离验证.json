@@ -1,0 +1,134 @@
+{
+  "monthEndCheck": {
+    "column": "30 / 31",
+    "label": "Withdraw 截止11.30Ai推测",
+    "labelColumn": "23 / 30",
+    "overflow": false
+  },
+  "estimateStyleCheck": [
+    {
+      "background": "rgba(0, 0, 0, 0)",
+      "border": "0px",
+      "color": "rgb(178, 107, 0)",
+      "fontSize": "11px",
+      "text": "Ai推测"
+    }
+  ],
+  "referencePositionProof": {
+    "overflow": false,
+    "rows": [
+      {
+        "bars": [
+          {
+            "column": "23 / 24",
+            "rawPreserved": false,
+            "text": ""
+          }
+        ],
+        "school": "卡迪夫大学"
+      },
+      {
+        "bars": [
+          {
+            "column": "18 / 24",
+            "rawPreserved": true,
+            "text": "Withdraw 截止11.18Ai推测"
+          }
+        ],
+        "school": "曼彻斯特大学"
+      },
+      {
+        "bars": [
+          {
+            "column": "18 / 24",
+            "rawPreserved": true,
+            "text": "Withdraw 截止11.18Ai推测"
+          }
+        ],
+        "school": "格拉斯哥大学"
+      },
+      {
+        "bars": [
+          {
+            "column": "18 / 24",
+            "rawPreserved": true,
+            "text": "Withdraw 截止11.18Ai推测"
+          }
+        ],
+        "school": "伦敦大学国王学院KCL"
+      },
+      {
+        "bars": [
+          {
+            "column": "18 / 24",
+            "rawPreserved": true,
+            "text": "Withdraw 截止11.18Ai推测"
+          }
+        ],
+        "school": "爱丁堡大学"
+      },
+      {
+        "bars": [
+          {
+            "column": "4 / 10",
+            "rawPreserved": true,
+            "text": "Withdraw 截止11.4Ai推测"
+          }
+        ],
+        "school": "约克大学"
+      },
+      {
+        "bars": [
+          {
+            "column": "18 / 24",
+            "rawPreserved": true,
+            "text": "Withdraw 截止11.18Ai推测"
+          }
+        ],
+        "school": "谢菲尔德大学"
+      },
+      {
+        "bars": [
+          {
+            "column": "18 / 24",
+            "rawPreserved": true,
+            "text": "Withdraw 截止11.18Ai推测"
+          }
+        ],
+        "school": "利物浦大学"
+      },
+      {
+        "bars": [
+          {
+            "column": "2 / 8",
+            "rawPreserved": true,
+            "text": "Withdraw 截止11.2Ai推测"
+          }
+        ],
+        "school": "杜伦大学"
+      },
+      {
+        "bars": [
+          {
+            "column": "3 / 9",
+            "rawPreserved": true,
+            "text": "Withdraw 截止11.3Ai推测"
+          }
+        ],
+        "school": "兰卡斯特大学"
+      },
+      {
+        "bars": [
+          {
+            "column": "3 / 9",
+            "rawPreserved": true,
+            "text": "Withdraw 截止11.3Ai推测"
+          }
+        ],
+        "school": "华威大学"
+      }
+    ],
+    "width": 1440
+  },
+  "testsPassed": 517
+}
