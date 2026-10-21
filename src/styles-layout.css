@@ -106,6 +106,11 @@ button.stat.is-on .stat-label, button.stat.is-on .stat-foot, button.stat.is-on .
 .proj-card.active { background: var(--panel-soft); box-shadow: inset 4px 0 0 var(--text); }
 .proj-main { display: flex; flex-direction: column; }
 .proj-main > .node-list { flex: 1 1 auto; }
+/* 监控审核卡：均分整行，随可用宽度换行，不保留固定卡宽造成的右侧空段。 */
+.pb-lane-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); overflow-x: visible; }
+.pb-lane-body > .pb-card { width: auto; }
+.pb-lane-body > .pb-card:only-child { max-width: 360px; }
+.pb-lane-body .pb-card-meta > .tnum { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
 /* 概况条里的项目名用正文字号，避免和数字抢 */
 .proj-main .stat:first-child .stat-value { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; font-size: 18px; font-weight: 600; } /* 项目名两行完整显示 */
 .stat-foot .stat-bar { flex: 0 0 72px; }
