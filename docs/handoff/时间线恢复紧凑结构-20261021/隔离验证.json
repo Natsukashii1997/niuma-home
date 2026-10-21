@@ -1,0 +1,18 @@
+{
+  "detail": {
+    "first": "2026-07-08 → 2026-07-09\tOrientation 101（场次内选课）\t官网核实",
+    "last": "2026-09-10 → 2026-09-11\tOrientation 112（场次内选课）\t官网核实",
+    "links": [
+      "https://newstudents.ucla.edu/programs/first-year-students/"
+    ],
+    "rows": 12,
+    "scope": "UCLA本科一年级，各人仅参加自己预约的orientation场次\n\n官方2026列12场，7月8–9日起至9月10–11日；选课在本人场次进行，不能画成连续开放期。\n\n官网依据"
+  },
+  "table": {
+    "openDialogs": 0,
+    "rowHeight": 59.2890625,
+    "scrollLeft": 228,
+    "scrollWidth": 1280,
+    "width": 1280
+  }
+}

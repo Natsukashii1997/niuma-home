@@ -4,7 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, DateInput, Loadable, MonthSwitch, PageHeader, Placeholder, Segmented, Tabs, Tag } from "../../ui/components.jsx";
+import { Button, DateInput, Loadable, Modal, MonthSwitch, PageHeader, Placeholder, Segmented, Tabs, Tag } from "../../ui/components.jsx";
 import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { Strategy } from "./StrategyView.jsx";
 import { Playbook } from "./PlaybookView.jsx";
@@ -279,6 +279,7 @@ function MonthList({ list, first, showSrc }) {
 
 function CountryTable({ tl, q, showSrc }) {
   const [c, setC] = useState("AU");
+  const [detail, setDetail] = useState(null);
   const [showCats, setShowCats] = useState(() => new Set(COL_DEFAULT));
   const rows = (tl.table[c] || []).filter((r) => !q || `${r.school}${r.abbr}`.toLowerCase().includes(q.toLowerCase()));
   const nodes = tl.nodes[c] || [];
@@ -328,10 +329,21 @@ function CountryTable({ tl, q, showSrc }) {
                         ? <td key={i} className="tl-cell is-pending" title="原表写了，但日期不完整或有冲突，点击查看原文"><a className="timeline-estimate" href={href("user", "timeline", "anomalies", r.abbr || r.school)}>AI推测</a></td>
                         : excludedKeys.has(k) ? <td key={i} className="tl-cell is-missing" title="原表写了，人工裁定为不采用"><a href={href("user", "timeline", "anomalies", r.abbr || r.school)}>不采用</a></td>
                         : <td key={i} className="tl-cell is-missing" title="原表这一格空白"><span>—</span></td>;
-                      if (r.cellRanges?.[i]?.length > 0) return <td key={i} className="tl-cell" title={`来源：${cell[2]}`}>
-                        {r.cellRanges[i].map((part, j) => <div key={j}><span className="tnum">{part.from} → {part.to}</span>{part.label && <small>{part.label}</small>}{part.flag && (part.flag === "guess" || part.flag === "conflict" ? <small className="timeline-estimate">AI推测</small> : <Tag tone="frame">{part.flag === "verified" ? "官网核实" : "人工裁定"}</Tag>)}</div>)}
-                        {r.cellRanges[i][0]?.verification?.scope && <small className="tl-scope">{r.cellRanges[i][0].verification.scope}</small>}{showSrc && <small>{cell[2]}<OfficialLinks verification={r.cellRanges[i][0]?.verification} /></small>}
-                      </td>;
+                      if (r.cellRanges?.[i]?.length > 0) {
+                        const parts = r.cellRanges[i], first = parts[0], multiple = parts.length > 1;
+                        const from = first.from.slice(-5), to = first.to?.slice(-5);
+                        const inDm = parts.some(p => p.from.slice(-5).startsWith(dm) || p.to?.slice(-5).startsWith(dm));
+                        const estimated = parts.some(p => p.flag === "guess" || p.flag === "conflict");
+                        return <td key={i} className={`tl-cell${inDm ? " is-dm" : ""}`} title={`来源：${cell[2]}${multiple ? `\n首段日期，共 ${parts.length} 个独立时段，点击查看完整安排` : ""}`}>
+                          <span className="tnum">{from}{to && to !== from && <> → {to}</>}{multiple && " …"}</span>
+                          <small>
+                            {multiple ? "首段" : to && to !== from ? `${first.from.length > 5 ? span(first.from, first.to) : mdSpan(from, to)} 天` : "单日"}
+                            <button type="button" className="tl-detail-link" aria-label={`查看${r.school} · ${n}的${parts.length}个时段`} onClick={() => setDetail({ school: r.school, event: n, parts, src: cell[2] })}>{multiple ? `共 ${parts.length} 个时段` : "详情"}</button>
+                            {estimated && <span className="timeline-estimate">AI推测</span>}
+                          </small>
+                          {showSrc && <small className="tl-cell-source" title={cell[2]}>{cell[2]}</small>}
+                        </td>;
+                      }
                       const [from, rawTo, src, flag] = cell;
                       const to = rawTo && rawTo !== from ? rawTo : null; // 起止同一天按单日写
                       const inDm = from.startsWith(dm) || (to && to.startsWith(dm));
@@ -350,8 +362,26 @@ function CountryTable({ tl, q, showSrc }) {
           <div className="tl-legend small muted"><span><i className="lg-dm" />落在交付月（{dm} 月）</span><span>— 原表这一格空白</span><span>「AI推测」：参考日期，点开看原文</span><span>「人工裁定」：在工作台裁定的日期，不改飞书</span></div>
         </>
       )}
+      <TimelineCellDetails detail={detail} onClose={() => setDetail(null)} />
     </>
   );
+}
+
+// 多场次和核查依据只在详情里展开，明细表保持原有的日期与小字两行结构。
+function TimelineCellDetails({ detail, onClose }) {
+  const verifications = [...new Map((detail?.parts || []).filter(p => p.verification).map(p => [JSON.stringify(p.verification), p.verification])).values()];
+  return <Modal open={!!detail} onClose={onClose} wide icon="calendar" title={detail ? `${detail.school} · ${detail.event}` : "日期详情"}>
+    {detail && <>
+      {detail.parts.length > 1 && <p className="small muted">共 {detail.parts.length} 个独立时段，请按适用场次查看。</p>}
+      <table className="grid compact tl-date-details"><thead><tr><th>日期</th><th>场次 / 适用说明</th><th>状态</th></tr></thead><tbody>
+        {detail.parts.map((p, i) => <tr key={i}><td className="tnum">{p.from}{p.to && p.to !== p.from && <> → {p.to}</>}</td><td>{p.label || "—"}{p.src && p.src !== detail.src && <div className="small muted">来源：{p.src}</div>}</td><td>{p.flag === "verified" ? "官网核实" : p.flag === "ruled" ? "人工裁定" : p.flag === "guess" || p.flag === "conflict" ? <span className="timeline-estimate">AI推测</span> : "原表日期"}</td></tr>)}
+      </tbody></table>
+      {verifications.map((v, i) => <div className="tl-date-evidence" key={i}>
+        {v.scope && <p>{v.scope}</p>}{v.reason && <p className="small muted">{v.reason}</p>}<OfficialLinks verification={v} />
+      </div>)}
+      <p className="small muted">来源单元格：{detail.src}</p>
+    </>}
+  </Modal>;
 }
 
 // 异常待确认：原文、来源单元格、标记都完整保留；长原文在框内换行、超长时框内滚动，不撑破页面。
