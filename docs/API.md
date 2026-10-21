@@ -336,3 +336,11 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - 新增 `coverage:{schools,regionSheets,calendarSheets}`；`anomalies[].c/monthHints`支持原文涉及月份的待确认列表。`*-MM`为历史/未定学年的月索引，不能当成确定日期。
 - 新增 `calendarEntries:[{month,raw,src,schools,countries}]`，只保存月历原文与检索关联，不能通过摆放格位确定日期或替换地区表。不认识的学校原文仍完整保留。
 - 人工采用多时段保留整格segments；单段条件同样保留标签。手填明确替换整格，排除清除所有同源分段。已有裁定仍按原文与问题指纹生效。
+
+
+### 时间线官网核查叠加（2026-10-21）
+
+- `GET /api/v3/timeline` / `POST /api/v3/timeline/sync` 返回本地版本化官网证据叠加后的日期。原始飞书快照不改；人工裁定在官网证据之后应用。
+- 新增 `verifications:{checked,confirmed,unresolved,stale}`；核查注解为 `verification:{status,checkedAt,reason,scope,academicYear,sources:[{url,title}]}`。确认事件有 `verified:true`，不同分段保留 `detail`、完整年份及自己的来源格。
+- 官网记录要求表格身份（title+token指纹）、school/country/src及原文问题指纹都一致，合法日期及HTTPS官网依据齐全才应用；来源变化后不借用旧学校/旧表证据。
+- 月视图无确定日期的项仅作为 `pending/from:null` 展示，保留原文和“待确认”，不写入agenda；已有推测/冲突事件也计入本月待确认学校数。取消单独本月待确认区块。

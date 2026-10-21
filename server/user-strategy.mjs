@@ -69,12 +69,12 @@ export function timelineFacts(timeline, window) {
       list.sort((a, b) => a.from.localeCompare(b.from));
       let cur = null;
       for (const x of list) {
-        if (cur && x.from <= nextDay(cur.to, 3)) { if (x.to > cur.to) cur.to = x.to; cur.guess = cur.guess && x.guess; }
+        if (cur && x.from <= nextDay(cur.to, 3)) { if (x.to > cur.to) cur.to = x.to; cur.guess = cur.guess || x.guess; }
         else { if (cur) bars.push(cur); cur = { ...x, label }; }
       }
       if (cur) bars.push(cur);
     }
-    // 推测：合并后的这一段全部来自推测日期才标推测，混有确定日期的按确定显示。
+    // 合并窗口只要包含待确认日期，就保留提示，不能借其他学校的已确认日期给推测段背书。
     return [key, name, bars.sort((a, b) => a.from.localeCompare(b.from)).map(b => [b.from, b.to, b.cat, b.label, b.guess])];
   });
   const counts = Object.fromEntries(REGIONS.map(([key]) => [key, events.filter(e => regionOf[e.c] === key).length]));

@@ -1,0 +1,2379 @@
+[
+  {
+    "index": 0,
+    "key": "d9b89d0f8087283c40e70d3c",
+    "school": "华盛顿大学 UW",
+    "src": "美东 美西 加拿大!S2",
+    "item": "Summer考试",
+    "original": "通常是每门课程的最后一节课\nhttps://www.washington.edu/students/reg/2526cal.html",
+    "status": "not_a_date",
+    "officialUrl": "https://www.washington.edu/students/reg/2526cal.html",
+    "pageTitle": "2025-2026 Academic Calendar",
+    "academicYear": "2025/26",
+    "evidence": "校历明确写通常在最后一课；Full/B term参考8月21日，A term参考7月22日，非全部课程统一考试日。",
+    "scope": "UW暑期，各课程自己的最后上课日",
+    "reason": "规则已核实，保留课程条件，不填统一考试日期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 1,
+    "key": "831ed4ef1bf68001d8ca0be2",
+    "school": "加州大学圣塔芭芭拉分校 UCSB",
+    "src": "美东 美西 加拿大!M3",
+    "item": "26新生选课时间（本科）",
+    "original": "线下：6.26-8.1，分为十场，每场两天\n线上：8.4-8.8，分为两场，每场两天（国际生）\nhttps://admissions.sa.ucsb.edu/sites/default/files/2025-02/F25_UCSBStepstoEnrollment.pdf",
+    "status": "unresolved",
+    "officialUrl": "https://orientation.sa.ucsb.edu/international/international-freshman-orientation-program-information",
+    "pageTitle": "International Freshman Orientation Program Information",
+    "academicYear": "2026",
+    "evidence": "普通新生2026线下6月25至7月31分10场，线上8月3–4及6–7；国际生专页明确由advisor提前注册，8月9–12在线orientation只调整课表。",
+    "scope": "UCSB新生；国际生与普通新生流程不同",
+    "reason": "原表将国际生orientation当选课日期。整条包含不同人群，不可用普通新生场次替代国际生。",
+    "checkedAt": "2026-10-21",
+    "additionalOfficialUrls": [
+      "https://orientation.sa.ucsb.edu/freshman/program-information"
+    ]
+  },
+  {
+    "index": 2,
+    "key": "558c25bdf811e0aa4c4eb562",
+    "school": "加州大学圣塔芭芭拉分校 UCSB",
+    "src": "美东 美西 加拿大!S3",
+    "item": "Summer考试",
+    "original": "通常是每门课程的最后一节课\nhttps://www.summer.ucsb.edu/registration/information-calendar",
+    "status": "unresolved",
+    "officialUrl": "https://www.summer.ucsb.edu/registration/information-calendar",
+    "pageTitle": "2026 Session Dates",
+    "academicYear": "2026",
+    "evidence": "官方列各session教学起止，没有给出全校统一期末考试日。",
+    "scope": "UCSB暑期A–G七种session",
+    "reason": "需具体课程考试安排，不能把session结束或最后教学日直接当统一考试日。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 3,
+    "key": "2831c50d09d4c8c85e2d63f7",
+    "school": "加州大学圣塔芭芭拉分校 UCSB",
+    "src": "美东 美西 加拿大!AA3",
+    "item": "出分时间",
+    "original": "12.16（推测）",
+    "status": "unresolved",
+    "officialUrl": "https://help.professional.ucsb.edu/instructor-manual/quick-start-guide-pace-instructors/what-last-date-submit-grades-pace-courses-quarter",
+    "pageTitle": "Grade submission deadlines for PaCE courses",
+    "academicYear": "2026/27",
+    "evidence": "搜索发现12月20仅PaCE教师提交截止，不能用于普通本科。",
+    "scope": "UCSB普通本科出分；PaCE不适用",
+    "reason": "未找到普通本科Fall2026统一成绩公布日，原12月16仍未证实。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 4,
+    "key": "f5655aacf723573bb2876e7b",
+    "school": "加州大学洛杉矶分校 UCLA",
+    "src": "美东 美西 加拿大!M4",
+    "item": "26新生选课时间（本科）",
+    "original": "新生在orientation期间选课\n7.10-9.12\nhttps://newstudents.ucla.edu/programs/first-year-students/#tab-id-3",
+    "status": "confirmed",
+    "officialUrl": "https://newstudents.ucla.edu/programs/first-year-students/",
+    "pageTitle": "Orientation - First Year Students",
+    "academicYear": "2026",
+    "evidence": "官方2026列12场，7月8–9日起至9月10–11日；选课在本人场次进行，不能画成连续开放期。",
+    "scope": "UCLA本科一年级，各人仅参加自己预约的orientation场次",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-07-08",
+        "to": "2026-07-09",
+        "label": "Orientation 101（场次内选课）"
+      },
+      {
+        "from": "2026-07-13",
+        "to": "2026-07-14",
+        "label": "Orientation 102（场次内选课）"
+      },
+      {
+        "from": "2026-07-22",
+        "to": "2026-07-23",
+        "label": "Orientation 103（场次内选课）"
+      },
+      {
+        "from": "2026-07-28",
+        "to": "2026-07-29",
+        "label": "Orientation 104（场次内选课）"
+      },
+      {
+        "from": "2026-08-04",
+        "to": "2026-08-05",
+        "label": "Orientation 105（场次内选课）"
+      },
+      {
+        "from": "2026-08-10",
+        "to": "2026-08-11",
+        "label": "Orientation 106（场次内选课）"
+      },
+      {
+        "from": "2026-08-13",
+        "to": "2026-08-14",
+        "label": "Orientation 107（场次内选课）"
+      },
+      {
+        "from": "2026-08-19",
+        "to": "2026-08-20",
+        "label": "Orientation 108（场次内选课）"
+      },
+      {
+        "from": "2026-08-24",
+        "to": "2026-08-25",
+        "label": "Orientation 109（场次内选课）"
+      },
+      {
+        "from": "2026-09-03",
+        "to": "2026-09-04",
+        "label": "Orientation 110（场次内选课）"
+      },
+      {
+        "from": "2026-09-08",
+        "to": "2026-09-09",
+        "label": "Orientation 111（场次内选课）"
+      },
+      {
+        "from": "2026-09-10",
+        "to": "2026-09-11",
+        "label": "Orientation 112（场次内选课）"
+      }
+    ]
+  },
+  {
+    "index": 5,
+    "key": "78ade1af18fc8efdaab6e840",
+    "school": "加州大学洛杉矶分校 UCLA",
+    "src": "美东 美西 加拿大!S4",
+    "item": "Summer考试",
+    "original": "通常是每门课程的最后一节课\nhttps://registrar.ucla.edu/calendars/summer-session-calendar",
+    "status": "not_a_date",
+    "officialUrl": "https://summer.ucla.edu/student-services/enrollment-and-academics/",
+    "pageTitle": "Enrollment and Academics",
+    "academicYear": "2026",
+    "evidence": "官方说明期末考试通常在每门课最后一次课，日期取决于课程。",
+    "scope": "UCLA暑期课程",
+    "reason": "无统一校级考试日期，保留课程规则。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 6,
+    "key": "18d13facc4d07d5224cef008",
+    "school": "加州大学洛杉矶分校 UCLA",
+    "src": "美东 美西 加拿大!AA4",
+    "item": "出分时间",
+    "original": "12.16（推测）",
+    "status": "unresolved",
+    "officialUrl": "https://registrar.ucla.edu/faculty-staff/grade-submission-deadlines",
+    "pageTitle": "Grade Submission Deadlines",
+    "academicYear": "2026/27",
+    "evidence": "官方教师提交区间12月5–21日，不支持12月16日统一出分。",
+    "scope": "UCLA Fall2026教师成绩提交",
+    "reason": "教师提交期限不等于面向所有学生的统一出分时间。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 7,
+    "key": "26e41fee01384b9ac0d6d6a9",
+    "school": "加州大学圣地亚哥分校 UCSD",
+    "src": "美东 美西 加拿大!M5",
+    "item": "26新生选课时间（本科）",
+    "original": "未更新，8.11（推测）\nhttps://students.ucsd.edu/academics/enroll/calendar25-26.html",
+    "status": "confirmed",
+    "officialUrl": "https://students.ucsd.edu/academics/enroll/calendar26-27.html",
+    "pageTitle": "Booking and Registration Calendar 2026-27",
+    "academicYear": "2026/27",
+    "evidence": "读取官网HTML确认8/26及9/2均有删除线，生效日期为8/31。原表8/11推测错误。",
+    "scope": "UCSD Fall2026新本科生",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-08-31",
+        "to": "2026-08-31",
+        "label": "New undergraduate student booking begins"
+      }
+    ],
+    "from": "2026-08-31",
+    "to": "2026-08-31"
+  },
+  {
+    "index": 8,
+    "key": "eb4067a093f06159a623642a",
+    "school": "加州大学圣地亚哥分校 UCSD",
+    "src": "美东 美西 加拿大!S5",
+    "item": "Summer考试",
+    "original": "Summer Session I：7.31-8.1\nSummer Session II：9.4-9.5\n",
+    "status": "confirmed",
+    "officialUrl": "https://blink.ucsd.edu/instructors/resources/academic/calendars/2025.html",
+    "pageTitle": "Academic and Administrative Calendar 2025–2026",
+    "academicYear": "2025/26",
+    "evidence": "官网2026暑期栏直接确认两段期末考试7月31–8月1日及9月4–5日。",
+    "scope": "UCSD2026标准Summer Session I及II；Special Session另依课程",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-07-31",
+        "to": "2026-08-01",
+        "label": "Summer Session I考试"
+      },
+      {
+        "from": "2026-09-04",
+        "to": "2026-09-05",
+        "label": "Summer Session II考试"
+      }
+    ]
+  },
+  {
+    "index": 9,
+    "key": "2c32a897c58b808e2cbc9837",
+    "school": "加州大学圣地亚哥分校 UCSD",
+    "src": "美东 美西 加拿大!AA5",
+    "item": "出分时间",
+    "original": "12.17（推测）",
+    "status": "unresolved",
+    "officialUrl": "https://students.ucsd.edu/academics/enroll/calendar26-27.html",
+    "pageTitle": "Booking and Registration Calendar 2026-27",
+    "academicYear": "2026/27",
+    "evidence": "官方Grades available on TritonLink仍为TBD。",
+    "scope": "UC San Diego Fall2026",
+    "reason": "未公布明确出分日期，不能采用12月17日推测。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 10,
+    "key": "aa300664a51b37e17896100f",
+    "school": "加州大学欧文分校 UCI",
+    "src": "美东 美西 加拿大!S6",
+    "item": "Summer考试",
+    "original": "Summer Session I：7.27-7.28\nSummer Session 10WK：8.27\nSummer Session II：9.7-9.8",
+    "status": "confirmed",
+    "officialUrl": "https://reg.uci.edu/calendars/quarterly/2025-2026/calendar25-26.pdf",
+    "pageTitle": "Quarterly Academic Calendar 2025-26",
+    "academicYear": "2025/26",
+    "evidence": "官方2026三段期末考试为7月28–29日、8月28日、9月8–9日；原表三段均相差一天。",
+    "scope": "UCI标准暑期课：Session I、10WK、II",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-07-28",
+        "to": "2026-07-29",
+        "label": "Summer Session I"
+      },
+      {
+        "from": "2026-08-28",
+        "to": "2026-08-28",
+        "label": "Summer Session 10WK"
+      },
+      {
+        "from": "2026-09-08",
+        "to": "2026-09-09",
+        "label": "Summer Session II"
+      }
+    ]
+  },
+  {
+    "index": 11,
+    "key": "498aa8e6af8ff1499875a5c2",
+    "school": "加州大学戴维斯分校 UCD",
+    "src": "美东 美西 加拿大!C7",
+    "item": "Withdraw Without W",
+    "original": " 10–day–drop courses：1.16\n20–day–drop courses：2.2",
+    "status": "confirmed",
+    "officialUrl": "https://registrar.ucdavis.edu/calendar/archive/quarter",
+    "pageTitle": "Quarter Dates & Deadlines Calendars Archive",
+    "academicYear": "2025/26",
+    "evidence": "2025/26官方对应Winter/Spring栏逐项确认两个退课截止，须按课程指定类型使用。",
+    "scope": "UC Davis指定10日/20日可退课程",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-01-16",
+        "to": "2026-01-16",
+        "label": "10-day-drop courses"
+      },
+      {
+        "from": "2026-02-02",
+        "to": "2026-02-02",
+        "label": "20-day-drop courses"
+      }
+    ]
+  },
+  {
+    "index": 12,
+    "key": "746d03e9c9bfb1de92c939a3",
+    "school": "加州大学戴维斯分校 UCD",
+    "src": "美东 美西 加拿大!K7",
+    "item": "Withdraw Without W",
+    "original": " 10–day–drop courses：4.10\n20–day–drop courses：4.24",
+    "status": "confirmed",
+    "officialUrl": "https://registrar.ucdavis.edu/calendar/archive/quarter",
+    "pageTitle": "Quarter Dates & Deadlines Calendars Archive",
+    "academicYear": "2025/26",
+    "evidence": "2025/26官方对应Winter/Spring栏逐项确认两个退课截止，须按课程指定类型使用。",
+    "scope": "UC Davis指定10日/20日可退课程",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-04-10",
+        "to": "2026-04-10",
+        "label": "10-day-drop courses"
+      },
+      {
+        "from": "2026-04-24",
+        "to": "2026-04-24",
+        "label": "20-day-drop courses"
+      }
+    ]
+  },
+  {
+    "index": 13,
+    "key": "e9923f779021208a64234e19",
+    "school": "加州大学戴维斯分校 UCD",
+    "src": "美东 美西 加拿大!S7",
+    "item": "Summer考试",
+    "original": "通常是每门课程的最后一节课\nhttps://summer-sessions.ucdavis.edu/calendar/master-calendar",
+    "status": "not_a_date",
+    "officialUrl": "https://summer-sessions.ucdavis.edu/sites/g/files/dgvnsk4856/files/media/documents/2026%20Summer%20Session%20Calendar%20-%20Updated%205.28.26.28.26.pdf",
+    "pageTitle": "Summer Sessions 2026",
+    "academicYear": "2026",
+    "evidence": "2026官方日历考试栏注明通常为最后一次课。",
+    "scope": "UC Davis暑期各课程",
+    "reason": "需依课程排课，不存在统一日期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 14,
+    "key": "c2dec147b2a50b10c2f85fc9",
+    "school": "加州大学戴维斯分校 UCD",
+    "src": "美东 美西 加拿大!U7",
+    "item": "Withdraw 截止",
+    "original": " 10–day–drop courses：10.6\n20–day–drop courses：10.20",
+    "status": "confirmed",
+    "officialUrl": "https://registrar.ucdavis.edu/calendar/quarter",
+    "pageTitle": "Quarter Dates & Deadlines",
+    "academicYear": "2026/27",
+    "evidence": "官方Fall2026分别列10月6日、10月20日，均23:59太平洋时间。",
+    "scope": "UC Davis秋季指定10日/20日可退课程",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-10-06",
+        "to": "2026-10-06",
+        "label": "10-day-drop courses"
+      },
+      {
+        "from": "2026-10-20",
+        "to": "2026-10-20",
+        "label": "20-day-drop courses"
+      }
+    ]
+  },
+  {
+    "index": 15,
+    "key": "a0daddb948a8a911843b8541",
+    "school": "南加州大学 USC",
+    "src": "美东 美西 加拿大!K8",
+    "item": "Withdraw Without W",
+    "original": "other:1.27\nMonday-only class:2.3",
+    "status": "confirmed",
+    "officialUrl": "https://academicprograms.usc.edu/wp-content/uploads/2026/01/AEA-January-2026-Student-Calendar.pdf",
+    "pageTitle": "2025-2026 Student Calendar – January/February2026",
+    "academicYear": "2025/26",
+    "evidence": "2026一月公告确认非周一单次课1月30日；二月公告确认Monday-only2月3日。另有2月27日仅无W、不退款截止。原表1月27日不正确。",
+    "scope": "USC标准Session001，退课并退款；Monday-only单列",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-01-30",
+        "to": "2026-01-30",
+        "label": "非Monday-only：退课并退款、无W"
+      },
+      {
+        "from": "2026-02-03",
+        "to": "2026-02-03",
+        "label": "Monday-only：退课并退款、无W"
+      }
+    ],
+    "additionalOfficialUrls": [
+      "https://academicprograms.usc.edu/wp-content/uploads/2026/01/AEA-February-2026-Student-Calendar.pdf"
+    ]
+  },
+  {
+    "index": 16,
+    "key": "3d573c7faf0f8d387c9ac094",
+    "school": "南加州大学 USC",
+    "src": "美东 美西 加拿大!M8",
+    "item": "26新生选课时间（本科）",
+    "original": "5月下旬-8月，会发到学生邮箱，线上orientation进行选课\nhttps://admission.usc.edu/new-student-orientation/the-student-experience-and-programs/#chapter=notice",
+    "status": "not_a_date",
+    "officialUrl": "https://arr.usc.edu/registration-calendar/",
+    "pageTitle": "Registration Calendar",
+    "academicYear": "2026",
+    "evidence": "官网指向Welcome Trojans orientation，并要求查看个人USC邮件邀请。",
+    "scope": "USC新录取本科生",
+    "reason": "个人预约流程，不应补成统一固定日期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 17,
+    "key": "9481736efbe76f7b1990503d",
+    "school": "南加州大学 USC",
+    "src": "美东 美西 加拿大!S8",
+    "item": "Summer考试",
+    "original": "通常是每门课程的最后一节课",
+    "status": "unresolved",
+    "officialUrl": "https://arr.usc.edu/registration-calendar/",
+    "pageTitle": "Registration Calendar",
+    "academicYear": "2026",
+    "evidence": "官网给出暑期session起止，要求按具体课程Calendar查看安排。",
+    "scope": "USC暑期课程",
+    "reason": "未找到统一暑期考试日期；不以最后上课日代替。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 18,
+    "key": "5a6e3ac372cd1cce1de8c5ab",
+    "school": "南加州大学 USC",
+    "src": "美东 美西 加拿大!U8",
+    "item": "Withdraw 截止",
+    "original": "Monday-only class：9.15\n其余：10.9",
+    "status": "confirmed",
+    "officialUrl": "https://arr.usc.edu/registration-calendar/",
+    "pageTitle": "Registration Calendar",
+    "academicYear": "2026/27",
+    "evidence": "官网Fall2026注明Monday-only9月15日为无W且退款；10月9日为所有Session001无W截止；11月13日才是最终withdraw。原表两段条件不同，保留精确标签。",
+    "scope": "USC标准Session001，不适用于法学院等独立日历",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-09-15",
+        "to": "2026-09-15",
+        "label": "Monday-only：退课并退款、无W"
+      },
+      {
+        "from": "2026-10-09",
+        "to": "2026-10-09",
+        "label": "Session001：无W退课，不退款"
+      }
+    ]
+  },
+  {
+    "index": 19,
+    "key": "acddaccbd65e2d4bc357a096",
+    "school": "南加州大学 USC",
+    "src": "美东 美西 加拿大!Z8",
+    "item": "Winter Break",
+    "original": "12.17-1.10",
+    "status": "confirmed",
+    "officialUrl": "https://usc.edu/academic-calendar/",
+    "pageTitle": "Academic Calendar 2026-2027",
+    "academicYear": "2026/27",
+    "evidence": "Winter Recess明确从2026年12月17日至2027年1月10日。",
+    "scope": "USC标准校历",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-12-17",
+        "to": "2027-01-10",
+        "label": "Winter recess"
+      }
+    ],
+    "from": "2026-12-17",
+    "to": "2027-01-10"
+  },
+  {
+    "index": 20,
+    "key": "c9f09ce453c161e5c4a29a7c",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!G9",
+    "item": "Spring Break",
+    "original": "3.23-3.26",
+    "status": "confirmed",
+    "officialUrl": "https://www.registrar.berkeley.edu/wp-content/uploads/UCB_AcademicCalendar_2025-26_a11y.pdf",
+    "pageTitle": "2025-26 Berkeley Academic Calendar",
+    "academicYear": "2025/26",
+    "evidence": "官方Spring Recess，与原表一致。3月27日另列行政假日，不扩展本条。",
+    "scope": "UC Berkeley本科标准校历（校名经官方日期簇与Berkeley页面核对）",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-03-23",
+        "to": "2026-03-26",
+        "label": "Spring Recess"
+      }
+    ],
+    "from": "2026-03-23",
+    "to": "2026-03-26"
+  },
+  {
+    "index": 21,
+    "key": "439c2f626914193c583c5d0e",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!I9",
+    "item": "Spring学期开始",
+    "original": "1.13",
+    "status": "confirmed",
+    "officialUrl": "https://www.registrar.berkeley.edu/wp-content/uploads/UCB_AcademicCalendar_2025-26_a11y.pdf",
+    "pageTitle": "2025-26 Berkeley Academic Calendar",
+    "academicYear": "2025/26",
+    "evidence": "学期开始为1月13日，教学开始另为1月20日。",
+    "scope": "UC Berkeley本科标准校历（校名经官方日期簇与Berkeley页面核对）",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-01-13",
+        "to": "2026-01-13",
+        "label": "Spring semester begins"
+      }
+    ],
+    "from": "2026-01-13",
+    "to": "2026-01-13"
+  },
+  {
+    "index": 22,
+    "key": "3efb43fa6456a1030f615a95",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!J9",
+    "item": "Spring开始上课",
+    "original": "1.20",
+    "status": "confirmed",
+    "officialUrl": "https://www.registrar.berkeley.edu/wp-content/uploads/UCB_AcademicCalendar_2025-26_a11y.pdf",
+    "pageTitle": "2025-26 Berkeley Academic Calendar",
+    "academicYear": "2025/26",
+    "evidence": "教学开始为1月20日。",
+    "scope": "UC Berkeley本科标准校历（校名经官方日期簇与Berkeley页面核对）",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-01-20",
+        "to": "2026-01-20",
+        "label": "Spring instruction begins"
+      }
+    ],
+    "from": "2026-01-20",
+    "to": "2026-01-20"
+  },
+  {
+    "index": 23,
+    "key": "e07a98553c9202ce8b64bd3c",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!M9",
+    "item": "26新生选课时间（本科）",
+    "original": "7.16",
+    "status": "confirmed",
+    "officialUrl": "https://orientation.berkeley.edu/dates-and-deadlines/",
+    "pageTitle": "Dates & Deadlines – Golden Bear Orientation",
+    "academicYear": "2026",
+    "evidence": "官网Fall2026新一年级Course Enrollment Begins为7月16日，确认学校与日期。",
+    "scope": "UC Berkeley Fall2026 First-Years；不含7月14日转学生",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-07-16",
+        "to": "2026-07-16",
+        "label": "First-year course enrollment begins"
+      }
+    ],
+    "from": "2026-07-16",
+    "to": "2026-07-16"
+  },
+  {
+    "index": 24,
+    "key": "2977f6911fff4b14339f433d",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!N9",
+    "item": "Instruction结束",
+    "original": "5.8",
+    "status": "confirmed",
+    "officialUrl": "https://www.registrar.berkeley.edu/wp-content/uploads/UCB_AcademicCalendar_2025-26_a11y.pdf",
+    "pageTitle": "2025-26 Berkeley Academic Calendar",
+    "academicYear": "2025/26",
+    "evidence": "最后教学日5月8日，常规课堂5月1日结束，5月4–8日为RRR。",
+    "scope": "UC Berkeley本科标准校历（校名经官方日期簇与Berkeley页面核对）",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-05-08",
+        "to": "2026-05-08",
+        "label": "Last day of instruction"
+      }
+    ],
+    "from": "2026-05-08",
+    "to": "2026-05-08"
+  },
+  {
+    "index": 25,
+    "key": "a2b342e0126179fc3eaa925b",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!O9",
+    "item": "Final时间",
+    "original": "5.11-5.15",
+    "status": "confirmed",
+    "officialUrl": "https://www.registrar.berkeley.edu/wp-content/uploads/UCB_AcademicCalendar_2025-26_a11y.pdf",
+    "pageTitle": "2025-26 Berkeley Academic Calendar",
+    "academicYear": "2025/26",
+    "evidence": "春季期末考试5月11–15日。",
+    "scope": "UC Berkeley本科标准校历（校名经官方日期簇与Berkeley页面核对）",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-05-11",
+        "to": "2026-05-15",
+        "label": "Spring final examinations"
+      }
+    ],
+    "from": "2026-05-11",
+    "to": "2026-05-15"
+  },
+  {
+    "index": 26,
+    "key": "668e9f2b0050034cfbb009d0",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!P9",
+    "item": "Summer Break",
+    "original": "5.16-8.18",
+    "status": "unresolved",
+    "officialUrl": "https://www.registrar.berkeley.edu/wp-content/uploads/UCB_AcademicCalendar_2026-27_a11y.pdf",
+    "pageTitle": "2026-27 Berkeley Academic Calendar",
+    "academicYear": "2025/26–2026/27",
+    "evidence": "官网给出学期边界，但未给出原表标注的完整Summer/Winter Break区间；暑期有多session。",
+    "scope": "UC Berkeley本科；不得把学期间隙自动称为统一假期",
+    "reason": "原表假期口径未明，不能仅按相邻学期日期推算。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 27,
+    "key": "5e4a30ad0ea08d224adbdf9f",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!Q9",
+    "item": "出分时间",
+    "original": "5.8-5.21",
+    "status": "unresolved",
+    "officialUrl": "https://registrar.berkeley.edu/faculty-staff-resources/faculty-guide-to-grades/submitting-final-grades/",
+    "pageTitle": "Submitting Final Grades",
+    "academicYear": "2025/26",
+    "evidence": "当前官方页已滚动到Fall2026/Spring2027，只提供教师提交期限。",
+    "scope": "UC Berkeley Spring2026学生出分",
+    "reason": "原表5月8–21日出分区间未获Spring2026统一公布规则支持。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 28,
+    "key": "27047fe0b5107f18ad9d9962",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!R9",
+    "item": "Summer学期",
+    "original": "5.26-7.24",
+    "status": "confirmed",
+    "officialUrl": "https://www.registrar.berkeley.edu/wp-content/uploads/UCB_AcademicCalendar_2025-26_a11y.pdf",
+    "pageTitle": "2025-26 Berkeley Academic Calendar",
+    "academicYear": "2025/26",
+    "evidence": "官方分六种暑期session，原表5月26–7月24混合A开始和F结束，改为各session分段。",
+    "scope": "UC Berkeley本科标准校历（校名经官方日期簇与Berkeley页面核对）",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-05-26",
+        "to": "2026-07-02",
+        "label": "Session A"
+      },
+      {
+        "from": "2026-06-08",
+        "to": "2026-08-14",
+        "label": "Session B"
+      },
+      {
+        "from": "2026-06-22",
+        "to": "2026-08-14",
+        "label": "Session C"
+      },
+      {
+        "from": "2026-07-06",
+        "to": "2026-08-14",
+        "label": "Session D"
+      },
+      {
+        "from": "2026-07-06",
+        "to": "2026-07-24",
+        "label": "Session F"
+      },
+      {
+        "from": "2026-07-27",
+        "to": "2026-08-14",
+        "label": "Session E"
+      }
+    ]
+  },
+  {
+    "index": 29,
+    "key": "2ef08248698a6b683b30ed33",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!S9",
+    "item": "Summer考试",
+    "original": "通常是每门课程的最后一节课",
+    "status": "unresolved",
+    "officialUrl": "https://www.registrar.berkeley.edu/wp-content/uploads/UCB_AcademicCalendar_2025-26_a11y.pdf",
+    "pageTitle": "2025-26 Berkeley Academic Calendar",
+    "academicYear": "2026",
+    "evidence": "官方有六种session起止，没有统一暑期期末考试日。",
+    "scope": "UC Berkeley暑期分session、分课程",
+    "reason": "不能把session末日或原文通常最后一课推成固定考试日期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 30,
+    "key": "4b16e781fcef7af413c4892f",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!T9",
+    "item": "Fall学期开始",
+    "original": "8.19",
+    "status": "confirmed",
+    "officialUrl": "https://www.registrar.berkeley.edu/wp-content/uploads/UCB_AcademicCalendar_2026-27_a11y.pdf",
+    "pageTitle": "2026-27 Berkeley Academic Calendar",
+    "academicYear": "2026/27",
+    "evidence": "秋季学期8月19日开始；教学8月26日开始。",
+    "scope": "UC Berkeley本科标准校历",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-08-19",
+        "to": "2026-08-19",
+        "label": "Fall semester begins"
+      }
+    ],
+    "from": "2026-08-19",
+    "to": "2026-08-19"
+  },
+  {
+    "index": 31,
+    "key": "7866d80ab52a979d8f3261d7",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!U9",
+    "item": "Withdraw 截止",
+    "original": "9.4",
+    "status": "unresolved",
+    "officialUrl": "https://ue.berkeley.edu/faculty-staff/campus-communications/adddrop-deadlines-and-policies",
+    "pageTitle": "Add/Drop Deadlines and Policies",
+    "academicYear": "2026/27",
+    "evidence": "9月4日为Early Drop或免手续费截止；一般学生Add/Drop截止9月16日。原表只写Withdraw，未说明Early Drop或退出整个学期。",
+    "scope": "UC Berkeley本科Fall2026；不同退课口径",
+    "reason": "事项定义有歧义，不能把9月4日认成统一Withdraw；需保留待确认。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 32,
+    "key": "5563b38c15a0f5f00cec53e0",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!V9",
+    "item": "Winter学期选课",
+    "original": "10.19",
+    "status": "unresolved",
+    "officialUrl": "https://www.studentcentral.berkeley.edu/",
+    "pageTitle": "Cal Student Central – Key Dates",
+    "academicYear": "2026/27",
+    "evidence": "官网列Spring2027 Phase1继续生10月25日、新转生11月17日、新一年级11月18日；学校没有常规Winter学期。",
+    "scope": "UC Berkeley Spring2027选课",
+    "reason": "原列Winter含义不明，不能将Spring选课替换为Winter。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 33,
+    "key": "61eaf6248e1f4ac960c1b8e4",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!W9",
+    "item": "感恩节假期",
+    "original": "11.26-11.27",
+    "status": "confirmed",
+    "officialUrl": "https://www.registrar.berkeley.edu/wp-content/uploads/UCB_AcademicCalendar_2026-27_a11y.pdf",
+    "pageTitle": "2026-27 Berkeley Academic Calendar",
+    "academicYear": "2026/27",
+    "evidence": "官方两天行政/教学假日。11月25日另为non-instructional day。",
+    "scope": "UC Berkeley本科标准校历",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-11-26",
+        "to": "2026-11-27",
+        "label": "Thanksgiving holiday"
+      }
+    ],
+    "from": "2026-11-26",
+    "to": "2026-11-27"
+  },
+  {
+    "index": 34,
+    "key": "762a88baabe7adba0486afc5",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!X9",
+    "item": "Instruction结束",
+    "original": "12.11",
+    "status": "confirmed",
+    "officialUrl": "https://www.registrar.berkeley.edu/wp-content/uploads/UCB_AcademicCalendar_2026-27_a11y.pdf",
+    "pageTitle": "2026-27 Berkeley Academic Calendar",
+    "academicYear": "2026/27",
+    "evidence": "最后教学日12月11日，常规课堂12月4日结束，7–11日RRR。",
+    "scope": "UC Berkeley本科标准校历",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-12-11",
+        "to": "2026-12-11",
+        "label": "Last day of instruction"
+      }
+    ],
+    "from": "2026-12-11",
+    "to": "2026-12-11"
+  },
+  {
+    "index": 35,
+    "key": "d10dec71f741a3e4cca0d62f",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!Y9",
+    "item": "Final时间",
+    "original": "12.14-12.18",
+    "status": "confirmed",
+    "officialUrl": "https://www.registrar.berkeley.edu/wp-content/uploads/UCB_AcademicCalendar_2026-27_a11y.pdf",
+    "pageTitle": "2026-27 Berkeley Academic Calendar",
+    "academicYear": "2026/27",
+    "evidence": "秋季期末考试12月14–18日。",
+    "scope": "UC Berkeley本科标准校历",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-12-14",
+        "to": "2026-12-18",
+        "label": "Fall final examinations"
+      }
+    ],
+    "from": "2026-12-14",
+    "to": "2026-12-18"
+  },
+  {
+    "index": 36,
+    "key": "22c304a0d0d9ca0d2a242cdd",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!Z9",
+    "item": "Winter Break",
+    "original": "12.19-1.11",
+    "status": "unresolved",
+    "officialUrl": "https://www.registrar.berkeley.edu/wp-content/uploads/UCB_AcademicCalendar_2026-27_a11y.pdf",
+    "pageTitle": "2026-27 Berkeley Academic Calendar",
+    "academicYear": "2025/26–2026/27",
+    "evidence": "官网给出学期边界，但未给出原表标注的完整Summer/Winter Break区间；暑期有多session。",
+    "scope": "UC Berkeley本科；不得把学期间隙自动称为统一假期",
+    "reason": "原表假期口径未明，不能仅按相邻学期日期推算。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 37,
+    "key": "2114005e91213b482c842e11",
+    "school": "加州大学伯克利分校 UCB",
+    "src": "美东 美西 加拿大!AA9",
+    "item": "出分时间",
+    "original": "12.27",
+    "status": "unresolved",
+    "officialUrl": "https://registrar.berkeley.edu/faculty-staff-resources/faculty-guide-to-grades/submitting-final-grades/",
+    "pageTitle": "Submitting Final Grades",
+    "academicYear": "2026/27",
+    "evidence": "Fall2026教师提交截止为12月23日，而原表12月27日无支持。",
+    "scope": "UC Berkeley成绩提交（非统一面向学生的公布日）",
+    "reason": "提交截止不等于学生出分时间；不改成统一出分日。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 38,
+    "key": "25cf9ca150a0ee41c6686d16",
+    "school": "纽约大学 NYU",
+    "src": "美东 美西 加拿大!K11",
+    "item": "Withdraw Without W",
+    "original": "First 7: 1.27\nSecond 7: 2.3",
+    "status": "unresolved",
+    "officialUrl": "https://www.nyu.edu/students/student-information-and-resources/registration-records-and-graduation/academic-calendar.html",
+    "pageTitle": "NYU Academic Calendar",
+    "academicYear": "2025/26",
+    "evidence": "官方校历访问返回405。其它校区/研究生日期不适用于本条。",
+    "scope": "NYU纽约本科；原条First7/Second7未注明项目",
+    "reason": "无法确认两段对应学期及本科适用范围，不沿用原日。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 39,
+    "key": "3ad38b35ba136ef1e4af9788",
+    "school": "纽约大学 NYU",
+    "src": "美东 美西 加拿大!M11",
+    "item": "26新生选课时间（本科）",
+    "original": "从6月中旬开始，一直持续到夏季结束\n（不同课程注册时间不同）\n具体时间可以关注https://www.nyu.edu/students/academic-services/undergraduate-advisement.html\n",
+    "status": "unresolved",
+    "officialUrl": "https://www.nyu.edu/students/academic-services/undergraduate-advisement.html",
+    "pageTitle": "Undergraduate Advisement",
+    "academicYear": "2026",
+    "evidence": "原来源为学院advising入口而非统一日期；官方中央日历无法读取。",
+    "scope": "NYU新本科生，按学院指导",
+    "reason": "未获得2026全校新生选课精确日期，需学院/个人通知。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 40,
+    "key": "852b545929d470fb0d9f06c7",
+    "school": "纽约大学 NYU",
+    "src": "美东 美西 加拿大!S11",
+    "item": "Summer考试",
+    "original": "session 1: 6.12之前考完\nsession 2：8.8-8.9",
+    "status": "unresolved",
+    "officialUrl": "https://bulletins.nyu.edu/graduate/arts/academic-calendar/academic-calendar.pdf",
+    "pageTitle": "2025-2026 NYU University Calendar",
+    "academicYear": "2025/26",
+    "evidence": "大学日历列Summer2026教学5月18日至8月12日，未列原表两段考试期。",
+    "scope": "NYU纽约暑期；不能套用法学院/上海/阿布扎比",
+    "reason": "未找到两段统一Summer考试日直接依据。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 41,
+    "key": "49d2db5123a082b3a227f9f6",
+    "school": "纽约大学 NYU",
+    "src": "美东 美西 加拿大!V11",
+    "item": "Winter学期选课",
+    "original": "10.13(推测)",
+    "status": "confirmed",
+    "officialUrl": "https://tisch.nyu.edu/special-programs/january-term/january-term-courses.html",
+    "pageTitle": "January Term Courses: New York City & Online",
+    "academicYear": "2026/27",
+    "evidence": "官方明确January2027 Registration Begins为2026年10月13日。",
+    "scope": "NYU January2027纽约/线上课程，开放NYU及访问本科生",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-10-13",
+        "to": "2026-10-13",
+        "label": "January2027 registration begins"
+      }
+    ],
+    "from": "2026-10-13",
+    "to": "2026-10-13"
+  },
+  {
+    "index": 42,
+    "key": "9101c8e93b80b60e8a4a8eab",
+    "school": "纽约大学 NYU",
+    "src": "美东 美西 加拿大!Z11",
+    "item": "Winter Break",
+    "original": "12.23-1.18",
+    "status": "unresolved",
+    "officialUrl": "https://tisch.nyu.edu/special-programs/january-term/january-term-courses.html",
+    "pageTitle": "January Term Courses: New York City & Online",
+    "academicYear": "2026/27",
+    "evidence": "2027年1月4–15日有January课程，原表12月23至1月18不能当全体学生统一Winter Break。",
+    "scope": "NYU纽约本科、January term另开课",
+    "reason": "缺明确非January课程学生假期官方区间；不按相邻学期推算。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 43,
+    "key": "679554e900bf5186d3e88492",
+    "school": "波士顿大学 BU",
+    "src": "美东 美西 加拿大!K12",
+    "item": "Withdraw Without W",
+    "original": "First 7：2.24\nSecond 7：3.31",
+    "status": "confirmed",
+    "officialUrl": "https://www.bu.edu/reg/calendars/semester/",
+    "pageTitle": "Semester Dates – Spring2026",
+    "academicYear": "2025/26",
+    "evidence": "Spring2026表中无W退课：First7为2月4日，Second7为3月31日。原2月24日是全学期标准课截止，混用了对象。",
+    "scope": "BU标准本科7周课程",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-02-04",
+        "to": "2026-02-04",
+        "label": "First7-week课程无W退课"
+      },
+      {
+        "from": "2026-03-31",
+        "to": "2026-03-31",
+        "label": "Second7-week课程无W退课"
+      }
+    ]
+  },
+  {
+    "index": 44,
+    "key": "c5aafbcc5c82d4b730173f7f",
+    "school": "波士顿大学 BU",
+    "src": "美东 美西 加拿大!M12",
+    "item": "26新生选课时间（本科）",
+    "original": "6.24（推测）\nhttps://www.bu.edu/reg/calendars/registration/",
+    "status": "unresolved",
+    "officialUrl": "https://www.bu.edu/reg/calendars/registration/",
+    "pageTitle": "Registration Dates & Times",
+    "academicYear": "2026",
+    "evidence": "当前页已转Spring2027，强调每人MyBU预约时间为正式时间。",
+    "scope": "BU Fall2026新本科生",
+    "reason": "未找到6月24日Fall2026新生注册统一安排，保留未确认。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 45,
+    "key": "b218b20e1e83af1ee9aae455",
+    "school": "波士顿大学 BU",
+    "src": "美东 美西 加拿大!S12",
+    "item": "Summer考试",
+    "original": "8.7\n最后一节课https://www.bu.edu/summer/summer-sessions/calendar/",
+    "status": "unresolved",
+    "officialUrl": "https://www.bu.edu/reg/calendars/",
+    "pageTitle": "Calendars",
+    "academicYear": "2026",
+    "evidence": "官网8月7日是第二六周课程结束，不是全体暑期统一考试日；第一期6月26日结束。",
+    "scope": "BU暑期两期课程",
+    "reason": "原条把教学末日与考试混合；需具体课程考试时间。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 46,
+    "key": "f768be4c3032e4137c606661",
+    "school": "波士顿大学 BU",
+    "src": "美东 美西 加拿大!U12",
+    "item": "Withdraw without W",
+    "original": "10.5（推测）",
+    "status": "confirmed",
+    "officialUrl": "https://www.bu.edu/reg/calendars/semester/",
+    "pageTitle": "Semester Dates – Fall2026",
+    "academicYear": "2026/27",
+    "evidence": "官方无W退课截止10月7日，非原推测10月5日；7周课程另有日期。",
+    "scope": "BU本科标准全学期课程",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-10-07",
+        "to": "2026-10-07",
+        "label": "标准全学期课无W退课"
+      }
+    ],
+    "from": "2026-10-07",
+    "to": "2026-10-07"
+  },
+  {
+    "index": 47,
+    "key": "988ad5d76043968e00c5cfaf",
+    "school": "波士顿大学 BU",
+    "src": "美东 美西 加拿大!V12",
+    "item": "Winter学期选课",
+    "original": "11.1-11.18（推测）",
+    "status": "unresolved",
+    "officialUrl": "https://www.bu.edu/reg/calendars/registration/",
+    "pageTitle": "Registration Dates & Times",
+    "academicYear": "2026/27",
+    "evidence": "官网本科注册分10月30日、11月6日、13日、20日；原列称Winter，BU此处实际为Spring。",
+    "scope": "BU Spring2027按年级预约",
+    "reason": "学期名称口径未确认，不能将Spring2027注册自动作为Winter选课。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 48,
+    "key": "f7fb3e4a3700aeba129fbe96",
+    "school": "波士顿大学 BU",
+    "src": "美东 美西 加拿大!Z12",
+    "item": "Winter Break",
+    "original": "12.19-1.19",
+    "status": "unresolved",
+    "officialUrl": "https://www.bu.edu/housing/living/calendar/2026-27-academic-year-calendar/",
+    "pageTitle": "2026-27 Academic Year Calendar",
+    "academicYear": "2026/27",
+    "evidence": "宿舍12月19日关闭、1月15–18日返校，学术课程1月19日开始；原区间含开课日。",
+    "scope": "BU宿舍关闭不同于本科统一假期",
+    "reason": "没有明确统一Winter Break区间，不能拿宿舍日历代替学术假期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 49,
+    "key": "41b9aeeefbcd56bb2e690a6c",
+    "school": "波士顿大学 BU",
+    "src": "美东 美西 加拿大!AA12",
+    "item": "出分时间",
+    "original": "12.22（推测）",
+    "status": "confirmed",
+    "officialUrl": "https://www.bu.edu/reg/calendars/",
+    "pageTitle": "Calendars",
+    "academicYear": "2026/27",
+    "evidence": "官方Grades Finalization Date为2026年12月21日，非推测12月22日。",
+    "scope": "BU Fall2026成绩最终确定日期",
+    "reason": "仅在事件显示为成绩最终确定并保留校务口径时确认；若仍显示统一学生出分，应保留待确认。",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-12-21",
+        "to": "2026-12-21",
+        "label": "Grades finalization"
+      }
+    ],
+    "from": "2026-12-21",
+    "to": "2026-12-21",
+    "recommendedEventType": "成绩最终确定"
+  },
+  {
+    "index": 50,
+    "key": "99047fd2b9456718d5b1d15e",
+    "school": "俄亥俄州立大学 OSU",
+    "src": "美东 美西 加拿大!M13",
+    "item": "26新生选课时间（本科）",
+    "original": "5月底到7月底\norientation期间，每个专业不一样\nhttps://orientation.osu.edu/autumn/schedule.html",
+    "status": "unresolved",
+    "officialUrl": "https://orientation.osu.edu/autumn/schedule.html",
+    "pageTitle": "Autumn first-year students Orientation program schedule",
+    "academicYear": "2026",
+    "evidence": "官网按专业列各两天orientation，课程注册在本人第二天；日程仍有autumn2025文字残留。",
+    "scope": "OSU新本科生，按专业预约orientation",
+    "reason": "个人专业/预约未指定，不能补统一5月底至7月底日期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 51,
+    "key": "01bd1278f303a04a42daf8ed",
+    "school": "俄亥俄州立大学 OSU",
+    "src": "美东 美西 加拿大!Q13",
+    "item": "出分时间",
+    "original": "5.12（推测）",
+    "status": "unresolved",
+    "officialUrl": "https://registrar.osu.edu/faculty-support/grade-posting/",
+    "pageTitle": "Grade Posting Deadlines",
+    "academicYear": "2026",
+    "evidence": "官网按毕业身份、短session/全学期给提交截止；秋季非毕业全学期12月21日，毕业12月17日。",
+    "scope": "OSU教师成绩提交，毕业与非毕业学生不同",
+    "reason": "教师交分截止不是全校统一学生出分日，原推测无直接支持。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 52,
+    "key": "d14a34a037560f4b927b45f8",
+    "school": "俄亥俄州立大学 OSU",
+    "src": "美东 美西 加拿大!R13",
+    "item": "Summer学期",
+    "original": "5.6-7.30（推测）",
+    "status": "confirmed",
+    "officialUrl": "https://registrar.osu.edu/staff-resources/class-catalog-and-space/scheduling-calendar/",
+    "pageTitle": "Scheduling Calendar 2026",
+    "academicYear": "2026",
+    "evidence": "官方2026暑期Full Term首课5月11日、末课7月30日；原5月6日错误。",
+    "scope": "OSU暑期Full Term教学期，短session另列",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-05-11",
+        "to": "2026-07-30",
+        "label": "Summer Full Term教学期"
+      }
+    ],
+    "from": "2026-05-11",
+    "to": "2026-07-30"
+  },
+  {
+    "index": 53,
+    "key": "0e57ffe0a15ab14fdc3cc57f",
+    "school": "俄亥俄州立大学 OSU",
+    "src": "美东 美西 加拿大!T13",
+    "item": "Fall学期开始",
+    "original": "first-session:8.26\nsecond-session:10.20",
+    "status": "confirmed",
+    "officialUrl": "https://registrar.osu.edu/faculty-support/attendance-and-participation-rosters/",
+    "pageTitle": "Attendance and participation rosters",
+    "academicYear": "2026/27",
+    "evidence": "官方明确First day为8月25日及10月19日，原表两处均晚一天。",
+    "scope": "OSU Fall2026全学期/7周Session1与7周Session2",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-08-25",
+        "to": "2026-08-25",
+        "label": "Full term / 7-week Session1开课"
+      },
+      {
+        "from": "2026-10-19",
+        "to": "2026-10-19",
+        "label": "7-week Session2开课"
+      }
+    ]
+  },
+  {
+    "index": 54,
+    "key": "81c4486098ecf37956eb941b",
+    "school": "俄亥俄州立大学 OSU",
+    "src": "美东 美西 加拿大!U13",
+    "item": "Withdraw without W",
+    "original": "Full semester：9.19",
+    "status": "confirmed",
+    "officialUrl": "https://registrar.osu.edu/calendar/au26-last-day-to-drop-a-course-online-and-without-receiving-a-w-on-record-autumn-semester/",
+    "pageTitle": "Autumn2026 drop without W – Autumn semester",
+    "academicYear": "2026/27",
+    "evidence": "官方日历列9月18日为Autumn semester无W退课截止；原9月19日错误。",
+    "scope": "OSU Fall2026全学期课程",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-09-18",
+        "to": "2026-09-18",
+        "label": "Full semester无W退课"
+      }
+    ],
+    "from": "2026-09-18",
+    "to": "2026-09-18"
+  },
+  {
+    "index": 55,
+    "key": "238a0f658ea7bf03448ff71d",
+    "school": "俄亥俄州立大学 OSU",
+    "src": "美东 美西 加拿大!Z13",
+    "item": "Winter Break",
+    "original": "12.19-1.11",
+    "status": "unresolved",
+    "officialUrl": "https://registrar.osu.edu/academic-calendar/academic-calendar-5-year-view-2023-2028/",
+    "pageTitle": "Academic Calendar: 5-year view",
+    "academicYear": "2026/27",
+    "evidence": "官方Academic Winter Recess仅12月28–31日；原12月19至1月11口径不相同。",
+    "scope": "OSU学术假期，不同于学期间隔",
+    "reason": "不能把行政学术休假或两学期间隙替代原Winter Break，仍待确认。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 56,
+    "key": "b24069effc3c1a20aa5026dc",
+    "school": "俄亥俄州立大学 OSU",
+    "src": "美东 美西 加拿大!AA13",
+    "item": "出分时间",
+    "original": "12.22（推测）",
+    "status": "unresolved",
+    "officialUrl": "https://registrar.osu.edu/faculty-support/grade-posting/",
+    "pageTitle": "Grade Posting Deadlines",
+    "academicYear": "2026",
+    "evidence": "官网按毕业身份、短session/全学期给提交截止；秋季非毕业全学期12月21日，毕业12月17日。",
+    "scope": "OSU教师成绩提交，毕业与非毕业学生不同",
+    "reason": "教师交分截止不是全校统一学生出分日，原推测无直接支持。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 57,
+    "key": "ea51c75c1ec365a4b1ff0acd",
+    "school": "罗切斯特大学 UR",
+    "src": "美东 美西 加拿大!R14",
+    "item": "Summer学期",
+    "original": "5.18-7.31（推测）",
+    "status": "confirmed",
+    "officialUrl": "https://www.rochester.edu/bulletin/undergraduate-bulletin-pdf.pdf",
+    "pageTitle": "Undergraduate Bulletin 2025-2026",
+    "academicYear": "2025/26",
+    "evidence": "本科校历明确Full Summer Session为5月18–7月31日。",
+    "scope": "Rochester本科Summer Full Session",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-05-18",
+        "to": "2026-07-31",
+        "label": "Full Summer Session"
+      }
+    ],
+    "from": "2026-05-18",
+    "to": "2026-07-31"
+  },
+  {
+    "index": 58,
+    "key": "38198fb528d2555b7d3d454e",
+    "school": "罗切斯特大学 UR",
+    "src": "美东 美西 加拿大!S14",
+    "item": "Summer考试",
+    "original": "通常是每门课的最后一节课\nhttps://www.rochester.edu/college/summer/calendar/index.html",
+    "status": "not_a_date",
+    "officialUrl": "https://www.rochester.edu/college/summer/resources/exams-grades.html",
+    "pageTitle": "Exams and Grades – Summer Session",
+    "academicYear": "2026",
+    "evidence": "官网说明通常在课程最后一天，教师可调整。",
+    "scope": "Rochester暑期各课程",
+    "reason": "已核实相对规则，不能填统一考试日期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 59,
+    "key": "6503caba566e9c7c8c28d40f",
+    "school": "罗切斯特大学 UR",
+    "src": "美东 美西 加拿大!U14",
+    "item": "Withdraw without W",
+    "original": "9.21（推测）",
+    "status": "confirmed",
+    "officialUrl": "https://www.rochester.edu/registrar/assets/pdf/university-of-rochester-2026-2027-sas-and-hajim-academic-calendar.pdf",
+    "pageTitle": "SAS and Hajim Academic Calendar 2026-2027",
+    "academicYear": "2026/27",
+    "evidence": "9月25日最后可Add/Drop，9月26日起W；原推测9月21日错误。",
+    "scope": "Rochester文理与工程本科标准课",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-09-25",
+        "to": "2026-09-25",
+        "label": "SAS/Hajim无W退课截止"
+      }
+    ],
+    "from": "2026-09-25",
+    "to": "2026-09-25"
+  },
+  {
+    "index": 60,
+    "key": "be717da3a63e11672aa909c9",
+    "school": "罗切斯特大学 UR",
+    "src": "美东 美西 加拿大!V14",
+    "item": "Winter学期选课",
+    "original": "11.10（推测）",
+    "status": "unresolved",
+    "officialUrl": "https://www.rochester.edu/registrar/students/registration/schedule.html",
+    "pageTitle": "Registration Schedule",
+    "academicYear": "2026/27",
+    "evidence": "官方Spring2027注册11月16日起，研究生/四年级16日、三年级17日。",
+    "scope": "Rochester Spring2027分年级注册",
+    "reason": "原表Winter含义不明，原11月10日无支持；不能改成未明确的Spring口径。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 61,
+    "key": "2108394f043b04ba8ab9d863",
+    "school": "罗切斯特大学 UR",
+    "src": "美东 美西 加拿大!Z14",
+    "item": "Winter Break",
+    "original": "12.24-1.19",
+    "status": "unresolved",
+    "officialUrl": "https://www.rochester.edu/registrar/assets/pdf/university-of-rochester-2026-2027-sas-and-hajim-academic-calendar.pdf",
+    "pageTitle": "SAS and Hajim Academic Calendar 2026-2027",
+    "academicYear": "2026/27",
+    "evidence": "官网列Fall期末考试12月18–23日及Spring2027开课1月19日，未明确本条完整Winter Break。",
+    "scope": "Rochester文理与工程本科",
+    "reason": "原区间含开课日，不将相邻学期间隙推成官方假期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 62,
+    "key": "d2a7ea354910b5a142508a70",
+    "school": "罗切斯特大学 UR",
+    "src": "美东 美西 加拿大!AA14",
+    "item": "出分时间",
+    "original": "12.21-12.28（推测）",
+    "status": "unresolved",
+    "officialUrl": "https://www.rochester.edu/registrar/assets/pdf/university-of-rochester-2026-2027-sas-and-hajim-academic-calendar.pdf",
+    "pageTitle": "SAS and Hajim Academic Calendar 2026-2027",
+    "academicYear": "2026/27",
+    "evidence": "日历列教师交分截止，不是原表12月21–28日统一公布区间。",
+    "scope": "Rochester学生成绩公布",
+    "reason": "无本科统一出分日直接证据，保留未确认。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 63,
+    "key": "f6cede53ea6eecfde310ee0b",
+    "school": "埃默里大学 EMORY",
+    "src": "美东 美西 加拿大!I15",
+    "item": "Spring学期开始",
+    "original": "law:1.5\nnursing,theology:1.12\nother:1.13",
+    "status": "confirmed",
+    "officialUrl": "https://registrar.emory.edu/_includes/documents/sections/academic-calendar/2025-2026-academic-calendar-dates-11.28.23.pdf",
+    "pageTitle": "Emory University 2025-2026 Academic Calendar",
+    "academicYear": "2025/26",
+    "evidence": "官方Spring Classes Begin：Law1月5，Nursing/Theology1月12，其余表列学院1月13。",
+    "scope": "Emory标准学院校历；Medicine须用SOM独立日历",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-01-05",
+        "to": "2026-01-05",
+        "label": "Law开课"
+      },
+      {
+        "from": "2026-01-12",
+        "to": "2026-01-12",
+        "label": "Nursing / Theology开课"
+      },
+      {
+        "from": "2026-01-13",
+        "to": "2026-01-13",
+        "label": "Business / Graduate School / Public Health / Emory College / Oxford开课"
+      }
+    ]
+  },
+  {
+    "index": 64,
+    "key": "e746aaca2a02099091c130cf",
+    "school": "埃默里大学 EMORY",
+    "src": "美东 美西 加拿大!J15",
+    "item": "Spring开始上课",
+    "original": "law:1.5\nnursing,theology:1.12\nother:1.13",
+    "status": "confirmed",
+    "officialUrl": "https://registrar.emory.edu/_includes/documents/sections/academic-calendar/2025-2026-academic-calendar-dates-11.28.23.pdf",
+    "pageTitle": "Emory University 2025-2026 Academic Calendar",
+    "academicYear": "2025/26",
+    "evidence": "官方Spring Classes Begin：Law1月5，Nursing/Theology1月12，其余表列学院1月13。",
+    "scope": "Emory标准学院校历；Medicine须用SOM独立日历",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-01-05",
+        "to": "2026-01-05",
+        "label": "Law开课"
+      },
+      {
+        "from": "2026-01-12",
+        "to": "2026-01-12",
+        "label": "Nursing / Theology开课"
+      },
+      {
+        "from": "2026-01-13",
+        "to": "2026-01-13",
+        "label": "Business / Graduate School / Public Health / Emory College / Oxford开课"
+      }
+    ]
+  },
+  {
+    "index": 65,
+    "key": "ffb4987e67b744f0e0e4bede",
+    "school": "埃默里大学 EMORY",
+    "src": "美东 美西 加拿大!K15",
+    "item": "Withdraw Without W",
+    "original": "1.27（推测）",
+    "status": "unresolved",
+    "officialUrl": "https://registrar.emory.edu/_includes/documents/sections/academic-calendar/2025-2026-academic-calendar-dates-11.28.23.pdf",
+    "pageTitle": "Emory University 2025-2026 Academic Calendar",
+    "academicYear": "2025/26",
+    "evidence": "1月27为Emory/Oxford/本科Business的Schedule Change Ends，Nursing本科为1月26；官方并未将此栏等同全校withdraw without W。",
+    "scope": "Emory本科不同学院及不同退课口径",
+    "reason": "原条未注明学院及退课定义，不能仅把Schedule Change截止作为统一无W退课。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 66,
+    "key": "de8356d70894a3e05ba3616a",
+    "school": "埃默里大学 EMORY",
+    "src": "美东 美西 加拿大!M15",
+    "item": "26新生选课时间（本科）",
+    "original": "8.5-8.7（推测）",
+    "status": "confirmed",
+    "officialUrl": "https://oue.college.emory.edu/orientation/first-year/course-registration.html",
+    "pageTitle": "First-Year Course Registration",
+    "academicYear": "2026",
+    "evidence": "2026新生8月4日首轮最多8学分，8月5–6日第二轮；原8月5–7日不准确。",
+    "scope": "Emory College新本科生，不推广至Oxford/Nursing",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-08-04",
+        "to": "2026-08-04",
+        "label": "Emory College新生首轮选课"
+      },
+      {
+        "from": "2026-08-05",
+        "to": "2026-08-06",
+        "label": "Emory College新生第二轮选课"
+      }
+    ]
+  },
+  {
+    "index": 67,
+    "key": "68134c9b64ddb3d03a353d59",
+    "school": "埃默里大学 EMORY",
+    "src": "美东 美西 加拿大!N15",
+    "item": "Instruction结束",
+    "original": "law:4.20\nother：4.27",
+    "status": "confirmed",
+    "officialUrl": "https://registrar.emory.edu/_includes/documents/sections/academic-calendar/2025-2026-academic-calendar-dates-11.28.23.pdf",
+    "pageTitle": "Emory University 2025-2026 Academic Calendar",
+    "academicYear": "2025/26",
+    "evidence": "Spring Classes End：Law4月20，其余表列常规学院4月27。",
+    "scope": "Emory官方表列常规学院；Medicine另看SOM",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-04-20",
+        "to": "2026-04-20",
+        "label": "Law教学结束"
+      },
+      {
+        "from": "2026-04-27",
+        "to": "2026-04-27",
+        "label": "其余表列学院教学结束（不含Medicine）"
+      }
+    ]
+  },
+  {
+    "index": 68,
+    "key": "b595413bab25390f477ecd85",
+    "school": "埃默里大学 EMORY",
+    "src": "美东 美西 加拿大!O15",
+    "item": "Final时间",
+    "original": "law：4.21-5.1\nother：4.28-5.8",
+    "status": "unresolved",
+    "officialUrl": "https://registrar.emory.edu/_includes/documents/sections/academic-calendar/2025-2026-academic-calendar-dates-11.28.23.pdf",
+    "pageTitle": "Emory University 2025-2026 Academic Calendar",
+    "academicYear": "2025/26",
+    "evidence": "官方仅说大多数考试在4月28–5月8区间、Law4月21–5月1，要求查学院实际考试表。",
+    "scope": "Emory各学院考试，Medicine等有独立安排",
+    "reason": "原other表示所有其它学院，官方只支持most，不把部分覆盖标为整条确认。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 69,
+    "key": "587b08e8c5bbcc2ad86f62e6",
+    "school": "埃默里大学 EMORY",
+    "src": "美东 美西 加拿大!S15",
+    "item": "Summer考试",
+    "original": "1st Session：6.25-6.26\n2nd Session：8.6-8.7",
+    "status": "confirmed",
+    "officialUrl": "https://registrar.emory.edu/_includes/documents/sections/academic-calendar/cademic_calendar_summer_2026.pdf",
+    "pageTitle": "Academic Calendar Summer 2026",
+    "academicYear": "2026",
+    "evidence": "官方分别列两期考试6月25–26、8月6–7。",
+    "scope": "Emory标准Summer Session 1和2",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-06-25",
+        "to": "2026-06-26",
+        "label": "Summer Session 1考试"
+      },
+      {
+        "from": "2026-08-06",
+        "to": "2026-08-07",
+        "label": "Summer Session 2考试"
+      }
+    ]
+  },
+  {
+    "index": 70,
+    "key": "f10798f98583c4ff51eed0ec",
+    "school": "埃默里大学 EMORY",
+    "src": "美东 美西 加拿大!T15",
+    "item": "Fall学期开始",
+    "original": "law:8.17\nother:8.26",
+    "status": "confirmed",
+    "officialUrl": "https://registrar.emory.edu/_includes/documents/sections/academic-calendar/2026-2027-academic-calendar-dates-050525.pdf",
+    "pageTitle": "Emory University 2026-2027 Academic Calendar",
+    "academicYear": "2026/27",
+    "evidence": "Law8月17日开课，其余表列常规学院8月26日开课。",
+    "scope": "Emory官方表列常规学院；Medicine另看SOM",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-08-17",
+        "to": "2026-08-17",
+        "label": "Law开课"
+      },
+      {
+        "from": "2026-08-26",
+        "to": "2026-08-26",
+        "label": "其余表列学院开课（不含Medicine）"
+      }
+    ]
+  },
+  {
+    "index": 71,
+    "key": "2c9ece34d7684fbb352338e5",
+    "school": "埃默里大学 EMORY",
+    "src": "美东 美西 加拿大!V15",
+    "item": "Winter学期选课",
+    "original": "10.28（推测）",
+    "status": "unresolved",
+    "officialUrl": "https://registrar.emory.edu/_includes/documents/sections/academic-calendar/2026-2027-academic-calendar-dates-050525.pdf",
+    "pageTitle": "Emory University 2026-2027 Academic Calendar",
+    "academicYear": "2026/27",
+    "evidence": "官方仅允许各学院最早10月26日起注册，具体学院另定；原10月28推测不成立。",
+    "scope": "Emory Spring2027分学院注册",
+    "reason": "学校没有此处所指统一Winter注册日；缺学院与正式选课安排。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 72,
+    "key": "db6e05acd02a5434756aaae4",
+    "school": "埃默里大学 EMORY",
+    "src": "美东 美西 加拿大!W15",
+    "item": "感恩节假期",
+    "original": "BUSINESS、EMORY COLLEGE、OXFORD COLLEGE 11.25-11.27\n其它：11.26-11.27",
+    "status": "confirmed",
+    "officialUrl": "https://registrar.emory.edu/_includes/documents/sections/academic-calendar/2026-2027-academic-calendar-dates-050525.pdf",
+    "pageTitle": "Emory University 2026-2027 Academic Calendar",
+    "academicYear": "2026/27",
+    "evidence": "表列Business、Emory College、Oxford为11月25–27；其它表列学院11月26–27。",
+    "scope": "Emory全校依官方学院分组",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-11-25",
+        "to": "2026-11-27",
+        "label": "Business / Emory College / Oxford感恩节假期"
+      },
+      {
+        "from": "2026-11-26",
+        "to": "2026-11-27",
+        "label": "Nursing / Graduate School / Law / Public Health / Theology / Medicine感恩节假期"
+      }
+    ]
+  },
+  {
+    "index": 73,
+    "key": "8d59488820fdf0bbe2b9636f",
+    "school": "埃默里大学 EMORY",
+    "src": "美东 美西 加拿大!X15",
+    "item": "Instruction结束",
+    "original": "law:11.23\nother:12.8",
+    "status": "confirmed",
+    "officialUrl": "https://registrar.emory.edu/_includes/documents/sections/academic-calendar/2026-2027-academic-calendar-dates-050525.pdf",
+    "pageTitle": "Emory University 2026-2027 Academic Calendar",
+    "academicYear": "2026/27",
+    "evidence": "Law11月23日教学结束，其余表列常规学院12月8日。",
+    "scope": "Emory官方表列常规学院；Medicine另看SOM",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-11-23",
+        "to": "2026-11-23",
+        "label": "Law教学结束"
+      },
+      {
+        "from": "2026-12-08",
+        "to": "2026-12-08",
+        "label": "其余表列学院教学结束（不含Medicine）"
+      }
+    ]
+  },
+  {
+    "index": 74,
+    "key": "6dfaac34d9fcb6fc8f06809e",
+    "school": "埃默里大学 EMORY",
+    "src": "美东 美西 加拿大!Y15",
+    "item": "Final时间",
+    "original": "law：12.2-12.11\nother：12.9-12.19",
+    "status": "unresolved",
+    "officialUrl": "https://registrar.emory.edu/_includes/documents/sections/academic-calendar/2026-2027-academic-calendar-dates-050525.pdf",
+    "pageTitle": "Emory University 2026-2027 Academic Calendar",
+    "academicYear": "2026/27",
+    "evidence": "官方大多数考试在12月9–19、Law12月2–11，但明确要求看各学院安排。",
+    "scope": "Emory各学院考试",
+    "reason": "不能将most扩为所有other；已核查但整条待学院范围确认。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 75,
+    "key": "ea947e6c52b86d073268274f",
+    "school": "埃默里大学 EMORY",
+    "src": "美东 美西 加拿大!Z15",
+    "item": "Winter Break",
+    "original": "12.19-1.11",
+    "status": "unresolved",
+    "officialUrl": "https://registrar.emory.edu/_includes/documents/sections/academic-calendar/2026-2027-academic-calendar-dates-050525.pdf",
+    "pageTitle": "Emory University 2026-2027 Academic Calendar",
+    "academicYear": "2026/27",
+    "evidence": "Spring2027 Law1月4、主要学院1月11、Business1月12开课；不是全校统一假期。",
+    "scope": "Emory各学院Winter Break",
+    "reason": "原12月19至1月11不适用于所有学院且含部分开课日。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 76,
+    "key": "0d49a358447d143c3dade982",
+    "school": "埃默里大学 EMORY",
+    "src": "美东 美西 加拿大!AA15",
+    "item": "出分时间",
+    "original": "12.22（推测）",
+    "status": "unresolved",
+    "officialUrl": "https://oue.college.emory.edu/faculty-resources/documents/important-dates.pdf",
+    "pageTitle": "Important Dates for Faculty",
+    "academicYear": "2026/27",
+    "evidence": "检索到12月22交分的faculty文档实际为Fall2025，不能用于2026。",
+    "scope": "Emory Fall2026学生成绩公布",
+    "reason": "没有2026学生出分日期证据；旧教师交分日不能平移。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 77,
+    "key": "0664f64bdd80e0fab327afbc",
+    "school": "威斯康星大学麦迪逊分校 UWM",
+    "src": "美东 美西 加拿大!M16",
+    "item": "26新生选课时间（本科）",
+    "original": "6-8月",
+    "status": "not_a_date",
+    "officialUrl": "https://registrar.wisc.edu/enrollment-appointment-times/",
+    "pageTitle": "Enrollment Appointment Times",
+    "academicYear": "2026",
+    "evidence": "新生在SOAR与advisor选课，按个人活动预约。",
+    "scope": "UW–Madison新本科生",
+    "reason": "规则可确认，但没有适用于所有新生的统一日期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 78,
+    "key": "a39ece3f4e70dbe0f1ce1883",
+    "school": "威斯康星大学麦迪逊分校 UWM",
+    "src": "美东 美西 加拿大!S16",
+    "item": "Summer考试",
+    "original": "无明确时间https://registrar.wisc.edu/session-dates/",
+    "status": "unresolved",
+    "officialUrl": "https://registrar.wisc.edu/session-dates/",
+    "pageTitle": "Session Dates",
+    "academicYear": "2026",
+    "evidence": "官网按session code列教学期与注册截止，原文也未列具体考试日。",
+    "scope": "UW–Madison暑期多种session",
+    "reason": "需具体课程考试安排，不把各session结束直接当统一final日期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 79,
+    "key": "2dd5887d9b219e41893d29b0",
+    "school": "威斯康星大学麦迪逊分校 UWM",
+    "src": "美东 美西 加拿大!U16",
+    "item": "Withdraw without W",
+    "original": "9.28（推测）",
+    "status": "confirmed",
+    "officialUrl": "https://registrar.wisc.edu/dates/",
+    "pageTitle": "Dates & Deadlines – Fall2026",
+    "academicYear": "2026/27",
+    "evidence": "官方9月9日最后退课不留课程记录；之后显示DR，学校术语不是W。原推测9月28日错误。",
+    "scope": "UW–Madison Regular15-week(A1)课程",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-09-09",
+        "to": "2026-09-09",
+        "label": "A1退课不留课程记录（之后DR）"
+      }
+    ],
+    "from": "2026-09-09",
+    "to": "2026-09-09",
+    "recommendedEventType": "退课不留课程记录"
+  },
+  {
+    "index": 80,
+    "key": "ca555d470f81bff632bbb4a9",
+    "school": "威斯康星大学麦迪逊分校 UWM",
+    "src": "美东 美西 加拿大!V16",
+    "item": "Winter学期选课",
+    "original": "10.20（推测）",
+    "status": "unresolved",
+    "officialUrl": "https://registrar.wisc.edu/dates/",
+    "pageTitle": "Dates & Deadlines – Spring2027",
+    "academicYear": "2026/27",
+    "evidence": "官方11月2分配appointment、11月9注册开始，原10月20没有依据。",
+    "scope": "UW–Madison Spring2027",
+    "reason": "原表Winter学期未明确，与官方Spring命名不同，保留待确认。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 81,
+    "key": "06e11e204d36e816f55a4439",
+    "school": "威斯康星大学麦迪逊分校 UWM",
+    "src": "美东 美西 加拿大!Z16",
+    "item": "Winter Break",
+    "original": "12.18-1.18",
+    "status": "unresolved",
+    "officialUrl": "https://registrar.wisc.edu/events/category/ro-events/",
+    "pageTitle": "Academic Calendar – UW–Madison",
+    "academicYear": "2026/27",
+    "evidence": "官网Fall2026考试12月11–17日、Spring2027开课1月19，未检出同口径Winter Break直接区间。",
+    "scope": "UW–Madison本科假期",
+    "reason": "不依据考试结束与开课相减自行补假期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 82,
+    "key": "4aeee49ba4ebd89988781b1b",
+    "school": "密歇根大学 Umich",
+    "src": "美东 美西 加拿大!C17",
+    "item": "Withdraw Without W",
+    "original": "First 7 week class Drop/Add Deadline：1.20\nSecond 7 Week Course Drop/Add Deadline：3.11",
+    "status": "confirmed",
+    "officialUrl": "https://lsa.umich.edu/lsa/academics/dates-and-deadlines/lsa-academic-calendar.html",
+    "pageTitle": "LSA Academic Calendar – Winter2026",
+    "academicYear": "2025/26",
+    "evidence": "官方无W退课First7为1月20、Second7为3月23；原3月11错误。",
+    "scope": "UMich Ann Arbor LSA本科7周课程",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-01-20",
+        "to": "2026-01-20",
+        "label": "First7-week无W退课"
+      },
+      {
+        "from": "2026-03-23",
+        "to": "2026-03-23",
+        "label": "Second7-week无W退课"
+      }
+    ]
+  },
+  {
+    "index": 83,
+    "key": "e8788dd27bf713ee007e9dbe",
+    "school": "密歇根大学 Umich",
+    "src": "美东 美西 加拿大!D17",
+    "item": "Spring选课开始",
+    "original": "研究生：4.1-4.3\n本科生：4.6-4.17",
+    "status": "unresolved",
+    "officialUrl": "https://rossweb.bus.umich.edu/academics/registration-dates/",
+    "pageTitle": "Registration Dates – Academics",
+    "academicYear": "2026",
+    "evidence": "当前官方注册页面重点为Fall2026/Winter2027，没有足够证据支持原研究生4月1–3、本科4月6–17对应Spring。",
+    "scope": "UMich Spring2026选课",
+    "reason": "两段日期与学期对应未证实，不能把Fall注册或研究生项目日程套入本科Spring。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 84,
+    "key": "9ff7934159d3a8d9a1f6c973",
+    "school": "密歇根大学 Umich",
+    "src": "美东 美西 加拿大!H17",
+    "item": "出分时间",
+    "original": "考试后72h以内",
+    "status": "not_a_date",
+    "officialUrl": "https://facultyhandbook.provost.umich.edu/8-d-university-policies-and-procedures-affecting-students/",
+    "pageTitle": "University Policies and Procedures Affecting Students – Grades",
+    "academicYear": "2026",
+    "evidence": "官方规定教师成绩提交Ann Arbor/Flint考后72小时、Dearborn48小时；各学院还可另设规则。",
+    "scope": "UMich Ann Arbor/Flint与Dearborn分校",
+    "reason": "相对交分规则，不是统一学生出分日，不能生成固定日历日期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 85,
+    "key": "027501f1454054850b081b90",
+    "school": "密歇根大学 Umich",
+    "src": "美东 美西 加拿大!K17",
+    "item": "Withdraw Without W",
+    "original": "5.18/5.26",
+    "status": "confirmed",
+    "officialUrl": "https://lsa.umich.edu/lsa/academics/dates-and-deadlines/lsa-academic-calendar.html",
+    "pageTitle": "LSA Academic Calendar – Spring/Summer2026",
+    "academicYear": "2025/26",
+    "evidence": "官方无W退课分别为5月18和5月26。",
+    "scope": "UMich Ann Arbor LSA Spring半学期与Spring/Summer全学期",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-05-18",
+        "to": "2026-05-18",
+        "label": "Spring Half Term无W退课"
+      },
+      {
+        "from": "2026-05-26",
+        "to": "2026-05-26",
+        "label": "Spring/Summer Full Term无W退课"
+      }
+    ]
+  },
+  {
+    "index": 86,
+    "key": "dc6e67edb36cd9ef9f5fc29e",
+    "school": "密歇根大学 Umich",
+    "src": "美东 美西 加拿大!Q17",
+    "item": "出分时间",
+    "original": "考试后72h以内",
+    "status": "not_a_date",
+    "officialUrl": "https://facultyhandbook.provost.umich.edu/8-d-university-policies-and-procedures-affecting-students/",
+    "pageTitle": "University Policies and Procedures Affecting Students – Grades",
+    "academicYear": "2026",
+    "evidence": "官方规定教师成绩提交Ann Arbor/Flint考后72小时、Dearborn48小时；各学院还可另设规则。",
+    "scope": "UMich Ann Arbor/Flint与Dearborn分校",
+    "reason": "相对交分规则，不是统一学生出分日，不能生成固定日历日期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 87,
+    "key": "227d3391a4253bf902c31d42",
+    "school": "密歇根大学 Umich",
+    "src": "美东 美西 加拿大!U17",
+    "item": "Withdraw without W",
+    "original": "all first seven-week session courses：9.14\nall second seven-week session classes：11.9",
+    "status": "confirmed",
+    "officialUrl": "https://lsa.umich.edu/lsa/academics/dates-and-deadlines/lsa-academic-calendar.html",
+    "pageTitle": "LSA Academic Calendar – Fall2026",
+    "academicYear": "2026/27",
+    "evidence": "官方无W退课First7为9月14、Second7为11月9。",
+    "scope": "UMich Ann Arbor LSA本科7周课程",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-09-14",
+        "to": "2026-09-14",
+        "label": "First7-week无W退课"
+      },
+      {
+        "from": "2026-11-09",
+        "to": "2026-11-09",
+        "label": "Second7-week无W退课"
+      }
+    ]
+  },
+  {
+    "index": 88,
+    "key": "63be2110c77ddc931c35f518",
+    "school": "密歇根大学 Umich",
+    "src": "美东 美西 加拿大!V17",
+    "item": "Winter学期选课",
+    "original": "10.20（推测）",
+    "status": "confirmed",
+    "officialUrl": "https://rossweb.bus.umich.edu/academics/registration-dates/",
+    "pageTitle": "Registration Dates – Winter2027",
+    "academicYear": "2026/27",
+    "evidence": "官方Winter2027本科注册预约期11月19–12月4；不是原10月20。",
+    "scope": "UMich Ross本科，个人appointment时间不同",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-11-19",
+        "to": "2026-12-04",
+        "label": "Ross本科Winter2027预约选课期"
+      }
+    ],
+    "from": "2026-11-19",
+    "to": "2026-12-04"
+  },
+  {
+    "index": 89,
+    "key": "e7a244526955bb4305e44c72",
+    "school": "密歇根大学 Umich",
+    "src": "美东 美西 加拿大!Z17",
+    "item": "Winter Break",
+    "original": "12.22-1.13",
+    "status": "unresolved",
+    "officialUrl": "https://ro.umich.edu/sites/default/files/calendar/pdfs/Cal_2026-2027.pdf",
+    "pageTitle": "University of Michigan Academic Calendar 2026-2027",
+    "academicYear": "2026/27",
+    "evidence": "Fall结束12月21、Winter2027开课1月13；未直接写原12月22至1月13为假期。",
+    "scope": "UMich Ann Arbor标准校历",
+    "reason": "原区间含Winter开课日；不按相邻学期自行推算假期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 90,
+    "key": "51b205d16d5e5b107786cad4",
+    "school": "密歇根大学 Umich",
+    "src": "美东 美西 加拿大!AA17",
+    "item": "出分时间",
+    "original": "安娜堡校区考试后72h，迪尔伯恩校区考试后48h",
+    "status": "not_a_date",
+    "officialUrl": "https://facultyhandbook.provost.umich.edu/8-d-university-policies-and-procedures-affecting-students/",
+    "pageTitle": "University Policies and Procedures Affecting Students – Grades",
+    "academicYear": "2026",
+    "evidence": "官方规定教师成绩提交Ann Arbor/Flint考后72小时、Dearborn48小时；各学院还可另设规则。",
+    "scope": "UMich Ann Arbor/Flint与Dearborn分校",
+    "reason": "相对交分规则，不是统一学生出分日，不能生成固定日历日期。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 91,
+    "key": "dd000075f25f1b5ef1ee52ec",
+    "school": "伊利诺伊大学厄巴纳-香槟分校 UIUC",
+    "src": "美东 美西 加拿大!K18",
+    "item": "Withdraw Without W",
+    "original": "POT A (1st 8 week):2.13\nPOT 1 (full semester):3.13\nPOT B (2nd 8 week):4.17",
+    "status": "confirmed",
+    "officialUrl": "https://www.registrar.illinois.edu/faculty-staff/calendars/academic-calendars/academic-calendars-archive/spring-academic-calendar-26/",
+    "pageTitle": "Spring2026 Academic Calendar",
+    "academicYear": "2025/26",
+    "evidence": "官方逐项确认三个POT截止；非标准课不适用。",
+    "scope": "UIUC本科标准POT A/1/B，无W退课",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-02-13",
+        "to": "2026-02-13",
+        "label": "POT A无W退课"
+      },
+      {
+        "from": "2026-03-13",
+        "to": "2026-03-13",
+        "label": "POT1无W退课"
+      },
+      {
+        "from": "2026-04-17",
+        "to": "2026-04-17",
+        "label": "POT B无W退课"
+      }
+    ]
+  },
+  {
+    "index": 92,
+    "key": "0817e6c12d2eca7c31ea1d15",
+    "school": "伊利诺伊大学厄巴纳-香槟分校 UIUC",
+    "src": "美东 美西 加拿大!M18",
+    "item": "26新生选课时间（本科）",
+    "original": "4月23日开始和advisor预约选课时间\nhttps://www.admissions.illinois.edu/apply/admitted/summer-registration#sign-up",
+    "status": "unresolved",
+    "officialUrl": "https://newstudent.illinois.edu/orientation/NSR",
+    "pageTitle": "New Student Registration",
+    "academicYear": "2026",
+    "evidence": "原招生链接转至NSR安排，按本人场次与advisor注册；Grainger2026明确6月至7月初。4月23是普通open registration，不足以确认新生预约开放。",
+    "scope": "UIUC新本科生NSR",
+    "reason": "未获得4月23作为2026新生advisor预约开放日的直接证据。",
+    "checkedAt": "2026-10-21",
+    "additionalOfficialUrls": [
+      "https://gfx.grainger.illinois.edu/nsr",
+      "https://www.registrar.illinois.edu/fall-2026-academic-calendar/"
+    ]
+  },
+  {
+    "index": 93,
+    "key": "e36b0448db27401e9fd61361",
+    "school": "伊利诺伊大学厄巴纳-香槟分校 UIUC",
+    "src": "美东 美西 加拿大!S18",
+    "item": "Summer考试",
+    "original": "session 1: 6.13之前考完\nsession 2：8.7-8.8",
+    "status": "confirmed",
+    "officialUrl": "https://www.registrar.illinois.edu/ug-reg-dlines-su26/",
+    "pageTitle": "Summer2026 Undergraduate Course Registration Deadlines",
+    "academicYear": "2026",
+    "evidence": "官方表Final Exams列S1为6月13日、S2为8月7–8日，不写作6月13前任意日期。",
+    "scope": "UIUC本科Summer S1和S2标准课程",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-06-13",
+        "to": "2026-06-13",
+        "label": "Summer S1 Final Exams"
+      },
+      {
+        "from": "2026-08-07",
+        "to": "2026-08-08",
+        "label": "Summer S2 Final Exams"
+      }
+    ]
+  },
+  {
+    "index": 94,
+    "key": "d3768a960ee8b2f1067700c4",
+    "school": "伊利诺伊大学厄巴纳-香槟分校 UIUC",
+    "src": "美东 美西 加拿大!U18",
+    "item": "Withdraw without W",
+    "original": "ALL to drop POT A (1st 8 week) course via Student Self-Service：9.18\nGRAD to drop a POT A (1st 8 week) course via Graduate Student Portal：10.2\nALL to drop POT 1 (full semester) course via Student Self-Service：10.15\nUG to withdraw from Fall 2025 semester (drop all courses)：10.16\nLAW to drop semester course：10.16\nALL to drop POT B course via Student Self-Service：11.13\nGRAD to drop POT 1 (full semester) course via Graduate Student Portal：11.13\nGRAD to drop POT B (2nd 8 week) course via Graduate Student Portal ：12.4",
+    "status": "confirmed",
+    "officialUrl": "https://www.registrar.illinois.edu/fall-2026-academic-calendar/",
+    "pageTitle": "Fall2026 Academic Calendar",
+    "academicYear": "2026/27",
+    "evidence": "逐条校对八项；Full-semester自助drop应10月16而非15，原Fall2025字样更正为Fall2026。",
+    "scope": "UIUC标准POT；保留本科、研究生、LAW各自口径",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-09-18",
+        "to": "2026-09-18",
+        "label": "ALL POT A自助无W退课"
+      },
+      {
+        "from": "2026-10-02",
+        "to": "2026-10-02",
+        "label": "GRAD POT A Graduate Portal无W退课"
+      },
+      {
+        "from": "2026-10-16",
+        "to": "2026-10-16",
+        "label": "ALL POT1自助无W退课"
+      },
+      {
+        "from": "2026-10-16",
+        "to": "2026-10-16",
+        "label": "UG Fall2026退出全部课无W"
+      },
+      {
+        "from": "2026-10-16",
+        "to": "2026-10-16",
+        "label": "LAW学期课无W退课"
+      },
+      {
+        "from": "2026-11-13",
+        "to": "2026-11-13",
+        "label": "ALL POT B自助无W退课"
+      },
+      {
+        "from": "2026-11-13",
+        "to": "2026-11-13",
+        "label": "GRAD POT1 Graduate Portal无W退课"
+      },
+      {
+        "from": "2026-12-04",
+        "to": "2026-12-04",
+        "label": "GRAD POT B Graduate Portal无W退课"
+      }
+    ]
+  },
+  {
+    "index": 95,
+    "key": "a7dcc1c4ea8f11ac9766c219",
+    "school": "伊利诺伊大学厄巴纳-香槟分校 UIUC",
+    "src": "美东 美西 加拿大!V18",
+    "item": "Winter学期选课",
+    "original": "10.20（推测）",
+    "status": "confirmed",
+    "officialUrl": "https://www.registrar.illinois.edu/faculty-staff/calendars/academic-calendars/wi26-27-academic-calendar/",
+    "pageTitle": "Winter2026-2027 Academic Calendar",
+    "academicYear": "2026/27",
+    "evidence": "官方实际注册11月2日起；10月26仅查看time tickets，不是注册开放。",
+    "scope": "UIUC本科Winter2026/27优先注册",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-11-02",
+        "to": "2026-11-02",
+        "label": "Winter2026/27优先注册开始，个人依time ticket"
+      }
+    ],
+    "from": "2026-11-02",
+    "to": "2026-11-02"
+  },
+  {
+    "index": 96,
+    "key": "59a077dde58c7410ab819757",
+    "school": "伊利诺伊大学厄巴纳-香槟分校 UIUC",
+    "src": "美东 美西 加拿大!Z18",
+    "item": "Winter Break",
+    "original": "12.19-1.19",
+    "status": "unresolved",
+    "officialUrl": "https://www.registrar.illinois.edu/faculty-staff/calendars/academic-calendars/wi26-27-academic-calendar/",
+    "pageTitle": "Winter2026-2027 Academic Calendar",
+    "academicYear": "2026/27",
+    "evidence": "Winter课12月18至1月15；不能把12月19至1月19作为全体本科假期。",
+    "scope": "UIUC参加Winter课程与不参加者假期不同",
+    "reason": "缺不参加Winter课程学生的明确官方假期区间；不自动按学期间隙推算。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 97,
+    "key": "44655ec6b9b07975d27a516b",
+    "school": "多伦多大学 UT",
+    "src": "美东 美西 加拿大!C20",
+    "item": "Withdraw Without W",
+    "original": "S course：2.16\nY course：3.16",
+    "status": "confirmed",
+    "officialUrl": "https://engineering.calendar.utoronto.ca/sessional-dates",
+    "pageTitle": "Sessional Dates – Applied Science and Engineering",
+    "academicYear": "2025/26",
+    "evidence": "官网Winter2026明确Y课2月16、S课3月16；原表把S/Y标签倒置。",
+    "scope": "Toronto本科工程，S包括所修A&S课程；不可推广至全部校区",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-02-16",
+        "to": "2026-02-16",
+        "label": "工程本科Y课程无学术惩罚退课"
+      },
+      {
+        "from": "2026-03-16",
+        "to": "2026-03-16",
+        "label": "工程本科S课程（含所修A&S）无学术惩罚退课"
+      }
+    ]
+  },
+  {
+    "index": 98,
+    "key": "209a0ddcccbc260765100d24",
+    "school": "多伦多大学 UT",
+    "src": "美东 美西 加拿大!J20",
+    "item": "Summer考试",
+    "original": "UTSG:S and Y courses:8.14-8.20https://www.artsci.utoronto.ca/current/dates-deadlines/academic-dates#academic-dates-deadlines-accordion-2\nUTM: Y and S courses.:8.17-8.19https://www.utm.utoronto.ca/registrar/dates\nUTSC: Y and S courses 8.10-8.22https://www.utsc.utoronto.ca/registrar/summer-2025-academic-dates",
+    "status": "unresolved",
+    "officialUrl": "https://www.utsc.utoronto.ca/registrar/summer-2026-academic-dates",
+    "pageTitle": "Summer2026 Academic Dates",
+    "academicYear": "2026",
+    "evidence": "UTSC官方2026确认Y/S考试8月10–22；UTSG A&S访问人机校验，UTM动态页未呈现2026暑期考试区间。",
+    "scope": "Toronto三个校区不同课程，不能混合",
+    "reason": "仅确认UTSC，另外两校区无可靠直接证据；整条不标确认。原UTSC链接确实指向2025，应改2026来源。",
+    "checkedAt": "2026-10-21",
+    "additionalOfficialUrls": [
+      "https://www.artsci.utoronto.ca/current/dates-deadlines/academic-dates",
+      "https://www.utm.utoronto.ca/registrar/dates"
+    ],
+    "verifiedPartialSegments": [
+      {
+        "from": "2026-08-10",
+        "to": "2026-08-22",
+        "label": "UTSC Y/S考试，部分已核实不代表整条完成"
+      }
+    ]
+  },
+  {
+    "index": 99,
+    "key": "c0c91aa7da9f3c01544368c3",
+    "school": "多伦多大学 UT",
+    "src": "美东 美西 加拿大!Q20",
+    "item": "Winter Break",
+    "original": "12.22-1.5",
+    "status": "confirmed",
+    "officialUrl": "https://www.utm.utoronto.ca/registrar/future-dates",
+    "pageTitle": "Future Sessional Dates",
+    "academicYear": "2026/27",
+    "evidence": "UTM明确University closed12月24至2027年1月5。工程校历12月24至1月3加1月4–5 President Days合并同范围；原12月22日仍考试。",
+    "scope": "Toronto官方大学冬季关闭，区分上课间隔",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-12-24",
+        "to": "2027-01-05",
+        "label": "Winter break（大学关闭）"
+      }
+    ],
+    "from": "2026-12-24",
+    "to": "2027-01-05",
+    "additionalOfficialUrls": [
+      "https://engineering.calendar.utoronto.ca/sessional-dates"
+    ]
+  },
+  {
+    "index": 100,
+    "key": "b1680759cbc285f23c8b7a6a",
+    "school": "多伦多大学 UT",
+    "src": "美东 美西 加拿大!R20",
+    "item": "出分时间",
+    "original": "12.20（推测）",
+    "status": "unresolved",
+    "officialUrl": "https://www.utm.utoronto.ca/registrar/enrolment/grades",
+    "pageTitle": "Final Grades",
+    "academicYear": "2026/27",
+    "evidence": "UTM通常考试期结束后约两周；UTSC须教师提交及院系批准后逐课发布，均未承诺12月20统一出分。",
+    "scope": "Toronto本科各课程成绩",
+    "reason": "原12月20推测不支持；学院/校区和审批进度不同。",
+    "checkedAt": "2026-10-21",
+    "additionalOfficialUrls": [
+      "https://www.utsc.utoronto.ca/registrar/your-academic-record"
+    ]
+  },
+  {
+    "index": 101,
+    "key": "c6b4d6b56fbbfbc479951752",
+    "school": "不列颠哥伦比亚大学 UBC",
+    "src": "美东 美西 加拿大!J21",
+    "item": "Summer考试",
+    "original": "Term 1: 2026.6.22-6.26\nTerm 2: 2026.8.17-8.21",
+    "status": "confirmed",
+    "officialUrl": "https://vancouver.calendar.ubc.ca/dates-and-deadlines",
+    "pageTitle": "Dates and Deadlines – UBC Vancouver",
+    "academicYear": "2026",
+    "evidence": "官方两期考试为6月22–26及8月17–21。",
+    "scope": "UBC Vancouver标准Summer Session课程",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-06-22",
+        "to": "2026-06-26",
+        "label": "Summer Term1考试"
+      },
+      {
+        "from": "2026-08-17",
+        "to": "2026-08-21",
+        "label": "Summer Term2考试"
+      }
+    ]
+  },
+  {
+    "index": 102,
+    "key": "e142b78d24b06ddafac7b261",
+    "school": "不列颠哥伦比亚大学 UBC",
+    "src": "美东 美西 加拿大!L21",
+    "item": "Withdraw without W",
+    "original": "Full-year course：9.21\nTerm 1 Course：9.14\nTerm 2 Course：2027.1.15",
+    "status": "confirmed",
+    "officialUrl": "https://vancouver.calendar.ubc.ca/dates-and-deadlines",
+    "pageTitle": "Dates and Deadlines – UBC Vancouver",
+    "academicYear": "2026/27",
+    "evidence": "官方三种无W退课截止：跨两学期9月28、Term1 9月21、Term2 2027年1月18，均不同于原表。",
+    "scope": "UBC Vancouver标准Winter课程，非标准课以Workday为准",
+    "reason": "",
+    "checkedAt": "2026-10-21",
+    "segments": [
+      {
+        "from": "2026-09-28",
+        "to": "2026-09-28",
+        "label": "Full-year course无W退课"
+      },
+      {
+        "from": "2026-09-21",
+        "to": "2026-09-21",
+        "label": "Term1无W退课"
+      },
+      {
+        "from": "2027-01-18",
+        "to": "2027-01-18",
+        "label": "Term2无W退课"
+      }
+    ]
+  },
+  {
+    "index": 103,
+    "key": "f195aacbe4ecfd46b2e5efc9",
+    "school": "不列颠哥伦比亚大学 UBC",
+    "src": "美东 美西 加拿大!Q21",
+    "item": "Winter Break",
+    "original": "12.20-1.5",
+    "status": "unresolved",
+    "officialUrl": "https://vancouver.calendar.ubc.ca/dates-and-deadlines",
+    "pageTitle": "Dates and Deadlines – UBC Vancouver",
+    "academicYear": "2026/27",
+    "evidence": "Fall2026考试直到12月22，Term2在2027年1月5开课；原12月20至1月5包含考试与开课日。",
+    "scope": "UBC Vancouver标准本科校历",
+    "reason": "没有同口径完整Winter Break直证，不能沿用2025的12月20或按间隔推算。",
+    "checkedAt": "2026-10-21"
+  },
+  {
+    "index": 104,
+    "key": "6ece127c13b46c8945f339ca",
+    "school": "不列颠哥伦比亚大学 UBC",
+    "src": "美东 美西 加拿大!R21",
+    "item": "出分时间",
+    "original": "12.20（推测）",
+    "status": "unresolved",
+    "officialUrl": "https://students.ubc.ca/enrolment/courses/grades/",
+    "pageTitle": "Grades – UBC Student Services",
+    "academicYear": "2026/27",
+    "evidence": "官网仅称12月下旬可见，并无12月20统一固定日；当前2026考试尚到12月22。",
+    "scope": "UBC Vancouver Winter Term1学生成绩",
+    "reason": "不能把late December转换成固定12月20；保留待确认。",
+    "checkedAt": "2026-10-21"
+  }
+]

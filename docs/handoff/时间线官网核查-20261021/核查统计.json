@@ -1,0 +1,58 @@
+{
+  "checked": 320,
+  "confirmed": 130,
+  "unresolved": 190,
+  "stale": 0,
+  "schools": 49,
+  "verifiedEvents": 193,
+  "agenda": 1133,
+  "changed": 95,
+  "ukNovember": {
+    "dated": 1,
+    "pending": 10,
+    "total": 23,
+    "shown": 11
+  },
+  "perCountry": {
+    "美国": {
+      "checked": 97,
+      "confirmed": 47
+    },
+    "校名": {
+      "checked": 2,
+      "confirmed": 0
+    },
+    "加拿大": {
+      "checked": 8,
+      "confirmed": 4
+    },
+    "英国": {
+      "checked": 83,
+      "confirmed": 15
+    },
+    "爱尔兰": {
+      "checked": 29,
+      "confirmed": 16
+    },
+    "澳洲": {
+      "checked": 8,
+      "confirmed": 6
+    },
+    "新西兰": {
+      "checked": 14,
+      "confirmed": 0
+    },
+    "香港": {
+      "checked": 41,
+      "confirmed": 20
+    },
+    "澳门": {
+      "checked": 27,
+      "confirmed": 19
+    },
+    "新加坡": {
+      "checked": 11,
+      "confirmed": 3
+    }
+  }
+}

@@ -1736,14 +1736,20 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
   .brief-layout .doc { grid-column:1; grid-row:3; }
 }
 
-/* 时间线完整性：原文只作待核对信息，不与精确日历条混排。 */
-.tl-pending-month, .tl-calendar-reference { margin-top: 20px; }
-.tl-pending-month table, .tl-calendar-reference table { table-layout: fixed; width: 100%; }
-.tl-pending-month td, .tl-calendar-reference td { vertical-align: top; overflow-wrap: anywhere; }
-.tl-pending-month th:nth-child(1) { width: 19%; }
-.tl-pending-month th:nth-child(2) { width: 18%; }
-.tl-pending-month th:nth-child(3) { width: 31%; }
+/* 未确认原文留在同一学校轨道，文字不冒充精确的日期跨度。 */
+.gantt-pending-event { z-index:1; display:flex; align-items:center; gap:8px; min-width:0; padding:0 8px; font-size:12px; }
+.gantt-pending-event>span:not(.tag) { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+.gantt-pending-event>b,.gantt-pending-event>.tag { flex-shrink:0; }
+.tl-pending-raw { display:inline-block; max-width:260px; white-space:pre-wrap; overflow-wrap:anywhere; text-align:left; }
+.tl-official-links { display:inline-flex; flex-wrap:wrap; gap:8px; margin-left:8px; }
+.tl-official-links a { color:#3977d5; text-decoration:underline; }
+.tl-official-note { padding:0 16px; line-height:1.7; }
+.tl-calendar-reference { margin-top:20px; }
+.tl-calendar-reference table { table-layout:fixed; width:100%; }
+.tl-calendar-reference td { vertical-align:top; overflow-wrap:anywhere; }
 .tl-calendar-reference summary { cursor: pointer; padding: 16px; font-weight: 600; }
 .tl-calendar-reference > p { margin: 0 16px 16px; }
 .tl-calendar-reference th:first-child { width: 24%; }
 .tl-calendar-reference th:last-child { width: 21%; }
+
+.tl-scope { display:block; margin-top:4px; color:var(--muted); white-space:normal; line-height:1.5; }

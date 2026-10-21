@@ -161,3 +161,11 @@ test('逐格修改：第一次修改把内置内容复制到本地；原样保�
   assert.deepEqual(saved.regions, readInsight('2026-11').regions, '其余内容来自内置');
 });
 
+
+test('区域窗口合并确认与推测日期后仍保留待确认标记',()=>{
+  const f=timelineFacts({agenda:[
+    {c:'英国',school:'合成A',type:'Final',from:'2026-11-01',to:'2026-11-05'},
+    {c:'英国',school:'合成B',type:'Final',from:'2026-11-04',to:'2026-11-20',flag:'guess'},
+  ]},strategyWindow('2026-11'));
+  const bars=f.lanes.flatMap(([, ,xs])=>xs);assert.equal(bars.length,1);assert.equal(bars[0][4],true);
+});

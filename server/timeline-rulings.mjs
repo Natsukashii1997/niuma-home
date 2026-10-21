@@ -1,5 +1,8 @@
 import { failure } from './v3-common.mjs';
 import { createLocalChanges, fingerprint, getRecord, listRecords } from './local-records.mjs';
+import { applyOfficialVerifications } from './timeline-verification.mjs';
+import { getSettings } from './db.mjs';
+import { TIMELINE_SOURCE } from './timeline.mjs';
 
 // 时间线异常的人工裁定：只存工作台，不改飞书原表。
 // 裁定按「来源单元格 + 原文 + 问题」的指纹对应异常；飞书原格一改，指纹变了，旧裁定自动不再生效，这条重新回到待确认。
@@ -43,7 +46,11 @@ export function applyRulings(timeline, rulings) {
   out.rulings = { applied, stale: rulings.length - applied };
   return out;
 }
-export const withRulings = (db, timeline) => applyRulings(timeline, listRecords(db, RULING_KIND));
+export const withRulings = (db, timeline) => {
+  const identity = getSettings(db).timeline_source;
+  const source = identity ? JSON.parse(identity) : TIMELINE_SOURCE;
+  return applyRulings(applyOfficialVerifications(timeline, undefined, {source}), listRecords(db, RULING_KIND));
+};
 
 export function createRulingService(db, readTimeline, { now = Date.now } = {}) {
   const changes = createLocalChanges(db, { now });

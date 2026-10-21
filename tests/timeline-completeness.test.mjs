@@ -41,7 +41,8 @@ test('英国去年节点可在当月待确认找到，全年与当月不同；�
     sheet(REGION_SHEETS[1],[['英国','Withdraw 截止','Final'],['卡迪夫大学','2026.11.23',''],['曼彻斯特大学','11.18（去年）','']]),
     sheet('11月',[['11月时间线'],['说明'],['MON'],['11月18日'],['曼彻斯特大学\nWithdraw截止（去年）'],['PSU开学']]),
   ],'now');
-  const m=monthTimelineData(t,'2026-11','英国');assert.deepEqual(m.count('英国'),{dated:1,pending:1,total:2});
+  const m=monthTimelineData(t,'2026-11','英国');assert.deepEqual(m.count('英国'),{dated:1,pending:1,total:2,shown:2});
+  assert.equal(m.list.length,2);assert.equal(m.list.find(e=>e.pending).from,null);
   assert.equal(m.pending[0].school,'曼彻斯特大学');assert.equal(m.calendar.length,1);assert.equal(t.calendarEntries.length,2);
   assert.equal(t.calendarEntries.find(e=>e.raw==='PSU开学').schools.length,0);
   assert.equal(t.agenda.length,1);assert.equal(monthTimelineData(t,'2026-12','英国').count('英国').total,2);

@@ -1,4 +1,4 @@
-import { monthTimelineData } from "./timeline-view.js";
+import { monthTimelineData, timelineResolved } from "./timeline-view.js";
 import { SuccessNotice } from "../../ui/SuccessNotice.jsx";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
@@ -45,7 +45,7 @@ const mdSpan = (a, b) => (b ? Math.round((mdDate(b, b < a ? 2027 : 2026) - mdDat
 
 // 事件类别：颜色只区分类别，图例里写明。
 const CATS = [["exam", "考试 / 补考", ["Final", "考试周", "期末", "期中", "补考"]], ["course", "选课 / 开学", ["选课", "春季选课", "开学"]], ["paper", "论文作业", ["Essay 截止"]], ["break", "假期", ["Reading Week", "期中假"]], ["result", "出分", ["出分"]]];
-const catOf = (type) => (CATS.find(([, , types]) => types.includes(type)) || ["other"])[0];
+const catOf = (type) => /出分|成绩/.test(type) ? "result" : (CATS.find(([, , types]) => types.includes(type)) || ["other"])[0];
 
 // 明细表的列是源表原名（如「S1选课时间开放」「final考试(Exams T1)」），按关键词归类，只用于显示 / 隐藏列，不改源表的时间顺序。
 const COL_CATS = [["course", "选课 / 开学"], ["exam", "考试"], ["result", "出分"], ["break", "假期"], ["other", "其他"]];
@@ -96,7 +96,7 @@ function TimelineBoard({ tl, view, initialQ, onSynced }) {
         <span className="small muted">{tl.source} · 同步于 {tl.syncedAt}</span>
       </div>
       <div className="toolbar">
-        <Segmented options={[["month", "按月 · 时间轴"], ["country", "按国家 · 明细表"], ["anomalies", `异常待确认 ${tl.anomalies.filter((a) => !a.ruling).length}`]]} value={view} onChange={go} />
+        <Segmented options={[["month", "按月 · 时间轴"], ["country", "按国家 · 明细表"], ["anomalies", `异常待确认 ${tl.anomalies.filter((a) => !timelineResolved(a)).length}`]]} value={view} onChange={go} />
         <label className="search-box tl-search"><PixelIcon name="search" /><input placeholder="搜索学校或事件，如 UQ / Final" value={q} onChange={(e) => setQ(e.target.value)} /></label>
         <label className="check-inline"><input type="checkbox" checked={showSrc} onChange={(e) => setShowSrc(e.target.checked)} />显示来源单元格</label>
         <span className="spacer" />
@@ -121,11 +121,11 @@ function MonthTimeline({ tl, q, showSrc }) {
   const first = `${month}-01`, last = `${month}-${pad(nDays)}`;
   const now = new Date();
   const todayIdx = now.getFullYear() === y && now.getMonth() + 1 === m ? now.getDate() : 0;
-  const { list, pending, calendar, count } = monthTimelineData(tl, month, country, q);
-  const counter = (c) => { const n = count(c); return `本月 ${n.dated} · 待确认 ${n.pending} / 全年 ${n.total} 校`; };
+  const { list, calendar, count } = monthTimelineData(tl, month, country, q);
+  const counter = (c) => { const n = count(c); return `本月 ${n.shown} 校${n.pending ? `（${n.pending} 校待确认）` : ""} / 全年 ${n.total} 校`; };
   const groups = useMemo(() => {
     const byC = new Map();
-    for (const e of [...list].sort((a, b) => a.from.localeCompare(b.from))) {
+    for (const e of [...list].sort((a, b) => (a.from || "9999").localeCompare(b.from || "9999"))) {
       if (!byC.has(e.c)) byC.set(e.c, new Map());
       const bySchool = byC.get(e.c);
       if (!bySchool.has(e.school)) bySchool.set(e.school, []);
@@ -153,8 +153,8 @@ function MonthTimeline({ tl, q, showSrc }) {
         <span className="spacer" />
         <span className="tl-cats">{CATS.map(([k, label]) => <span key={k}><i className={`ev-${k}`} />{label}</span>)}<span><i className="ev-flag" />冲突待确认</span><span><i className="ev-guess" />推测</span></span>
       </div>
-      <p className="small muted tl-how">“本月”统计能排入时间轴的学校（含已标注的推测或冲突）；“待确认”统计原文涉及本月、但尚不能排期的学校，两者可能重叠。全年学校数来自地区明细。月历原文另列在下方供对照。</p>
-      {!groups.length ? <Placeholder icon="calendar" title={`${country || "全部国家"} · ${month} 暂无可排期节点`}>下方仍保留待确认记录和月历原文，也可查看“按国家 · 明细表”。</Placeholder> : (
+      <p className="small muted tl-how">本月包含已确认和待确认节点。日期尚未核实的记录保留原文并标注“待确认”，不作为确定日期参与策略推导。</p>
+      {!groups.length ? <Placeholder icon="calendar" title={`${country || "全部国家"} · ${month} 暂无节点`}>可展开下方月历原文，或查看“按国家 · 明细表”。</Placeholder> : (
         <section className="card gantt">
           <div className="gantt-head">
             <span className="gantt-corner label">{month} · {list.length} 个节点</span>
@@ -176,8 +176,9 @@ function MonthTimeline({ tl, q, showSrc }) {
                   <div className="gantt-track" style={{ ...cols, gridTemplateRows: `repeat(${rows.length}, 28px)` }}>
                     {Array.from({ length: nDays }, (_, i) => { const wd = new Date(y, m - 1, i + 1).getDay(); return <i key={`bg${i}`} className={`gantt-bg${wd === 0 || wd === 6 ? " is-wkd" : ""}${i + 1 === todayIdx ? " is-today" : ""}`} style={{ gridColumn: i + 1, gridRow: `1 / ${rows.length + 1}` }} />; })}
                     {rows.flatMap((items, lane) => items.flatMap(({ e, s, end, side, cols: n, when }, k) => {
-                      const tip = `${e.school} · ${e.type}${e.detail ? `（${e.detail}）` : ""}\n${e.from}${e.to ? ` → ${e.to}（${span(e.from, e.to)} 天）` : "（单日）"}\n来源：${e.src}${e.flag === "conflict" ? "\n冲突待确认" : e.flag === "guess" ? "\n推测，待确认" : e.ruled ? "\n人工裁定（工作台）" : ""}`;
-                      const text = <><b>{e.type}{e.detail ? ` · ${e.detail}` : ""}</b><em className="tnum">{when}</em>{e.flag === "guess" && <i className="gantt-guess">推测</i>}</>;
+                      const tip = `${e.school} · ${e.type}${e.detail ? `（${e.detail}）` : ""}\n${e.pending ? e.raw : e.from}${e.to ? ` → ${e.to}（${span(e.from, e.to)} 天）` : e.pending ? "" : "（单日）"}${e.verification?.scope ? `\n适用范围：${e.verification.scope}` : ""}\n来源：${e.src}${e.flag === "conflict" ? "\n冲突待确认" : e.flag === "guess" ? "\n推测，待确认" : e.verified ? "\n官网核实" : e.ruled ? "\n人工裁定（工作台）" : ""}`;
+                      if (e.pending) return [<span key={`${lane}-${k}`} className="gantt-pending-event" style={{gridColumn:"1 / -1",gridRow:lane+1}} title={`${tip}\n${e.issue}`}><b>{e.type}</b><span>{e.raw.replace(/https?:\/\/\S+/g, "").trim()}</span><Tag tone="amber">待确认</Tag></span>];
+                      const text = <><b>{e.type}{e.detail ? ` · ${e.detail}` : ""}</b><em className="tnum">{when}</em>{e.flag === "guess" && <i className="gantt-guess">待确认</i>}</>;
                       const bar = side === "single" ? [s, s + n] : [s, end];
                       return [
                         <span key={`${lane}-${k}`} className={`gantt-bar ev-${catOf(e.type)}${!e.to ? " is-single" : ""}${e.flag ? ` is-${e.flag}` : ""}`}
@@ -199,12 +200,6 @@ function MonthTimeline({ tl, q, showSrc }) {
         </section>
       )}
       {list.length > 0 && <MonthList list={list} first={first} showSrc={showSrc} />}
-      {pending.length > 0 && <section className="card tl-pending-month">
-        <div className="card-head"><strong>本月待确认 · {pending.length} 条原文</strong><span className="small muted">原文涉及本月，尚未作为确定日期排期</span></div>
-        <div className="table-wrap"><table className="grid"><thead><tr><th>国家 / 学校</th><th>事件</th><th>原文</th><th>原因与来源</th></tr></thead><tbody>
-          {pending.map((a, i) => <tr key={`${a.src}-${i}`}><td>{a.c}<br /><strong>{a.school}</strong></td><td>{a.cell?.header || "列标题待核对"}</td><td style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{a.a}</td><td>{a.issue}<br /><a href={href("user", "timeline", "anomalies", a.school)}>{a.src} · 查看并核对</a></td></tr>)}
-        </tbody></table></div>
-      </section>}
       <details className="card tl-calendar-reference"><summary>月历原文对照 · {calendar.length} 条{country ? `（${country}）` : ""}</summary>
         <p className="small muted">完整保留飞书当月月历的原文格。地区明细未收录的学校、额外事件和不同日期也可在这里核对；不按月历摆放位置推定年份或日期，不直接参与策略推导。选择“全部国家”可查看尚未归类的原文。</p>
         <div className="table-wrap"><table className="grid"><thead><tr><th>学校 / 地区</th><th>月历原文</th><th>来源</th></tr></thead><tbody>{calendar.map(e => <tr key={e.src}><td>{e.schools.join("、") || "学校待核对"}<br /><span className="small muted">{e.countries.join("、") || "地区待核对"}</span></td><td style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{e.raw}</td><td>{e.src}</td></tr>)}</tbody></table></div>
@@ -232,6 +227,7 @@ function textWidth(text, font) {
 }
 
 function placeBar(e, { first, last, nDays, dayW, showSrc }) {
+  if (e.pending) return {e,s:1,end:nDays,side:"pending",cols:0,when:e.raw,a:1,b:nDays};
   const s = e.from < first ? 1 : Number(e.from.slice(8));
   const end = (e.to || e.from) > last ? nDays : Number((e.to || e.from).slice(8));
   const when = `${md(e.from)}${e.to ? ` → ${md(e.to)}` : ""}${showSrc ? ` · ${e.src}` : ""}`;
@@ -251,25 +247,29 @@ function placeBar(e, { first, last, nDays, dayW, showSrc }) {
   return { e, s, end, side: "in", cols: 0, when, a: s, b: end };
 }
 
+function OfficialLinks({ verification }) {
+  return verification?.sources?.length ? <span className="tl-official-links">{verification.sources.map((s,i)=><a key={s.url} href={s.url} target="_blank" rel="noreferrer" title={s.title}>官网依据{verification.sources.length > 1 ? i+1 : ""}</a>)}</span> : null;
+}
+
 // 时间轴下面的文字清单：按开始日期排，一句话写全。
 function MonthList({ list, first, showSrc }) {
-  const rows = [...list].sort((a, b) => byCountry(a.c, b.c) || a.from.localeCompare(b.from));
+  const rows = [...list].sort((a, b) => byCountry(a.c, b.c) || (a.from || "9999").localeCompare(b.from || "9999"));
   return (
     <section className="card month-list">
       <div className="card-head"><h2><PixelIcon name="menu" />本月节点清单</h2><span className="small muted">按国家、开始日期排序 · 悬停一行可看来源单元格</span></div>
       <table className="grid compact">
         <thead><tr><th>开始</th><th>国家</th><th>学校</th><th>事件</th><th className="r">起止</th><th className="r">天数</th>{showSrc && <th>来源</th>}</tr></thead>
         <tbody>{rows.map((e, i) => {
-          const d = toDate(e.from);
+          const d = e.from ? toDate(e.from) : null;
           return (
-            <tr key={i} title={`来源：${e.src}`} className={e.flag ? `is-${e.flag}` : ""}>
-              <td className="tnum">{e.from < first ? <span className="muted">上月开始</span> : `${md(e.from)} 周${WD[d.getDay()]}`}</td>
+            <tr key={i} title={`来源：${e.src}${e.issue ? `\n${e.issue}` : ""}${e.verification?.reason ? `\n官网核查：${e.verification.reason}` : ""}`} className={e.flag ? `is-${e.flag}` : ""}>
+              <td className="tnum">{e.pending ? <span className="muted">待确认</span> : e.from < first ? <span className="muted">上月开始</span> : `${md(e.from)} 周${WD[d.getDay()]}`}</td>
               <td>{e.c}</td>
               <td><strong>{e.school}</strong></td>
-              <td><span className={`ev-dot ev-${catOf(e.type)}`} />{e.type}{e.detail && <small> · {e.detail}</small>}{e.flag === "conflict" && <Tag tone="red">冲突待确认</Tag>}{e.flag === "guess" && <Tag tone="amber">推测</Tag>}{e.ruled && <Tag tone="frame">人工裁定</Tag>}</td>
-              <td className="r">{md(e.from)}{e.to ? ` → ${md(e.to)}` : ""}</td>
-              <td className="r">{e.to ? `${span(e.from, e.to)} 天` : "单日"}</td>
-              {showSrc && <td className="tnum small muted">{e.src}</td>}
+              <td><span className={`ev-dot ev-${catOf(e.type)}`} />{e.type}{e.detail && <small> · {e.detail}</small>}{e.flag === "conflict" && <Tag tone="red">冲突待确认</Tag>}{e.flag === "guess" && <Tag tone="amber">待确认</Tag>}{e.verified && <Tag tone="frame">官网核实</Tag>}{e.ruled && <Tag tone="frame">人工裁定</Tag>}{e.verification?.scope && <small className="tl-scope">{e.verification.scope}</small>}</td>
+              <td className="r">{e.pending ? <span className="tl-pending-raw">{e.raw.replace(/https?:\/\/\S+/g, "").trim()}</span> : <>{md(e.from)}{e.to ? ` → ${md(e.to)}` : ""}</>}</td>
+              <td className="r">{e.pending ? "—" : e.to ? `${span(e.from, e.to)} 天` : "单日"}</td>
+              {showSrc && <td className="tnum small muted">{e.src}<OfficialLinks verification={e.verification} /></td>}
             </tr>
           );
         })}</tbody>
@@ -290,7 +290,7 @@ function CountryTable({ tl, q, showSrc }) {
   // 空格子分两种：原表这一格空白；或者原表写了，但日期不完整 / 有冲突，进了「异常待确认」（按「学校 + 列名」对上异常清单）。
   // 裁定为「不采用」的格子单独标出；已裁定采用的格子已有日期，不再算待确认。
   const cellKey = (a) => `${a.school}|${a.issue.split("：")[0]}`;
-  const pendingKeys = useMemo(() => new Set(tl.anomalies.filter((a) => !a.ruling).map(cellKey)), [tl.anomalies]);
+  const pendingKeys = useMemo(() => new Set(tl.anomalies.filter((a) => !timelineResolved(a)).map(cellKey)), [tl.anomalies]);
   const excludedKeys = useMemo(() => new Set(tl.anomalies.filter((a) => a.ruling?.decision === "exclude").map(cellKey)), [tl.anomalies]);
   return (
     <>
@@ -330,8 +330,8 @@ function CountryTable({ tl, q, showSrc }) {
                         : excludedKeys.has(k) ? <td key={i} className="tl-cell is-missing" title="原表写了，人工裁定为不采用"><a href={href("user", "timeline", "anomalies", r.abbr || r.school)}>不采用</a></td>
                         : <td key={i} className="tl-cell is-missing" title="原表这一格空白"><span>—</span></td>;
                       if (r.cellRanges?.[i]?.length > 0) return <td key={i} className="tl-cell" title={`来源：${cell[2]}`}>
-                        {r.cellRanges[i].map((part, j) => <div key={j}><span className="tnum">{part.from} → {part.to}</span>{part.label && <small>{part.label}</small>}{part.flag && <Tag tone={part.flag === "conflict" ? "red" : "amber"}>{part.flag === "ruled" ? "人工裁定" : part.flag === "conflict" ? "冲突" : "待确认"}</Tag>}</div>)}
-                        {showSrc && <small>{cell[2]}</small>}
+                        {r.cellRanges[i].map((part, j) => <div key={j}><span className="tnum">{part.from} → {part.to}</span>{part.label && <small>{part.label}</small>}{part.flag && <Tag tone={part.flag === "verified" ? "frame" : part.flag === "conflict" ? "red" : "amber"}>{part.flag === "verified" ? "官网核实" : part.flag === "ruled" ? "人工裁定" : part.flag === "conflict" ? "冲突" : "待确认"}</Tag>}</div>)}
+                        {r.cellRanges[i][0]?.verification?.scope && <small className="tl-scope">{r.cellRanges[i][0].verification.scope}</small>}{showSrc && <small>{cell[2]}<OfficialLinks verification={r.cellRanges[i][0]?.verification} /></small>}
                       </td>;
                       const [from, rawTo, src, flag] = cell;
                       const to = rawTo && rawTo !== from ? rawTo : null; // 起止同一天按单日写
@@ -339,7 +339,7 @@ function CountryTable({ tl, q, showSrc }) {
                       return (
                         <td key={i} className={`tl-cell${flag ? ` is-${flag}` : ""}${inDm ? " is-dm" : ""}`} title={`来源：${src}`}>
                           <span className="tnum">{from}{to && <> → {to}</>}</span>
-                          <small>{to ? `${mdSpan(from, to)} 天` : "单日"}{flag === "guess" && <Tag tone="amber">推测</Tag>}{flag === "conflict" && <Tag tone="red">冲突</Tag>}{flag === "ruled" && <Tag tone="frame">人工裁定</Tag>}{showSrc && <span className="tnum"> · {src}</span>}</small>
+                          <small>{to ? `${mdSpan(from, to)} 天` : "单日"}{flag === "guess" && <Tag tone="amber">待确认</Tag>}{flag === "conflict" && <Tag tone="red">冲突</Tag>}{flag === "ruled" && <Tag tone="frame">人工裁定</Tag>}{showSrc && <span className="tnum"> · {src}</span>}</small>
                         </td>
                       );
                     })}
@@ -358,16 +358,16 @@ function CountryTable({ tl, q, showSrc }) {
 // 异常待确认：原文、来源单元格、标记都完整保留；长原文在框内换行、超长时框内滚动，不撑破页面。
 // 日期类异常可以人工裁定（采用解析出的日期 / 手填 / 不采用），只存工作台、不改飞书；裁定后这一格按裁定值参与主线需求推导。
 // 飞书原格一改（重新同步后原文变了），旧裁定自动失效，这条回到待确认。校名类异常没有日期格，仍请改飞书原表。
-const RULE_SHOW = [["open", "待确认"], ["ruled", "已裁定"], ["all", "全部"]];
+const RULE_SHOW = [["open", "待确认"], ["ruled", "已核实 / 裁定"], ["all", "全部"]];
 function Anomalies({ tl, q, onSaved }) {
   const [show, setShow] = useState("all");
-  const open = tl.anomalies.filter((a) => !a.ruling).length;
-  const list = tl.anomalies.filter((a) => (!q || `${a.school}${a.issue}`.toLowerCase().includes(q.toLowerCase())) && (show === "all" || (show === "ruled") === Boolean(a.ruling)));
+  const open = tl.anomalies.filter((a) => !timelineResolved(a)).length;
+  const list = tl.anomalies.filter((a) => (!q || `${a.school}${a.issue}`.toLowerCase().includes(q.toLowerCase())) && (show === "all" || (show === "ruled") === timelineResolved(a)));
   const oldSnapshot = tl.anomalies.length > 0 && !tl.anomalies.some((a) => a.cell);
   const reread = async () => { const back = await apiSend("GET", "/api/v3/timeline"); onSaved(back); return back; };
   return (
     <>
-      <p className="small muted">导入时发现日期不完整、多个时段、含限定条件或互相冲突的格子，共 {tl.anomalies.length} 条，{open} 条待确认{q ? `，筛出 ${list.length} 条` : ""}。工作台不自行猜测：没裁定的格子不参与推导主线需求。日期类异常可以在这里人工裁定（只存工作台，不改飞书）；也可以改飞书原表后点「同步」。</p>
+      <p className="small muted">导入时发现日期不完整、多个时段、含限定条件或互相冲突的格子，共 {tl.anomalies.length} 条，{open} 条待确认{q ? `，筛出 ${list.length} 条` : ""}。工作台不自行猜测：尚未核实或裁定的格子不作为确定日期推导主线需求。日期类异常可以在这里人工裁定（只存工作台，不改飞书）；也可以改飞书原表后点「同步」。</p>
       {oldSnapshot && <p className="small warn-text">当前快照是旧格式，没有记录单元格位置；点上面的「同步」重新读取（只读）后才能裁定。</p>}
       {tl.rulings?.stale > 0 && <p className="small warn-text">有 {tl.rulings.stale} 条裁定对应的飞书原格已经改过，已自动失效，这些格子回到待确认。</p>}
       <div className="toolbar"><Segmented options={RULE_SHOW.map(([k, label]) => [k, `${label} ${k === "open" ? open : k === "ruled" ? tl.anomalies.length - open : tl.anomalies.length}`])} value={show} onChange={setShow} /></div>
@@ -390,6 +390,7 @@ function rulingText(a, r) {
 
 function AnomalyCard({ a, reread }) {
   const cells = a.cell?.cells || [];
+  const restored = a.verification?.status === "confirmed" ? "恢复官网核实日期" : "回到待确认";
   const [pick, setPick] = useState(""); // "adopt:0" / "adopt:1" / "manual" / "exclude"
   const [days, setDays] = useState({ from: "", to: "" });
   const [note, setNote] = useState("");
@@ -415,7 +416,7 @@ function AnomalyCard({ a, reread }) {
   );
   const resolve = async () => { await reread(); flow.resolve(); };
   return (
-    <section className={`card anomaly${a.ruling ? " is-done" : ""}`}>
+    <section className={`card anomaly${timelineResolved(a) ? " is-done" : ""}`}>
       <div className="anomaly-main">
         <strong>{a.school}</strong>
         <span>{a.issue}</span>
@@ -425,6 +426,7 @@ function AnomalyCard({ a, reread }) {
         <div><span className="label">原文 A</span><pre className="anomaly-raw">{a.a || "（空）"}</pre></div>
         <div><span className="label">原文 B</span><pre className="anomaly-raw">{a.b || "—"}</pre></div>
       </div>
+      {a.verification && <p className="small tl-official-note"><Tag tone={a.verification.status === "confirmed" ? "frame" : "amber"}>{a.verification.status === "confirmed" ? "官网核实" : "待确认"}</Tag> {a.verification.reason} {a.verification.scope && <span>适用范围：{a.verification.scope}。</span>}<span className="muted">核查于 {a.verification.checkedAt}</span><OfficialLinks verification={a.verification} /></p>}
       <div className="anomaly-rule">
         {a.ruling ? (
           <div className="row">
@@ -458,12 +460,12 @@ function AnomalyCard({ a, reread }) {
             {pick === "manual" && cells.length > 1 && <p className="small muted">手填的日期写在 A 格；B 格仍不参与推导。</p>}
           </>
         )}
-        <WriteBox flow={flow} title={pick === "clear" ? "撤销裁定预览" : "裁定预览"} confirmLabel={pick === "clear" ? "确认撤销" : "确认裁定"} savedText={pick === "clear" ? "已撤销裁定，回读核对一致；这一格回到待确认" : "已裁定，回读核对一致"} onConfirm={confirm} onRepreview={() => preview(pick === "clear" ? { decision: "clear" } : body())} onReread={resolve}>
+        <WriteBox flow={flow} title={pick === "clear" ? "撤销裁定预览" : "裁定预览"} confirmLabel={pick === "clear" ? "确认撤销" : "确认裁定"} savedText={pick === "clear" ? `已撤销裁定，回读核对一致；${restored}` : "已裁定，回读核对一致"} onConfirm={confirm} onRepreview={() => preview(pick === "clear" ? { decision: "clear" } : body())} onReread={resolve}>
           {(pv) => <dl className="kv">
             <dt>格子</dt><dd>{a.school} · {a.cell?.header || a.issue.split("：")[0]} · <span className="tnum">{a.src}</span></dd>
-            <dt>裁定</dt><dd>{pv.value.decision === "clear" ? <><span className="diff-old">{a.ruling && rulingText(a, a.ruling)}</span> → <span className="diff-new">撤销，回到待确认</span></> : <span className="diff-new">{rulingText(a, pv.value)}</span>}</dd>
+            <dt>裁定</dt><dd>{pv.value.decision === "clear" ? <><span className="diff-old">{a.ruling && rulingText(a, a.ruling)}</span> → <span className="diff-new">撤销，{restored}</span></> : <span className="diff-new">{rulingText(a, pv.value)}</span>}</dd>
             {pv.value.note && <><dt>备注</dt><dd>{pv.value.note}</dd></>}
-            <dt>影响</dt><dd>{pv.value.decision === "clear" || pv.value.decision === "exclude" ? "这一格不参与主线需求推导" : "这一格按裁定日期参与主线需求推导；已采纳的相关需求会变成「待复核」"}</dd>
+            <dt>影响</dt><dd>{pv.value.decision === "clear" ? (a.verification?.status === "confirmed" ? "恢复官网核实日期与适用范围" : "这一格不作为确定日期参与主线需求推导") : pv.value.decision === "exclude" ? "这一格不参与主线需求推导" : "这一格按裁定日期参与主线需求推导；已采纳的相关需求会变成「待复核」"}</dd>
             <dt>写到哪里</dt><dd>工作台本地，不改飞书原表；原格内容变了裁定自动失效</dd>
           </dl>}
         </WriteBox>
