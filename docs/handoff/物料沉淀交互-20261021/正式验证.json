@@ -1,0 +1,23 @@
+{
+  "cards": [
+    {
+      "caption": "未分类",
+      "hasDelete": true,
+      "height": 224
+    },
+    {
+      "caption": "未分类",
+      "hasDelete": true,
+      "height": 224
+    },
+    {
+      "caption": "未分类",
+      "hasDelete": true,
+      "height": 224
+    }
+  ],
+  "sourceDefaultGroupEmpty": true,
+  "release": "nm-20261021-115434-5c78292",
+  "url": "http://127.0.0.1:5280",
+  "tabs": "月度物料\n过往营销\n设计参考"
+}
