@@ -4,6 +4,7 @@ import { PixelIcon } from "../../ui/bitmap.jsx";
 import { Button, Loadable, Modal, useToast } from "../../ui/components.jsx";
 import { SavedNote } from "../../ui/write-flow.jsx";
 import { useLocalCanvas } from "../../ui/use-local-canvas.js";
+import CacheImageWarning from "../../ui/CacheImageWarning.jsx";
 import Thumb from "../../ui/Thumb.jsx";
 import { DigiworldImport } from "./DigiworldImport.jsx";
 
@@ -17,7 +18,7 @@ function Canvas({ initial }) {
   const [notice, setNotice] = useState(null), [tag, setTag] = useState(""), [zoom, setZoom] = useState(1);
   const [importing, setImporting] = useState(false), [open, setOpen] = useState(null), [previewPos, setPreviewPos] = useState(null);
   const [toast, showToast] = useToast();
-  const { value: data, change, busy, locked, error, reread, retry, canRetry } = useLocalCanvas(initial, "/api/v3/refs", text => setNotice({ text, id: crypto.randomUUID() }));
+  const { value: data, change, busy, locked, error, warning, dismissWarning, reread, retry, canRetry } = useLocalCanvas(initial, "/api/v3/refs", text => setNotice({ text, id: crypto.randomUUID() }));
   const wrap = useRef(null), drag = useRef(null), items = data.items;
   const tags = [...new Set(items.flatMap(i => i.tags))];
   const add = list => {
@@ -70,6 +71,7 @@ function Canvas({ initial }) {
   const selected = items.find(i => i.id === open);
   return <>
     <SavedNote text={notice?.text} identity={notice?.id} onClose={() => setNotice(null)} />
+    <CacheImageWarning text={warning} onClose={dismissWarning} />
     <div className="toolbar">
       <span className="label"><PixelIcon name="filter" />分类</span>
       <button className={`chip${!tag ? " is-on" : ""}`} onClick={() => setTag("")}>全部 {items.length}</button>

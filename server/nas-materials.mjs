@@ -1,11 +1,10 @@
-import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import { getSettings, materialImageDir } from './db.mjs';
 import { beijingText, failure, saveSnapshot } from './v3-common.mjs';
 import { recordSource } from './source-status.mjs';
+import { CACHE_IMAGE_TARGET_BYTES, cacheImageWarning, checkCacheImage, compressCachedJpeg } from './image-cache.mjs';
 
 // NAS 月度物料（用户 2026-10-19）：原件留在公司 NAS，由用户在 Finder 用 SMB 挂载；工作台只读扫描、只缓存缩略图。
 // 目录：<根>/YYYY-M月/<含业务线名的文件夹>/…；每月命名会变，只认文件名里的关键词。「营销物料」文件夹不扫。
@@ -72,9 +71,8 @@ function walk(root, rel) {
   });
 }
 
-const run = promisify(execFile);
 // 默认用 macOS 自带 sips 生成长边 640 的 JPEG 缩略图；测试注入替身。
-const sipsThumb = async (source, target) => { await run('/usr/bin/sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '80', '-Z', '640', source, '--out', target], { timeout: 60_000 }); };
+const sipsThumb = async (source, target) => { fs.writeFileSync(target, await compressCachedJpeg(source, { maxEdge: 640, quality: 80 }), { mode: 0o600 }); };
 
 export function createNasMaterials(db, { thumbDir = path.join(path.dirname(materialImageDir(db)), 'nas-thumbs'), makeThumb = sipsThumb, now = Date.now } = {}) {
   const root = () => getSettings(db).nas_root || NAS_DEFAULT_ROOT;
@@ -84,6 +82,7 @@ export function createNasMaterials(db, { thumbDir = path.join(path.dirname(mater
     return row ? JSON.parse(row.payload) : null;
   };
   const thumbBytes = () => { try { return fs.readdirSync(thumbDir).reduce((sum, f) => sum + fs.statSync(path.join(thumbDir, f)).size, 0); } catch { return 0; } };
+  const validThumb = file => { try { const s = fs.lstatSync(file); return s.isFile() && s.size > 0; } catch { return false; } };
   let scanning = null;
 
   async function scanOnce() {
@@ -105,8 +104,17 @@ export function createNasMaterials(db, { thumbDir = path.join(path.dirname(mater
             const stat = fs.statSync(path.join(base, item.path));
             const id = createHash('sha1').update(`${item.path}\n${stat.size}\n${stat.mtimeMs}`).digest('hex').slice(0, 20);
             const thumb = path.join(thumbDir, `${id}.jpg`);
-            let hasThumb = fs.existsSync(thumb);
-            if (!hasThumb) { try { await makeThumb(path.join(base, item.path), thumb); hasThumb = fs.existsSync(thumb); } catch { hasThumb = false; } }
+            let hasThumb = validThumb(thumb);
+            if (!hasThumb) {
+              const temporary = fs.mkdtempSync(path.join(thumbDir, '.pending-'));
+              try {
+                const output = path.join(temporary, 'thumb.jpg');
+                await makeThumb(path.join(base, item.path), output);
+                checkCacheImage(fs.readFileSync(output));
+                fs.renameSync(output, thumb); hasThumb = true;
+              } catch { fs.rmSync(thumb, { force: true }); hasThumb = false; }
+              finally { fs.rmSync(temporary, { recursive: true, force: true }); }
+            }
             return { id, name: item.name, path: item.path, file: path.basename(item.path), size: stat.size, others: item.others, thumb: hasThumb ? `/api/v3/nas/thumb/${id}` : null };
           }));
         }
@@ -120,7 +128,11 @@ export function createNasMaterials(db, { thumbDir = path.join(path.dirname(mater
   }
   const scan = () => (scanning ||= scanOnce().finally(() => { scanning = null; }));
 
-  const view = (payload) => ({ ...payload, root: root(), reachable: reachable(), lastScanAt: beijingText(payload.scannedAt), thumbBytes: thumbBytes() });
+  const view = (payload) => {
+    const ids = new Set(Object.values(payload.lines).flatMap(line => Object.values(line.cells).flat()).map(item => item.id));
+    const oversized = [...ids].filter(id => { try { return fs.statSync(path.join(thumbDir, `${id}.jpg`)).size > CACHE_IMAGE_TARGET_BYTES; } catch { return false; } }).length;
+    return { ...payload, root: root(), reachable: reachable(), lastScanAt: beijingText(payload.scannedAt), thumbBytes: thumbBytes(), warning: cacheImageWarning(oversized) };
+  };
   const findItem = (id) => {
     const payload = saved();
     for (const line of Object.values(payload?.lines || {})) for (const items of Object.values(line.cells)) {

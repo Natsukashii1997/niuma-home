@@ -2,12 +2,10 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { createLocalChanges, getRecord, putRecord, fingerprint } from './local-records.mjs';
 import { failure } from './v3-common.mjs';
+import { CACHE_IMAGE_TARGET_BYTES, cacheImageWarning, checkCacheImage, compressCachedJpeg } from './image-cache.mjs';
 
-const execute = promisify(execFile);
 const imageFile = /^[0-9a-f-]{36}\.jpg$/;
 export function referenceDir(db) { return path.join(path.dirname(db.prepare('PRAGMA database_list').get().file), 'refs'); }
 function text(value, name, max, required = false) {
@@ -18,7 +16,7 @@ function number(value, name, min, max) {
   if (!Number.isFinite(value) || value < min || value > max) throw failure(400, `${name}超出可用范围`);
   return value;
 }
-export async function compressReference(dataUrl, { run = execute } = {}) {
+export async function compressReference(dataUrl, options = {}) {
   const match = typeof dataUrl === 'string' && dataUrl.match(/^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/);
   if (!match) throw failure(415, '参考图片仅接受 PNG、JPEG 或 WEBP');
   const bytes = Buffer.from(match[2], 'base64');
@@ -27,12 +25,9 @@ export async function compressReference(dataUrl, { run = execute } = {}) {
   if (!valid) throw failure(415, '图片内容与声明格式不一致');
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'workdesk-ref-'));
   try {
-    const input = path.join(temporary, `input.${match[1]}`), output = path.join(temporary, 'compressed.jpg');
+    const input = path.join(temporary, `input.${match[1]}`);
     fs.writeFileSync(input, bytes, { flag: 'wx', mode: 0o600 });
-    await run('/usr/bin/sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '75', '--resampleHeightWidthMax', '1600', input, '--out', output], { timeout: 20000, maxBuffer: 100000, encoding: 'utf8', shell: false });
-    const result = fs.readFileSync(output);
-    if (result.length > 4 * 1024 * 1024 || result[0] !== 255 || result[1] !== 216) throw failure(415, '图片压缩结果无效');
-    return result;
+    return await compressCachedJpeg(input, options);
   } catch (error) { if (error.status) throw error; throw failure(415, '无法解码或压缩图片，请换一张有效图片'); }
   finally { fs.rmSync(temporary, { recursive: true, force: true }); }
 }
@@ -43,7 +38,11 @@ export function createReferenceService(db, { now = Date.now, compress = compress
   const sources = value => new Set(value.items.flatMap(i => [i.src, ...(i.gallery || [])]).filter(src => typeof src === 'string' && src.startsWith(prefix) && imageFile.test(src.slice(prefix.length))));
   const changes = createLocalChanges(db, { now }), files = new Map();
   const read = () => getRecord(db, kind, 'canvas') || { zones: [], items: [] };
-  const state = () => { const value = read(); return { value, revision: fingerprint(value) }; };
+  const state = () => {
+    const value = read();
+    const oversized = [...sources(value)].filter(src => { try { return fs.statSync(path.join(directory(), src.slice(prefix.length))).size > CACHE_IMAGE_TARGET_BYTES; } catch { return false; } }).length;
+    return { value, revision: fingerprint(value), warning: cacheImageWarning(oversized) };
+  };
   const inflight = new Map();
   const service = {
     read, state,
@@ -67,7 +66,7 @@ export function createReferenceService(db, { now = Date.now, compress = compress
         if (item.big !== undefined) result.big = text(item.big,'大字',100);
         if (item.accent !== undefined) { if (typeof item.accent !== 'boolean') throw failure(400,'强调值须为布尔值'); result.accent = item.accent; }
         if (item.imageDataUrl) {
-          const bytes = await compress(item.imageDataUrl), file = `${randomUUID()}.jpg`;
+          const bytes = checkCacheImage(await compress(item.imageDataUrl)), file = `${randomUUID()}.jpg`;
           images.push({ file, bytes }); result.src = prefix + file;
         } else if (item.src) {
           if (typeof item.src !== 'string') throw failure(400, '图片地址须为文字');
@@ -85,7 +84,7 @@ export function createReferenceService(db, { now = Date.now, compress = compress
           result.gallery = [];
           for (const src of item.gallery || []) {
             if (typeof src === 'string' && src.startsWith('data:')) {
-              const bytes = await compress(src), file = `${randomUUID()}.jpg`;
+              const bytes = checkCacheImage(await compress(src)), file = `${randomUUID()}.jpg`;
               images.push({ file, bytes }); result.gallery.push(prefix + file);
             } else {
               const old = current.items.find(x => x.id === id);
@@ -101,7 +100,7 @@ export function createReferenceService(db, { now = Date.now, compress = compress
       const preview = changes.preview(kind, 'canvas', { zones, items });
       for (const [id,p] of files) if (p.expires <= now()) files.delete(id);
       files.set(preview.previewId, { images, before: current, value: { zones, items }, expires: Date.parse(preview.expiresAt) });
-      return { ...preview, imageBytes: images.reduce((n,x)=>n+x.bytes.length,0) };
+      return { ...preview, imageBytes: images.reduce((n,x)=>n+x.bytes.length,0), warning: cacheImageWarning(images.filter(x=>x.bytes.length > CACHE_IMAGE_TARGET_BYTES).length) };
     },
     confirm(body, operation) {
       if (body?.confirm !== true || typeof body.previewId !== 'string') throw failure(400, '请先预览，再明确确认');
@@ -113,6 +112,7 @@ export function createReferenceService(db, { now = Date.now, compress = compress
         prepared.receipt = changes.confirm(kind, 'canvas', body, { beforeCommit(value) {
           if (prepared.images.length) fs.mkdirSync(directory(), { recursive: true });
           for (const image of prepared.images) {
+            checkCacheImage(image.bytes);
             const target = path.join(directory(), image.file);
             const fd = fs.openSync(target, 'wx', 0o600); created.push(target);
             try { fs.writeFileSync(fd, image.bytes); } finally { fs.closeSync(fd); }

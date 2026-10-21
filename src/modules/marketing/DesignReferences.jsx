@@ -4,6 +4,7 @@ import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { Button, Loadable, Modal } from "../../ui/components.jsx";
 import { SavedNote } from "../../ui/write-flow.jsx";
 import { useLocalCanvas } from "../../ui/use-local-canvas.js";
+import CacheImageWarning from "../../ui/CacheImageWarning.jsx";
 
 const groupOf = i => i.tags[0] || "未分组";
 const zone = name => ({ name, x: 0, y: 0, w: 300, h: 280 });
@@ -17,7 +18,7 @@ function Desk({ initial }) {
   const [naming, setNaming] = useState(null), [importing, setImporting] = useState(false), [selected, setSelected] = useState(null), [image, setImage] = useState(0), [over, setOver] = useState(null);
   const drag = useRef(null), ignoreClick = useRef(false);
   const [moving, setMoving] = useState(null);
-  const { value, change, busy, locked, error, reread, retry, canRetry } = useLocalCanvas(initial, "/api/v3/design-refs", text => setNotice({ text, id: crypto.randomUUID() }));
+  const { value, change, busy, locked, error, warning, dismissWarning, reread, retry, canRetry } = useLocalCanvas(initial, "/api/v3/design-refs", text => setNotice({ text, id: crypto.randomUUID() }));
   const groups = [...value.zones.map(z => z.name), "未分组"], items = value.items;
   useEffect(() => { localStorage.setItem("niuma-design-expanded", JSON.stringify(opened)); }, [opened]);
   const toggle = name => setOpened(old => old.includes(name) ? old.filter(n => n !== name) : [...old, name]);
@@ -75,6 +76,7 @@ function Desk({ initial }) {
   </article>;
   return <>
     <SavedNote text={notice?.text} identity={notice?.id} onClose={() => setNotice(null)} />
+    <CacheImageWarning text={warning} onClose={dismissWarning} />
     <div className="design-toolbar">
       <div className="design-filters"><button className={`chip${!filter ? " is-on" : ""}`} onClick={() => setFilter("")}>全部 {items.length}</button>
         {groups.filter(g => g !== "未分组" || items.some(i => groupOf(i) === g)).map(g => <button key={g} data-design-group={g} className={`chip${filter === g ? " is-on" : ""}${over === g ? " is-over" : ""}`} {...drop(g)} onClick={() => { setFilter(filter === g ? "" : g); setOpened(old => old.includes(g) ? old : [...old, g]); }}>{g} <span className="tnum">{items.filter(i => groupOf(i) === g).length}</span></button>)}

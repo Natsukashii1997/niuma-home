@@ -1,0 +1,26 @@
+{
+  "tests": 452,
+  "passed": 452,
+  "native": {
+    "inputBytes": 7689712,
+    "attemptBytes": [
+      2496472,
+      2138706,
+      1779455,
+      1177416,
+      582188
+    ],
+    "storedBytes": 582188
+  },
+  "isolated": {
+    "retainedOversizeBytes": 1000001,
+    "warning": "有 1 张图片压缩后仍超过 1 MB，已保留，可正常查看和整理。",
+    "position": {
+      "x": 128,
+      "y": 72
+    },
+    "dismissAndMoveSilent": true,
+    "reloadRetained": true,
+    "nasWarningSequence": "1 -> dismissed -> 0 -> 1 visible"
+  }
+}

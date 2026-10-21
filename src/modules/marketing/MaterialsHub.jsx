@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import PastMarketingCanvas from "./PastMarketingCanvas.jsx";
@@ -7,6 +7,7 @@ import { href } from "../../router.js";
 import { Button, Loadable, Modal, Segmented } from "../../ui/components.jsx";
 import Thumb from "../../ui/Thumb.jsx";
 import MaterialsView from "./MaterialsView.jsx";
+import CacheImageWarning from "../../ui/CacheImageWarning.jsx";
 
 
 // 物料（v3）：原件在公司 NAS（用户在 Finder 用 SMB 挂载），工作台只读扫描、本地只存缩略图。
@@ -60,10 +61,13 @@ function NasBar({ nas, onScanned }) {
 function NasBoard({ nas, onScanned }) {
   const [line, setLine] = useState("大学辅导");
   const [open, setOpen] = useState(null);
+  const [dismissed, setDismissed] = useState("");
+  useEffect(() => { setDismissed(""); }, [nas.warning]);
   const data = nas.lines[line];
   return (
     <>
       <NasBar nas={nas} onScanned={onScanned} />
+      <CacheImageWarning text={dismissed === nas.warning ? "" : nas.warning} onClose={() => setDismissed(nas.warning)} />
       <div className="toolbar">
         <Segmented options={NAS_LINES} value={line} onChange={setLine} />
         <span className="small muted">按文件名关键词识别：{data.types.map((t) => `${t.key}「${t.keyword}」`).join(" · ")}；同名活动只留第一张，不扫「营销物料」文件夹</span>
@@ -89,7 +93,6 @@ function NasBoard({ nas, onScanned }) {
             <dl className="kv">
               <dt>文件</dt><dd>{open.item.file}</dd>
               <dt>NAS 路径</dt><dd className="mono small">{open.item.path}</dd>
-              <dt>大小</dt><dd className="tnum">{(open.item.size / 1048576).toFixed(1)} MB</dd>
               {open.item.others.length > 0 && <><dt>同类未选</dt><dd className="small muted">{open.item.others.map((p) => p.split("/").pop()).join("、")}</dd></>}
               <dt>说明</dt><dd className="small muted">本地只缓存缩略图；原图从 NAS 读取，需要连公司网络并挂载 NAS。</dd>
             </dl>

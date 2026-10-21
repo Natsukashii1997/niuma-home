@@ -5,6 +5,7 @@ import { apiSend } from "../api.js";
 export function useLocalCanvas(initial, endpoint, onNotice) {
   const base = useRef(initial), queue = useRef([]), running = useRef(false), reconciling = useRef(false), mounted = useRef(true);
   const [value, setValue] = useState(initial.value), [busy, setBusy] = useState(false), [error, setError] = useState(""), [canRetry, setCanRetry] = useState(false);
+  const [warning, setWarning] = useState(initial.warning || "");
   const blocked = useRef(false), notify = useRef(onNotice); notify.current = onNotice;
   const paint = () => { if (mounted.current) setValue(queue.current.reduce((v, j) => j.apply(v), base.current.value)); };
   useEffect(() => { mounted.current = true; const leave = e => { if (queue.current.length) { e.preventDefault(); e.returnValue = ""; } }; addEventListener("beforeunload", leave); return () => { mounted.current = false; removeEventListener("beforeunload", leave); }; }, []);
@@ -25,6 +26,7 @@ export function useLocalCanvas(initial, endpoint, onNotice) {
         }
         const back = await apiSend("GET", `${endpoint}/state`);
         if (back.revision !== saved.revision) throw new Error("内容已在其他页面变化，请重新读取后继续");
+        if (mounted.current && back.warning !== base.current.warning) setWarning(back.warning || "");
         base.current = back; queue.current.shift(); paint();
         if (job.message && mounted.current) notify.current?.(job.message);
       } catch (e) {
@@ -51,6 +53,7 @@ export function useLocalCanvas(initial, endpoint, onNotice) {
       }
       const back = await apiSend("GET", `${endpoint}/state`);
       if (committed && queue.current[0]?.id === job.id) queue.current.shift();
+      if (back.warning !== base.current.warning) setWarning(back.warning || "");
       base.current = back;
       // 只消费已确认保存的一项，后续图片和修改始终留在草稿队列。
       for (const pending of queue.current) { pending.body = null; pending.id = crypto.randomUUID(); }
@@ -62,5 +65,5 @@ export function useLocalCanvas(initial, endpoint, onNotice) {
   };
   const retry = () => { if (!canRetry) return; blocked.current = false; setCanRetry(false); setError(""); void drain(); };
 
-  return { value, change, busy, error, reread, retry, canRetry, locked: !!error };
+  return { value, change, busy, error, warning, dismissWarning: () => setWarning(""), reread, retry, canRetry, locked: !!error };
 }
