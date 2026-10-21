@@ -204,11 +204,11 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 
 - `POST /api/v3/kb/quick` 请求 `{ ops: [op] }`（恰好一项；`op` 与 `/api/v3/kb/preview` 相同：`move` / `rename` / `mkdir`）→ 与 `/api/v3/kb/confirm` 相同的回执（`state`、`completed`、`created`、`tree`…）。只读目录结构生成计划（不读正文），然后走确认路径。结果不明返回 `409 KB_RESULT_UNKNOWN` 并附 `receipt`，核对沿用 `operations/:id/reconcile`。
 - `GET /api/v3/kb/layout` → `{ order: string[] }`；`PUT /api/v3/kb/layout` 请求 `{ order }`（不重复的节点 ID，最多 200 个）。分组顺序只存本机，不写飞书（飞书不支持调同级顺序）；排过序的根目录节点也视为分组。
-- `GET /api/v3/kb/tree` 的 `docs[id]` 新增 `shortcut: boolean`（是不是快捷方式节点）。
+- `GET /api/v3/kb/tree` 的 `docs[id]` 新增 `shortcut: boolean`（是不是快捷方式节点）。`space` 与 `spaceId` 来自实际空间元数据，读取时核验与配置一致；界面名称与画布状态跟随该身份。
 
 ## 知识库 · 快捷收藏（T12）
 
-在「常浩的知识库」（设置键 `kb_collect_space`）的一级目录下，为一篇飞书文档创建**快捷方式**；原文不移动、不复制。归类规则在设置键 `kb_collect_rules`：`[{ nodeToken, title, keywords: string[] }]`，用现有 V3 设置的预览 → 确认 → 回读来修改。
+在设置键 `kb_collect_space` 指定的知识库中，为一篇飞书文档创建**快捷方式**；原文不移动、不复制。归类规则在设置键 `kb_collect_rules`：`[{ nodeToken, title, keywords: string[] }]`，用现有 V3 设置的预览 → 确认 → 回读来修改。规则为 `[]` 时全部放根目录，不沿用其他空间的目录。
 
 **一键收藏（用户 2026-10-18 确认）**：快捷收藏不走「先预览、后确认」，点击即创建；仍然只创建一次、不自动重试、写后回读、结果不明时锁住并核对。入口只有 Chrome 扩展「牛马之家 · 收藏」（飞书文档页右下角按钮）；知识库页的粘贴框已删除（用户 2026-10-18），页面只保留「最近收藏」。
 
@@ -238,8 +238,8 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
   - 原请求的 `requestId` 永远重放原来的回执（含 502）；核对确认 `verified` 后，用新的 `requestId` 再收藏会得到 `duplicate`。
   - 旧版文档（`obj_type: doc`）可以查重，但新建快捷方式不支持，提交前返回 `422 COLLECT_SOURCE_UNSUPPORTED`，零创建、不留锁。
   - 输入链接本身是快捷方式时，归一到它指向的原文。
-  - 规则：`nodeToken` 不重复，恰好一个无关键词的兜底目录；关键词不分大小写去重、去首尾空白后计数。规则预览时逐个核对目录在收藏目标空间里存在；预览后空间被改则规则确认失败，需重新预览。
-- `GET /api/v3/kb/collect/recent` → `{ items: Array<{ operationId, title, parentTitle, url?, status: "ok" | "duplicate" | "unknown" | "failed", at }> }`，最近 50 条，只读本地记录。
+  - 规则：允许 `[]` 表示不自动分类；非空表的 `nodeToken` 不重复，恰好一个无关键词目录；关键词不分大小写去重、去首尾空白后计数。规则预览时逐个核对目录在收藏目标空间里存在；预览后空间被改则规则确认失败，需重新预览。
+- `GET /api/v3/kb/collect/recent` → `{ items: Array<{ operationId, title, parentTitle, url?, status: "ok" | "duplicate" | "unknown" | "failed", at }> }`，当前收藏目标空间最近 50 条，只读本地记录；其他空间的历史记录保留但不混入当前列表。
 - 结果不明后的核对沿用 `GET /api/v3/kb/operations/:id`、`POST /api/v3/kb/operations/:id/reconcile`。核对返回 `state: "verified"` 表示快捷方式已建好并指向原文，其余视为没有建成。
 - 错误体 `{ error, code, receipt? }`：
 

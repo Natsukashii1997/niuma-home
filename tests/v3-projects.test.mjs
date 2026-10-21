@@ -148,7 +148,9 @@ test('V3 带教结论仅本地预览确认回读，来源变更不混用历史',
 });
 
 test('V3 知识树目录保留正文、不可读不伪造0、重复需标题及正文双证据', () => {
-  const view = knowledgeView(kbSource(), instant);
+  const view = knowledgeView({ ...kbSource(), space: { space_id: '7672588453183261977', name: '路觅策略知识库' } }, instant);
+  assert.equal(view.space, '路觅策略知识库');
+  assert.equal(view.spaceId, '7672588453183261977');
   assert.equal(view.tree[0].kids[0].id, 'child'); assert.ok(view.docs.root.chars > 40);
   assert.equal(view.docs.child.dupOf, 'root'); assert.equal(view.docs.binary.chars, null);
   assert.equal(view.docs.root.referencesComplete, false);
@@ -171,12 +173,14 @@ test('V3 知识树分页与来源身份校验，失败不保存成功水位', as
   assert.equal(reads, 0); await service.list(); assert.equal(reads, 1);
   assert.equal(db.prepare('SELECT identity FROM v3_source_status WHERE kind=?').get('kb').identity, '7620758074885835965');
   saveSetting(db, 'kb_space_id', '999'); await service.list(); assert.equal(reads, 2);
-  await assert.rejects(readKnowledgeSource({ spaceId: '1' }, { run: async () => ({ stdout: JSON.stringify({ ok: true, identity: 'user', data: { nodes: [], has_more: true, page_token: '' } }) }) }), /游标/);
+  await assert.rejects(readKnowledgeSource({ spaceId: '1' }, { run: async (_file,args) => ({ stdout: JSON.stringify({ ok: true, identity: 'user', data: args.includes('spaces') ? { space: { space_id:'1', name:'测试库' } } : { nodes: [], has_more: true, page_token: '' } }) }) }), /游标/);
+  await assert.rejects(readKnowledgeSource({ spaceId: '1' }, { run: async () => ({ stdout: JSON.stringify({ ok: true, identity: 'user', data: { space: { space_id:'2', name:'错误库' } } }) }) }), /空间身份/);
 });
 
 test('V3 知识库遇限流有限退避，权限错误不重试', async () => {
   let calls = 0, waits = [];
   const run = async (_file, args) => {
+    if (args.includes('spaces')) return { stdout: JSON.stringify({ ok: true, identity:'user', data:{ space:{space_id:'1',name:'测试库'} } }) };
     if (args.includes('+node-list')) return { stdout: JSON.stringify({ ok: true, identity: 'user', data: { nodes: [{ node_token: 'n', obj_token: 'd', obj_type: 'docx', parent_node_token: '', space_id: '1', title: '文档', has_child: false }], has_more: false } }) };
     if (args.includes('batch_query')) return { stdout: JSON.stringify({ ok: true, identity: 'user', data: { metas: [{ doc_token: 'd', latest_modify_time: '1792108800' }] } }) };
     if (++calls === 1) throw { stderr: JSON.stringify({ error: { subtype: 'rate_limit' } }) };

@@ -260,7 +260,7 @@ const V3_FIELDS = {
   timeline_source: { label: "用户时间线来源", hint: "飞书《2026海外大学时间线》：标题、表格 token、链接（JSON）", json: true },
   project_base_url: { label: "项目多维表格", hint: "AI管培工作台的多维表格链接" },
   project_table_id: { label: "项目推进数据表", hint: "以 tbl 开头" },
-  kb_space_id: { label: "知识库空间", hint: "常浩的知识库的空间 ID（数字）" },
+  kb_space_id: { label: "知识库空间", hint: "工作台当前连接的知识空间 ID（数字）" },
   kb_collect_space: { label: "收藏目标空间", hint: "快捷收藏建快捷方式的知识空间 ID（数字）；换空间后，收藏规则里的目录也要换成新空间的目录" },
   mentor_sources: { label: "管培生日志来源", hint: "两位管培生：姓名、年份、日志文档链接（JSON）", json: true },
   campaign_table_id: { label: "营销战役模板表", hint: "以 tbl 开头" },
@@ -365,13 +365,13 @@ function CollectRulesRow({ v3 }) {
     <div className="set-row">
       <div className="set-row-head">
         <span className="set-label">收藏规则</span>
-        <span className="set-value">{rules ? `${rules.length} 个目录 · ${total} 个关键词` : <span className="warn-text">已保存的值不是规则表，请到这里重新保存</span>}</span>
+        <span className="set-value">{rules ? rules.length ? `${rules.length} 个目录 · ${total} 个关键词` : "未设自动归类 · 收藏到根目录" : <span className="warn-text">已保存的值不是规则表，请到这里重新保存</span>}</span>
         {saved[RULES_KEY] !== undefined ? <Tag tone="green">已保存</Tag> : <Tag>默认值</Tag>}
         <Button onClick={edit} disabled={!rules || flow.busy || flow.phase === "unknown"}><PixelIcon name="edit" />{open ? "收起" : "编辑"}</Button>
       </div>
       {open && rules && (
         <div className="set-edit stack-sm">
-          <span className="small muted">收藏时用文档标题和它原来所在的上级目录标题匹配（不分大小写）：只命中一个目录就放那里；命中多个，放表里排最前的；都没命中，放兜底目录。关键词用顿号或逗号分隔，不分大小写去重，单个不超过 20 字，总数不超过 200；必须恰好留一个没有关键词的目录作兜底。</span>
+          <span className="small muted">收藏时用文档标题和它原来所在的上级目录标题匹配（不分大小写）：只命中一个目录就放那里；未设规则、命中多个或都没命中，放知识库根目录。关键词用顿号或逗号分隔，单个不超过 20 字，总数不超过 200；非空规则表保留一个没有关键词的目录。</span>
           <table className="grid compact set-rules"><thead><tr><th>目录</th><th>关键词</th></tr></thead>
             <tbody>{rules.map((r, i) => <tr key={r.nodeToken}><td className="set-rules-dir">{r.title}</td><td><input className="set-input" value={draft[i] ?? ""} onChange={(e) => change(i, e.target.value)} placeholder="（无，作兜底）" aria-label={`${r.title} 的关键词`} /></td></tr>)}</tbody></table>
           {err && <p className="small warn-text">{err}</p>}

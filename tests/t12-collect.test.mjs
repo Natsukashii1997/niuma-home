@@ -228,10 +228,26 @@ test('T12两个设置默认值可见；规则只读核验后才可预览确认�
 
 test('T12规则形状、单词20字、总数200、节点不存在或空间不符校验',async t=>{
   const{state,invoke}=setup(t),preview=value=>invoke('POST','/api/settings/kb_collect_rules/preview',{value:JSON.stringify(value)});
-  for(const value of [null,{},[],[{...rules[0],keywords:[1]},rules[2]],[{...rules[0],keywords:['字'.repeat(21)]},rules[2]],[{...rules[0],keywords:Array.from({length:201},(_,i)=>`词${i}`)},rules[2]],[{...rules[0],nodeToken:'missing'},rules[2]],[rules[2],rules[2]]])assert.equal((await preview(value)).status,400);
+  for(const value of [null,{},[{...rules[0],keywords:[1]},rules[2]],[{...rules[0],keywords:['字'.repeat(21)]},rules[2]],[{...rules[0],keywords:Array.from({length:201},(_,i)=>`词${i}`)},rules[2]],[{...rules[0],nodeToken:'missing'},rules[2]],[rules[2],rules[2]]])assert.equal((await preview(value)).status,400);
   assert.equal((await preview([{...rules[0],keywords:['字'.repeat(20)]},rules[2]])).status,200);
   assert.equal((await preview([{...rules[0],keywords:Array.from({length:200},(_,i)=>`词${i}`)},rules[2]])).status,200);
   state.nodes.find(n=>n.node_token==='marketing').space_id=SOURCE;assert.equal((await preview(rules)).status,400);
+});
+
+test('T12清空旧库分类后收藏进当前空间根目录；最近记录按空间隔离且保留历史',async t=>{
+  const {db,state,invoke,collect}=setup(t);
+  const old=await collect();assert.equal(old.body.parentNodeToken,'marketing');
+  const pv=await invoke('POST','/api/settings/kb_collect_rules/preview',{value:'[]'});
+  assert.equal(pv.status,200);
+  assert.equal((await invoke('PUT','/api/settings/kb_collect_rules',{previewId:pv.body.previewId,confirm:true})).status,200);
+  state.source=node('newSource',SOURCE,{title:'营销 brief'});
+  const added=await collect();assert.equal(added.status,200);assert.equal(added.body.parentNodeToken,'');
+  assert.equal(added.body.reason,'unclear');
+  saveSetting(db,'kb_collect_space',SOURCE);
+  assert.deepEqual((await invoke('GET','/api/v3/kb/collect/recent')).body.items,[]);
+  saveSetting(db,'kb_collect_space',SPACE);
+  assert.equal((await invoke('GET','/api/v3/kb/collect/recent')).body.items.length,2);
+  assert.equal(getRecord(db,'kb-operation',old.body.operationId).state,'verified');
 });
 
 test('T12规则预览与确认期间空间变化拒绝，空间键仍可独立迁移',async t=>{

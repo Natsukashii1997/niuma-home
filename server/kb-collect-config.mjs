@@ -15,7 +15,8 @@ export const validNodeToken = value => typeof value === 'string' && /^[A-Za-z0-9
 export function collectRules(raw) {
   const bad = () => { throw failure(400,'收藏规则须有不同节点、目录名称和关键词数组，并保留一个无关键词的兜底目录'); };
   let rows; try { rows=JSON.parse(raw); } catch { bad(); }
-  if(!Array.isArray(rows)||!rows.length||rows.length>201)bad();
+  if(!Array.isArray(rows)||rows.length>201)bad();
+  if(!rows.length)return []; // 无分类规则：收藏到当前知识库根目录，避免跨库沿用旧节点。
   const seen=new Set(); let total=0;
   const rules=rows.map(row=>{
     if(!row||!validNodeToken(row.nodeToken)||seen.has(row.nodeToken)||typeof row.title!=='string'||!row.title.trim()||!Array.isArray(row.keywords))bad();

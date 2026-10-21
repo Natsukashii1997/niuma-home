@@ -45,6 +45,8 @@ export async function readKnowledgeSource({ spaceId }, { run, wait = ms => new P
       }
     }
   };
+  const { space } = await read(['wiki', 'spaces', 'get', '--space-id', spaceId, '--lang', 'zh']);
+  if (space?.space_id !== spaceId || typeof space.name !== 'string' || !space.name.trim()) throw failure(502, '知识库空间身份或名称不完整');
   const nodes = [], seen = new Set(), queue = [''];
   while (queue.length) {
     const parent = queue.shift();
@@ -84,7 +86,7 @@ export async function readKnowledgeSource({ spaceId }, { run, wait = ms => new P
       } catch (error) { errors.set(n.node_token, error.message); }
     }
   }));
-  return { nodes, metadata: Object.fromEntries(metadata), contents: Object.fromEntries(contents), errors: Object.fromEntries(errors) };
+  return { space: { space_id: space.space_id, name: space.name }, nodes, metadata: Object.fromEntries(metadata), contents: Object.fromEntries(contents), errors: Object.fromEntries(errors) };
 }
 
 const normalizeTitle = value => value.toLowerCase().replace(/（副本）|\(副本\)|副本|copy/gi, '').replace(/[\s\p{P}\p{S}]/gu, '');
@@ -127,7 +129,7 @@ export function knowledgeView(source, now = Date.now(), refs = {}) {
     if (normalizeTitle(a.title) && normalizeTitle(a.title) === normalizeTitle(b.title) && similar(source.contents[a.node_token], source.contents[b.node_token])) { docs[a.node_token].dupOf = b.node_token; break; }
   }
   const failed = source.nodes.filter(n => n.obj_type === 'docx' && docs[n.node_token].error);
-  return { space: '常浩的知识库', readAt: beijingText(now).slice(5), tree, docs, rules: [], scopeNote: '引用只核对工作台已登记来源；未登记不表示没有引用。目录节点本身可能包含正文。', limitations: [...new Set(Object.values(source.errors))], ...(failed.length ? { sourceError: `${failed.length}篇文档详情未完整读取` } : {}) };
+  return { space: source.space?.name || '飞书知识库', spaceId: source.space?.space_id || null, readAt: beijingText(now).slice(5), tree, docs, rules: [], scopeNote: '引用只核对工作台已登记来源；未登记不表示没有引用。目录节点本身可能包含正文。', limitations: [...new Set(Object.values(source.errors))], ...(failed.length ? { sourceError: `${failed.length}篇文档详情未完整读取` } : {}) };
 }
 
 const rowsOfTree = tree => {

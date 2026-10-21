@@ -150,13 +150,13 @@ export function createKnowledgeCollectService(db,{now=Date.now,run,readDirectory
       const id=`collect-${body.requestId.toLowerCase()}`,key=`${scope}:${id}`;
       if(running.has(key))return running.get(key);
       const previous=load(id);if(previous)return replay(previous);
-      const p={id,type:'collect',requestId:body.requestId.toLowerCase(),state:'checking',ownerPid:process.pid,origin:link.origin,at:stamp(),title:'待解析文档'};
+      const p={id,type:'collect',requestId:body.requestId.toLowerCase(),spaceId:configuration().spaceId,state:'checking',ownerPid:process.pid,origin:link.origin,at:stamp(),title:'待解析文档'};
       const claimed=transaction(()=>{const old=load(id);if(old)return old;save(p);return null;});if(claimed)return replay(claimed);
       const work=execute(p,body,link);running.set(key,work);
       try{return await work;}finally{running.delete(key);}
     },
     recent(){
-      const rows=db.prepare('SELECT payload FROM v3_documents WHERE kind=? AND json_extract(payload,\'$.type\')=\'collect\' ORDER BY updated_at DESC,rowid DESC LIMIT 50').all(kind);
+      const rows=db.prepare('SELECT payload FROM v3_documents WHERE kind=? AND json_extract(payload,\'$.type\')=\'collect\' AND json_extract(payload,\'$.spaceId\')=? ORDER BY updated_at DESC,rowid DESC LIMIT 50').all(kind,configuration().spaceId);
       return{items:rows.map(row=>{const p=JSON.parse(row.payload);return{operationId:p.id,title:p.source?.title||p.title,parentTitle:p.result?.parentTitle||p.parentTitle||'',...(p.result?.url?{url:p.result.url}:{}),status:p.recentStatus||(p.inFlight?'unknown':'failed'),at:p.at};})};
     },
     async reconcile(id){

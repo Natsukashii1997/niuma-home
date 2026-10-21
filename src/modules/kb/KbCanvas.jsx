@@ -21,14 +21,15 @@ const PATTERNS = ["var(--dither-1)", "var(--dither-2)", "var(--dither-3)"];
 const patternOf = (id) => { let h = 0; for (const ch of String(id)) h = (h * 31 + ch.codePointAt(0)) >>> 0; return PATTERNS[h % PATTERNS.length]; };
 
 // focus：⌘K 打开某篇文档时（地址 kb/<文档 id>），画布搜索框预填它的标题。
-export default function KbCanvas({ focus = "" }) {
+export default function KbCanvas({ focus = "", onSpace }) {
   const tree = useApi("/api/v3/kb/tree");
   const layout = useApi("/api/v3/kb/layout");
   const settings = useApi("/api/v3/settings");
+  useEffect(() => { onSpace?.(tree.data?.space || ""); }, [tree.data?.space, onSpace]);
   const ruleIds = useMemo(() => { try { return JSON.parse(settings.data?.values?.kb_collect_rules || "[]").map((r) => r.nodeToken); } catch { return []; } }, [settings.data]);
   return (
     <Loadable state={tree} name="知识库目录" big>
-      {(kb) => <Canvas key={kb.readAt} kb={kb} focus={focus} initialOrder={layout.data?.order || []} ruleIds={ruleIds} reload={tree.reload} />}
+      {(kb) => <Canvas key={`${kb.spaceId}:${kb.readAt}`} kb={kb} focus={focus} initialOrder={layout.data?.order || []} ruleIds={ruleIds} reload={tree.reload} />}
     </Loadable>
   );
 }
