@@ -74,25 +74,38 @@ test('营销真实模板拆多值、保留普通子项并提升门禁，不生�
   const cycle = templateRows(); cycle[1].父记录 = [{ id: 'c' }]; assert.throws(() => campaignTemplate(cycle), /循环/);
 });
 
-test('价格记录固定4张表：两张Lite为演示矩阵，安心学Max与竞赛课时卡为空表；不读飞书、不写业务记录', async t => {
+test('价格档案四组共六个产品：五张用户图价、大学Lite保留演示；读取不写记录或访问飞书', async t => {
   const { request, db, counts } = await setup(t);
   const list = await request('GET', '/api/v3/price/skus');
-  assert.equal(list.status, 200); assert.equal(list.origin, 'demo');
-  assert.deepEqual(list.body.map(s => [s.id, s.line, s.name, s.label, s.origin]), [
-    ['uni-lite', '大学辅导', '灵活学Lite', '灵活学Lite', 'demo'], ['uni-max', '大学辅导', '安心学Max', '安心学Max', 'empty'],
-    ['intl-lite', '国际课程', '灵活学Lite', '课时卡', 'demo'], ['intl-comp', '国际课程', '竞赛课时卡', '竞赛课时卡', 'empty'],
+  assert.equal(list.status, 200);
+  assert.deepEqual(list.body.map(s => [s.id, s.name, s.groupLabel || s.label, s.origin]), [
+    ['uni-lite', '灵活学Lite', '灵活学Lite', 'demo'],
+    ['uni-max', '安心学Max', '稳分系列', 'provided'],
+    ['uni-exam-pass', '学考无忧Pass', '稳分系列', 'provided'],
+    ['uni-resit-pass', '补考护航Pass', '稳分系列', 'provided'],
+    ['intl-lite', '课程课时卡', '课程课时卡', 'provided'],
+    ['intl-comp', '竞赛课时卡', '竞赛课时卡', 'provided'],
   ]);
-  assert.ok(list.body.every(s => JSON.stringify(s.tiers) === '[5,10,20,30,50,100,150,200]'));
-  for (const sku of list.body.filter(s => s.origin === 'demo')) {
-    assert.equal(sku.unitOrig, 990);
-    const matrix = await request('GET', `/api/v3/price/schemes?sku=${sku.id}`);
-    assert.equal(matrix.status, 200); assert.equal(matrix.origin, 'demo'); assert.equal(matrix.body.origin, 'demo'); assert.equal(matrix.body.sku, sku.id);
-    assert.equal(matrix.body.floorMargin, .25); assert.equal(matrix.body.costPerHour, 440);
-  }
-  for (const sku of list.body.filter(s => s.origin === 'empty')) {
-    assert.equal(sku.unitOrig, null);
-    const matrix = await request('GET', `/api/v3/price/schemes?sku=${sku.id}`);
-    assert.equal(matrix.status, 200); assert.equal(matrix.origin, null); assert.deepEqual(matrix.body.schemes, []); assert.equal(matrix.body.origin, 'empty');
+  assert.equal(new Set(list.body.map(s => s.groupId || s.id)).size, 4);
+  const lite = await request('GET', '/api/v3/price/schemes?sku=uni-lite');
+  assert.equal(lite.origin, 'demo'); assert.equal(lite.body.unitOrig, 990);
+  const demo = (await import('../fixtures/v3-demo-price.json', { with: { type: 'json' } })).default;
+  assert.deepEqual(lite.body.schemes, demo.schemes); assert.deepEqual(lite.body.tiers, demo.tiers);
+  // 独立按用户图片逐行核对原价、常规/双11或四档折扣，含半元取整的两个格子。
+  const expected = {
+    'intl-lite': [[10,20,30,50,100,150,200], [9500,19000,28500,47500,95000,142500,190000], ['常规价格','双11价格'], [[8500,15400,22200,35500,68000,102000,136000],[8100,14800,21450,34500,66500,99750,133000]]],
+    'intl-comp': [[10,20,30,50,100,150,200], [10500,21000,31500,52500,105000,157500,210000], ['常规价格','双11价格'], [[9500,17200,24900,40000,76000,114000,152000],[9050,16500,24000,39000,74500,111750,149000]]],
+    'uni-max': [[18,20,24,36], [24300,27000,32400,48600], ['95折','9折','85折','8折'], [[23085,25650,30780,46170],[21870,24300,29160,43740],[20655,22950,27540,41310],[19440,21600,25920,38880]]],
+    'uni-exam-pass': [[16,20,24,30], [19600,24500,29400,36750], ['95折','9折','85折','8折'], [[18620,23275,27930,34913],[17640,22050,26460,33075],[16660,20825,24990,31238],[15680,19600,23520,29400]]],
+    'uni-resit-pass': [[20,24], [27000,32400], ['95折','9折','85折','8折'], [[25650,30780],[24300,29160],[22950,27540],[21600,25920]]],
+  };
+  for (const [id, [tiers, originals, names, prices]] of Object.entries(expected)) {
+    const matrix = await request('GET', `/api/v3/price/schemes?sku=${id}`), v = matrix.body;
+    assert.equal(matrix.status, 200); assert.equal(matrix.origin, null);
+    assert.equal(v.origin, 'provided'); assert.equal(v.costOrigin, 'demo'); assert.match(v.source, /用户提供价格截图/);
+    assert.deepEqual(v.tiers, tiers); assert.deepEqual(v.tiers.map(h => h * v.unitOrig), originals);
+    assert.deepEqual(v.schemes.map(s => s.name), names); assert.deepEqual(v.schemes.map(s => s.prices), prices);
+    assert.ok(v.schemes.every(s => s.status === '已记录' && s.from === '' && s.to === '' && !s.needId && s.gifts.every(g => g === 0)));
   }
   assert.equal(counts().priceReads, 0);
   assert.equal(db.prepare("SELECT count(*) AS n FROM v3_documents WHERE kind='price-schemes'").get().n, 0);
@@ -103,7 +116,41 @@ test('价格记录固定4张表：两张Lite为演示矩阵，安心学Max与竞
   const invalid = await request('GET', '/api/v3/price/schemes?sku=uni-lite'); assert.equal(invalid.status, 503); assert.equal(invalid.body.code, 'PRICE_SETTINGS_UNCONFIGURED');
 });
 
-test('空表填满后才能保存：缺格子指出方案和档数，保存后回读为本地记录', async t => {
+test('已记录价格可无日期和活动需求，仍走预览确认；不进入月度Brief，其他状态门禁保留', async t => {
+  const { request, db } = await setup(t), endpoint = '/api/v3/price/schemes?sku=intl-lite', previewPath = '/api/v3/price/schemes/preview?sku=intl-lite';
+  const initial = (await request('GET', endpoint)).body;
+  const value = { unitOrig: initial.unitOrig, tiers: initial.tiers, schemes: initial.schemes };
+  value.schemes[0].prices[0] = 8600;
+  const p = await request('POST', previewPath, value); assert.equal(p.status, 200);
+  assert.equal(getRecord(db, 'price-schemes', 'intl-lite'), null);
+  assert.equal((await request('PUT', endpoint, { previewId: p.body.previewId, confirm: true })).status, 200);
+  const saved = (await request('GET', endpoint)).body;
+  assert.equal(saved.origin, 'local'); assert.equal(saved.costOrigin, 'demo'); assert.equal(saved.source, undefined);
+  assert.deepEqual(saved.schemes, value.schemes);
+  assert.equal((await request('GET', '/api/v3/briefs/2026-11')).body.items.filter(i => i.kind === 'price').length, 0);
+  for (const patch of [{ from: '2026-02-30' }, { to: '2026-11-30' }, { from: '2026-11-30', to: '2026-11-01' }, { status: '生效中' }, { status: '草稿' }, { status: '历史' }]) {
+    const bad = structuredClone(value); Object.assign(bad.schemes[1], patch);
+    assert.equal((await request('POST', previewPath, bad)).status, 400);
+  }
+  const active = structuredClone(value); Object.assign(active.schemes[1], { status: '生效中', from: '2026-11-01' });
+  assert.match((await request('POST', previewPath, active)).body.error, /已采纳需求/);
+  assert.equal((await request('GET', '/api/v3/price/schemes?sku=intl-comp')).body.schemes[0].prices[0], 9500);
+});
+
+test('国际课程旧名称记录可继续读取和保存，产品改名不覆盖既有价格', async t => {
+  const { request, db } = await setup(t);
+  putRecord(db, 'price-schemes', 'intl-lite', { sku: 'intl-lite', line: '国际课程', name: '灵活学Lite', ...normal() });
+  const list = (await request('GET', '/api/v3/price/skus')).body;
+  const sku = list.find(s => s.id === 'intl-lite');
+  assert.equal(sku.name, '课程课时卡'); assert.ok(sku.aliases.includes('灵活学Lite')); assert.equal(sku.origin, 'local');
+  const saved = (await request('GET', '/api/v3/price/schemes?sku=intl-lite')).body;
+  assert.deepEqual(saved.schemes, normal().schemes); assert.deepEqual(saved.tiers, [5,10]);
+  const p = await request('POST', '/api/v3/price/schemes/preview?sku=intl-lite', normal()); assert.equal(p.status, 200);
+  assert.equal((await request('PUT', '/api/v3/price/schemes?sku=intl-lite', { previewId: p.body.previewId, confirm: true })).status, 200);
+  assert.equal(getRecord(db, 'price-schemes', 'intl-lite').name, '课程课时卡');
+});
+
+test('价格填满后才能保存：缺格子指出方案和档数，保存后回读为本地记录', async t => {
   const { request, db } = await setup(t), previewPath = '/api/v3/price/schemes/preview?sku=uni-max';
   saveSetting(db, 'price_floor_margin', '.25'); saveSetting(db, 'price_cost_per_hour', '440');
   const value = normal(); value.schemes[0].prices = [6000, null];

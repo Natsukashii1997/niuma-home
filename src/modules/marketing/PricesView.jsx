@@ -28,12 +28,14 @@ export function calc(scheme, i, tiers, unitOrig, costPerHour) {
   };
 }
 
-// 固定 4 张表（页签）：大学辅导·灵活学Lite / 安心学Max、国际课程·课时卡 / 竞赛课时卡；空表也能直接填写。
+// 四个主页签；稳分系列按子产品分别展示和保存，沿用同一套价格矩阵交互。
 // 路由 marketing/prices/<表 id>：从 SKU 档案、⌘K 进来时直接选中该表。
 export default function PricesView({ route = [] }) {
   const skus = useApi("/api/v3/price/skus");
   const [picked, setSku] = useState(route[0] || "");
   const sku = picked || skus.data?.[0]?.id || "";
+  const selected = skus.data?.find((s) => s.id === sku);
+  const selectedGroup = selected?.groupId || sku;
   const schemes = useApi(sku ? `/api/v3/price/schemes?sku=${encodeURIComponent(sku)}` : null);
   const [fresh, setFresh] = useState(null); // 保存后回读到的方案
   const [notice, setNotice] = useState("");
@@ -43,25 +45,30 @@ export default function PricesView({ route = [] }) {
         <>
           <div className="toolbar">
             <div className="sku-tabs" role="tablist" aria-label="SKU">
-              {list.map((s) => (
-                <button key={s.id} type="button" role="tab" aria-selected={s.id === sku} className={s.id === sku ? "active" : ""} onClick={() => setSku(s.id)}>
-                  <span className="small muted">{s.line}</span>{s.label || s.name}
+              {list.filter((s, i) => !s.groupId || list.findIndex((x) => x.groupId === s.groupId) === i).map((s) => (
+                <button key={s.id} type="button" role="tab" aria-selected={(s.groupId || s.id) === selectedGroup} className={(s.groupId || s.id) === selectedGroup ? "active" : ""} onClick={() => setSku(s.id)}>
+                  <span className="small muted">{s.line}</span>{s.groupLabel || s.label || s.name}
                 </button>
               ))}
             </div>
             <span className="spacer" />
-            {schemes.isSample && <SampleBadge task={schemes.task} />}
+            {(fresh?.sku === sku ? fresh.origin === "demo" : schemes.isSample) && <SampleBadge task={schemes.task} />}
           </div>
+          {selected?.groupId && <div className="toolbar">
+            <span className="small muted">系列产品</span>
+            <div className="sku-tabs" role="tablist" aria-label="稳分系列产品">
+              {list.filter((s) => s.groupId === selected.groupId).map((s) => <button key={s.id} type="button" role="tab" aria-selected={s.id === sku} className={s.id === sku ? "active" : ""} onClick={() => setSku(s.id)}>{s.label || s.name}</button>)}
+            </div>
+          </div>}
           <SavedNote text={notice} onClose={() => setNotice("")} />
-          <Loadable state={schemes} name="价格方案" big>{(data) => { const d = fresh?.sku === sku ? fresh : data; return <PriceBoard key={`${sku}-${JSON.stringify(d.schemes).length}-${fresh ? 1 : 0}`} sku={(() => { const found = list.find((s) => s.id === sku) || list[0]; return fresh?.sku === sku && fresh.unitOrig !== undefined ? { ...found, unitOrig: fresh.unitOrig } : found; })()} data={d} onSaved={(back, text = "") => { setFresh(back); setNotice(text); }} onEdit={() => setNotice("")} />; }}</Loadable>
+          <Loadable state={schemes} name="价格方案" big>{(data) => { const d = fresh?.sku === sku ? fresh : data; return <PriceBoard key={`${sku}-${JSON.stringify(d.schemes).length}-${fresh ? 1 : 0}`} sku={{ ...(list.find((s) => s.id === sku) || list[0]), unitOrig: d.unitOrig, tiers: d.tiers }} data={d} onSaved={(back, text = "") => { setFresh(back); setNotice(text); }} onEdit={() => setNotice("")} />; }}</Loadable>
         </>
       )}
     </Loadable>
   );
 }
 
-// 保存：整张矩阵（原价、档位、全部方案）预览 → 确认 → 回读。活动方案必须关联一条已采纳的主线需求；低于毛利底线的方案要写原因。
-// 成本和毛利底线仍是演示口径，所以保存后页面继续标「示例」。
+// 保存：整张矩阵预览 → 确认 → 回读。「已记录」是无生效承诺的价格档案，其他活动方案仍需关联已采纳需求。
 const SCHEME_KEYS = ["id", "name", "kind", "status", "from", "to", "prices", "gifts", "needId", "need", "breachReason"];
 function cleanScheme(s) {
   const out = Object.fromEntries(SCHEME_KEYS.filter((k) => s[k] !== undefined).map((k) => [k, s[k]]));
@@ -115,13 +122,14 @@ function PriceBoard({ sku, data, onSaved, onEdit }) {
     async (receipt, pv) => {
       const back = await apiRead(`/api/v3/price/schemes?sku=${encodeURIComponent(sku.id)}`);
       const ok = JSON.stringify(back.schemes) === JSON.stringify(pv.value.schemes);
-      if (ok) onSaved({ ...back, unitOrig: pv.value.unitOrig }, "价格方案已保存，回读核对一致（成本和毛利底线仍是演示口径）");
+      if (ok) onSaved(back, `价格方案已保存，回读核对一致${back.costOrigin === "demo" ? "（成本和毛利底线仍是演示口径）" : ""}`);
       return ok;
     },
   );
   const reread = async () => { const back = await apiRead(`/api/v3/price/schemes?sku=${encodeURIComponent(sku.id)}`); flow.resolve(); onSaved({ ...back }); };
   return (
     <>
+      {(data.source || data.costOrigin === "demo") && <p className="small muted">{data.source && <>价格来源：{data.source}。生效日期未提供，按档案记录。 </>}{data.costOrigin === "demo" && "成本和毛利底线仍为演示口径，毛利仅作估算。"}</p>}
       <div className="toolbar">
         {schemes.length ? <>
           <label className="select"><span>基准方案</span>
@@ -154,7 +162,7 @@ function PriceBoard({ sku, data, onSaved, onEdit }) {
           {(() => { const gone = data.schemes.filter((x) => !pv.value.schemes.some((y) => y.id === x.id)); return gone.length ? <><dt>删除</dt><dd className="warn-text">{gone.map((x) => x.name).join("、")}</dd></> : null; })()}
           <dt>关联需求</dt><dd>{pv.value.schemes.filter((x) => x.need).map((x) => `${x.name} → ${x.need}`).join("；") || "无"}</dd>
           <dt>破底线原因</dt><dd>{pv.value.schemes.filter((x) => x.breachReason).map((x) => `${x.name}：${x.breachReason}`).join("；") || "无"}</dd>
-          <dt>写到哪里</dt><dd>工作台本地价格记录；成本和毛利底线仍是演示口径，页面继续标「示例」</dd>
+          <dt>写到哪里</dt><dd>工作台本地价格记录{data.costOrigin === "demo" && "；成本和毛利底线仍是演示口径"}</dd>
         </dl>}
       </WriteBox>
 
@@ -169,7 +177,7 @@ function PriceBoard({ sku, data, onSaved, onEdit }) {
                     onClick={() => setPanel(panel === s.id ? null : s.id)} />
                   <div className="scheme-name">{s.name}{s.id === base && <em>基准</em>}</div>
                   <div className="scheme-meta">
-                    {s.from && !s.to ? <Tag tone="neutral">长期生效</Tag> : <>
+                    {s.from && !s.to && s.status !== "已记录" ? <Tag tone="neutral">长期生效</Tag> : <>
                       <Tag tone={s.status === "生效中" ? "green" : s.status === "草稿" ? "amber" : "neutral"}>{s.status}</Tag>
                       <span>{periodText(s)}</span>
                     </>}
@@ -194,7 +202,8 @@ function PriceBoard({ sku, data, onSaved, onEdit }) {
                 {visible.map((s) => {
                   const v = c(s, i), b = baseScheme && c(baseScheme, i);
                   const prev = i > 0 ? c(s, i - 1) : null;
-                  const inverted = prev && !prev.empty && !v.empty && v.paid > prev.paid;
+                  // 总价以元取整时会产生不足一元的差异；仅超出两档取整区间才提示单价倒挂。
+                  const inverted = prev && !prev.empty && !v.empty && (v.price - .5) / v.h > (prev.price + .5) / prev.h;
                   const breach = !v.empty && v.margin < data.floorMargin;
                   const isEdit = editing && editing.scheme === s.id && editing.i === i;
                   return (
@@ -248,13 +257,14 @@ function SchemePanel({ scheme: x, isBase, breach, adoptedNeeds, locked, alignRig
       <div className="scheme-panel-head"><span className="label">方案设置</span><button type="button" className="scheme-panel-close" aria-label="关闭" onClick={onClose}><PixelIcon name="close" /></button></div>
       <label className="scheme-field"><span>名称</span><input className="cell-input" value={x.name} disabled={locked} onChange={(e) => onChange({ name: e.target.value })} /></label>
       <label className="scheme-field"><span>类型</span><select className="cell-input" value={x.kind} disabled={locked} onChange={(e) => onChange({ kind: e.target.value })}>{["常规", "活动", "赠课"].map((k) => <option key={k}>{k}</option>)}</select></label>
-      <label className="scheme-field"><span>状态</span><select className="cell-input" value={x.status} disabled={locked} onChange={(e) => onChange({ status: e.target.value })}>{["生效中", "草稿", "历史"].map((k) => <option key={k}>{k}</option>)}</select></label>
+      <label className="scheme-field"><span>状态</span><select className="cell-input" value={x.status} disabled={locked} onChange={(e) => onChange({ status: e.target.value })}>{["生效中", "草稿", "历史", "已记录"].map((k) => <option key={k}>{k}</option>)}</select></label>
+      {x.status === "已记录" && <p className="small muted">仅作价格档案，不代表已生效；日期和需求可留空。</p>}
       <div className="scheme-field"><span>生效期</span><span className="scheme-dates">
         <input className="cell-input date" value={x.from} placeholder="开始" aria-label="开始日期" disabled={locked} onChange={(e) => onChange({ from: e.target.value.trim() })} /> →
         <input className="cell-input date" value={x.to} placeholder="长期" aria-label="结束日期" disabled={locked} onChange={(e) => onChange({ to: e.target.value.trim() })} /></span></div>
       <label className="scheme-field"><span>关联需求</span>{x.kind === "活动" || x.needId ? (
         <select className="cell-input" value={x.needId || ""} disabled={locked} onChange={(e) => { const n = adoptedNeeds.find((k) => k.id === e.target.value); onChange(n ? { needId: n.id, need: `${n.seg} · ${n.node}` } : { needId: "", need: "" }); }}>
-          <option value="">{adoptedNeeds.length ? "选一条已采纳需求" : "还没有已采纳需求"}</option>
+          <option value="">{x.status === "已记录" ? "价格档案，可不关联需求" : adoptedNeeds.length ? "选一条已采纳需求" : "还没有已采纳需求"}</option>
           {adoptedNeeds.map((n) => <option key={n.id} value={n.id}>{n.seg} · {n.node}</option>)}
         </select>) : <span className="muted small">只有活动方案需要</span>}</label>
       {x.need && !x.needId && <p className="small warn-text">原文「{x.need}」不是已采纳需求，保存前要重新选</p>}
@@ -298,7 +308,7 @@ function PriceInput({ value, onDone }) {
 
 // 列头生效期文字「10.15–11.30」；没有结束日期的长期方案只显示「长期生效」方框，不显示状态（用户 2026-10-19）。
 const md = (d) => d.slice(5).replace("-", ".");
-function periodText(s) { return !s.from ? "未设日期" : s.to ? `${md(s.from)}–${md(s.to)}` : "长期生效"; }
+function periodText(s) { return !s.from ? "未设日期" : s.to ? `${md(s.from)}–${md(s.to)}` : s.status === "已记录" ? `${md(s.from)}起` : "长期生效"; }
 
 // 方案配色（用户 2026-10-18 指定，10-19 改名）：常规价格墨色、双11价格红、新春价格橙黄、赠课价格绿；按方案名对应（编号兜底），别的表里新建同名方案也同色。
 const SERIES_COLORS = { 常规价格: "ink", 双11价格: "red", 新春价格: "amber", 赠课价格: "green" };

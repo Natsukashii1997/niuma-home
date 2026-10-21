@@ -8,13 +8,15 @@ import { marketingFailure, isDay } from './campaigns.mjs';
 import { V3_DEFAULTS } from './v3-settings.mjs';
 import { TIMELINE_SOURCE } from './timeline.mjs';
 import demo from '../fixtures/v3-demo-price.json' with { type: 'json' };
+import provided from '../fixtures/v3-provided-prices.json' with { type: 'json' };
 
-// 价格记录固定 4 张表（2026-10-18 用户确认），不再读飞书 SKU 表。前两张沿用原来的编号，已保存的价格记录照常读取；
-// SKU 档案按 业务线 + 名称 匹配到这里。label 是页签上的显示名。
+// 四个主分组，稳分系列含三个产品。保留旧编号与别名，让已保存的价格和 SKU 入口继续可用。
 export const PRICE_SHEETS = [
   { id: 'uni-lite', line: '大学辅导', name: '灵活学Lite', label: '灵活学Lite' },
-  { id: 'uni-max', line: '大学辅导', name: '安心学Max', label: '安心学Max' },
-  { id: 'intl-lite', line: '国际课程', name: '灵活学Lite', label: '课时卡' },
+  { id: 'uni-max', line: '大学辅导', name: '安心学Max', label: '安心学Max', groupId: 'uni-score', groupLabel: '稳分系列' },
+  { id: 'uni-exam-pass', line: '大学辅导', name: '学考无忧Pass', label: '学考无忧Pass', groupId: 'uni-score', groupLabel: '稳分系列' },
+  { id: 'uni-resit-pass', line: '大学辅导', name: '补考护航Pass', label: '补考护航Pass', groupId: 'uni-score', groupLabel: '稳分系列' },
+  { id: 'intl-lite', line: '国际课程', name: '课程课时卡', label: '课程课时卡', aliases: ['灵活学Lite', '课时卡'] },
   { id: 'intl-comp', line: '国际课程', name: '竞赛课时卡', label: '竞赛课时卡' },
 ];
 const fail = message => { throw failure(400, message); };
@@ -22,6 +24,14 @@ const plain = value => value && typeof value === 'object' && !Array.isArray(valu
 const nonempty = (value, max = 500) => typeof value === 'string' && value.trim().length > 0 && value.length <= max;
 const identifier = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(value);
 const same = (a, b) => fingerprint(a) === fingerprint(b);
+const matchesSheet = (record, sheet) => record?.line === sheet.line && (record.name === sheet.name || sheet.aliases?.includes(record.name));
+function sheetData(db, sheet) {
+  const saved = getRecord(db, 'price-schemes', sheet.id);
+  if (matchesSheet(saved, sheet)) return { value: saved, origin: 'local' };
+  if (provided.matrices[sheet.id]) return { value: provided.matrices[sheet.id], origin: 'provided', source: provided.source };
+  if (demo.skus.includes(sheet.id)) return { value: demo, origin: 'demo' };
+  return { value: { unitOrig: null, tiers: [...demo.tiers], schemes: [] }, origin: 'empty' };
+}
 
 export function priceSettings(db) {
   const values = { ...V3_DEFAULTS, ...getSettings(db) }, a = values.price_floor_margin, b = values.price_cost_per_hour;
@@ -57,10 +67,8 @@ export function acceptedMarketingNeeds(db, month) {
 
 export function priceCatalog(db) {
   return PRICE_SHEETS.map(sheet => {
-    const saved = getRecord(db, 'price-schemes', sheet.id);
-    if (saved?.line === sheet.line && saved?.name === sheet.name) return { ...sheet, unitOrig: saved.unitOrig, tiers: saved.tiers, origin: 'local' };
-    if (demo.skus.includes(sheet.id)) return { ...sheet, unitOrig: demo.unitOrig, tiers: [...demo.tiers], origin: 'demo' };
-    return { ...sheet, unitOrig: null, tiers: [...demo.tiers], origin: 'empty' }; // 还没有价格：档位沿用 5–200h，原价和方案留空，由用户在页面填写
+    const { value, origin } = sheetData(db, sheet);
+    return { ...sheet, unitOrig: value.unitOrig, tiers: [...value.tiers], origin };
   });
 }
 
@@ -70,16 +78,17 @@ function validateMatrix(db, value, sku) {
   if (!Array.isArray(value.schemes) || !value.schemes.length || value.schemes.length > 100) fail('请至少填写一套真实价格方案');
   const settings = priceSettings(db), needs = acceptedMarketingNeeds(db), ids = new Set();
   for (const scheme of value.schemes) {
-    if (!plain(scheme) || !identifier(scheme.id) || ids.has(scheme.id) || !nonempty(scheme.name) || !['常规', '活动', '赠课'].includes(scheme.kind) || !['生效中', '草稿', '历史'].includes(scheme.status)) fail('价格方案编号、名称、类型或状态无效');
+    if (!plain(scheme) || !identifier(scheme.id) || ids.has(scheme.id) || !nonempty(scheme.name) || !['常规', '活动', '赠课'].includes(scheme.kind) || !['生效中', '草稿', '历史', '已记录'].includes(scheme.status)) fail('价格方案编号、名称、类型或状态无效');
     ids.add(scheme.id);
-    if (!isDay(scheme.from) || typeof scheme.to !== 'string' || (scheme.to !== '' && (!isDay(scheme.to) || scheme.to < scheme.from))) fail('价格生效期须为有效的 YYYY-MM-DD，长期有效的结束日期留空');
+    const undatedArchive = scheme.status === '已记录' && scheme.from === '' && scheme.to === '';
+    if (!undatedArchive && (!isDay(scheme.from) || typeof scheme.to !== 'string' || (scheme.to !== '' && (!isDay(scheme.to) || scheme.to < scheme.from)))) fail('价格生效期须为有效的 YYYY-MM-DD；仅「已记录」档案可不填日期');
     const blank = Array.isArray(scheme.prices) ? scheme.prices.filter(p => p === null).length : 0;
     if (blank) fail(`「${scheme.name}」还有 ${blank} 档总价没填，填满后才能保存`);
     if (!Array.isArray(scheme.prices) || !Array.isArray(scheme.gifts) || scheme.prices.length !== value.tiers.length || scheme.gifts.length !== value.tiers.length || scheme.prices.some(p => !Number.isFinite(p) || p <= 0 || p > 100000000) || scheme.gifts.some(g => !Number.isSafeInteger(g) || g < 0 || g > 10000)) fail('各档总价与赠课须对应课时档位；总价大于零，赠课为非负整数');
     const breach = scheme.prices.some((price, i) => (price - settings.costPerHour * (value.tiers[i] + scheme.gifts[i])) / price < settings.floorMargin);
     if (breach && !nonempty(scheme.breachReason, 2000)) fail('该方案低于毛利底线，请填写破底线原因');
     if (scheme.breachReason !== undefined && (typeof scheme.breachReason !== 'string' || scheme.breachReason.length > 2000)) fail('破底线原因格式无效');
-    if (scheme.kind === '活动' && !identifier(scheme.needId)) fail('活动价格方案必须关联一条已采纳需求');
+    if (scheme.kind === '活动' && scheme.status !== '已记录' && !identifier(scheme.needId)) fail('活动价格方案必须关联一条已采纳需求');
     if (scheme.needId !== undefined && scheme.needId !== '') {
       const need = needs.find(n => n.id === scheme.needId);
       if (!need) fail('关联需求未采纳或来源已变化，请重新选择');
@@ -105,12 +114,10 @@ export function createPriceService(db, options = {}) {
   return {
     skus,
     async schemes(id) {
-      const sku = await getSku(id), record = getRecord(db, 'price-schemes', id);
-      const actual = record && record.line === sku.line && record.name === sku.name;
+      const sku = await getSku(id), { value, origin, source } = sheetData(db, sku);
       const settings = priceSettings(db);
-      if (!actual && !demo.skus.includes(id)) return { sku: id, ...settings, schemes: [], origin: 'empty' };
-      const savedSettings = getSettings(db), origin = actual && savedSettings.price_floor_margin !== undefined && savedSettings.price_cost_per_hour !== undefined ? 'local' : 'demo';
-      return { sku: id, ...settings, schemes: actual ? record.schemes : structuredClone(demo.schemes), origin };
+      const savedSettings = getSettings(db), costOrigin = savedSettings.price_floor_margin !== undefined && savedSettings.price_cost_per_hour !== undefined ? 'local' : 'demo';
+      return { sku: id, ...settings, unitOrig: value.unitOrig, tiers: [...value.tiers], schemes: structuredClone(value.schemes), origin, costOrigin, ...(source ? { source } : {}) };
     },
     async preview(id, body) {
       const sku = await getSku(id), current = getRecord(db, 'price-schemes', id);

@@ -165,11 +165,14 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 | `409 CAMPAIGN_ARCHIVED` | 已归档战役不能由旧编辑令牌重建为当前战役 |
 | `500 LOCAL_DELETE_READBACK_FAILED` | 写后回读不一致，不能宣称成功 |
 
-## 营销 · 价格记录（2026-10-18 改为固定 4 张表）
+## 营销 · 价格档案（2026-10-21 图片价格与稳分系列）
 
-- `GET /api/v3/price/skus` → `[{ id, line, name, label, unitOrig, tiers, origin }]`，固定 4 张，顺序即页签顺序：`uni-lite` 大学辅导·灵活学Lite、`uni-max` 大学辅导·安心学Max、`intl-lite` 国际课程·灵活学Lite（`label` 为「课时卡」）、`intl-comp` 国际课程·竞赛课时卡。不再读飞书 SKU 表（设置里的 `price_sku_table_id` 价格页已不用）。`origin`：`local` 已保存、`demo` 演示矩阵（两张 Lite，`fixtures/v3-demo-price.json`）、`empty` 还没有价格（`unitOrig: null`，档位 5–200h）。SKU 档案按 `line + name` 匹配。
-- `GET /api/v3/price/schemes?sku=` → `{ sku, floorMargin, costPerHour, schemes, origin }`；空表返回 `schemes: []`、`origin: "empty"`，不报错。
-- `POST /api/v3/price/schemes/preview?sku=` body `{ unitOrig, tiers, schemes }` → 预览；`PUT /api/v3/price/schemes?sku=` body `{ previewId, confirm: true }` → 写入，页面再回读核对。整张矩阵一起保存：页面里新增、插入、删除方案都只改草稿。必须填满才能保存：原价为空、任一方案有空格（`null`）或一个方案都没有时返回 400，空格的报错写明方案名和缺几档。
+- `GET /api/v3/price/skus` → `[{ id, line, name, label, groupId?, groupLabel?, aliases?, unitOrig, tiers, origin }]`。四个主分组、六个产品：`uni-lite` 大学辅导·灵活学Lite；稳分系列（`groupId: uni-score`）含 `uni-max` 安心学Max、`uni-exam-pass` 学考无忧Pass、`uni-resit-pass` 补考护航Pass；`intl-lite` 国际课程·课程课时卡、`intl-comp` 国际课程·竞赛课时卡。SKU 档案按业务线和名称或 aliases 匹配；intl-lite 兼容旧名称“灵活学Lite”“课时卡”的已保存价格。
+- 读取顺序：本地已保存矩阵 → 用户提供的价格截图档案（`fixtures/v3-provided-prices.json`）→ 演示。`origin` 为 `local` / `provided` / `demo` / `empty`。五张新图价仅作内置来源快照，不自动写业务记录或伪造需求；大学灵活学Lite演示价格保持原样。不读飞书 SKU 表。
+- `GET /api/v3/price/schemes?sku=` → `{ sku, unitOrig, tiers, floorMargin, costPerHour, costOrigin, schemes, origin, source? }`。`costOrigin` 独立标记成本及毛利参数是否已确认（`local` / `demo`），不能因成本未确认把用户图价标成演示；`source` 仅用于未被本地保存覆盖的图片档案。
+- `POST /api/v3/price/schemes/preview?sku=` body `{ unitOrig, tiers, schemes }` → 预览；`PUT /api/v3/price/schemes?sku=` body `{ previewId, confirm: true }` → 保存，再 GET 回读。整张矩阵一起保存，仍检查原价、严格升序档位、每格正数总价、非负整数赠课、毛利破线原因；空方案或未填满不能保存。
+- 方案状态新增 `已记录`：表示价格档案，不代表已生效；可同时留空 from/to，也可填完整有效起止期。该状态的活动方案可不关联需求；其余状态继续要求合法日期，活动方案必须关联当前已采纳需求。提供 needId 时无论状态都验证真实性；不得手填需求文字。已记录档案不进入月度政策或自动生成的设计 Brief。
+- 图片未给生效期，不沿用演示双11日期。学考无忧Pass 30课时的95折、85折分别保存为34,913、31,238元，按源图取整金额。
 
 ## 机械邪龙兽推送 · Codex 重置（2026-10-19）
 

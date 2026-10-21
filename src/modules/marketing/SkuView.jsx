@@ -9,7 +9,7 @@ import { PROMO_FIELDS, deliveryMonth } from "../../constants.js";
 // 政策读促销表；价格方案读价格记录接口（未接入或没有这个 SKU 时显示「—」）。
 // 沿用方案汇总的「改」：和上一个有数据的月份不同就标出，悬停看旧值。
 
-const activeIn = (s, m) => Boolean(s.from) && s.from <= `${m}-31` && (!s.to || s.to >= `${m}-01`);
+const activeIn = (s, m) => s.status !== "已记录" && Boolean(s.from) && s.from <= `${m}-31` && (!s.to || s.to >= `${m}-01`);
 
 export default function SkuDrawer({ line, sku, onClose }) {
   const ref = useRef(null);
@@ -20,9 +20,9 @@ export default function SkuDrawer({ line, sku, onClose }) {
   }, []);
   const promos = useApi("/api/promos");
   const skus = useApi("/api/v3/price/skus");
-  const priceSku = skus.data?.find((s) => s.line === line && s.name === sku) || null;
+  const priceSku = skus.data?.find((s) => s.line === line && (s.name === sku || s.aliases?.includes(sku))) || null;
   const schemes = useApi(priceSku ? `/api/v3/price/schemes?sku=${encodeURIComponent(priceSku.id)}` : null);
-  const sample = priceSku && [skus, schemes].find((s) => s.isSample);
+  const sample = priceSku && schemes.isSample ? schemes : null;
   return (
     <dialog ref={ref} className="sku-drawer" aria-label={`${sku} 跨月政策`} onClose={onClose} onCancel={onClose}
       onClick={(event) => { if (event.target === ref.current) ref.current.close(); }}>
