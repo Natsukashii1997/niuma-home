@@ -1,0 +1,14 @@
+{
+  "businessDataUnchanged": true,
+  "nasSnapshotUnchanged": {
+    "months": true,
+    "lines": true,
+    "lastScanAt": true,
+    "root": true
+  },
+  "snapshotMonths": [
+    "2026-08",
+    "2026-09",
+    "2026-10"
+  ]
+}
