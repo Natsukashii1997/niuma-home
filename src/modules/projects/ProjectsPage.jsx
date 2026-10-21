@@ -32,9 +32,9 @@ export default function ProjectsPage({ route }) {
   );
 }
 
-// 带教（侧栏单列）：管培生近 30 天日志里的卡点与提问。
+// 带教（侧栏单列）：管培生近 30 天日志里的提问。
 export function MentorPage() {
-  return <><PageHeader title="带教" /><p className="tab-desc">管培生近 30 天日志里的卡点与提问：在右侧回复或让机械邪龙兽回答，确认后作为评论挂回飞书原话</p><Mentor /></>;
+  return <><PageHeader title="带教" /><p className="tab-desc">管培生近 30 天日志里的提问：在右侧回复或让机械邪龙兽回答，确认后作为评论挂回飞书原话</p><Mentor /></>;
 }
 
 const STATE_TEXT = { done: "已完成", open: "未完成", unknown: "未填写" };
@@ -270,7 +270,7 @@ function DueInput({ node, disabled, onCommit }) {
 }
 
 /* ================= 管培带教 ================= */
-// 管培带教（用户 2026-10-19 重做）：左侧是日志里的卡点和提问原话（可跳回飞书那一段），右侧是反馈栏。
+// 管培带教（用户 2026-10-19 重做）：左侧是日志里的提问原话（可跳回飞书那一段），右侧是反馈栏。
 // 点左侧一条，右侧打开反馈：人工填写，或让机械邪龙兽回答（逐字打出）；预览确认后作为评论挂在飞书原话那一段，回读核对。
 // 人工回复用常浩本人身份，机械邪龙兽的回答用应用身份；结果不明时锁住这一条，只能只读核对，不自动重发。
 function Mentor() {
@@ -278,20 +278,18 @@ function Mentor() {
   return <Loadable state={state} name="带教日志" big>{(list) => <MentorBoard initial={list} />}</Loadable>;
 }
 
-const KIND_TONE = { 卡点: "red", 提问: "blue" };
+const KIND_TONE = { 提问: "blue" };
 const AS_TEXT = { user: "常浩", bot: "机械邪龙兽" };
 
 function MentorBoard({ initial }) {
   const [list, setList] = useState(initial);
   const [i, setI] = useState(0);
-  const [kind, setKind] = useState("all");
   const [selId, setSelId] = useState(null);
   const [sync, setSync] = useState({ busy: false, error: "" });
   const p = list[i];
   if (!p) return <Placeholder icon="mentor" title="还没有管培生日志">设置里配置管培生日志来源后，这里显示最近 30 天的日志。</Placeholder>;
-  const items = p.items || [];
+  const items = (p.items || []).filter(it => it.kind === "提问");
   const count = (x, k) => (x.items || []).filter((it) => it.kind === k).length;
-  const shown = kind === "all" ? items : items.filter((it) => it.kind === kind);
   const sel = items.find((it) => it.id === selId) || null;
   async function refresh() {
     setSync({ busy: true, error: "" });
@@ -306,7 +304,7 @@ function MentorBoard({ initial }) {
           {list.map((x, k) => (
             <button key={x.name} type="button" className={k === i ? "active" : ""} onClick={() => { setI(k); setSelId(null); }}>
               <span><strong>{x.name}</strong><span className="small">{x.role} · {x.logs.length} 篇日志</span></span>
-              <b className="mq-count is-block tnum" title="卡点">{count(x, "卡点")}</b><b className="mq-count is-ask tnum" title="提问">{count(x, "提问")}</b>
+              <b className="mq-count is-ask tnum" title="提问">{count(x, "提问")}</b>
             </button>
           ))}
         </div>
@@ -319,15 +317,11 @@ function MentorBoard({ initial }) {
       <div className="mentor-v4">
         <section className="card mq-list">
           <div className="card-head">
-            <h2><PixelIcon name="reports" />{p.name} · 卡点与提问</h2>
-            <div className="mq-filter" role="group" aria-label="筛选">
-              {[["all", "全部", items.length, ""], ["卡点", "卡点", count(p, "卡点"), "is-block"], ["提问", "提问", count(p, "提问"), "is-ask"]].map(([k, label, n, cls]) => (
-                <button key={k} type="button" className={kind === k ? "active" : ""} onClick={() => setKind(k)}>{label}<b className={`mq-count ${cls} tnum`}>{n}</b></button>
-              ))}
-            </div>
+            <h2><PixelIcon name="reports" />{p.name} · 提问</h2>
+            <span className="small muted">{items.length} 条提问</span>
           </div>
-          {shown.length ? <ol className="mq-items">
-            {shown.map((it) => (
+          {items.length ? <ol className="mq-items">
+            {items.map((it) => (
               <li key={it.id} className={`mq-item${it.id === selId ? " active" : ""}`}>
                 <button type="button" onClick={() => setSelId(it.id)}>
                   <span className="mq-meta"><Tag tone={KIND_TONE[it.kind]}>{it.kind}</Tag><span className="tnum">{it.date.slice(5)}</span><span className="mq-log">{it.log}</span>
@@ -338,7 +332,7 @@ function MentorBoard({ initial }) {
                 <a className="mq-src" href={it.src} target="_blank" rel="noreferrer" title="在飞书打开这句原话">原文<PixelIcon name="link" /></a>
               </li>
             ))}
-          </ol> : <p className="small muted mq-empty">最近 30 天的日志里没有{kind === "all" ? "卡点或提问" : kind}。</p>}
+          </ol> : <p className="small muted mq-empty">最近 30 天的日志里没有提问。</p>}
         </section>
         <Feedback key={`${p.name}:${selId || ""}`} person={p} item={sel} onReread={reread} />
       </div>
@@ -356,7 +350,7 @@ function Feedback({ person, item, onReread }) {
   const flow = useWriteFlow();
   if (!item) return (
     <section className="card mq-feedback">
-      <Placeholder icon="mentor" title="点左侧一条卡点或提问">右侧写回复，或让机械邪龙兽回答；确认后作为评论挂在飞书原话那一段。</Placeholder>
+      <Placeholder icon="mentor" title="点左侧一条提问">右侧写回复，或让机械邪龙兽回答；确认后作为评论挂在飞书原话那一段。</Placeholder>
     </section>
   );
   const base = `/api/v3/mentor/${encodeURIComponent(person.name)}/items/${encodeURIComponent(item.id)}`;

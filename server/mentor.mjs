@@ -45,10 +45,16 @@ export function xmlBlocks(xml) {
   const tags = [...xml.matchAll(/<(\w+)\b[^>]*\sid="([^"]+)"[^>]*>/g)];
   return tags.map((m, i) => ({ id: m[2], tag: m[1], text: clean(xml.slice(m.index + m[0].length, tags[i + 1]?.index ?? xml.length)) }));
 }
-const BLOCKER = v => /卡点|阻塞|卡住/.test(v) && !/无卡点|没有卡点|无阻塞/.test(v);
 const QUESTION = v => (/[？?]/.test(v) || /^(?:困惑|疑问|问题)\s*\d*\s*[:：]/.test(v)) && !/^https?:/.test(v);
 
-// 日志按日期标题分节；卡点、提问逐句保留原话和所在段落 ID，可直接跳到飞书原文、在那一段挂评论（用户 2026-10-19）。
+// 同时兼容旧快照：按原话判断是否为提问，保留段落 ID、证据和历史回复关联。
+export function mentorQuestions(person) {
+  const items = (person.items || []).filter(i => i.kind === '提问' || QUESTION(i.text)).map(i => ({ ...i, kind: '提问' }));
+  const logs = (person.logs || []).map(log => ({ ...log, flag: items.some(i => i.date === log.date) ? '提问' : '' }));
+  return { ...person, items, logs, blocks: [], asks: items.map(i => i.text.slice(0, 180)).slice(0, 6), feedback: `草稿：最近30天读取到${logs.length}篇日志。${items.length ? '建议逐项回应日志中的提问，明确下一步和需要确认的人。' : '日志中未提取到明确提问，可先确认本周最需要支持的一件事。'}以上由日志规则整理，需人工核对后使用。` };
+}
+
+// 日志按日期标题分节；提问逐句保留原话和所在段落 ID，可跳到飞书原文、在那一段挂评论。
 export function mentorView(source, headings, xml, now = Date.now()) {
   const today = beijingText(now).slice(0, 10), lower = new Date(Date.parse(`${today}T00:00:00Z`) - 29 * 86400_000).toISOString().slice(0, 10);
   const blocks = xmlBlocks(xml);
@@ -66,16 +72,15 @@ export function mentorView(source, headings, xml, now = Date.now()) {
     const t = h.title.replace(/^(?:20\d{2}[.\-/年])?\d{1,2}[.\-/月]\d{1,2}(?:日)?\s*/, '');
     let flagged = '';
     for (const b of lines) {
-      const kind = BLOCKER(b.text) ? '卡点' : QUESTION(b.text) ? '提问' : '';
+      const kind = QUESTION(b.text) ? '提问' : '';
       if (!kind) continue;
-      if (kind === '卡点' || !flagged) flagged = flagged === '卡点' ? '卡点' : kind;
+      flagged = kind;
       items.push({ id: b.id, kind, text: b.text.slice(0, 500), date: h.date, log: t, src: `${source.url}#${b.id}` });
     }
     return { d: h.date.slice(5), date: h.date, t, flag: flagged, src: `${source.url}#${h.id}` };
   }).sort((a, b) => b.date.localeCompare(a.date));
   items.sort((a, b) => b.date.localeCompare(a.date));
-  const blockers = items.filter(i => i.kind === '卡点');
-  return { name: source.name, role: source.role, url: source.url, logs, items, blocks: blockers.map(i => `${i.text.slice(0, 180)}（${i.date.slice(5)}）`).slice(0, 10), asks: items.filter(i => i.kind === '提问').map(i => i.text.slice(0, 180)).slice(0, 6), feedback: `草稿：最近30天读取到${logs.length}篇日志。${blockers.length ? '建议先逐项确认日志中明确记录的卡点、影响及下一步负责人。' : '日志中未提取到明确标注的卡点，可先确认本周最需要支持的一件事。'}以上由日志规则整理，需人工核对后使用。`, qa: null, history: [], qaNote: '尚未建立Q&A关联索引', draft: true, evidence };
+  return mentorQuestions({ name: source.name, role: source.role, url: source.url, logs, items, qa: null, history: [], qaNote: '尚未建立Q&A关联索引', draft: true, evidence });
 }
 
 export async function readMentorLogs(source, { run, now = Date.now } = {}) {
@@ -101,7 +106,7 @@ export async function readMentorLogs(source, { run, now = Date.now } = {}) {
 // 机械邪龙兽作答：直接回复管培生，不写「AI草稿」开头；重点用 **…** 包起来，工作台里显示为橙色字，发到飞书前去掉记号。
 // 带教回答规则（用户 2026-10-19 嫌回答笼统、排版乱）：像带教人当面回答，固定四段、每段一行起头，重点只包 1 至 2 个短语。
 const ANSWER_RULES = [
-  '你是机械邪龙兽，常浩带教管培生的助手，用带教人的口吻对管培生说话（称「你」）。只根据本轮提供的这条卡点或提问和它所在那天的日志原文作答。',
+  '你是机械邪龙兽，常浩带教管培生的助手，用带教人的口吻对管培生说话（称「你」）。只根据本轮提供的这条提问和它所在那天的日志原文作答。',
   '回答要具体到这个人这件事：先看懂他真正卡在哪里，给一个明确的判断，不要罗列几种方案让他自己选，不要讲放之四海皆准的道理。',
   '严格按下面四段输出，段与段之间空一行，不加标题符号、不写开场白和署名：',
   '结论：一句话，直接说该怎么做或怎么判断。',
@@ -125,15 +130,16 @@ export function createMentorService(db, { now = Date.now, readLogs = source => r
   const latestPerson = name => {
     const row = db.prepare('SELECT payload FROM v3_snapshots WHERE kind=?').get('mentor');
     const snapshot = row ? JSON.parse(row.payload) : null;
-    return snapshot?.identity === fingerprint(config()) ? snapshot.value?.find(p => p.name === name) : null;
+    const person = snapshot?.identity === fingerprint(config()) ? snapshot.value?.find(p => p.name === name) : null;
+    return person ? mentorQuestions(person) : null;
   };
   const evidenceFor = (name, person = latestPerson(name)) => ({ source: sourceFor(name), logs: person?.evidence || [] });
-  // 回复记录：每条卡点 / 提问一条，按来源 + 段落 ID 存；state：sending（已发出、未回读）/ sent / unknown（结果不明，锁住只读核对）。
+  // 回复记录：每条提问一条，按来源 + 段落 ID 存；state：sending（已发出、未回读）/ sent / unknown（结果不明，锁住只读核对）。
   const replyKey = (name, itemId) => `${fingerprint(sourceFor(name))}:${itemId}`;
   const itemFor = (name, itemId) => {
-    if (typeof itemId !== 'string' || !/^[A-Za-z0-9]{8,64}$/.test(itemId)) throw failure(400, '卡点或提问编号无效');
+    if (typeof itemId !== 'string' || !/^[A-Za-z0-9]{8,64}$/.test(itemId)) throw failure(400, '提问编号无效');
     const person = latestPerson(name), item = person?.items?.find(i => i.id === itemId);
-    if (!item) throw failure(404, '这条卡点或提问不在最近读取的日志里，请先刷新日志');
+    if (!item) throw failure(404, '这条提问不在最近读取的日志里，请先刷新日志');
     return { person, item, log: person.evidence.find(l => l.date === item.date) };
   };
   const replyPreviews = new Map();
@@ -152,7 +158,7 @@ export function createMentorService(db, { now = Date.now, readLogs = source => r
   return {
     async list(options) {
       const records = listRecords(db, 'mentor-record');
-      return (await read(options)).map(({ evidence, ...person }) => {
+      return (await read(options)).map(mentorQuestions).map(({ evidence, ...person }) => {
         const saved = getRecord(db, 'mentor-draft', fingerprint(sourceFor(person.name)));
         const valid = saved?.sourceFingerprint === fingerprint(evidenceFor(person.name, { evidence }));
         const items = (person.items || []).map(item => ({ ...item, reply: getRecord(db, 'mentor-reply', replyKey(person.name, item.id)) || null }));
@@ -166,7 +172,7 @@ export function createMentorService(db, { now = Date.now, readLogs = source => r
       if (sourceIdentity !== fingerprint(sourceFor(name))) throw failure(409, '带教来源已变化，请重新读取');
       const evidence = evidenceFor(name, people.find(p => p.name === name)), sourceFingerprint = fingerprint(evidence);
       if (!evidence.logs.length || evidence.logs.some(log => typeof log.text !== 'string' || !log.text.trim() || /<excerpt\b/i.test(log.text) || !log.src || !log.date)) throw failure(409, '近30天完整日志正文尚不可用，不能生成带教草稿');
-      const draft = await generate({ title: `带教草稿 · ${name}`, task: '根据最近30天完整日志生成一份带教草稿：有依据的进展、明确卡点、需确认的问题、下一次带教可直接问的3至5个问题及建议。每项事实注明日志日期和来源，不把规则提取或建议当成已确认成果。不回写日志、不发消息。', evidence });
+      const draft = await generate({ title: `带教草稿 · ${name}`, task: '根据最近30天完整日志生成一份带教草稿：有依据的进展、日志中的提问、需确认的问题、下一次带教可直接问的3至5个问题及建议。每项事实注明日志日期和来源，不把规则提取或建议当成已确认成果。不回写日志、不发消息。', evidence });
       const validate = () => { if (sourceIdentity !== fingerprint(sourceFor(name)) || sourceFingerprint !== fingerprint(evidenceFor(name))) throw failure(409, '带教日志或来源已变化，请重新生成草稿'); };
       if (draft.sourceFingerprint !== sourceFingerprint || typeof draft.text !== 'string' || !draft.text.trim() || draft.text.length > 20000) throw failure(502, 'AI草稿与来源核验不一致，未保存');
       const value = { ...draft, name, sourceIdentity, draft: true };
@@ -192,7 +198,7 @@ export function createMentorService(db, { now = Date.now, readLogs = source => r
     },
     confirm(name, body) { return changes.confirm('mentor-record', key(name, body?.week), body); },
 
-    // 机械邪龙兽回答一条卡点 / 提问：点一次调用一次本机 Codex，只读这条所在那天的日志；只返回文字，不保存、不发送。
+    // 机械邪龙兽回答一条提问：点一次调用一次本机 Codex，只读这条所在那天的日志；只返回文字，不保存、不发送。
     async answer(name, itemId, body = {}) {
       if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length) throw failure(400, 'AI 回答只使用这条所在的日志，不接受替换来源');
       const { item, log } = itemFor(name, itemId);

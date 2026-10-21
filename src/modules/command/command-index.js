@@ -25,7 +25,7 @@ const PAGES = [
   ["business", "业务", "business", "营收与业务线指标"],
   ["projects/board", "项目 · 项目推进", "project", "各项目的阶段、节点和负责人"],
   ["projects/overview", "项目 · 项目看板", "project", "所有项目总览（待设计）"],
-  ["mentor", "带教", "mentor", "管培生日志、卡点与提问"],
+  ["mentor", "带教", "mentor", "管培生日志、提问"],
   ["kb", "飞书知识库", "kb", "浏览并整理当前连接的飞书知识库"],
   ["assistants", "Agent", "agent", "文案助手等 Agent 对话"],
   ["reports", "日/周报", "reports", "日报、周报"],

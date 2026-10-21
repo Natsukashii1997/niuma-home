@@ -272,9 +272,10 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - 节点新增字段：`startDate`、`doneDate`（实际完成时间）、`overdue`（飞书「逾期状态」公式原文）、`deliverables: [{ title, url? }]`、`milestone`。「是否完成」勾选框为空按未完成（`statusKnown` 恒为 true），与飞书「任务完成度」同一口径。
 - 项目新增：`completion`（飞书「任务完成度」，0–1）、`taskCount` / `taskDone`（含子项的全部任务）；`phases` 按飞书「环节阶段」选项顺序；`phase` 为第一个还有未完成节点的阶段（不含「监控」），全部完成为 -1。
 
-## 管培带教 · 卡点与提问回复（2026-10-19）
+## 管培带教 · 提问回复（2026-10-21）
 
-- `GET /api/v3/mentor` 每人新增 `items: [{ id, kind: "卡点" | "提问", text, date, log, src, reply }]`：`id` 是飞书文档里原话所在段落的 block ID，`src` 是 `文档链接#blockId`；`reply` 为本机回复记录 `{ state: "sent" | "sending" | "unknown", as, text, display, commentId?, at, error? }` 或 null。
+- `GET /api/v3/mentor` 每人新增 `items: [{ id, kind: "提问", text, date, log, src, reply }]`：`id` 是飞书文档里原话所在段落的 block ID，`src` 是 `文档链接#blockId`；`reply` 为本机回复记录 `{ state: "sent" | "sending" | "unknown", as, text, display, commentId?, at, error? }` 或 null。
+- 只列提问，旧快照中普通卡点陈述不再列出；实际含问句的旧条目保留原文及原段落 ID。兼容字段 `blocks` 返回空数组，`asks` 为提问摘要。完整日志证据、历史回复和周记录不删除。
 - `POST /api/v3/mentor/:name/items/:id/answer` 请求 `{}` → `{ text, generatedAt, model }`：机械邪龙兽（本机 Codex）只读这条所在那天的日志作答；`**…**` 为重点。不保存、不发送。
 - `POST /api/v3/mentor/:name/items/:id/reply/preview` 请求 `{ text, as: "user" | "bot" }` → `{ previewId, expiresAt, value: { quote, date, log, doc, as, text, display } }`；`text` 去掉 `**` 记号后发送。这一条结果不明时返回 409 `REPLY_UNKNOWN`。
 - `POST /api/v3/mentor/:name/items/:id/reply` 请求 `{ previewId, confirm: true }` → 回复记录（`state: "sent"`）。用 `lark-cli drive +add-comment --block-id <id>` 在原话那一段挂评论（user = 常浩本人，bot = 机械邪龙兽应用），只发一次，再按评论编号回读核对；同一预览重复确认返回同一回执。授权被拒（确定没执行）清掉记录；其他失败或回读不一致记为 `unknown` 并返回 502 `REPLY_UNKNOWN`。

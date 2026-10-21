@@ -5,7 +5,7 @@ import path from 'node:path';
 import { createServer } from 'node:http';
 import { openDb, saveSetting } from '../server/db.mjs';
 import { createProjectService, matrixRows, projectView, readProjectSource, runLark } from '../server/projects.mjs';
-import { createMentorService, datedHeadings, mentorView, readMentorLogs } from '../server/mentor.mjs';
+import { createMentorService, datedHeadings, mentorView, mentorQuestions, readMentorLogs } from '../server/mentor.mjs';
 import { createKnowledgeTreeService, knowledgeView, previewKnowledgeChanges, readKnowledgeSource } from '../server/knowledge-tree.mjs';
 import { createProjectServices, projectRoutes } from '../server/routes/projects.mjs';
 import { match, json } from '../server/http.mjs';
@@ -109,17 +109,44 @@ test('V3 项目勾选和改期先预览后确认、并发与旧回执稳定', as
   assert.deepEqual(result.map(r => r.status).sort(), ['fulfilled', 'rejected']);
 });
 
-test('V3 近30天日志按明确年份及倒序跨年、固定章节不假报提问', () => {
+test('V3 近30天日志按明确年份及倒序跨年、只提取提问而不提取卡点陈述', () => {
   const person = mentorView(source, headings(), logXml, instant);
   assert.deepEqual(person.logs.map(l => l.date), ['2026-10-16', '2026-09-17']);
-  assert.equal(person.logs[0].flag, '卡点'); assert.equal(person.logs[1].flag, '');
-  assert.equal(person.qa, null); assert.equal(person.draft, true); assert.equal(person.blocks.length, 1);
+  assert.equal(person.logs[0].flag, '提问'); assert.equal(person.logs[1].flag, '');
+  assert.equal(person.qa, null); assert.equal(person.draft, true); assert.equal(person.blocks.length, 0);
   // 原话逐句保留段落 ID，能跳回飞书那一段
-  assert.deepEqual(person.items.map(i => [i.kind, i.text, i.id]), [['卡点', '卡点：尚未取得数据', 'pBlock0001'], ['提问', '困惑 1：下一步找谁确认？', 'pAsk000001']]);
-  assert.equal(person.items[1].src, `${source.url}#pAsk000001`);
+  assert.deepEqual(person.items.map(i => [i.kind, i.text, i.id]), [['提问', '困惑 1：下一步找谁确认？', 'pAsk000001']]);
+  assert.equal(person.items[0].src, `${source.url}#pAsk000001`);
   assert.deepEqual(datedHeadings('<h1 id="a">1.2 新年</h1><h1 id="b">12.30 年末</h1>', 2027).map(h => h.date), ['2027-01-02', '2026-12-30']);
   assert.throws(() => datedHeadings('<h1 id="a">9.2 后文</h1><h1 id="b">10.1 前文</h1>', 2026), /无法可靠补全年份/);
   assert.throws(() => mentorView(source, headings(), '<h1 id="a">10.16 工作进展</h1><p id="pBody00001">正文</p>', instant), /未完整读取/);
+});
+
+test('带教兼容旧快照：真实问句保留原文及回复，普通卡点不改名冒充提问', () => {
+  const original = mentorView(source, headings(), logXml, instant);
+  const legacy = { ...original, blocks: ['卡点陈述'], items: [
+    ...original.items,
+    { id: 'legacyAsk1', kind: '卡点', text: '卡点：下一步找谁确认？', date: '2026-10-16', src: `${source.url}#legacyAsk1`, reply: { state: 'sent', text: '历史回复' } },
+    { id: 'legacyBlock', kind: '卡点', text: '卡点：数据未拿到', date: '2026-10-16' },
+  ] };
+  const normalized = mentorQuestions(legacy);
+  assert.deepEqual(normalized.items.map(i => i.id), ['pAsk000001', 'legacyAsk1']);
+  assert.ok(normalized.items.every(i => i.kind === '提问'));
+  assert.equal(normalized.items[1].text, '卡点：下一步找谁确认？');
+  assert.deepEqual(normalized.items[1].reply, legacy.items[1].reply);
+  assert.equal(normalized.items[1].src, legacy.items[1].src);
+  assert.deepEqual(normalized.evidence, legacy.evidence);
+  assert.deepEqual(normalized.blocks, []);
+  assert.equal(legacy.items.length, 3, '不改写旧快照或删除原文');
+});
+
+test('带教长段提问截短后仍保留，不能因末尾问号不在摘要里而丢失', () => {
+  const xml = logXml.replace('<b>困惑 1：</b>下一步找谁确认？', '目前的方案说明。'.repeat(80) + '下一步找谁确认？');
+  const person = mentorView(source, headings(), xml, instant);
+  assert.equal(person.items.length, 1);
+  assert.equal(person.items[0].id, 'pAsk000001');
+  assert.equal(person.items[0].text.length, 500);
+  assert.equal(mentorQuestions(person).items.length, 1);
 });
 
 test('V3 带教目录先读XML并固定版本范围读取，无近30天时不拉全文', async () => {
@@ -262,12 +289,12 @@ test('带教回复：AI 回答只读当天日志；预览确认后只发一次�
 
   // 人工回复：发送失败结果不明 → 锁住，不能再预览；只读核对没找到 → 清掉，可重新发送
   failNext = true;
-  const manual = service.previewReply(source.name, 'pBlock0001', { text: '周三前把数据需求发我', as: 'user' });
-  await assert.rejects(service.confirmReply(source.name, 'pBlock0001', { previewId: manual.previewId, confirm: true }), /结果不明/);
-  assert.throws(() => service.previewReply(source.name, 'pBlock0001', { text: '再试', as: 'user' }), /只读核对/);
-  assert.deepEqual(await service.reconcileReply(source.name, 'pBlock0001'), { state: 'none', checked: true });
-  const again = service.previewReply(source.name, 'pBlock0001', { text: '周三前把数据需求发我', as: 'user' });
-  const ok = await service.confirmReply(source.name, 'pBlock0001', { previewId: again.previewId, confirm: true });
+  const manual = service.previewReply(source.name, 'pAsk000001', { text: '周三前把数据需求发我', as: 'user' });
+  await assert.rejects(service.confirmReply(source.name, 'pAsk000001', { previewId: manual.previewId, confirm: true }), /结果不明/);
+  assert.throws(() => service.previewReply(source.name, 'pAsk000001', { text: '再试', as: 'user' }), /只读核对/);
+  assert.deepEqual(await service.reconcileReply(source.name, 'pAsk000001'), { state: 'none', checked: true });
+  const again = service.previewReply(source.name, 'pAsk000001', { text: '周三前把数据需求发我', as: 'user' });
+  const ok = await service.confirmReply(source.name, 'pAsk000001', { previewId: again.previewId, confirm: true });
   assert.equal(ok.state, 'sent'); assert.equal(calls.filter(c => c.cmd === '+add-comment').at(-1).as, 'user');
-  assert.throws(() => service.previewReply(source.name, 'pBlock0001', { text: '', as: 'user' }), /2000 字以内/);
+  assert.throws(() => service.previewReply(source.name, 'pAsk000001', { text: '', as: 'user' }), /2000 字以内/);
 });
