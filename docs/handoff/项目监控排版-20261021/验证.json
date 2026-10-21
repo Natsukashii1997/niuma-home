@@ -1,0 +1,198 @@
+{
+  "isolated": [
+    {
+      "cards": [
+        {
+          "height": 205.375,
+          "overflow": false,
+          "right": 438.1875,
+          "width": 184.1875,
+          "x": 254,
+          "y": 363.890625
+        },
+        {
+          "height": 205.375,
+          "overflow": false,
+          "right": 634.390625,
+          "width": 184.203125,
+          "x": 450.1875,
+          "y": 363.890625
+        },
+        {
+          "height": 205.375,
+          "overflow": false,
+          "right": 830.59375,
+          "width": 184.203125,
+          "x": 646.390625,
+          "y": 363.890625
+        },
+        {
+          "height": 205.375,
+          "overflow": false,
+          "right": 1026.796875,
+          "width": 184.203125,
+          "x": 842.59375,
+          "y": 363.890625
+        },
+        {
+          "height": 205.375,
+          "overflow": false,
+          "right": 1222.984375,
+          "width": 184.1875,
+          "x": 1038.796875,
+          "y": 363.890625
+        }
+      ],
+      "laneScrollWidth": 993,
+      "laneWidth": 993,
+      "rightGap": 12.015625,
+      "viewport": 1280
+    },
+    {
+      "cards": [
+        {
+          "height": 165.28125,
+          "overflow": false,
+          "right": 470.1875,
+          "width": 216.1875,
+          "x": 254,
+          "y": 584.28125
+        },
+        {
+          "height": 165.28125,
+          "overflow": false,
+          "right": 698.390625,
+          "width": 216.203125,
+          "x": 482.1875,
+          "y": 584.28125
+        },
+        {
+          "height": 165.28125,
+          "overflow": false,
+          "right": 926.59375,
+          "width": 216.203125,
+          "x": 710.390625,
+          "y": 584.28125
+        },
+        {
+          "height": 165.28125,
+          "overflow": false,
+          "right": 1154.796875,
+          "width": 216.203125,
+          "x": 938.59375,
+          "y": 584.28125
+        },
+        {
+          "height": 165.28125,
+          "overflow": false,
+          "right": 1382.984375,
+          "width": 216.1875,
+          "x": 1166.796875,
+          "y": 584.28125
+        }
+      ],
+      "laneScrollWidth": 1153,
+      "laneWidth": 1153,
+      "rightGap": 12.015625,
+      "viewport": 1440
+    },
+    {
+      "cards": [
+        {
+          "height": 165.28125,
+          "overflow": false,
+          "right": 566.1875,
+          "width": 312.1875,
+          "x": 254,
+          "y": 584.265625
+        },
+        {
+          "height": 165.28125,
+          "overflow": false,
+          "right": 890.390625,
+          "width": 312.203125,
+          "x": 578.1875,
+          "y": 584.265625
+        },
+        {
+          "height": 165.28125,
+          "overflow": false,
+          "right": 1214.59375,
+          "width": 312.203125,
+          "x": 902.390625,
+          "y": 584.265625
+        },
+        {
+          "height": 165.28125,
+          "overflow": false,
+          "right": 1538.796875,
+          "width": 312.203125,
+          "x": 1226.59375,
+          "y": 584.265625
+        },
+        {
+          "height": 165.28125,
+          "overflow": false,
+          "right": 1863,
+          "width": 312.203125,
+          "x": 1550.796875,
+          "y": 584.265625
+        }
+      ],
+      "laneScrollWidth": 1633,
+      "laneWidth": 1633,
+      "rightGap": 12,
+      "viewport": 1920
+    }
+  ],
+  "formal": {
+    "cards": [
+      {
+        "height": 165.28125,
+        "overflow": false,
+        "right": 470.1875,
+        "title": "调研结论审核",
+        "width": 216.1875,
+        "y": 584.28125
+      },
+      {
+        "height": 165.28125,
+        "overflow": false,
+        "right": 698.390625,
+        "title": "立项定义审核",
+        "width": 216.203125,
+        "y": 584.28125
+      },
+      {
+        "height": 165.28125,
+        "overflow": false,
+        "right": 926.59375,
+        "title": "方案审核定稿",
+        "width": 216.203125,
+        "y": 584.28125
+      },
+      {
+        "height": 165.28125,
+        "overflow": false,
+        "right": 1154.796875,
+        "title": "产品方案审核",
+        "width": 216.203125,
+        "y": 584.28125
+      },
+      {
+        "height": 165.28125,
+        "overflow": false,
+        "right": 1382.984375,
+        "title": "项目结项审核",
+        "width": 216.1875,
+        "y": 584.28125
+      }
+    ],
+    "rightGap": 12.015625,
+    "version": "3e3db41",
+    "viewport": 1440
+  },
+  "release": "nm-20261021-172408-3e3db41",
+  "projectApiUnchanged": true,
+  "dataUnchanged": true
+}
