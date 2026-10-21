@@ -67,7 +67,7 @@ function NasBoard({ nas, onScanned }) {
         <Segmented options={NAS_LINES} value={line} onChange={setLine} />
         <span className="small muted">按文件名关键词识别：{data.types.map((t) => `${t.key}「${t.keyword}」`).join(" · ")}；同名活动只留第一张，不扫「营销物料」文件夹</span>
       </div>
-      <div className="wall" style={{ "--cols": nas.months.length }}>
+      <div className="wall-wrap"><div className="wall" style={{ "--cols": nas.months.length }}>
         <div className="wall-h">类型</div>
         {nas.months.map((m) => <div key={m} className="wall-h"><span className="tnum">{m}</span></div>)}
         {data.types.map((t) => (
@@ -76,6 +76,7 @@ function NasBoard({ nas, onScanned }) {
             {nas.months.map((m) => <WallCell key={m} items={data.cells[`${m}|${t.key}`] || []} many={t.many} onOpen={(item) => setOpen({ month: m, type: t.key, item })} />)}
           </Row>
         ))}
+      </div>
       </div>
       <Modal open={!!open} onClose={() => setOpen(null)} wide icon="image" title={open ? `${line} · ${open.month} · ${open.type}${open.item.name !== open.type ? ` · ${open.item.name}` : ""}` : ""}
         footer={open && (nas.reachable
@@ -105,7 +106,7 @@ function WallCell({ items, many, onOpen }) {
   if (!items.length) return <div className="wall-c"><span className="wall-empty"><PixelIcon name="close" />没识别到</span></div>;
   return (
     <div className={`wall-c${many ? " is-many" : ""}`}>
-      {many ? <div className="wall-acts">{items.map((item) => <PosterCard key={item.id} item={item} label={item.name} onOpen={() => onOpen(item)} />)}</div>
+      {many ? <div className={`wall-acts${items.length === 1 ? " is-single" : ""}`} role="region" aria-label="活动海报" tabIndex={0}>{items.map((item) => <PosterCard key={item.id} item={item} label={item.name} onOpen={() => onOpen(item)} />)}</div>
         : items.map((item) => <PosterCard key={item.id} item={item} label={item.file.replace(/\.[^.]+$/, "")} onOpen={() => onOpen(item)} />)}
     </div>
   );

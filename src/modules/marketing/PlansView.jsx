@@ -28,9 +28,9 @@ export default function PlansView({ route = [], dossier = null }) {
         <div className="mp-head">
           <h2>当月促销</h2>
           <MonthSwitch month={month} mark={mark} onChange={(mm) => { setPasting(false); location.hash = href("marketing", "plans", mm); }} />
-          <LineStatus key={rev} month={month} editing={editing} />
           {recorded && <><span className="spacer" /><Button onClick={() => setPasting((v) => !v)}><PixelIcon name={pasting ? "close" : "plus"} />{pasting ? "收起录入" : "粘贴新方案"}</Button></>}
         </div>
+        <LineStatus key={rev} month={month} editing={editing} />
         {recorded && <RawBoard key={`${month}-${rev}`} month={month} plans={plans.data} />}
         {showEditor && <PlanEditor month={month} onSaved={() => setRev((n) => n + 1)} onLine={setEditing} />}
       </section>

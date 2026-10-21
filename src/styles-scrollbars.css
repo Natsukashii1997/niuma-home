@@ -1,0 +1,7 @@
+/* 默认透明，留出原生滑块的可拖拽区域；每个容器独立显示，避免父容器激活时点亮所有滚动条。 */
+* { --scroll-thumb-alpha: 0; scrollbar-width: thin; scrollbar-color: rgba(85, 91, 103, var(--scroll-thumb-alpha)) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track, *::-webkit-scrollbar-corner { background: transparent; }
+*::-webkit-scrollbar-thumb { background: rgba(85, 91, 103, var(--scroll-thumb-alpha)); border: 2px solid transparent; background-clip: padding-box; border-radius: 8px; }
+.tabs { scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }

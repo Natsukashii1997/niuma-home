@@ -430,7 +430,7 @@ textarea.paste-box::placeholder { color: var(--muted); }
 .material-info { position: relative; z-index: 2; }
 .material-card[data-dither][data-level] .material-info strong,
 .material-card[data-dither][data-level] .material-info p { background: var(--panel); }
-.promo-table-wrap { max-height: 65vh; overflow: auto; }
+.promo-table-wrap { max-height: none; overflow-x: auto; }
 .promo-table th { z-index: 1; }
 .promo-group { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); }
 .promo-group-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding: var(--s1) 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }

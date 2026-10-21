@@ -68,12 +68,10 @@ export default function PricesView({ route = [] }) {
   );
 }
 
-// 保存：整张矩阵预览 → 确认 → 回读。「已记录」是无生效承诺的价格档案，其他活动方案仍需关联已采纳需求。
-const SCHEME_KEYS = ["id", "name", "kind", "status", "from", "to", "prices", "gifts", "needId", "need", "breachReason"];
+// 保存：整张矩阵预览 → 确认 → 回读。「已记录」是无生效承诺的价格档案。
+const SCHEME_KEYS = ["id", "name", "kind", "status", "from", "to", "prices", "gifts"];
 function cleanScheme(s) {
   const out = Object.fromEntries(SCHEME_KEYS.filter((k) => s[k] !== undefined).map((k) => [k, s[k]]));
-  if (!out.needId) { delete out.needId; delete out.need; } // 后端不接受手填的需求文字
-  if (!out.breachReason) delete out.breachReason;
   return out;
 }
 
@@ -81,8 +79,6 @@ function PriceBoard({ sku, data, onSaved, onEdit }) {
   const [schemes, setSchemesRaw] = useState(data.schemes);
   const [unitOrig, setUnitOrigRaw] = useState(sku.unitOrig);
   const flow = useWriteFlow();
-  const needsState = useApi(`/api/v3/needs?month=${deliveryMonth()}`);
-  const adoptedNeeds = (needsState.data?.needs || []).filter((n) => n.status === "已采纳");
   const locked = flow.busy || flow.phase === "unknown";
   const touched = () => { flow.reset(); onEdit(); };
   const setSchemes = (fn) => { if (locked) return; setSchemesRaw(fn); touched(); };
@@ -113,7 +109,6 @@ function PriceBoard({ sku, data, onSaved, onEdit }) {
     setSeam(null); setPanel(id);
   };
   const removeScheme = (id) => { if (id === base) return; setSchemes((old) => old.filter((s) => s.id !== id)); setPanel(null); setEditing(null); };
-  const isBreach = (s) => tiers.some((_, i) => { const v = c(s, i); return !v.empty && v.margin < data.floorMargin; });
   const blanks = schemes.reduce((n, s) => n + s.prices.filter((p) => p == null).length, 0);
   const body = () => ({ unitOrig, tiers, schemes: schemes.map(cleanScheme) });
   const preview = () => flow.preview(() => apiSend("POST", `/api/v3/price/schemes/preview?sku=${encodeURIComponent(sku.id)}`, body()));
@@ -160,8 +155,6 @@ function PriceBoard({ sku, data, onSaved, onEdit }) {
           <dt>原价</dt><dd>{pv.value.unitOrig} 元/小时</dd>
           <dt>方案</dt><dd>{pv.value.schemes.map((x) => `${x.name}（${x.status}）`).join("、")}</dd>
           {(() => { const gone = data.schemes.filter((x) => !pv.value.schemes.some((y) => y.id === x.id)); return gone.length ? <><dt>删除</dt><dd className="warn-text">{gone.map((x) => x.name).join("、")}</dd></> : null; })()}
-          <dt>关联需求</dt><dd>{pv.value.schemes.filter((x) => x.need).map((x) => `${x.name} → ${x.need}`).join("；") || "无"}</dd>
-          <dt>破底线原因</dt><dd>{pv.value.schemes.filter((x) => x.breachReason).map((x) => `${x.name}：${x.breachReason}`).join("；") || "无"}</dd>
           <dt>写到哪里</dt><dd>工作台本地价格记录{data.costOrigin === "demo" && "；成本和毛利底线仍是演示口径"}</dd>
         </dl>}
       </WriteBox>
@@ -184,7 +177,7 @@ function PriceBoard({ sku, data, onSaved, onEdit }) {
                   </div>
                   <button type="button" className="scheme-ins" disabled={locked} aria-label={`在「${s.name}」右边插入新方案`} title="在这里插入一列新方案（复制左边一列的价格）"
                     onMouseEnter={() => setSeam(s.id)} onMouseLeave={() => setSeam(null)} onFocus={() => setSeam(s.id)} onBlur={() => setSeam(null)} onClick={() => insertAfter(s.id)}><span>+</span></button>
-                  {panel === s.id && <SchemePanel scheme={s} isBase={s.id === base} breach={isBreach(s)} adoptedNeeds={adoptedNeeds} locked={locked} alignRight={k > 0 && k >= visible.length - 2}
+                  {panel === s.id && <SchemePanel scheme={s} isBase={s.id === base} locked={locked} alignRight={k > 0 && k >= visible.length - 2}
                     onChange={(patch) => setScheme(s.id, patch)} onBase={() => setBase(s.id)} onRemove={() => removeScheme(s.id)} onClose={() => setPanel(null)} />}
                 </th>
               ))}
@@ -244,7 +237,7 @@ function PriceBoard({ sku, data, onSaved, onEdit }) {
 }
 
 // 列面板：原「方案设置」卡的字段搬到这里，外加设为基准、删除。基准方案不能删，要先换基准。
-function SchemePanel({ scheme: x, isBase, breach, adoptedNeeds, locked, alignRight, onChange, onBase, onRemove, onClose }) {
+function SchemePanel({ scheme: x, isBase, locked, alignRight, onChange, onBase, onRemove, onClose }) {
   const ref = useRef(null);
   useEffect(() => {
     const away = (e) => { if (!ref.current?.contains(e.target) && !e.target.closest?.(".scheme-grab")) onClose(); };
@@ -258,17 +251,10 @@ function SchemePanel({ scheme: x, isBase, breach, adoptedNeeds, locked, alignRig
       <label className="scheme-field"><span>名称</span><input className="cell-input" value={x.name} disabled={locked} onChange={(e) => onChange({ name: e.target.value })} /></label>
       <label className="scheme-field"><span>类型</span><select className="cell-input" value={x.kind} disabled={locked} onChange={(e) => onChange({ kind: e.target.value })}>{["常规", "活动", "赠课"].map((k) => <option key={k}>{k}</option>)}</select></label>
       <label className="scheme-field"><span>状态</span><select className="cell-input" value={x.status} disabled={locked} onChange={(e) => onChange({ status: e.target.value })}>{["生效中", "草稿", "历史", "已记录"].map((k) => <option key={k}>{k}</option>)}</select></label>
-      {x.status === "已记录" && <p className="small muted">仅作价格档案，不代表已生效；日期和需求可留空。</p>}
+      {x.status === "已记录" && <p className="small muted">仅作价格档案，不代表已生效；日期可留空。</p>}
       <div className="scheme-field"><span>生效期</span><span className="scheme-dates">
         <input className="cell-input date" value={x.from} placeholder="开始" aria-label="开始日期" disabled={locked} onChange={(e) => onChange({ from: e.target.value.trim() })} /> →
         <input className="cell-input date" value={x.to} placeholder="长期" aria-label="结束日期" disabled={locked} onChange={(e) => onChange({ to: e.target.value.trim() })} /></span></div>
-      <label className="scheme-field"><span>关联需求</span>{x.kind === "活动" || x.needId ? (
-        <select className="cell-input" value={x.needId || ""} disabled={locked} onChange={(e) => { const n = adoptedNeeds.find((k) => k.id === e.target.value); onChange(n ? { needId: n.id, need: `${n.seg} · ${n.node}` } : { needId: "", need: "" }); }}>
-          <option value="">{x.status === "已记录" ? "价格档案，可不关联需求" : adoptedNeeds.length ? "选一条已采纳需求" : "还没有已采纳需求"}</option>
-          {adoptedNeeds.map((n) => <option key={n.id} value={n.id}>{n.seg} · {n.node}</option>)}
-        </select>) : <span className="muted small">只有活动方案需要</span>}</label>
-      {x.need && !x.needId && <p className="small warn-text">原文「{x.need}」不是已采纳需求，保存前要重新选</p>}
-      <label className="scheme-field"><span>破底线原因</span><input className="cell-input" value={x.breachReason || ""} disabled={locked || !breach} placeholder={breach ? "必填：为什么低于底线" : "未低于底线，不用填"} onChange={(e) => onChange({ breachReason: e.target.value })} /></label>
       <div className="scheme-panel-acts">
         <Button disabled={isBase} onClick={onBase}><PixelIcon name="target" />{isBase ? "已是基准" : "设为基准"}</Button>
         <Button disabled={isBase || locked} onClick={onRemove}><PixelIcon name="close" />删除方案</Button>

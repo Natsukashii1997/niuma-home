@@ -116,7 +116,7 @@ test('价格档案四组共六个产品：五张用户图价、大学Lite保留�
   const invalid = await request('GET', '/api/v3/price/schemes?sku=uni-lite'); assert.equal(invalid.status, 503); assert.equal(invalid.body.code, 'PRICE_SETTINGS_UNCONFIGURED');
 });
 
-test('已记录价格可无日期和活动需求，仍走预览确认；不进入月度Brief，其他状态门禁保留', async t => {
+test('已记录价格可无日期，仍走预览确认；不进入月度Brief，其他状态日期校验保留', async t => {
   const { request, db } = await setup(t), endpoint = '/api/v3/price/schemes?sku=intl-lite', previewPath = '/api/v3/price/schemes/preview?sku=intl-lite';
   const initial = (await request('GET', endpoint)).body;
   const value = { unitOrig: initial.unitOrig, tiers: initial.tiers, schemes: initial.schemes };
@@ -133,7 +133,7 @@ test('已记录价格可无日期和活动需求，仍走预览确认；不进�
     assert.equal((await request('POST', previewPath, bad)).status, 400);
   }
   const active = structuredClone(value); Object.assign(active.schemes[1], { status: '生效中', from: '2026-11-01' });
-  assert.match((await request('POST', previewPath, active)).body.error, /已采纳需求/);
+  assert.equal((await request('POST', previewPath, active)).status, 200);
   assert.equal((await request('GET', '/api/v3/price/schemes?sku=intl-comp')).body.schemes[0].prices[0], 9500);
 });
 
@@ -164,33 +164,32 @@ test('价格填满后才能保存：缺格子指出方案和档数，保存后�
   assert.deepEqual([sku.origin, sku.unitOrig, sku.tiers], ['local', 990, [5, 10]]);
 });
 
-test('价格先预览后确认、破底线包含赠课成本、完整档位校验和已采纳需求关联', async t => {
+test('价格移除需求和破底线原因后可保存活动/低毛利方案，保留预览确认和数值日期校验', async t => {
   const { request, db } = await setup(t), endpoint = '/api/v3/price/schemes?sku=uni-lite', previewPath = '/api/v3/price/schemes/preview?sku=uni-lite';
   saveSetting(db, 'price_floor_margin', '.25'); saveSetting(db, 'price_cost_per_hour', '440');
   assert.equal((await request('PUT', endpoint, { confirm: true })).status, 400);
-  const low = normal(); low.schemes[0].prices = [3000, 5000]; low.schemes[0].gifts = [5, 10];
-  assert.match((await request('POST', previewPath, low)).body.error, /破底线原因/);
-  low.schemes[0].breachReason = '已核对专项补贴'; assert.equal((await request('POST', previewPath, low)).status, 200);
+  const low = normal(); low.schemes[0].prices = [3000, 5000]; low.schemes[0].gifts = [5, 10]; low.schemes[0].kind = '活动';
+  assert.equal((await request('POST', previewPath, low)).status, 200);
   const incomplete = normal(); incomplete.schemes[0].prices.pop(); assert.equal((await request('POST', previewPath, incomplete)).status, 400);
   const badDate = normal(); badDate.schemes[0].from = '2026-02-30'; assert.equal((await request('POST', previewPath, badDate)).status, 400);
-  const activity = normal(); activity.schemes[0].kind = '活动'; assert.equal((await request('POST', previewPath, activity)).status, 400);
-  activity.schemes[0].needId = 'need1'; adopted(db, { status: '草稿' }); assert.equal((await request('POST', previewPath, activity)).status, 400);
-  adopted(db); const p = await request('POST', previewPath, activity); assert.equal(p.status, 200); assert.equal(p.body.value.schemes[0].need, '澳洲 · 本科 · Final');
+  const invalid = normal(); invalid.schemes[0].prices[0] = -1; assert.equal((await request('POST', previewPath, invalid)).status, 400);
+  // 旧页面/旧记录仍带的字段，不再触发隐藏门禁，也不写回新方案。
+  const legacy = structuredClone(low); Object.assign(legacy.schemes[0], { needId: 'stale-need', need: '旧需求文字', breachReason: '旧原因' });
+  const p = await request('POST', previewPath, legacy); assert.equal(p.status, 200); assert.deepEqual(p.body.value.schemes, low.schemes);
   assert.equal(getRecord(db, 'price-schemes', 'uni-lite'), null);
   const receipt = await request('PUT', endpoint, { previewId: p.body.previewId, confirm: true, schemes: [{ name: '篡改' }] });
   assert.equal(receipt.status, 200); assert.equal(receipt.body.schemes[0].name, '已核对价格');
   assert.deepEqual((await request('PUT', endpoint, { previewId: p.body.previewId, confirm: true })).body, receipt.body);
-  const live = await request('GET', endpoint); assert.equal(live.body.origin, 'local'); assert.equal(live.body.schemes[0].needId, 'need1');
+  const live = await request('GET', endpoint); assert.equal(live.body.origin, 'local'); assert.deepEqual(live.body.schemes, low.schemes);
+  const unknown = normal(); unknown.schemes[0].unexpected = 'x'; assert.equal((await request('POST', previewPath, unknown)).status, 400);
 });
 
-test('价格确认重新检查成本、需求状态和预览过期；数据库失败回滚', async t => {
+test('价格确认重新检查成本和预览过期；数据库失败回滚', async t => {
   const { request, db, advance } = await setup(t), previewPath = '/api/v3/price/schemes/preview?sku=uni-lite';
   const preview = async value => (await request('POST', previewPath, value)).body;
   const confirm = p => request('PUT', '/api/v3/price/schemes?sku=uni-lite', { previewId: p.previewId, confirm: true });
   const p = await preview(normal()); saveSetting(db, 'price_cost_per_hour', '450'); assert.equal((await confirm(p)).status, 409);
   const expired = await preview(normal()); advance(600001); assert.equal((await confirm(expired)).status, 409);
-  adopted(db); const value = normal(); value.schemes[0].kind = '活动'; value.schemes[0].needId = 'need1';
-  const linked = await preview(value); adopted(db, { status: '待复核' }); assert.equal((await confirm(linked)).status, 400);
   const failed = await preview(normal());
   db.exec("CREATE TRIGGER reject_price BEFORE INSERT ON v3_documents WHEN NEW.kind='price-schemes' BEGIN SELECT RAISE(ABORT,'test fault'); END;");
   assert.equal((await confirm(failed)).status, 500); assert.equal(getRecord(db, 'price-schemes', 'uni-lite'), null);
@@ -262,7 +261,7 @@ test('brief逐字段保护人工编辑，源变更保留已改文字、更新未
   assert.equal((await request('GET', '/api/v3/briefs/2026-11')).body.title, '第二次编辑');
 });
 
-test('已采纳需求在时间线内容变化后不再成为营销价格或brief的确定事实', async t => {
+test('已采纳需求在时间线内容变化后不再成为brief的确定事实', async t => {
   const { db } = await setup(t);
   const timeline = { stage: '本科', agenda: [{ c: '澳洲', school: '昆士兰大学 UQ', type: 'Final', from: '2026-11-07', to: '2026-11-21', src: '澳洲!B2' }] };
   const derived = deriveNeeds(timeline, '2026-11')[0];

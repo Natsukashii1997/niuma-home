@@ -170,8 +170,8 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `GET /api/v3/price/skus` → `[{ id, line, name, label, groupId?, groupLabel?, aliases?, unitOrig, tiers, origin }]`。四个主分组、六个产品：`uni-lite` 大学辅导·灵活学Lite；稳分系列（`groupId: uni-score`）含 `uni-max` 安心学Max、`uni-exam-pass` 学考无忧Pass、`uni-resit-pass` 补考护航Pass；`intl-lite` 国际课程·课程课时卡、`intl-comp` 国际课程·竞赛课时卡。SKU 档案按业务线和名称或 aliases 匹配；intl-lite 兼容旧名称“灵活学Lite”“课时卡”的已保存价格。
 - 读取顺序：本地已保存矩阵 → 用户提供的价格截图档案（`fixtures/v3-provided-prices.json`）→ 演示。`origin` 为 `local` / `provided` / `demo` / `empty`。五张新图价仅作内置来源快照，不自动写业务记录或伪造需求；大学灵活学Lite演示价格保持原样。不读飞书 SKU 表。
 - `GET /api/v3/price/schemes?sku=` → `{ sku, unitOrig, tiers, floorMargin, costPerHour, costOrigin, schemes, origin, source? }`。`costOrigin` 独立标记成本及毛利参数是否已确认（`local` / `demo`），不能因成本未确认把用户图价标成演示；`source` 仅用于未被本地保存覆盖的图片档案。
-- `POST /api/v3/price/schemes/preview?sku=` body `{ unitOrig, tiers, schemes }` → 预览；`PUT /api/v3/price/schemes?sku=` body `{ previewId, confirm: true }` → 保存，再 GET 回读。整张矩阵一起保存，仍检查原价、严格升序档位、每格正数总价、非负整数赠课、毛利破线原因；空方案或未填满不能保存。
-- 方案状态新增 `已记录`：表示价格档案，不代表已生效；可同时留空 from/to，也可填完整有效起止期。该状态的活动方案可不关联需求；其余状态继续要求合法日期，活动方案必须关联当前已采纳需求。提供 needId 时无论状态都验证真实性；不得手填需求文字。已记录档案不进入月度政策或自动生成的设计 Brief。
+- `POST /api/v3/price/schemes/preview?sku=` body `{ unitOrig, tiers, schemes }` → 预览；`PUT /api/v3/price/schemes?sku=` body `{ previewId, confirm: true }` → 保存，再 GET 回读。整张矩阵一起保存，仍检查原价、严格升序档位、每格正数总价、非负整数赠课；空方案或未填满不能保存。
+- 方案状态新增 `已记录`：表示价格档案，不代表已生效；可同时留空 from/to，也可填完整有效起止期。其余状态继续要求合法日期。2026-10-21用户要求移除「关联需求」「破底线原因」：所有价格方案不再需要这两个输入或必填校验，旧客户端提交的 needId/need/breachReason 在预览时移除；毛利偏低仍可在表格提示，但不阻挡保存。已记录档案不进入月度政策或自动生成的设计 Brief。
 - 图片未给生效期，不沿用演示双11日期。学考无忧Pass 30课时的95折、85折分别保存为34,913、31,238元，按源图取整金额。
 
 ## 机械邪龙兽推送 · Codex 重置（2026-10-19）
