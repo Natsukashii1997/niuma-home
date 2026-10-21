@@ -29,10 +29,11 @@ test('大学辅导：只认关键词，每类一张，活动按活动名各取�
   assert.deepEqual(r.活动海报.map((i) => [i.name, i.path]), [['稳分新签活动海报', 'm/大学海报/稳分新签活动海报.jpg'], ['现金赠礼活动海报', 'm/大学海报/现金赠礼活动海报1.jpg']]);
 });
 
-test('国际课程：价格图只认「国际课程课时卡」，同名多张取路径短的', () => {
+test('国际课程：价格图兼容新旧课时卡名称，同名多张取路径短的', () => {
   const r = recognize('国际课程', ['m/学科类+加赠课时/国际课程课时卡.jpg', 'm/学科类/国际课程课时卡.jpg', 'm/学科类/同步辅导课时卡.jpg', 'm/竞赛类/国际竞赛课时卡.jpg']);
   assert.deepEqual(r.价格图.map((i) => [i.path, i.others]), [['m/学科类/国际课程课时卡.jpg', ['m/学科类+加赠课时/国际课程课时卡.jpg']]]);
   assert.deepEqual(r.活动海报, []);
+  assert.equal(recognize('国际课程', ['m/学科类/国际课程课程课时卡.jpg']).价格图[0].path, 'm/学科类/国际课程课程课时卡.jpg');
 });
 
 function fixture(t) {
@@ -53,7 +54,7 @@ function fixture(t) {
   saveSetting(db, 'nas_root', root);
   const made = [];
   const nas = createNasMaterials(db, { makeThumb: async (src, out) => { made.push(src); copyFileSync(src, out); }, now: () => Date.parse('2026-10-19T10:00:00+08:00') });
-  return { db, nas, root, made };
+  return { db, nas, root, made, put };
 }
 
 test('扫描：不扫营销物料和其他业务线，存快照、只缓存缩略图，原图只按 id 取', async (t) => {
@@ -85,4 +86,27 @@ test('扫描：不扫营销物料和其他业务线，存快照、只缓存缩�
   await assert.rejects(nas.scan(), (e) => e.status === 503 && /未挂载/.test(e.message));
   assert.throws(() => nas.original(card.id), (e) => e.status === 503);
   assert.equal(db.prepare("SELECT error FROM v3_source_status WHERE kind='nas'").get().error.includes('未挂载'), true);
+});
+
+test('新增11月和跨年月份同步后自动入列，月份别名合并，旧月与快照回读保留', async (t) => {
+  const { db, nas, root, made, put } = fixture(t);
+  const before = await nas.read();
+  const oldCards = before.lines.大学辅导.cells['2026-09|试听海报'];
+  const oldThumbCount = made.length;
+  put('2026-11月/2026-11月大学辅导/产品物料/同步辅导价格图.jpg');
+  put('2026-11月/2026-11月国际课程/产品物料/国际课程课程课时卡.jpg');
+  put('2027-1月/大学辅导/新年活动海报.jpg');
+  put('2027-01月/大学辅导/开学活动海报.jpg');
+  writeFileSync(path.join(root, '2026-12月'), '这是普通文件，不是月份目录');
+  assert.deepEqual((await nas.read()).months, ['2026-09'], '普通读取保留上次快照，直到点击同步');
+  const updated = await nas.scan();
+  assert.deepEqual(updated.months, ['2026-09','2026-11','2027-01']);
+  assert.deepEqual(updated.lines.大学辅导.cells['2026-09|试听海报'], oldCards);
+  assert.equal(updated.lines.大学辅导.cells['2026-11|价格图'].length, 1);
+  assert.equal(updated.lines.国际课程.cells['2026-11|价格图'][0].file, '国际课程课程课时卡.jpg');
+  assert.equal(updated.lines.大学辅导.cells['2027-01|活动海报'].length, 2, '1月和01月目录合并，物料不互相覆盖');
+  assert.equal(made.length, oldThumbCount + 4, '历史缩略图复用');
+  assert.deepEqual((await createNasMaterials(db).read()).lines, updated.lines, '服务重建后从快照读回新旧月份');
+  assert.deepEqual((await nas.scan()).months, updated.months, '重复同步不重复创建月份列');
+  assert.equal(made.length, oldThumbCount + 4);
 });

@@ -137,3 +137,6 @@ button.stat.is-on .stat-label, button.stat.is-on .stat-foot, button.stat.is-on .
 .month-list td > .timeline-estimate, .tl-cell .timeline-estimate { margin-left: var(--s1); }
 .gantt-bar.is-guess, .gantt-bar.is-conflict { outline: none; }
 .tl-cell.is-pending { background: none; }
+
+/* 月度物料：月份保持紧凑固定列宽，新增月份横向追加，不随窗口拉宽。 */
+.wall { width: max-content; min-width: 0; grid-template-columns: 140px repeat(var(--cols), 280px); }

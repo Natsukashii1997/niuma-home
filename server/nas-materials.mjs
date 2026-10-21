@@ -17,7 +17,7 @@ export const NAS_LINES = {
     { key: '活动海报', keyword: '活动', many: true },
   ],
   国际课程: [
-    { key: '价格图', keyword: '国际课程课时卡' },
+    { key: '价格图', keyword: '国际课程课程课时卡', aliases: ['国际课程课时卡'] },
     { key: '活动海报', keyword: '活动', many: true },
   ],
 };
@@ -47,7 +47,7 @@ export function monthKey(folder) {
 export function recognize(line, files) {
   const sorted = [...files].sort(firstOrder), taken = new Set(), out = {};
   for (const type of NAS_LINES[line]) {
-    const hits = sorted.filter((f) => !taken.has(f) && stem(f).includes(type.keyword));
+    const hits = sorted.filter((f) => !taken.has(f) && [type.keyword, ...(type.aliases || [])].some(keyword => stem(f).includes(keyword)));
     hits.forEach((f) => taken.add(f));
     const groups = new Map();
     for (const f of hits) {
@@ -92,13 +92,15 @@ export function createNasMaterials(db, { thumbDir = path.join(path.dirname(mater
       throw failure(503, 'NAS 未挂载：请在 Finder 按 ⌘K 连接 smb://172.16.1.10 后再扫描');
     }
     fs.mkdirSync(thumbDir, { recursive: true });
-    const months = fs.readdirSync(base).map((f) => [f, monthKey(f)]).filter(([, m]) => m).sort((a, b) => zh(a[1], b[1]));
+    const folders = fs.readdirSync(base, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => [d.name, monthKey(d.name)]).filter(([, m]) => m);
+    const months = [...new Set(folders.map(([, month]) => month))].sort(zh);
     const lines = {};
     for (const line of Object.keys(NAS_LINES)) {
       lines[line] = { types: NAS_LINES[line].map(({ key, keyword, many }) => ({ key, keyword, many: !!many })), cells: {} };
-      for (const [folder, month] of months) {
-        const dirs = fs.readdirSync(path.join(base, folder), { withFileTypes: true }).filter((d) => d.isDirectory() && d.name.includes(line));
-        const files = dirs.flatMap((d) => walk(base, `${folder}/${d.name}`));
+      for (const month of months) {
+        const dirs = folders.filter(([, key]) => key === month).flatMap(([folder]) => fs.readdirSync(path.join(base, folder), { withFileTypes: true })
+          .filter(d => d.isDirectory() && d.name.includes(line)).map(d => `${folder}/${d.name}`));
+        const files = dirs.flatMap(dir => walk(base, dir));
         for (const [type, items] of Object.entries(recognize(line, files))) {
           lines[line].cells[`${month}|${type}`] = await Promise.all(items.map(async (item) => {
             const stat = fs.statSync(path.join(base, item.path));
@@ -120,7 +122,7 @@ export function createNasMaterials(db, { thumbDir = path.join(path.dirname(mater
         }
       }
     }
-    const payload = { root: base, scannedAt: attemptAt, months: months.map(([, m]) => m), lines };
+    const payload = { root: base, scannedAt: attemptAt, months, lines };
     const at = new Date(attemptAt).toISOString();
     saveSnapshot(db, 'nas', payload, at);
     recordSource(db, 'nas', { identity: base, attemptAt, at, extra: { network: 'SMB 挂载', thumbBytes: thumbBytes() } });

@@ -48,11 +48,11 @@ function NasBar({ nas, onScanned }) {
     <div className="nas-bar">
       <span className={`nas-state${nas.reachable ? "" : " is-off"}`}>{nas.reachable ? "NAS 已挂载 · 只读" : "NAS 未挂载 · 显示上次扫描的缩略图"}</span>
       <span className="mono small" title={nas.root}><PixelIcon name="folder" /> {nas.root.split("/").slice(-2).join("/")}/YYYY-M月/</span>
-      <span className="small muted">上次扫描 {nas.lastScanAt} · 缩略图 {(nas.thumbBytes / 1048576).toFixed(1)} MB</span>
+      <span className="small muted">上次同步 {nas.lastScanAt} · 缩略图 {(nas.thumbBytes / 1048576).toFixed(1)} MB</span>
       <span className="spacer" />
       {error && <span className="small nas-error">{error}</span>}
-      {scan ? <div className="nas-scan"><StepProgress label="扫描 NAS" done={scan === "done"} /></div> : null}
-      <Button onClick={run} disabled={scan === "run"}><PixelIcon name="refresh" />重新扫描</Button>
+      {scan ? <div className="nas-scan"><StepProgress label="同步 NAS" done={scan === "done"} /></div> : null}
+      <Button onClick={run} disabled={scan === "run"}><PixelIcon name="refresh" />同步 NAS</Button>
       <a className="btn btn-default" href={NAS_UPLOAD_URL} target="_blank" rel="noreferrer" title="在网页中台打开 跨部门综合资料/8.月度物料"><PixelIcon name="upload" />物料上传</a>
     </div>
   );
@@ -67,6 +67,7 @@ function NasBoard({ nas, onScanned }) {
   return (
     <>
       <NasBar nas={nas} onScanned={onScanned} />
+      <p className="small muted">新物料放入对应月份、业务线文件夹后，点击“同步 NAS”；新月份会自动增加一列。例：2026-11月 / 大学辅导。</p>
       <CacheImageWarning text={dismissed === nas.warning ? "" : nas.warning} onClose={() => setDismissed(nas.warning)} />
       <div className="toolbar">
         <Segmented options={NAS_LINES} value={line} onChange={setLine} />
