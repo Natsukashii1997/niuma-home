@@ -1,0 +1,15 @@
+{
+  "unchanged": true,
+  "tables": {
+    "v3_documents": true,
+    "v3_needs": true,
+    "promos": true,
+    "plans": true,
+    "sku_aliases": true,
+    "materials": true,
+    "material_images": true,
+    "assistants": true,
+    "unresolvedOperations": true
+  },
+  "activeOperations": []
+}
