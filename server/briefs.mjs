@@ -4,7 +4,8 @@ import { BRIEF_SECTIONS as SECTIONS, BRIEF_HEADS, BRIEF_NUMBERS, BRIEF_WIDTHS, b
 import { generateBriefSuggestions } from './brief-generate.mjs';
 import { BRIEF_DESTINATION } from './brief-destination.mjs';
 import { requireMonth, failure, beijingText } from './v3-common.mjs';
-import { createFeishuExporter, literalMarkdown, markdownTable } from './feishu-export.mjs';
+import { literalMarkdown, markdownTable } from './feishu-export.mjs';
+import { createBriefSync } from './brief-sync.mjs';
 import { attachmentMarkdownLine, createBriefAttachments } from './brief-attachments.mjs';
 
 const editable = ['title', 'background', 'materials', 'audience', 'timeline', 'items', 'specs', 'owners', 'status'];
@@ -93,12 +94,12 @@ export function briefXml(brief, attachments=[]) {
 
 export function createBriefService(db, { now = Date.now, exports: exportOptions = {}, strategy = createUserStrategyService(db) } = {}) {
   const changes = createLocalChanges(db, { now });
-  const exporter = createFeishuExporter(db, { now, ...exportOptions, fixedTarget: BRIEF_DESTINATION });
+  const exporter = createBriefSync(db, { now, ...exportOptions, fixedTarget: BRIEF_DESTINATION });
   const previewViews = new Map();
   const attachments = createBriefAttachments(db, { now });
   function read(month) {
     const base = generatedBrief(db, month, strategy.get(month)), stored = getRecord(db, 'brief', month);
-    if (!stored) return base;
+    if (!stored) return {...base,feishuDocument:exporter.linked(month)};
     let value={ ...merge(base, stored.overrides), version: `v${stored.revision}`, editedAt: stored.editedAt, saveRequestId:stored.lastSave?.id };
     // Older saved Briefs predate the material-name master list. Hydrate stable rows in memory.
     if(stored.overrides.materials===undefined){
@@ -114,7 +115,7 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
       value.timeline=slots.map(x=>x.timeline || [x.name,'','','','']);
       value.items=slots.map((x,i)=>x.items || {id:value.materials[i].id,kind:'framework',title:x.name,blocks:[],refs:[],reuse:null});
     }
-    return value;
+    return {...value,feishuDocument:exporter.linked(month)};
   }
   const exportContent = month => () => {
     const brief = read(month);
@@ -172,7 +173,7 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
       };
       const preview = changes.preview('brief', month, value, { validate });
       for (const [id, entry] of previewViews) if (entry.expires <= now()) previewViews.delete(id);
-      const view = { ...merge(base, value.overrides), version: `v${value.revision}`, editedAt: value.editedAt };
+      const view = { ...merge(base, value.overrides), version: `v${value.revision}`, editedAt: value.editedAt, feishuDocument:exporter.linked(month) };
       previewViews.set(preview.previewId, { view, expires: Date.parse(preview.expiresAt) });
       return { previewId: preview.previewId, expiresAt: preview.expiresAt, before: read(month), value: view };
     },

@@ -1,6 +1,6 @@
 // Compare document meaning and layout boundaries, ignoring Feishu IDs and default styles.
 // Only the text/table/list subset produced by Brief is accepted; resource directives fail closed.
-export function canonicalXml(source, { widths=false }={}) {
+export function canonicalXml(source, { widths=false, allowResources=false }={}) {
   if(typeof source!=='string' || /<!|<\?/.test(source)) throw new Error('Unsupported XML declaration');
   const root={tag:'root',children:[]},stack=[root];
   const decode=s=>s.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi,(_,v)=>v[0]==='#'?String.fromCodePoint(v[1].toLowerCase()==='x'?parseInt(v.slice(2),16):Number(v.slice(1))):({amp:'&',lt:'<',gt:'>',quot:'"',apos:"'"})[v]);
@@ -12,7 +12,7 @@ export function canonicalXml(source, { widths=false }={}) {
     const close=token.match(/^<\/([a-z0-9-]+)\s*>$/);
     if(close){if(stack.length===1||stack.pop().tag!==close[1])throw new Error('Unbalanced XML');continue;}
     const open=token.match(/^<([a-z0-9-]+)((?:\s+[\w-]+="[^"]*")*)\s*(\/?)>$/);
-    if(!open||!allowed.has(open[1]))throw new Error('Unsupported XML element');
+    if(!open||(!allowResources&&!allowed.has(open[1])))throw new Error('Unsupported XML element');
     const attrs=Object.fromEntries([...open[2].matchAll(/([\w-]+)="([^"]*)"/g)].map(m=>[m[1],decode(m[2])]));
     const node={tag:open[1],attrs,children:[]};stack.at(-1).children.push(node);
     if(!open[3])stack.push(node);
@@ -21,19 +21,25 @@ export function canonicalXml(source, { widths=false }={}) {
   const clean=s=>s.replace(/[^\S\n]+/g,' ').replace(/ *\n */g,'\n').replace(/\n{2,}/g,'\n').trim();
   const raw=n=>typeof n==='string'?n:n.tag==='br'?'\n':n.children.map(raw).join('')+(['p','li'].includes(n.tag)?'\n':'');
   const children=n=>n.children.flatMap(walk);
+  // Links, images and other cloud-only content inside a paragraph/cell must
+  // participate in conflict checks even though their visible text is empty.
+  const resources=n=>n.children.flatMap(c=>typeof c==='string'?[]:!allowed.has(c.tag)?walk(c):resources(c));
+  const withResources=(value,n)=>{const extra=allowResources?resources(n):[];return extra.length?[...value,extra]:value;};
   function walk(n){
     if(typeof n==='string')return clean(n)?[['text',clean(n)]]:[];
     if(n.tag==='colgroup')return widths?[['colgroup',children(n)]]:[];
     if(n.tag==='col')return widths?[['col',Number(n.attrs.width),Number(n.attrs.span||1)]]:[];
     if(n.tag==='root')return children(n);
+    if(!allowed.has(n.tag))return [[n.tag,Object.fromEntries(Object.entries(n.attrs).filter(([k])=>k!=='id').sort()),children(n)]];
     if(['thead','tbody'].includes(n.tag)){const content=children(n);return n.tag==='tbody'&&!content.length?[]:[[n.tag,content]];}
     if(n.tag==='table')return [['table',children(n)]];
     if(n.tag==='tr')return [['tr',children(n)]];
-    if(['th','td'].includes(n.tag))return [[n.tag,Number(n.attrs.rowspan||1),Number(n.attrs.colspan||1),clean(raw(n))]];
+    if(['th','td'].includes(n.tag))return [withResources([n.tag,Number(n.attrs.rowspan||1),Number(n.attrs.colspan||1),clean(raw(n))],n)];
     if(['ul','ol'].includes(n.tag))return [[n.tag,children(n)]];
     const value=clean(raw(n));
-    if(n.tag==='p'&&!value)return [];
-    return [[n.tag,value]];
+    const content=withResources([n.tag,value],n);
+    if(n.tag==='p'&&!value&&content.length===2)return [];
+    return [content];
   }
   return JSON.stringify(walk(root));
 }

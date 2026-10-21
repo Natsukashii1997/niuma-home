@@ -10,7 +10,7 @@ const TABS = [
   { key: "plans", label: "月度促销", desc: "按月份、业务线录入促销方案，下方是全部月份的方案汇总" },
   { key: "prices", label: "价格档案", desc: "各 SKU 的价格方案：按课时档对比总价、单价和毛利，标出低于毛利底线的格子" },
   { key: "materials", label: "物料沉淀", desc: "按月份沉淀大学辅导、国际课程的产品物料（从公司 NAS 识别）和设计参考" },
-  { key: "brief", label: "设计 Brief", desc: "填写物料名称，结合当月用户策略补充背景和受众；保留七节框架，可创建飞书文档" },
+  { key: "brief", label: "设计 Brief", desc: "填写物料名称，结合当月用户策略补充背景和受众；保留七节框架，同步到本月飞书文档" },
 ].map((t) => ({ ...t, href: href("marketing", t.key) }));
 
 const VIEWS = { plans: PlansView, promos: PlansView, prices: PricesView, materials: MaterialsHub, brief: BriefView };

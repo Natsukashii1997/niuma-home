@@ -314,9 +314,13 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `GET /api/v3/briefs/:month`：七节模板，新增 `materials:[{id,name}]` 主表。`audience/timeline/items` 与主表同序、同名，以稳定编号保留改名后的人工内容。新建不再自动从旧需求或价格方案拼物料；旧记录按精确名称迁移，未配对项独立保留。
 - `POST /api/v3/briefs/:month/generate {patch,overwrite?:false}`：只读草稿建议，不写数据库、不调用 Codex 或大模型；读取同月用户策略，补背景/目标和受众表空白；`overwrite:true` 明确重写第一、二节，其余节不变。缺少同月策略返回409。返回 `value,warnings,source`，页面自动保存生成结果；旧preview/confirm接口兼容保留。
 - 新物料 `kind:'framework',blocks:[]`；第四节每个物料一个小节和三列表头「涉及板块/内容/说明/示例」。第五节两列「交付物/规格建议」；第六节固定需求对接/内容确认/设计对接；附件可空。
-- Brief 的 export-preview/export 采用原生XML标题和表格（旧收据和需求策略导出仍兼容Markdown）。界面“一键创建”连续调用预检、单次确认及回读；Brief 预检提交 `{baseVersion}`（旧客户端 `{}` 兼容），服务端检查当前版本并固定到路觅策略知识库 / 营销对接Brief（space `7672588453183261977`，node `KiDLwRP8eixgJfkNHvDcGwpQnog`），拒绝前端改目的地。点击创建先flush串行自动保存、回读当前版本，再提交预检；保存失败或版本冲突不导出。完全空白物料占位跳过，未命名且已填内容仍须补名。创建后额外核对 Wiki 空间、父节点、文档身份和标题。需求策略仍使用指定文件夹。重复相同内容返回已有成功文档，未知状态只核对原文档，不重建。
+- Brief 的 export-preview/export 采用原生XML标题和表格（旧收据和需求策略导出仍兼容Markdown）。界面“同步到飞书”连续调用预检、单次确认及回读；Brief 预检提交 `{baseVersion}`（旧客户端 `{}` 兼容），服务端检查当前版本并固定到路觅策略知识库 / 营销对接Brief（space `7672588453183261977`，node `KiDLwRP8eixgJfkNHvDcGwpQnog`），拒绝前端改目的地。点击创建先flush串行自动保存、回读当前版本，再提交预检；保存失败或版本冲突不导出。完全空白物料占位跳过，未命名且已填内容仍须补名。创建后额外核对 Wiki 空间、父节点、文档身份和标题。需求策略仍使用指定文件夹。按月绑定原文档：首次创建，后续按章节更新同一Docx；无变化不写飞书。未知状态只核对原文档，不重建。
 - XML回读保留章节、表头/表体、行列、空格子、合并信息和段落换行，忽略自动ID及默认样式；差异进入unknown。附件仅列文件名，不自动上传本机文件。
 
 - `POST /api/v3/briefs/:month/autosave {baseVersion,requestId,patch}`：只写本地。事务内比较版本、校验全稿、写后回读；成功返回 Brief（含version/editedAt/saveRequestId）。重复同一请求回放，不重复增版；同编号不同内容拒绝400，旧基线409 `BRIEF_SAVE_CONFLICT`。旧preview/confirm仍保留兼容。
 - Brief 编辑停止输入600ms后自动保存；保存期间新增输入串行补存，不用响应替换当前输入框。按月/页面恢复日志，Web Locks隔离复制标签页，回读确认丢失响应；冲突须明确选择，导出不会绕过。切月等待保存，外层避免新月份短暂使用旧接口数据。
 - XML列宽来自模板revision118：受众221/300/300、交付140/140/140/192/192、新物料文案统一使用参考4.1的145/289/377、规格230/450、负责人135/545。七节h1、物料h2，每表至少3正文行，原有多行保留。带列宽的导出用full XML回读核对列宽/行数/层级，旧收据继续原口径。
+
+- Brief同步：GET增加`feishuDocument`，本地`brief-feishu-link`记录固定文档、上次工作台输出及当前操作。旧版本从唯一成功创建收据迁移；多文档或缺失基线报错，不猜测、不另建。export-preview返回`mode:new-only/update/unchanged`；按先前输出/当前工作台/实时飞书三方逐章比较，未修改章节原样保留。
+- 同章双改返回409 `EXPORT_REMOTE_CONFLICT`及`conflict:{id,document,sections:[{key,label,local,remote}]}`。用户明确选择后提交`{resolveConflict:id}`，令牌绑定两端内容/身份/目标/期限，内容变了必须重新比较。空行、列宽和旧标题尾换行仅在旧基线语义匹配中兼容；空格子内图片/链接仍参与冲突检查。
+- 正文使用原生块范围替换；标题走`drive +update-title`。每步预演、写前重读、单次写入和全文回读，保留更新前快照；收到不确定结果锁住同月写入，只读核对恢复，不自动重放或新建。首次外部写入尚未发出时的失败记aborted，可重新预检。`revision_id`不是服务端原子CAS，因此同步期间提示暂缓编辑飞书。需求策略导出保持原new-only。

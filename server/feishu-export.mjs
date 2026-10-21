@@ -59,7 +59,14 @@ export function canonicalMarkdown(text) {
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 }
 
-export function createFeishuExporter(db, { now = Date.now, run = defaultRun, fixedTarget = null } = {}) {
+export function validateExportDocument(document){
+  const format=doc=>doc.format||'markdown';
+    if (!plain(document) || typeof document.title !== 'string' || !document.title.trim() || document.title.length > 500 || /[\r\n\x00-\x1f]/.test(document.title) || typeof document.markdown !== 'string' || document.markdown.length > 1_000_000) throw error(400, 'EXPORT_CONTENT_INVALID', '导出内容或标题格式无效');
+    if(!['markdown','xml'].includes(format(document)) || (format(document)==='xml' && (typeof document.xml!=='string'||document.xml.length>1_000_000)))throw error(400,'EXPORT_CONTENT_INVALID','文档结构格式无效');
+    if(format(document)==='xml') { try{canonicalXml(document.xml);}catch{throw error(400,'EXPORT_CONTENT_INVALID','文档结构无法校验');} }
+}
+
+export function createFeishuClient(run = defaultRun) {
   async function invoke(args, input) {
     let result;
     try {
@@ -78,6 +85,11 @@ export function createFeishuExporter(db, { now = Date.now, run = defaultRun, fix
     if (result.profile !== 'codex' || result.appId !== APP_ID || result.identity !== 'user' || result.available !== true || result.tokenStatus !== 'ready' || typeof result.onBehalfOf?.openId !== 'string' || !result.onBehalfOf.openId) throw error(503, 'EXPORT_IDENTITY_INVALID', '请先确认机械邪龙兽 codex 的 user 身份已就绪；不会切换机器人');
     return result.onBehalfOf.openId;
   }
+  return {cli,whoami};
+}
+
+export function createFeishuExporter(db, { now = Date.now, run = defaultRun, fixedTarget = null } = {}) {
+  const {cli,whoami}=createFeishuClient(run);
   async function target(raw, wiki = null) {
     if (wiki) {
       const url = trustedUrl(raw);
@@ -127,9 +139,7 @@ export function createFeishuExporter(db, { now = Date.now, run = defaultRun, fix
   }
   async function current(scope, load) {
     const config = exportSourceIdentity(db), document = await load(scope.context);
-    if (!plain(document) || typeof document.title !== 'string' || !document.title.trim() || document.title.length > 500 || /[\r\n\x00-\x1f]/.test(document.title) || typeof document.markdown !== 'string' || document.markdown.length > 1_000_000) throw error(400, 'EXPORT_CONTENT_INVALID', '导出内容或标题格式无效');
-    if(!['markdown','xml'].includes(format(document)) || (format(document)==='xml' && (typeof document.xml!=='string'||document.xml.length>1_000_000)))throw error(400,'EXPORT_CONTENT_INVALID','文档结构格式无效');
-    if(format(document)==='xml') { try{canonicalXml(document.xml);}catch{throw error(400,'EXPORT_CONTENT_INVALID','文档结构无法校验');} }
+    validateExportDocument(document);
     if (exportSourceIdentity(db) !== config) throw error(409, 'EXPORT_SOURCE_CHANGED', '来源配置已变化，请重新预览');
     return { document, config, source: exportSourceConfig(db), fingerprint: fingerprint(document) };
   }

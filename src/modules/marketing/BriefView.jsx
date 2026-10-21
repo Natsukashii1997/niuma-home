@@ -127,7 +127,7 @@ function Brief({ brief, month, setMonth, journal }) {
             </div>
           )}
           <div className="doc-export">
-            <FeishuExport key={month} oneClick fixedTarget={BRIEF_DESTINATION} onLockChange={setExportLocked} beforeCreate={()=>saver.verify()} what=" Brief " disabled={generating || saving.resolving} disabledNote="正在生成建议"
+            <FeishuExport key={month} syncExisting linkedDocument={brief.feishuDocument} oneClick fixedTarget={BRIEF_DESTINATION} onLockChange={setExportLocked} beforeCreate={()=>saver.verify()} what=" Brief " disabled={generating || saving.resolving} disabledNote="正在生成建议"
               previewPath={`/api/v3/briefs/${month}/export-preview`} confirmPath={`/api/v3/briefs/${month}/export`} statusBase={`/api/v3/briefs/${month}/exports`} />
           </div>
         </article>

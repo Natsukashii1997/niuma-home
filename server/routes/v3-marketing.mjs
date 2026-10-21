@@ -14,7 +14,7 @@ const handle = fn => async (req, res, context) => {
     }
     json(res, 200, result);
   } catch (error) {
-    json(res, error.status || 500, { error: error.status ? error.message : '营销数据处理失败，请重新读取后再操作', ...(error.code && { code: error.code }), ...(error.receipt && { receipt: error.receipt }) });
+    json(res, error.status || 500, { error: error.status ? error.message : '营销数据处理失败，请重新读取后再操作', ...(error.code && { code: error.code }), ...(error.receipt && { receipt: error.receipt }), ...(error.conflict && {conflict:error.conflict}) });
   }
 };
 async function body(req) { try { return await readJson(req); } catch { throw failure(400, '请求内容不是有效 JSON'); } }
