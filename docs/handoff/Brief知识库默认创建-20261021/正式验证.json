@@ -1,0 +1,53 @@
+{
+  "runtime": "nm-20261021-141254-911737c",
+  "sourceMatches": {
+    "server/brief-destination.mjs": true,
+    "server/briefs.mjs": true,
+    "server/feishu-export.mjs": true
+  },
+  "briefAndStrategyUnchanged": true,
+  "exportCount": 1,
+  "receipt": {
+    "operationId": "db0db4052e286331b666637a0701db5ddb5b4870e77adfdd813d339b0054f577",
+    "previewId": "b8bce1ce-a3d1-4ce7-a4d0-2d47af6ef1a0",
+    "scope": {
+      "kind": "brief",
+      "id": "2026-10",
+      "context": {
+        "month": "2026-10"
+      }
+    },
+    "status": "success",
+    "target": {
+      "type": "wiki",
+      "url": "https://vm94j8bzy7.feishu.cn/wiki/KiDLwRP8eixgJfkNHvDcGwpQnog",
+      "token": "KiDLwRP8eixgJfkNHvDcGwpQnog",
+      "spaceId": "7672588453183261977",
+      "title": "营销对接Brief"
+    },
+    "title": "2026-10 设计 brief",
+    "fingerprint": "55f106c188ff51ca6499e065e37a5e7f7ca3ac2d9b488f993fefbd9c8b811a3d",
+    "sourceIdentity": "82aa9f7fd3a7322b8ab370427be00054783dd6226fcd563ac9a0dfab8b83534b",
+    "source": {
+      "timeline_source": "{\"title\":\"2026海外大学时间线\",\"token\":\"BRzDsSWKGh8sMgtI2AocU42qnlg\",\"url\":\"https://vm94j8bzy7.feishu.cn/wiki/ZWx9wzNaCiNMsqkAhCtc7lfgnIm\"}",
+      "project_base_url": "https://vm94j8bzy7.feishu.cn/base/MxB8biSR2aJKenszh4CcprRenmf",
+      "price_sku_table_id": "tblwaujJdrNHoVea",
+      "price_floor_margin": "0.25",
+      "price_cost_per_hour": "440",
+      "lark_profile": "codex",
+      "lark_app_id": "cli_aacf58ab61b85beb"
+    },
+    "startedAt": "2026-10-21T06:13:14.619Z",
+    "document": {
+      "id": "B9iydf2ocoS67SxyhwtcVlfynPh",
+      "url": "https://vm94j8bzy7.feishu.cn/docx/B9iydf2ocoS67SxyhwtcVlfynPh"
+    },
+    "verifiedAt": "2026-10-21T06:13:18.369Z",
+    "readbackFingerprint": "54df25bc6b202c5f25dce116b120278fbbd761243c656ef45a6a696ef7b88095"
+  },
+  "tests": {
+    "pass": 464,
+    "fail": 0
+  },
+  "isolatedCreatesAfterRepeat": 1
+}
