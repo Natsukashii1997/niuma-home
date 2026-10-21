@@ -1,0 +1,43 @@
+{
+  "pasted": [
+    {
+      "caption": "未分类",
+      "height": 224,
+      "src": "/api/v3/refs/images/a36a9af4-32be-4d29-9b33-c4b33da62870.jpg",
+      "title": "clipboard.png"
+    }
+  ],
+  "successDisappeared": true,
+  "reloadCount": 3,
+  "dragNoNotice": true,
+  "dragPosition": {
+    "left": "296px",
+    "top": "48px"
+  },
+  "dragPersisted": {
+    "left": "296px",
+    "top": "48px"
+  },
+  "afterDelete": 2,
+  "deletedImage": "/api/v3/refs/images/a36a9af4-32be-4d29-9b33-c4b33da62870.jpg",
+  "importedPosts": 3,
+  "expandedCards": 3,
+  "gallerySecond": "留学海报排版参考 · 第 2 张",
+  "dragGroupText": "全部 3\n设计参考\n2\n海报灵感\n1\n分组",
+  "searchAcrossGroups": [
+    "课程宣传色彩参考"
+  ],
+  "beforeFailure": 2,
+  "draftsBeforeReconcile": 4,
+  "draftsAfterReconcile": 4,
+  "fadeMilliseconds": 2990,
+  "afterRetry": 4,
+  "collapsed": [
+    "false",
+    "false"
+  ],
+  "groupOrder": [
+    "海报排版1",
+    "设计参考2"
+  ]
+}

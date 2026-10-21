@@ -5,7 +5,7 @@ import { failure } from './v3-common.mjs';
 
 // 只读数码世界（personal-ai-workbench）的收藏：data/collection/state.json 和本地图片，不调用它的接口、不写它的任何文件。
 // state.json 是 { sha256, state }，sha256 = sha256(JSON.stringify(state))；校验不一致（可能正在写）或 schema 不是 1 时拒绝，不猜。
-// 图文笔记取全部图片，视频笔记只取封面。导入走设计参考画布原有的「预览 → 确认 → 回读」，由画布接口压缩存图。
+// 图文笔记取全部图片，视频笔记只取封面；本机画布/帖子库按用户选择复制，源收藏始终只读。
 export const digiworldDir = () => process.env.WORKDESK_DIGIWORLD_DIR || path.resolve('..', 'personal-ai-workbench', 'data');
 export const digiworldSource = id => `数码世界笔记 ${id}`;
 export const DEFAULT_GROUP = '设计参考'; // 用户 10-17 约定：数码世界里这个分组的收藏默认导入
@@ -44,8 +44,11 @@ export function readCollection(dir = digiworldDir()) {
       const file = path.join(root, 'versions', m[1], 'media', m[2], m[3]);
       return file.startsWith(path.join(root, 'versions') + path.sep) ? [file] : [];
     });
-    const sourceUrl = typeof n.sourceUrl === 'string' && /^https:\/\//.test(n.sourceUrl) ? n.sourceUrl : '';
-    return { id: n.id, title: n.title.slice(0, 200), type: n.type === 'video' ? 'video' : 'normal', category: typeof categories[n.id] === 'string' ? categories[n.id] : '', group: groupOf(n.id), origin: typeof n.origin === 'string' ? n.origin : '', sourceUrl, images };
+    let sourceUrl = typeof n.sourceUrl === 'string' && /^https:\/\//.test(n.sourceUrl) ? n.sourceUrl : '';
+    if (sourceUrl) { try { const u=new URL(sourceUrl); u.username=''; u.password=''; for(const key of [...u.searchParams.keys()]) if(/token|signature|auth/i.test(key)) u.searchParams.delete(key); sourceUrl=u.href; } catch { sourceUrl=''; } }
+    const author = typeof n.author?.name === 'string' ? n.author.name.slice(0,200) : '';
+    const content = typeof n.content === 'string' ? n.content.slice(0,50000) : '';
+    return { author, content, id: n.id, title: n.title.slice(0, 200), type: n.type === 'video' ? 'video' : 'normal', category: typeof categories[n.id] === 'string' ? categories[n.id] : '', group: groupOf(n.id), origin: typeof n.origin === 'string' ? n.origin : '', sourceUrl, images };
   });
   return { revision: state.revision, groups: groups.map(g => g.name), notes };
 }

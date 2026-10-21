@@ -1,3 +1,4 @@
+import { SuccessNotice } from "./SuccessNotice.jsx";
 import { useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "./bitmap.jsx";
 import { Button } from "./components.jsx";
@@ -81,9 +82,9 @@ export function WriteBox({ flow, title = "保存前预览", confirmLabel = "确�
     </div>
   );
   if (phase === "saved") return (
-    <div className={`write-box is-saved ${className}`} role="status">
-      <div className="write-head"><PixelIcon name="check" /><strong>{savedText}</strong><span className="spacer" /><button type="button" className="link-btn" onClick={flow.resolve}>关闭</button></div>
-    </div>
+    <SuccessNotice className={`write-box is-saved ${className}`} onClose={flow.resolve} identity={flow.receipt}>
+      <div className="write-head"><PixelIcon name="check" /><strong>{savedText}</strong></div>
+    </SuccessNotice>
   );
   if (phase === "stale") return (
     <div className={`write-box is-warn ${className}`} role="alert">
@@ -115,11 +116,11 @@ function expiresText(iso) {
 }
 
 // 保存成功后页面要按回读结果重建时（组件会重新挂载、流程状态随之清空），由外层显示这条结果。
-export function SavedNote({ text, onClose }) {
+export function SavedNote({ text, onClose, identity = text }) {
   if (!text) return null;
   return (
-    <div className="write-box is-saved" role="status">
-      <div className="write-head"><PixelIcon name="check" /><strong>{text}</strong><span className="spacer" />{onClose && <button type="button" className="link-btn" onClick={onClose}>关闭</button>}</div>
-    </div>
+    <SuccessNotice className="write-box is-saved" onClose={onClose} identity={identity}>
+      <div className="write-head"><PixelIcon name="check" /><strong>{text}</strong></div>
+    </SuccessNotice>
   );
 }

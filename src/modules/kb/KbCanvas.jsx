@@ -1,3 +1,4 @@
+import { SuccessNotice } from "../../ui/SuccessNotice.jsx";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
@@ -295,7 +296,8 @@ function Canvas({ kb: initialKb, focus, initialOrder, ruleIds, reload, onSpace }
         <p className="write-msg">{lock.label}：{lock.error}。不会自动重发；先只读核对飞书里实际有没有改成，再继续。</p>
         <div className="write-actions"><Button variant="primary" onClick={reconcile}><PixelIcon name="refresh" />只读核对</Button></div>
       </div>}
-      {note && !lock && <p className={`kbf-note is-${note.tone}`} role="status"><PixelIcon name={note.tone === "ok" ? "check" : "alert"} />{note.text}<button type="button" className="icon-btn" aria-label="关闭" onClick={() => setNote(null)}><PixelIcon name="close" /></button></p>}
+      {note?.tone === "ok" && !lock && <SuccessNotice className="kbf-note is-ok" identity={note} onClose={() => setNote(null)}><PixelIcon name="check" />{note.text}</SuccessNotice>}
+      {note && note.tone !== "ok" && !lock && <p className={`kbf-note is-${note.tone}`} role="status"><PixelIcon name={note.tone === "ok" ? "check" : "alert"} />{note.text}<button type="button" className="icon-btn" aria-label="关闭" onClick={() => setNote(null)}><PixelIcon name="close" /></button></p>}
 
       <div className="kbf-board" data-dragging={drag?.kind || undefined}>
         <div className={`kbf-loose${model.loose.length ? "" : " is-empty"}${over === "loose" ? " is-over" : ""}`} {...dropZone("loose", () => moveTo(ROOT))}>

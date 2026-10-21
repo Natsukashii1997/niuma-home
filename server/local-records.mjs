@@ -19,6 +19,7 @@ export function putRecord(db, kind, id, value, now = Date.now()) {
 export function createLocalChanges(db, { now = Date.now } = {}) {
   const pending = new Map();
   return {
+    discard(previewId) { pending.delete(previewId); },
     preview(kind, id, value, { validate, remove = false } = {}) {
       const current = getRecord(db, kind, id);
       if (validate) validate(value, current);

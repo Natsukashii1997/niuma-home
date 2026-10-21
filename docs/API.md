@@ -296,3 +296,14 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `POST /api/v3/user-strategy/:month/edit/preview` 请求 `{ path, lines }` → 预览。`path` 允许 `summary.judgement`、`strategy.goal`（生成后）、`overview.common|diff|external|tiers`、`opportunities`、`regions.<地区>.node|task|pain|temp|barrier|opp|master`。`lines` 一行一条，与原条正文相同的行沿用原来源，其余标「你写的」；`temp` 第一行写温度（「温 → 热」或「热」）；`barrier` 每行「障碍名称：具体描述」（也接受「A2 描述」）；`tiers` 每行「地区 | 分档 | 依据」，7 个地区各一行；`opportunities` 每行「P0 | 机会 | 地区 | 业务线 | 新签/续费 | 窗口 | 依据」。
 - `POST /api/v3/user-strategy/:month/finalize/preview` 请求 `{}` → 预览（促销策略改为定稿；还没生成时 409）。
 - `POST /api/v3/user-strategy/:month/confirm` 请求 `{ previewId, confirm: true }` → 写入后回读的整份记录；记录在预览后被改过返回 409；同一预览重复确认返回同一回执。
+
+
+### 物料沉淀直接保存（2026-10-21 用户授权）
+
+- 旧 `/api/v3/refs` 画布改名过往营销，原 GET 和 preview/confirm 兼容保留。新增 `GET /api/v3/refs/state` 返回 `{value,revision}`；`PUT /api/v3/refs` 接收 `{requestId,baseRevision,value}`，立即压缩并本地保存，返回 `{requestId,value,revision}`。
+- `GET /api/v3/refs/saves/:id` 返回已提交收据或null；`GET /api/v3/refs/operations/:id` 区分pending/saved/absent，saved含receipt。网络未知只查询，不自动重复写入；未完成草稿保留，确认未保存后由用户继续保存。
+- 版本在压缩前后和提交事务核对，防止覆盖其他窗口；requestId绑定请求内容，收据与记录同事务保存（保留最近100项）。成功自动保存释放旧预览对象，频繁拖动不消耗待确认额度。图片仅允许本记录既有合法引用或受校验的新图片。
+- 删除按本次旧引用减新引用清理本机图片文件；仍被保留项引用的不删。文件创建、删除和回读在数据库事务提交前完成；失败尽力回滚全部文件步骤并报告恢复异常。不会扫描清理历史孤儿，也不会删除数码世界/NAS原图。
+- 新设计参考是独立 `design-refs/canvas` 记录与 `design-refs/` 图目录；对应state、PUT、saves、operations、images路由与上面一致。value仍为zones/items，zones是有序分组，items一帖一卡，post含来源id/作者/正文/type/公开url，gallery保留全部本地图片。
+- `GET /api/v3/design-refs/source` 只读源收藏元信息，默认分组设计参考；列表不返回正文或原图磁盘路径。`POST /api/v3/design-refs/import`接收`{requestId,baseRevision,ids}`（1–20篇），仅将所选帖子正文与图片复制进独立本机收藏；视频只复制封面，播放打开原帖。来源链接剔除token/signature/auth查询参数。
+- 本轮直接保存仅作用于这两个本机素材页，不改变其他模块写入门禁；公共成功提示3秒按帧淡出，错误、待确认与静态完成状态保留。

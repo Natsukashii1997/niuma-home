@@ -1,3 +1,4 @@
+import { SuccessNotice } from "../../ui/SuccessNotice.jsx";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
@@ -100,7 +101,7 @@ function TimelineBoard({ tl, view, initialQ, onSynced }) {
         <span className="spacer" />
         {sync.busy ? <div style={{ width: 200 }}><StepProgress label="同步飞书（只读）" /></div> : <Button onClick={runSync}><PixelIcon name="refresh" />同步</Button>}
       </div>
-      {sync.note && <p className="small ok-text tl-sync">{sync.note}</p>}
+      {sync.note && <SuccessNotice className="small ok-text tl-sync" identity={sync}>{sync.note}</SuccessNotice>}
       {sync.error && <p className="small risk-text tl-sync">{sync.error}</p>}
       {view === "month" ? <MonthTimeline tl={tl} q={q} showSrc={showSrc} /> : view === "country" ? <CountryTable tl={tl} q={q} showSrc={showSrc} /> : <Anomalies tl={tl} q={q} onSaved={onSynced} />}
     </>
