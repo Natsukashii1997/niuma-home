@@ -1,0 +1,34 @@
+{
+  "runtime": "nm-20261021-151725-9058038",
+  "links": [
+    {
+      "document": {
+        "id": "B9iydf2ocoS67SxyhwtcVlfynPh",
+        "url": "https://vm94j8bzy7.feishu.cn/docx/B9iydf2ocoS67SxyhwtcVlfynPh"
+      },
+      "currentOperationId": "cd0bcad38d3830a7f8e0e92928773c471096638c0bbe66d0e0b68b14cc8f8e69"
+    }
+  ],
+  "receipts": [
+    {
+      "status": "success",
+      "mode": "unchanged",
+      "document": {
+        "id": "B9iydf2ocoS67SxyhwtcVlfynPh",
+        "url": "https://vm94j8bzy7.feishu.cn/docx/B9iydf2ocoS67SxyhwtcVlfynPh"
+      },
+      "revision": 23
+    },
+    {
+      "status": "success",
+      "mode": "new-only",
+      "document": {
+        "id": "B9iydf2ocoS67SxyhwtcVlfynPh",
+        "url": "https://vm94j8bzy7.feishu.cn/docx/B9iydf2ocoS67SxyhwtcVlfynPh"
+      },
+      "revision": null
+    }
+  ],
+  "briefAndStrategyUnchanged": true,
+  "newExternalDocumentCreated": false
+}
