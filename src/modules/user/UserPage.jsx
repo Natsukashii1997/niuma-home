@@ -13,9 +13,9 @@ import { deliveryMonth } from "../../constants.js";
 // 来源单元格默认收起，打开「显示来源」或悬停才看，避免干扰阅读。
 // 用户时间线的说明在视图里（右侧带来源），所以这里不写 desc
 const TABS = [
-  ["timeline", "用户时间线"],
+  ["timeline", "用户时间"],
   ["strategy", "用户策略", "按月梳理各地区用户的节点、任务、痛点与决策障碍，收敛为机会点和促销建议"],
-  ["playbook", "打法库", "47 种促销打法的心理机制、适用信号与设计要点；月度用户策略按决策障碍从这里选打法"],
+  ["playbook", "促销打法", "47 种促销打法的心理机制、适用信号与设计要点；月度用户策略按决策障碍从这里选打法"],
 ].map(([key, label, desc]) => ({ key, label, desc, href: href("user", key) }));
 
 export default function UserPage({ route }) {
@@ -63,7 +63,7 @@ function Timeline({ route }) {
   const [fresh, setFresh] = useState(null); // 同步成功后回读到的新快照
   const view = ["month", "country", "anomalies"].includes(route[0]) ? route[0] : "month";
   // user/timeline/<视图>/<搜索词>：⌘K 打开某所学校时带上校名缩写，进页面就筛好
-  return <Loadable state={state} name="用户时间线" big>{(tl) => <TimelineBoard key={route[1] || ""} tl={fresh || tl} view={view} initialQ={route[1] || ""} onSynced={setFresh} />}</Loadable>;
+  return <Loadable state={state} name="用户时间" big>{(tl) => <TimelineBoard key={route[1] || ""} tl={fresh || tl} view={view} initialQ={route[1] || ""} onSynced={setFresh} />}</Loadable>;
 }
 
 // 同步：只读重取飞书各地区明细表，全部成功才替换本地快照；失败时页面仍是上次成功的快照。成功后再 GET 一次回读核对。

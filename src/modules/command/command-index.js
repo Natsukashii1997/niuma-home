@@ -16,7 +16,7 @@ const PAGES = [
   ["marketing/prices", "营销 · 价格档案", "price", "各 SKU 的价格方案：总价、单价和毛利"],
   ["marketing/materials", "营销 · 物料沉淀", "image", "物料墙（NAS）、设计参考、本地物料"],
   ["marketing/brief", "营销 · 设计 brief", "brief", "交付月物料的设计需求"],
-  ["user/timeline", "策略 · 用户时间线", "timeline", "各国大学的选课、开学、考试、出分"],
+  ["user/timeline", "策略 · 用户时间", "timeline", "各国大学的选课、开学、考试、出分"],
   ["user/timeline/country", "策略 · 时间线明细表", "timeline", "按国家看每所学校的全部节点"],
   ["user/timeline/anomalies", "策略 · 时间线异常待确认", "alert", "日期冲突、不完整，需要人工确认"],
   ["user/strategy", "策略 · 用户策略", "user", "主线需求 → 拆解 → 行动"],

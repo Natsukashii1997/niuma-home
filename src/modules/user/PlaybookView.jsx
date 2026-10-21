@@ -25,7 +25,7 @@ export function Playbook({ route }) {
   const id = route[0];
   if (!id) return <PlayList />;
   const play = PLAYS.find((p) => p.id === id);
-  if (!play) return <Placeholder icon="search" title={`没有编号为 ${id} 的打法`} action={<a className="back-link" href={href("user", "playbook")}>回到打法库</a>} />;
+  if (!play) return <Placeholder icon="search" title={`没有编号为 ${id} 的打法`} action={<a className="back-link" href={href("user", "playbook")}>回到促销打法</a>} />;
   return <PlayDetail play={play} />;
 }
 
@@ -101,7 +101,7 @@ function PlayDetail({ play }) {
   const siblings = PLAYS.filter((p) => p.cat === play.cat);
   return (
     <>
-      <a className="back-link" href={href("user", "playbook")}><PixelIcon name="left" />打法库 · {catName}</a>
+      <a className="back-link" href={href("user", "playbook")}><PixelIcon name="left" />促销打法 · {catName}</a>
       <div className="plb-detail cols-9-3">
         <Card title={<><span className="label tnum">{play.id}</span>{play.name}</>} className="plb-doc-card">
           <CardDoc text={play.body} />
