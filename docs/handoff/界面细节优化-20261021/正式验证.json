@@ -1,0 +1,79 @@
+{
+  "notes": [
+    {
+      "border": "0px",
+      "font": "12px",
+      "height": 18,
+      "text": "大学辅导已录入 · 7 SKU"
+    },
+    {
+      "border": "0px",
+      "font": "12px",
+      "height": 18,
+      "text": "国际课程已录入 · 2 SKU"
+    },
+    {
+      "border": "0px",
+      "font": "12px",
+      "height": 18,
+      "text": "申诉服务已录入原文"
+    }
+  ],
+  "summary": {
+    "contentHeight": 1622,
+    "height": 1622,
+    "maxHeight": "none"
+  },
+  "pricePanel": "方案设置\n名称\n类型\n常规\n活动\n赠课\n状态\n生效中\n草稿\n历史\n已记录\n\n仅作价格档案，不代表已生效；日期可留空。\n\n生效期\n→\n设为基准\n删除方案\n\n删除和改动只改页面草稿，点「预览保存」确认后才写入。",
+  "posters": [
+    {
+      "contentHeight": 200,
+      "count": 1,
+      "height": 200,
+      "maxHeight": "624px",
+      "widths": [
+        120
+      ]
+    },
+    {
+      "contentHeight": 624,
+      "count": 5,
+      "height": 624,
+      "maxHeight": "624px",
+      "widths": [
+        120,
+        120,
+        120,
+        120,
+        120
+      ]
+    },
+    {
+      "contentHeight": 200,
+      "count": 1,
+      "height": 200,
+      "maxHeight": "624px",
+      "widths": [
+        120
+      ]
+    }
+  ],
+  "links": [
+    {
+      "color": "rgb(37, 99, 235)",
+      "label": "T1：需求诊断、方案生成与提需一体化项目文档"
+    },
+    {
+      "color": "rgb(37, 99, 235)",
+      "label": "T1：需求诊断、方案生成与提需一体化项目文档"
+    },
+    {
+      "color": "rgb(37, 99, 235)",
+      "label": "T1：需求诊断、方案生成与提需一体化项目文档"
+    }
+  ],
+  "release": "nm-20261021-112653-a1b8e45",
+  "url": "http://127.0.0.1:5280",
+  "realDataWritten": false,
+  "nas": "未挂载，验证上次扫描的真实缩略图布局"
+}

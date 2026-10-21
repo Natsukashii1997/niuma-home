@@ -1,0 +1,130 @@
+{
+  "plans": [
+    {
+      "border": "0px",
+      "className": "line-status",
+      "contentHeight": 18,
+      "font": "13px",
+      "height": 18,
+      "maxHeight": "none"
+    },
+    {
+      "border": "2px",
+      "className": "table-wrap promo-table-wrap",
+      "contentHeight": 1622,
+      "font": "13px",
+      "height": 1622,
+      "maxHeight": "none"
+    }
+  ],
+  "idleBars": [
+    {
+      "active": false,
+      "color": "rgba(85, 91, 103, 0) rgba(0, 0, 0, 0)",
+      "top": 100
+    },
+    {
+      "active": false,
+      "color": "rgba(85, 91, 103, 0) rgba(0, 0, 0, 0)",
+      "top": 0
+    },
+    {
+      "active": false,
+      "color": "rgba(85, 91, 103, 0) rgba(0, 0, 0, 0)",
+      "top": 0
+    }
+  ],
+  "posters": [
+    {
+      "cols": "120px",
+      "contentHeight": 200,
+      "count": 1,
+      "height": 200,
+      "widths": [
+        120
+      ]
+    },
+    {
+      "cols": "120px 120px",
+      "contentHeight": 624,
+      "count": 6,
+      "height": 624,
+      "widths": [
+        120,
+        120,
+        120,
+        120,
+        120,
+        120
+      ]
+    },
+    {
+      "cols": "120px 120px",
+      "contentHeight": 836,
+      "count": 7,
+      "height": 624,
+      "widths": [
+        120,
+        120,
+        120,
+        120,
+        120,
+        120,
+        120
+      ]
+    },
+    {
+      "cols": "120px 120px",
+      "contentHeight": 200,
+      "count": 2,
+      "height": 200,
+      "widths": [
+        120,
+        120
+      ]
+    },
+    {
+      "cols": "120px",
+      "contentHeight": 200,
+      "count": 1,
+      "height": 200,
+      "widths": [
+        120
+      ]
+    }
+  ],
+  "priceFieldsRemoved": true,
+  "priceSave": true,
+  "links": [
+    {
+      "color": "rgb(37, 99, 235)",
+      "label": "T1：需求诊断、方案生成与提需一体化项目文档"
+    },
+    {
+      "color": "rgb(37, 99, 235)",
+      "label": "T1：需求诊断、方案生成与提需一体化项目文档"
+    },
+    {
+      "color": "rgb(37, 99, 235)",
+      "label": "T1：需求诊断、方案生成与提需一体化项目文档"
+    }
+  ],
+  "posterScroll": {
+    "active": "true",
+    "rect": {
+      "height": 624,
+      "width": 268,
+      "x": 969.15625,
+      "y": 48.421875
+    },
+    "top": 125
+  },
+  "nativeDrag": {
+    "active": "true",
+    "top": 105
+  },
+  "posterIdle": {
+    "active": false,
+    "color": "rgba(85, 91, 103, 0) rgba(0, 0, 0, 0)"
+  }
+}
