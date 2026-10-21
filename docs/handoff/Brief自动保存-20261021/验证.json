@@ -93,5 +93,15 @@
     },
     "existingTextPreserved": true
   },
-  "runtime": "pending"
+  "runtime": {
+    "release": "nm-20261021-144521-f9de501",
+    "port": 5280,
+    "pageFooter": "f9de501",
+    "manualSaveButtonsAbsent": true,
+    "defaultExpanded": true,
+    "twoNamedMaterials": true,
+    "threeBodyRows": true,
+    "relatedLocalRecordsUnchanged": true,
+    "productionBusinessTestWrites": 0
+  }
 }
