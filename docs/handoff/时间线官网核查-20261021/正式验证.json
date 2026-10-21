@@ -1,0 +1,207 @@
+{
+  "release": "nm-20261021-171622-bbab569",
+  "rollback": "nm-20261021-164213-e1a761f",
+  "syncedAt": "2026-10-21 17:16",
+  "coverage": {
+    "schools": 77,
+    "regionSheets": 4,
+    "calendarSheets": 12
+  },
+  "verifications": {
+    "checked": 320,
+    "confirmed": 130,
+    "unresolved": 190,
+    "stale": 0
+  },
+  "agenda": 1133,
+  "verifiedEvents": 193,
+  "ukNovember": {
+    "dated": 1,
+    "pending": 10,
+    "total": 23,
+    "shown": 11
+  },
+  "examples": [
+    {
+      "from": "2026-07-28",
+      "to": "2026-07-29",
+      "c": "美国",
+      "school": "加州大学欧文分校 UCI",
+      "type": "Final",
+      "src": "美东 美西 加拿大!S6",
+      "verified": true,
+      "verification": {
+        "status": "confirmed",
+        "checkedAt": "2026-10-21",
+        "reason": "官方2026三段期末考试为7月28–29日、8月28日、9月8–9日；原表三段均相差一天。",
+        "scope": "UCI标准暑期课：Session I、10WK、II",
+        "academicYear": "2025/26",
+        "sources": [
+          {
+            "url": "https://reg.uci.edu/calendars/quarterly/2025-2026/calendar25-26.pdf",
+            "title": "Quarterly Academic Calendar 2025-26"
+          }
+        ]
+      },
+      "detail": "Summer Session I"
+    },
+    {
+      "from": "2026-08-28",
+      "to": "2026-08-28",
+      "c": "美国",
+      "school": "加州大学欧文分校 UCI",
+      "type": "Final",
+      "src": "美东 美西 加拿大!S6",
+      "verified": true,
+      "verification": {
+        "status": "confirmed",
+        "checkedAt": "2026-10-21",
+        "reason": "官方2026三段期末考试为7月28–29日、8月28日、9月8–9日；原表三段均相差一天。",
+        "scope": "UCI标准暑期课：Session I、10WK、II",
+        "academicYear": "2025/26",
+        "sources": [
+          {
+            "url": "https://reg.uci.edu/calendars/quarterly/2025-2026/calendar25-26.pdf",
+            "title": "Quarterly Academic Calendar 2025-26"
+          }
+        ]
+      },
+      "detail": "Summer Session 10WK"
+    },
+    {
+      "from": "2026-09-08",
+      "to": "2026-09-09",
+      "c": "美国",
+      "school": "加州大学欧文分校 UCI",
+      "type": "Final",
+      "src": "美东 美西 加拿大!S6",
+      "verified": true,
+      "verification": {
+        "status": "confirmed",
+        "checkedAt": "2026-10-21",
+        "reason": "官方2026三段期末考试为7月28–29日、8月28日、9月8–9日；原表三段均相差一天。",
+        "scope": "UCI标准暑期课：Session I、10WK、II",
+        "academicYear": "2025/26",
+        "sources": [
+          {
+            "url": "https://reg.uci.edu/calendars/quarterly/2025-2026/calendar25-26.pdf",
+            "title": "Quarterly Academic Calendar 2025-26"
+          }
+        ]
+      },
+      "detail": "Summer Session II"
+    },
+    {
+      "from": "2026-12-09",
+      "to": "2026-12-23",
+      "c": "香港",
+      "school": "香港中文大学 CUHK",
+      "type": "Final",
+      "src": "香港 澳门 新加坡 马来西亚!S9",
+      "verified": true,
+      "verification": {
+        "status": "confirmed",
+        "checkedAt": "2026-10-21",
+        "reason": "官方明确列出该事项及日期，按适用范围回填。；官方校历科目考试12月9–23日，非14–31日。",
+        "scope": "全日制本科一般课程；医学特殊年级另排",
+        "academicYear": "2026/27",
+        "sources": [
+          {
+            "url": "https://rgsntl.rgs.cuhk.edu.hk/aqs_prd_applx/public/handbook/view_document.aspx?id=1510&lang=zh&seq=1",
+            "title": "香港中文大學二零二六至二七年度校曆"
+          }
+        ]
+      },
+      "detail": "第一学期科目考试"
+    },
+    {
+      "from": "2027-01-13",
+      "to": "2027-01-13",
+      "c": "香港",
+      "school": "香港中文大学 CUHK",
+      "type": "出分",
+      "src": "香港 澳门 新加坡 马来西亚!T9",
+      "verified": true,
+      "verification": {
+        "status": "confirmed",
+        "checkedAt": "2026-10-21",
+        "reason": "Important Dates官网HTML明确13/01/2027为第一学期学业成绩与评核；页面说明适用于全日制本科，MBChB另参照院系通知。",
+        "scope": "全日制本科；MBChB须另参照医学院通知",
+        "academicYear": "2026/27",
+        "sources": [
+          {
+            "url": "https://www.res.cuhk.edu.hk/important-dates/",
+            "title": "Important Dates — CUHK Registration and Examinations Section"
+          }
+        ]
+      },
+      "detail": "第一学期学业成绩与评核发布"
+    },
+    {
+      "from": "2027-02-11",
+      "to": "2027-02-11",
+      "c": "英国",
+      "school": "格拉斯哥大学",
+      "type": "成绩公布截止",
+      "src": "英国 爱尔兰!P3",
+      "verified": true,
+      "verification": {
+        "status": "confirmed",
+        "checkedAt": "2026-10-21",
+        "reason": "用已公布截止日期替换 1 月 5–16 日推测，不把截止日当作所有人的实际出分日。；官网列 2027 年 2 月 11 日为 12 月考试结果发布截止。",
+        "scope": "12 月考试结果；学院例外另行通知",
+        "academicYear": "2026/27",
+        "sources": [
+          {
+            "url": "https://www.gla.ac.uk/myglasgow/registry/staff/exams/dates/academicyear202627/",
+            "title": "Academic Year 2026/27 — Dates & Deadlines"
+          }
+        ]
+      },
+      "detail": "12 月考试成绩公布截止"
+    }
+  ],
+  "ui": {
+    "list": "本月节点清单\n按国家、开始日期排序 · 悬停一行可看来源单元格\n开始\t国家\t学校\t事件\t起止\t天数\n上月开始\t澳洲\t西澳大学 UWA\tFinal\t10-24 → 11-07\t15 天\n11-03 周二\t澳洲\t西澳大学 UWA\t选课\t11-03 → 11-03\t1 天\n待确认\t澳洲\t西澳大学 UWA\tSummer学期开始/结束时间待确认\n夏校非标准教学期未指定\n\t11.17-2.8\t—",
+    "pendingInTimeline": 1,
+    "separatePending": 0,
+    "viewport": 1280,
+    "width": 1269
+  },
+  "businessDataUnchanged": {
+    "v3_documents": {
+      "rows": 41,
+      "sha256": "3f95fdcc9c5698fbef12cfcbdf030a63ad7844403d795553367ecfea6236175e"
+    },
+    "v3_needs": {
+      "rows": 12,
+      "sha256": "3f40b1135da565fa90aaa88aa5f9c28ab2cbb50b8f92804aad48defe9425f6fc"
+    },
+    "promos": {
+      "rows": 24,
+      "sha256": "5bdbd71d49a92b6df328ced4a7435d102572fb9317f7abdbddd4865208d0a578"
+    },
+    "plans": {
+      "rows": 3,
+      "sha256": "3e546ac69bb15b1a8772db502a59ab60de9821b522c3a3c2739b1cd70b356b9f"
+    },
+    "sku_aliases": {
+      "rows": 2,
+      "sha256": "accbf3c95b92469474dc8f767db323b4f42b89d45d26ceb1561b18844114c3e2"
+    },
+    "materials": {
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "material_images": {
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "assistants": {
+      "rows": 5,
+      "sha256": "593353d4014bdeab8963a3c456fba85ece3eb0322070ccf1aa17da23053f7593"
+    },
+    "unresolvedOperations": []
+  },
+  "tests": 513
+}
