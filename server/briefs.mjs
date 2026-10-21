@@ -79,7 +79,7 @@ export function briefXml(brief, attachments=[]) {
     para(brief.background.text)+(brief.background.goals.length?`<ul>${brief.background.goals.map(g=>`<li>${xml(g)}</li>`).join('')}</ul>`:''),
     xmlTable(BRIEF_HEADS.audience,brief.audience),
     xmlTable(BRIEF_HEADS.timeline,brief.timeline),
-    brief.items.map((it,i)=>`<h2>4.${i+1} ${xml(it.title)}</h2>`+(it.kind==='skip'?para(it.note):[
+    brief.items.map((it,i)=>`<h2>4.${i+1} ${xml(it.title.trimEnd())}</h2>`+(it.kind==='skip'?para(it.note):[
       it.priceFrom?para(`来源：${it.priceFrom}`):'',
       it.blocks?xmlTable(BRIEF_HEADS.blocks,it.blocks):`<ol>${(it.cells||[]).map(c=>`<li>${xml(c)}</li>`).join('')}</ol>`,
       ...(it.refs||[]).map(r=>para(`参考：${r.title}`)),it.reuse?para(`沿用：${it.reuse.month} ${it.reuse.title}`):''

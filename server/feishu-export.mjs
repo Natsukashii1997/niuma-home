@@ -11,6 +11,9 @@ const PREVIEWS = 'feishu-export-preview', RECEIPTS = 'feishu-export';
 const plain = value => value && typeof value === 'object' && !Array.isArray(value);
 const error = (status, code, message, receipt) => Object.assign(failure(status, message), { code, ...(receipt && { receipt }) });
 const xmlText = text => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// A heading's accidental trailing Enter used to become an empty paragraph in Feishu.
+// Reuse the prior result for this formatting-only correction; all other fields stay exact.
+const briefHeadingIdentity = document => fingerprint({ ...document, xml: document.xml.replace(/(<h2>)([\s\S]*?)(<\/h2>)/g, (_, open, body, close) => open + body.replace(/(?:\s|<br\s*\/?>)+$/g, '') + close) });
 // Source text is literal: it must never become a CLI image, file, XML or mention directive.
 export const literalMarkdown = text => xmlText(String(text).replace(/\r/g, '')).replace(/[\\`*_\[\]{}()!#$~|]/g, '\\$&').replace(/^(\s*)([-+]|\d+[.])(?=\s)/gm, '$1\\$2');
 export const markdownTable = (heads, rows) => [heads, heads.map(() => '---'), ...rows].map(row => `| ${row.map(v => literalMarkdown(v).replace(/\n/g, '<br>')).join(' | ')} |`).join('\n');
@@ -113,6 +116,13 @@ export function createFeishuExporter(db, { now = Date.now, run = defaultRun, fix
     const receipt = getRecord(db, RECEIPTS, p.operationId);
     if (receipt?.status === 'success') return receipt;
     assertUnblocked(p.scope);
+    if (p.scope.kind === 'brief' && format(p.document) === 'xml') {
+      return listRecords(db, RECEIPTS).find(r => {
+        if (r.status !== 'success' || r.sourceIdentity !== p.config || fingerprint(r.scope) !== fingerprint(p.scope) || fingerprint(r.target) !== fingerprint(p.target)) return false;
+        const prior = getRecord(db, PREVIEWS, r.previewId);
+        return prior?.operationId === r.operationId && format(prior.document) === 'xml' && typeof prior.document.xml === 'string' && briefHeadingIdentity(prior.document) === briefHeadingIdentity(p.document);
+      }) || null;
+    }
     return null;
   }
   async function current(scope, load) {

@@ -285,3 +285,18 @@ test('Wiki创建回读必须核对父节点和空间，未知只读恢复且兼�
  state.createdParent=null;state.createdSpace='123';await assert.rejects(s.exportReconcile('2026-11',receipt.operationId),e=>e.code==='EXPORT_RESULT_UNKNOWN');
  state.createdSpace=null;assert.equal((await s.exportReconcile('2026-11',receipt.operationId)).status,'success');assert.equal(state.creates,1);
 });
+
+test('Brief只修标题尾部换行继续返回原文档，实际正文变化仍可新建',async t=>{
+ const {db,service,state}=setup(t),s=service();
+ const document={title:'测试交付',sections:['详细文案框架'],markdown:'# 测试交付\n\n### 4.1 海报\n\n正文',format:'xml',xml:'<title>测试交付</title><h2>4.1 海报<br/></h2><p>正文</p>'};
+ const before=await s.preview('brief','2026-11',{}, {targetUrl:FOLDER},async()=>document);
+ const original=await s.confirm('brief','2026-11',confirmBody(before),async()=>document);
+ const corrected={...document,xml:document.xml.replace('<br/>','')};
+ const after=await s.preview('brief','2026-11',{}, {targetUrl:FOLDER},async()=>corrected);
+ assert.equal(after.receipt.document.id,original.document.id);
+ const again=await s.confirm('brief','2026-11',confirmBody(after),async()=>corrected);assert.equal(again.operationId,original.operationId);assert.equal(state.creates,1);
+ const changed={...corrected,xml:corrected.xml.replace('正文','新正文')};
+ const fresh=await s.preview('brief','2026-11',{}, {targetUrl:FOLDER},async()=>changed);assert.equal(fresh.receipt,undefined);
+ await s.confirm('brief','2026-11',confirmBody(fresh),async()=>changed);assert.equal(state.creates,2);
+ assert.equal(listRecords(db,'feishu-export').length,2);
+});

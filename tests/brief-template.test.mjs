@@ -52,6 +52,17 @@ test('XML核对捕获空格子丢失、列合并和章节降级，忽略飞书ID
  assert.notEqual(canonicalXml(source),canonicalXml(source.replace('A <b>B','A<b>B')));
  assert.throws(()=>canonicalXml('<table><tr></table>'));assert.throws(()=>canonicalXml('<img path="@/secret"/>'));assert.throws(()=>canonicalXml('<!DOCTYPE a>'));
 });
+test('物料名称尾部回车不生成标题后空行，正文的有效换行保留',t=>{
+ const {base}=fixture(t);
+ for(const tail of ['\n','\r\n',' \n\n\t ']){
+   const draft=syncBriefMaterials(base,[{id:'a',name:'考前冲刺海报'+tail}]);
+   draft.background.text='第一段\n第二段';draft.items[0].blocks=[['主文案','第一行\n第二行','说明']];
+   const xml=briefXml(draft);
+   assert.match(xml,/<h2>4\.1 考前冲刺海报<\/h2><table>/);
+   assert.match(xml,/<p>第一段<br\/>第二段<\/p>/);assert.match(xml,/<p>第一行<br\/>第二行<\/p>/);
+   assert.equal(draft.materials[0].name,'考前冲刺海报'+tail);
+ }
+});
 test('旧版Brief人工内容在物料主表迁移、增加条目并保存后保留',t=>{
  const {service,db}=fixture(t);putRecord(db,'brief',month,{revision:1,editedAt:'旧版',overrides:{audience:[['旧物料','老用户','人工待办']],timeline:[['旧物料','下周','P0','负责人','说明']],items:[{id:'old',title:'旧物料',kind:'price',blocks:[['标题','人工内容','']],refs:[],reuse:null}]}});
  const read=service.read(month);assert.equal(read.materials[0].name,'旧物料');const draft=syncBriefMaterials(read,[...read.materials,{id:'new',name:'新物料'}]);
