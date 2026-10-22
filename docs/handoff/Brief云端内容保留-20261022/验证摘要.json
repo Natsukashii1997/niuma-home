@@ -45,5 +45,15 @@
     "parentNodeCountBefore": 6,
     "parentNodeCountAfter": 6,
     "originalNodeSetUnchanged": true
+  },
+  "release": {
+    "name": "nm-20261022-201044-8e0c352",
+    "commit": "8e0c352",
+    "pid": 41384,
+    "port": 5280,
+    "servedIndexMatches": true,
+    "serviceFilesMatch": true,
+    "businessDataUnchanged": true,
+    "errorLogEmpty": true
   }
 }
