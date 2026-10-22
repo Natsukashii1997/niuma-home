@@ -1,3 +1,4 @@
+import { legacyHeaders } from "./helpers/legacy-headers.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
@@ -25,7 +26,7 @@ async function setup(t) {
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   t.after(async () => { await new Promise((resolve) => server.close(resolve)); db.close(); rmSync(dir, { recursive: true, force: true }); });
   const request = (method, url, body, type = "application/json") => fetch(`http://127.0.0.1:${server.address().port}${url}`, {
-    method, headers: { "content-type": type }, body: body === undefined ? undefined : type === "application/json" ? JSON.stringify(body) : body,
+    method, headers: { "content-type": type, ...legacyHeaders(db, method, url) }, body: body === undefined ? undefined : type === "application/json" ? JSON.stringify(body) : body,
   });
   const create = async (value = material) => {
     const response = await request("POST", "/api/materials", value);

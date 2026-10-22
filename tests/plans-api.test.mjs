@@ -1,3 +1,4 @@
+import { legacyHeaders } from "./helpers/legacy-headers.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
@@ -30,7 +31,7 @@ async function setup(t) {
   });
   const request = async (method, url, body) => {
     const response = await fetch(`http://127.0.0.1:${server.address().port}${url}`, {
-      method, headers: { "content-type": "application/json" },
+      method, headers: { "content-type": "application/json", ...legacyHeaders(db, method, url) },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     return { status: response.status, body: await response.json() };
@@ -69,7 +70,8 @@ test("确认后保存双格式原文、覆盖目标组并删除遗漏 SKU；重�
   const url = `/api/plans/2026-09/${encodeURIComponent("大学辅导")}`;
   const rawHtml = "<p><strong>原文</strong></p>";
   const result = await request("PUT", url, { rawText, rawHtml, rows: preview.rows, special: preview.special });
-  assert.deepEqual(result, { status: 200, body: { inserted: 6, updated: 1, removed: 1 } });
+  assert.equal(result.status, 200); assert.match(result.body.writeVersion, /^[a-f0-9]{64}$/);
+  assert.deepEqual({ ...result.body, writeVersion: undefined }, { inserted: 6, updated: 1, removed: 1, writeVersion: undefined });
   const plan = (await request("GET", url)).body;
   assert.equal(plan.rawText, rawText);
   assert.equal(plan.rawHtml, rawHtml);
@@ -79,7 +81,8 @@ test("确认后保存双格式原文、覆盖目标组并删除遗漏 SKU；重�
   assert.ok(!promos.some((row) => row.sku === "将删除"));
   assert.equal(promos.find((row) => row.sku === "灵活学Lite").price, "120");
   assert.equal((await request("GET", "/api/plans")).body.length, 1);
-  assert.deepEqual((await request("PUT", url, { rawText, rows: preview.rows, special: "无" })).body, { inserted: 0, updated: 7, removed: 0 });
+  const repeated = (await request("PUT", url, { rawText, rows: preview.rows, special: "无" })).body;
+  assert.deepEqual({ ...repeated, writeVersion: undefined }, { inserted: 0, updated: 7, removed: 0, writeVersion: undefined });
   const after = (await request("POST", "/api/plans/parse", { month: "2026-09", line: "大学辅导", rawText })).body;
   assert.ok(after.rows.every((row) => row.status === "same"));
 });
@@ -133,7 +136,8 @@ test("大学辅导 10 月方案：预览 → 确认 → 回读，SKU 特殊活�
   assert.match(preview.special, /^双11活动（10\.15-11\.11）\n购课权益：/);
   const url = `/api/plans/2026-10/${encodeURIComponent("大学辅导")}`;
   const saved = await request("PUT", url, { rawText: text, rows: preview.rows, special: preview.special });
-  assert.deepEqual(saved, { status: 200, body: { inserted: 7, updated: 0, removed: 0 } });
+  assert.equal(saved.status, 200);
+  assert.deepEqual({ ...saved.body, writeVersion: undefined }, { inserted: 7, updated: 0, removed: 0, writeVersion: undefined });
   const promos = (await request("GET", "/api/promos")).body;
   assert.deepEqual(promos.map(({ sku, trial, price, newDeal, renewal, special }) => [sku, trial, price, newDeal, renewal, special]), [
     ["灵活学Lite", "¥199", "¥4100（双11版）", "无", "无", "无"],

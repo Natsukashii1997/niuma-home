@@ -214,7 +214,7 @@ export function comparePlan(db, month, line, parsed) {
 }
 
 export function savePlan(db, month, line, { rawText, rawHtml = "", rows, special = "无" }) {
-  db.exec("BEGIN IMMEDIATE");
+  db.exec("SAVEPOINT plan_write");
   try {
     const existing = db.prepare("SELECT sku FROM promos WHERE month = ? AND line = ?").all(month, line);
     const oldSkus = new Set(existing.map((row) => row.sku));
@@ -228,10 +228,10 @@ export function savePlan(db, month, line, { rawText, rawHtml = "", rows, special
     `).run(month, line, rawText, rawHtml, special, new Date().toISOString());
     db.prepare("DELETE FROM promos WHERE month = ? AND line = ?").run(month, line);
     for (const row of rows) savePromo(db, { ...row, month, line });
-    db.exec("COMMIT");
+    db.exec("RELEASE SAVEPOINT plan_write");
     return { inserted: rows.length - updated, updated, removed };
   } catch (error) {
-    db.exec("ROLLBACK");
+    db.exec("ROLLBACK TO SAVEPOINT plan_write; RELEASE SAVEPOINT plan_write");
     throw error;
   }
 }
@@ -261,7 +261,7 @@ export function assistantDirectory(db, id) {
 }
 
 export function importAssistants(db, sessions) {
-  db.exec("BEGIN IMMEDIATE");
+  db.exec("SAVEPOINT assistant_import");
   try {
     const result = sessions.map((session) => {
       const existing = listAssistants(db).find((row) => row.codexThreadId === session.threadId);
@@ -270,8 +270,8 @@ export function importAssistants(db, sessions) {
         .run(session.name, session.threadId, new Date().toISOString()).lastInsertRowid);
       return getAssistant(db, id);
     });
-    db.exec("COMMIT"); return result;
-  } catch (error) { db.exec("ROLLBACK"); throw error; }
+    db.exec("RELEASE SAVEPOINT assistant_import"); return result;
+  } catch (error) { db.exec("ROLLBACK TO SAVEPOINT assistant_import; RELEASE SAVEPOINT assistant_import"); throw error; }
 }
 
 export function getSettings(db) {
@@ -333,11 +333,11 @@ export function hasMaterialImageFile(db, file) {
 }
 
 export function deleteMaterial(db, id, imageId, removeFiles) {
-  db.exec("BEGIN IMMEDIATE");
+  db.exec("SAVEPOINT material_delete");
   try {
     if (imageId) db.prepare("DELETE FROM material_images WHERE material_id = ? AND id = ?").run(id, imageId);
     else db.prepare("DELETE FROM materials WHERE id = ?").run(id);
     removeFiles();
-    db.exec("COMMIT");
-  } catch (error) { db.exec("ROLLBACK"); throw error; }
+    db.exec("RELEASE SAVEPOINT material_delete");
+  } catch (error) { db.exec("ROLLBACK TO SAVEPOINT material_delete; RELEASE SAVEPOINT material_delete"); throw error; }
 }

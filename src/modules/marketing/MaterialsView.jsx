@@ -5,6 +5,9 @@ import { Button, Empty, FilterBar, Loadable, Segmented, Select, Tag } from "../.
 import { LINES, monthLabel } from "../../constants.js";
 import MaterialEditor from "./MaterialEditor.jsx";
 import MaterialDetail from "./MaterialDetail.jsx";
+import { legacyImageRequest, legacyWrite, pendingLegacyIn, recoverLegacy, retryLegacy } from "../../ui/legacy-write.js";
+import { verifyMaterialWrite } from "./material-write.js";
+import { uploadImage } from "./upload-image.js";
 
 export default function MaterialsView() {
   const state = useApi("/api/materials");
@@ -12,13 +15,20 @@ export default function MaterialsView() {
 }
 
 function MaterialWorkspace({ initialItems }) {
+  const [initialWrite] = useState(() => {
+    try { return { operations: pendingLegacyIn("material") }; }
+    catch (error) { return { operations: [], error: error.message }; }
+  });
   const [items, setItems] = useState(initialItems);
   const [filter, setFilter] = useState({ month: "", line: "", type: "" });
   const [view, setView] = useState("list");
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState(initialWrite.operations[0]?.path === "/api/materials" ? "new" : Number(initialWrite.operations[0]?.path.match(/^\/api\/materials\/(\d+)/)?.[1]) || null);
   const [busy, setBusy] = useState(false);
-  const [uncertain, setUncertain] = useState("");
+  const [uncertain, setUncertain] = useState(initialWrite.error || (initialWrite.operations.length ? "上次物料操作尚未核对，原操作已保留，请重新读取。" : ""));
   const [notice, setNotice] = useState("");
+  const [recoveredRequests, setRecoveredRequests] = useState([]);
+  const [retryOperation, setRetryOperation] = useState(null);
+  const recoveryPicker = useRef(null);
   const lock = useRef(false);
   const item = items.find((item) => item.id === selected);
   const set = (key) => (value) => setFilter((old) => ({ ...old, [key]: value }));
@@ -40,10 +50,57 @@ function MaterialWorkspace({ initialItems }) {
     if (lock.current || uncertain) return false;
     lock.current = true; setBusy(true); setNotice("");
     try { await action(refresh); return true; }
-    catch (error) { setUncertain(`${error.message}。请刷新页面核对当前物料与图片，再处理未完成项。`); return false; }
+    catch (error) {
+      setUncertain(`${error.message}。原草稿已保留，请重新读取核对当前物料与图片。`);
+      if (error.code === "WRITE_RECEIPT_UNKNOWN") setRetryOperation(pendingLegacyIn("material")[0] || null);
+      else setRetryOperation(null);
+      return false;
+    }
     finally { lock.current = false; setBusy(false); }
   };
-  const warning = uncertain && <div className="warn" role="alert"><span>{uncertain}</span><Button onClick={() => window.location.reload()}>刷新页面核对</Button></div>;
+  const recover = async () => {
+    if (lock.current) return;
+    lock.current = true; setBusy(true); setRetryOperation(null);
+    try {
+      const operations = pendingLegacyIn("material");
+      for (const op of operations) {
+        try { await recoverLegacy(op.scope, (result, request) => verifyMaterialWrite(refresh, result, request)); }
+        catch (error) { if (error.code === "WRITE_RECEIPT_UNKNOWN") setRetryOperation(op); throw error; }
+        setRecoveredRequests(previous => [...previous, op]);
+        if (op.path === "/api/materials") setSelected(null);
+      }
+      if (!operations.length) await refresh(); setUncertain(""); setNotice("已重新读取并核对物料与图片。");
+      if (operations.some(op => op.path === "/api/materials")) setSelected(null);
+    } catch (error) { setUncertain(`${error.message}。原操作已保留，不会重复提交。`); }
+    finally { lock.current = false; setBusy(false); }
+  };
+  const retryOriginal = async (file) => {
+    if (lock.current || !retryOperation) return;
+    const op = retryOperation;
+    lock.current = true; setBusy(true); setRetryOperation(null);
+    try {
+      if (op.path.includes("/images?")) {
+        if (!file) throw new Error("请重新选择上次上传的原图片");
+        const id = Number(op.path.match(/^\/api\/materials\/(\d+)/)[1]);
+        const request = await legacyImageRequest(id, file, op.body.contentType, op.baseVersion);
+        await legacyWrite(op.scope, request, (result, original) => verifyMaterialWrite(refresh, result, original),
+          headers => uploadImage(id, file, op.body.contentType, () => {}, headers));
+      } else await retryLegacy(op.scope, (result, original) => verifyMaterialWrite(refresh, result, original));
+      setRecoveredRequests(previous => [...previous, op]);
+      if (op.path === "/api/materials") setSelected(null);
+      const remaining = pendingLegacyIn("material");
+      setUncertain(remaining.length ? "仍有其他操作尚未核对，请继续重新读取。" : "");
+      setNotice("原操作已保存并核对，没有重复提交。");
+      if (op.path === "/api/materials") setSelected(null);
+    } catch (error) {
+      setUncertain(`${error.message}。原操作已保留，请重新读取核对。`);
+      if (["WRITE_RECEIPT_UNKNOWN", "WRITE_PENDING_CHANGED"].includes(error.code)) setRetryOperation(op);
+    } finally { lock.current = false; setBusy(false); }
+  };
+  const warning = uncertain && <div className="warn" role="alert"><span>{uncertain}</span><Button disabled={busy} onClick={recover}>刷新页面核对</Button>
+    {retryOperation && (retryOperation.path.includes("/images?") ? <><input ref={recoveryPicker} type="file" hidden accept=".png,.jpg,.jpeg,.webp,.gif" aria-label="重新选择原上传图片" onChange={event => { const file = event.target.files[0]; event.target.value = ""; if (file) retryOriginal(file); }} /><Button disabled={busy} onClick={() => recoveryPicker.current.click()}>选择原图片并重试</Button></>
+      : <Button disabled={busy} onClick={() => retryOriginal()}>重试原操作</Button>)}
+  </div>;
   const onSaved = (saved) => {
     setFilter({ month: saved.month, line: saved.line, type: saved.type });
     setSelected(saved.id); setNotice(`已保存「${saved.name}」，可继续上传图片。`);
@@ -79,7 +136,7 @@ function MaterialWorkspace({ initialItems }) {
     {selected !== null && <MaterialDialog busy={busy} title={selected === "new" ? "新建物料" : item?.name || "物料详情"} onClose={() => setSelected(null)}>
       {warning}
       {selected === "new" ? <MaterialEditor write={write} disabled={busy || !!uncertain} onSaved={onSaved} onCancel={() => setSelected(null)} />
-        : item && <MaterialDetail key={item.id} item={item} write={write} disabled={busy || !!uncertain} onSaved={onSaved} onDeleted={() => { setSelected(null); setNotice(`已删除「${item.name}」及其图片。`); }} />}
+        : item && <MaterialDetail key={item.id} item={item} recoveredRequests={recoveredRequests} write={write} disabled={busy || !!uncertain} onSaved={onSaved} onDeleted={() => { setSelected(null); setNotice(`已删除「${item.name}」及其图片。`); }} />}
       {busy && <p role="status" className="muted small">正在保存并回读，请稍候…</p>}
     </MaterialDialog>}
   </>;

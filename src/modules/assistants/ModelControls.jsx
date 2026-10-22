@@ -1,20 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { apiSend } from "../../api.js";
 import { Button } from "../../ui/components.jsx";
+import { legacyState, legacyWrite, recoverLegacy, retryLegacy } from "../../ui/legacy-write.js";
 
 // 强度说明来自 Codex（英文），界面上用中文短说明，原文放在悬停提示里。
 const EFFORT_ZH = { minimal: "最快", low: "快速", medium: "均衡", high: "深入推理", xhigh: "最深推理" };
 
 export default function ModelControls({ assistant, busy, version, reloadAssistants, onBlocked }) {
+  const scope = `assistant:${assistant.id}:model`;
+  const [initialWrite] = useState(() => legacyState(scope));
   const [models, setModels] = useState(null), [listError, setListError] = useState("");
-  const [choice, setChoice] = useState({ model: assistant.model, effort: assistant.effort });
-  const [saving, setSaving] = useState(false), [uncertain, setUncertain] = useState(false);
-  const [error, setError] = useState(""), [notice, setNotice] = useState("");
+  const [choice, setChoice] = useState(initialWrite.pending?.body || { model: assistant.model, effort: assistant.effort });
+  const [saving, setSaving] = useState(false), [uncertain, setUncertain] = useState(!!initialWrite.pending || !!initialWrite.error);
+  const [error, setError] = useState(initialWrite.error || (initialWrite.pending ? "上次设置尚未核对，已保留选择，请重新读取设置。" : "")), [notice, setNotice] = useState("");
   const [runtime, setRuntime] = useState(undefined), [runtimeError, setRuntimeError] = useState("");
   const [retry, setRetry] = useState(0), [runtimeRetry, setRuntimeRetry] = useState(0);
+  const [canRetry, setCanRetry] = useState(false);
   const lock = useRef(false), alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-  useEffect(() => { setChoice({ model: assistant.model, effort: assistant.effort }); }, [assistant.model, assistant.effort]);
+  useEffect(() => { if (!uncertain && !saving) setChoice({ model: assistant.model, effort: assistant.effort }); }, [assistant.model, assistant.effort]);
   useEffect(() => {
     let live = true; setListError(""); setModels(null);
     apiSend("GET", "/api/codex/models").then((rows) => { if (live) setModels(rows); }, (e) => { if (live) setListError(e.message); });
@@ -33,28 +37,39 @@ export default function ModelControls({ assistant, busy, version, reloadAssistan
   const blocked = saving || uncertain || !models || unavailable;
   useEffect(() => { onBlocked(blocked); }, [blocked, onBlocked]);
 
+  const verify = async (result) => {
+    const actual = (await reloadAssistants()).find((a) => a.id === assistant.id);
+    return !!actual && actual.model === result.model && actual.effort === result.effort && actual.writeVersion === result.writeVersion;
+  };
   const save = async (next, automatic = false) => {
     if (lock.current || busy || uncertain) return;
     lock.current = true; setSaving(true); setError(""); setNotice("");
-    const before = choice; setChoice(next);
+    setChoice(next);
     try {
-      await apiSend("PATCH", `/api/assistants/${assistant.id}`, next);
-      const rows = await reloadAssistants();
-      const actual = rows.find((a) => a.id === assistant.id);
-      if (!actual || actual.model !== next.model || actual.effort !== next.effort) throw new Error("设置回读与所选值不一致");
+      await legacyWrite(scope, { method: "PATCH", path: `/api/assistants/${assistant.id}`, body: next, baseVersion: assistant.writeVersion }, verify);
       if (alive.current) setNotice(`已保存并回读。${automatic ? `强度已自动设为 ${next.effort}。` : ""}${next.model === null ? "下一条消息将恢复 Codex 全局默认模型与强度。" : "从下一条消息起生效。"}`);
     } catch (e) {
-      if (alive.current) { setChoice(before); setError(`保存或回读失败：${e.message}。已恢复原显示，请重新读取设置核对。`); setUncertain(true); }
+      if (alive.current) { setError(`保存或回读失败：${e.message}。当前选择已保留，请重新读取设置核对。`); setUncertain(true); setCanRetry(e.code === "WRITE_RECEIPT_UNKNOWN"); }
     } finally { lock.current = false; if (alive.current) setSaving(false); }
   };
   const recover = async () => {
     if (lock.current || busy) return;
     lock.current = true; setSaving(true);
     try {
+      await recoverLegacy(scope, verify);
       const actual = (await reloadAssistants()).find((a) => a.id === assistant.id);
       if (!actual) throw new Error("助手不存在");
       if (alive.current) { setChoice({ model: actual.model, effort: actual.effort }); setUncertain(false); setError(""); setNotice("已重新读取并核对保存值。"); }
-    } catch (e) { if (alive.current) setError(`重新读取失败：${e.message}`); }
+    } catch (e) { if (alive.current) { setError(`重新读取失败：${e.message}`); setCanRetry(e.code === "WRITE_RECEIPT_UNKNOWN"); } }
+    finally { lock.current = false; if (alive.current) setSaving(false); }
+  };
+  const retryOriginal = async () => {
+    if (lock.current || busy || !canRetry) return;
+    lock.current = true; setSaving(true); setCanRetry(false);
+    try {
+      const result = await retryLegacy(scope, verify);
+      if (alive.current) { setChoice({ model: result.model, effort: result.effort }); setUncertain(false); setError(""); setNotice("已核对原设置操作。"); }
+    } catch (error) { if (alive.current) { setError(`${error.message}。当前选择已保留。`); setCanRetry(error.code === "WRITE_RECEIPT_UNKNOWN"); } }
     finally { lock.current = false; if (alive.current) setSaving(false); }
   };
   return <div className="assistant-models">
@@ -81,6 +96,6 @@ export default function ModelControls({ assistant, busy, version, reloadAssistan
     {unavailable && <p className="assistant-model-warning" role="alert">已保存的模型「{choice.model}」当前不可用，已阻止发送。请重新选择或恢复默认。</p>}
     {saving && <p className="muted small" role="status">正在保存并回读…</p>}
     {notice && <p className="muted small" role="status">{notice}</p>}
-    {error && <div className="row"><p className="error" role="alert">{error}</p><Button disabled={busy || saving} onClick={recover}>重新读取设置</Button></div>}
+    {error && <div className="row"><p className="error" role="alert">{error}</p><Button disabled={busy || saving} onClick={recover}>重新读取设置</Button>{canRetry && <Button disabled={busy || saving} onClick={retryOriginal}>重试原操作</Button>}</div>}
   </div>;
 }

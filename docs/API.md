@@ -1,7 +1,19 @@
 # 接口约定
 
-全部为 JSON；出错返回 `{ error: "中文说明" }` 与相应状态码；未实现返回 501 `{ error, task }`。
+全部为 JSON；出错返回 `{ error: "中文说明", code?: "错误码" }` 与相应状态码；未实现返回 501 `{ error, task }`。
 字段名用 camelCase；月份 `YYYY-MM`；业务线取值：大学辅导 / 国际课程 / 申诉服务（促销表只有大学辅导 / 国际课程；方案原文另有申诉服务：无固定 SKU，内容记为整月特殊活动，不进方案汇总，2026-10-19 起）。
+
+## 旧写入口保存保护（2026-10-22）
+
+以下 9 个写入口必须带 `X-Workdesk-Request-Id`（8–128 位字母、数字、`_`、`-`）：助手新建、助手 PATCH、会话导入；物料新建、PATCH、DELETE、上传图片、删除图片；方案 PUT。每次用户操作在发送前持久保存编号和原草稿，同一操作恢复时沿用编号。
+
+其中助手 PATCH、物料 PATCH/DELETE、上传/删除图片、方案 PUT 还必须带 `X-Workdesk-Base-Version`（64 位小写十六进制）。版本来自读取结果或方案解析结果的 `writeVersion`，与最新业务内容不符时停止，不自动换基线覆盖。
+
+- 同编号、同方法/路径、同内容与同基线返回原结果；同编号但请求变化返回 `409 WRITE_ID_REUSED`。版本变化返回 `409 WRITE_CONFLICT`。
+- 缺少编号返回 `428 WRITE_ID_REQUIRED`；缺少有效基线返回 `428 WRITE_BASE_REQUIRED`。旧页面需刷新采用保护，已有内容不受影响。
+- `GET /api/legacy-writes/:requestId` → `{ id, scope, fingerprint, result, completedAt }`，只读完成回执。`404 WRITE_RECEIPT_UNKNOWN` 只表示未查到回执，不代表操作未执行。未知结果先核对；用户显式重试时只发送原编号、原请求、原基线。已知冲突保持停止，刷新也不解除。
+- 回执与 SQLite 业务写入在同一事务；回执与业务回读一致后才清理浏览器操作记录。图片删除/上传失败做文件补偿；这是可捕获异常保护，不保证强制断电时文件系统与数据库原子一致。
+- 新版 `/api/v3` 的既有预览/确认合同仍适用；此段不替代它们。
 
 ## 营销 · 促销表（已实现）
 
@@ -17,12 +29,13 @@ type Promo = { month: string; line: string; sku: string; trial: string; price: s
 
 ## 营销 · 方案（T01）
 
-- `GET /api/plans` → `{ month, line, special, savedAt }[]`（已实现）；`special` 是该 业务线×月份 的整月特殊活动，没有为「无」
-- `GET /api/plans/:month/:line` → `{ month, line, rawText, rawHtml, special, savedAt }`；无则 404（已实现）
+- `GET /api/plans` → `{ month, line, special, savedAt, writeVersion }[]`（已实现）；`special` 是该 业务线×月份 的整月特殊活动，没有为「无」
+- `GET /api/plans/:month/:line` → `{ month, line, rawText, rawHtml, special, savedAt, writeVersion }`；无则 404（已实现）
 - `POST /api/plans/parse` 请求 `{ month, line?, rawText }` → `ParseResult`；只解析，不写库。`line` 省略时按原文【…板块】识别业务线并与该业务线对比（前端不再选业务线，2026-10-19）
 
 ```ts
 type ParseResult = {
+  writeVersion: string;            // 当前月份与业务线的保存基线；PUT 时原样带入版本头
   line: string | null;              // 从【…板块】识别出的业务线；与请求不一致时前端提示
   rows: Array<{
     sku: string;                    // 已按 sku_aliases 换成库中名称
@@ -39,27 +52,27 @@ type ParseResult = {
 ```
 
 - 解析规则：标题行（编号行，或不带列表符号、不带冒号的单独一行）是固定 SKU（「A/B」合写拆成两行、字段相同）→ SKU 块；SKU 下「试听/正价/新签活动/续费活动：」进对应栏（也认「新签：」「续费（新价格用户）：」「学科正价：」这类变体，变体的标签留在值里，同栏多条换行连接），其他「标签：内容」进该 SKU 的 `special`；不是固定 SKU 的编号行、或空行后的单独一行开一个整月特殊活动块，块里各行（含新签、续费）原样进整月 `special`，但块里出现试听或正价时视为清单外 SKU，记未识别。
-- `PUT /api/plans/:month/:line` 请求 `{ rawText, rawHtml?, rows, special }`（rows、special 为本人确认后的解析结果，须与原文重新解析一致）→ `{ inserted, updated, removed }`；rows 可为空（申诉服务），此时 special 不能为「无」
+- `PUT /api/plans/:month/:line` 请求 `{ rawText, rawHtml?, rows, special }`（rows、special 为本人确认后的解析结果，须与原文重新解析一致）→ `{ inserted, updated, removed, writeVersion }`；rows 可为空（申诉服务），此时 special 不能为「无」
   - 单事务：保存原文；按 rows 覆盖该 月份×业务线 的促销行（不在 rows 内的删除）。
 
 ## 营销 · 物料（T03）
 
 ```ts
-type Material = { id: number; month: string; line: string; name: string; type: string; skus: string[]; note: string; images: Array<{ id: number; url: string }>; createdAt: string };
+type Material = { id: number; month: string; line: string; name: string; type: string; skus: string[]; note: string; images: Array<{ id: number; url: string }>; createdAt: string; writeVersion: string };
 ```
 
 - `GET /api/materials?month=&line=&type=` → `Material[]`
 - `POST /api/materials` 请求 `{ month, line, name, type, skus?, note? }` → `Material`
 - `PATCH /api/materials/:id` → `Material`
-- `DELETE /api/materials/:id` → `{ ok: true }`（同时删除图片文件）
-- `POST /api/materials/:id/images` 请求体为图片二进制，`content-type: image/*`，可选 `?name=` → `{ id, url }`
-- `DELETE /api/materials/:id/images/:imageId` → `{ ok: true }`
+- `DELETE /api/materials/:id` → `{ ok: true, id }`（同时删除图片文件）
+- `POST /api/materials/:id/images` 请求体为图片二进制，`content-type: image/*`，可选 `?name=` → `{ id, url, materialId, writeVersion }`
+- `DELETE /api/materials/:id/images/:imageId` → `{ ok: true, materialId, writeVersion }`
 - `GET /api/images/:file` → 图片文件（只允许 data/images 下的文件名）
 
 ## 助手（T04）
 
 ```ts
-type Assistant = { id: number; name: string; kind: "copywriter" | "imported" | "custom"; instructions: string; codexThreadId: string | null; createdAt: string;
+type Assistant = { id: number; name: string; kind: "copywriter" | "imported" | "custom"; instructions: string; codexThreadId: string | null; createdAt: string; writeVersion: string;
   model: string | null; effort: string | null;   // T08 新增；null = 跟随 Codex 默认配置（不把解析出的默认值写进数据库）
   preset: "copywriter" | "interview" | "performance" | "notice" | null };   // 2026-10-18：预设助手（文案 / 面试 / 绩效 / 通知），启动时只补缺，说明为空才填初稿
 type CodexModel = { id: string; model: string; displayName: string; description: string; isDefault: boolean;

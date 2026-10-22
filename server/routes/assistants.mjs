@@ -1,3 +1,4 @@
+import { legacyWrite, legacyReplay, legacyReceipt, assistantVersion, withAssistantVersion } from "../legacy-writes.mjs";
 import { json, route, readJson } from "../http.mjs";
 import { listAssistants, getAssistant, saveAssistant, importAssistants, bindAssistantThread, assistantDirectory } from "../db.mjs";
 import { assistantConversations, requireConversation, selectAssistantConversation } from "../assistant-conversations.mjs";
@@ -7,6 +8,8 @@ import { routes as knowledgeRoutes } from "./assistant-knowledge.mjs";
 import { handleV3 } from "./user.mjs";
 import { failure } from "../v3-common.mjs";
 import { createLocalDeletions, deletionFailure, deletionState } from "../local-deletions.mjs";
+
+const guarded = action => async (req, res, context) => { try { return await action(req, res, context); } catch (error) { return json(res, error.status || 500, { error: error.status ? error.message : "助手保存失败，请重新读取核对", ...(error.code && { code: error.code }) }); } };
 
 async function body(req) { try { return await readJson(req); } catch { throw failure(400, "请求内容不是有效 JSON"); } }
 
@@ -32,13 +35,18 @@ export function routes(db, client = codex) {
     if (typeof value.instructions !== "string" || value.instructions.length > 20000) throw new Error("预设说明须为不超过 20000 字的文本");
     return { name: value.name.trim(), instructions: value.instructions };
   };
-  const edit = async (req, res, previous) => {
+  const edit = async (req, res, id) => {
+    const scope = id ? `PATCH /api/assistants/${id}` : "POST /api/assistants";
+    let previous;
     let body, value;
     try {
       body = await readJson(req);
       if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("请输入有效的助手设置");
-      value = fields(body, previous);
     } catch (e) { return json(res, 400, { error: e.message }); }
+    const replay = legacyReplay(db, req, scope, body);
+    if (replay) return json(res, id ? 200 : 201, replay.result);
+    if (id) { previous = live(id); if (!previous) return json(res, 404, { error: "助手不存在" }); }
+    try { value = fields(body, previous); } catch (e) { return json(res, 400, { error: e.message }); }
     if (previous) {
       if (sending.has(previous.id)) return json(res, 409, { error: "该助手正在回复，请结束后修改设置" });
       const changesModel = Object.hasOwn(body, "model") || Object.hasOwn(body, "effort");
@@ -46,7 +54,8 @@ export function routes(db, client = codex) {
       const models = changesModel && !clearing ? await client.models() : null;
       // 请求体和模型列表都可能等待；写入前重新读取，避免覆盖并发编辑或回复中的设置。
       if (sending.has(previous.id)) return json(res, 409, { error: "该助手正在回复，请结束后修改设置" });
-      previous = getAssistant(db, previous.id);
+      previous = live(previous.id);
+      if (!previous) return json(res, 404, { error: "助手不存在" });
       try {
         value = { ...fields(body, previous), model: Object.hasOwn(body,"model") ? body.model : previous.model, effort: Object.hasOwn(body,"effort") ? body.effort : previous.effort };
         if (changesModel) {
@@ -59,21 +68,23 @@ export function routes(db, client = codex) {
         }
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
-    json(res, previous ? 200 : 201, saveAssistant(db, value, previous?.id));
+    const result = legacyWrite(db, req, { scope, payload: body, ...(id && { version: () => assistantVersion(live(id)) }), mutate: () => withAssistantVersion(saveAssistant(db, value, previous?.id)) });
+    json(res, previous ? 200 : 201, result);
   };
   return [
     ...knowledgeRoutes(db),
-    route("GET", "/api/assistants", (req, res) => json(res, 200, listAssistants(db).filter((a) => !isDeleted(a.id)))),
+    route("GET", "/api/legacy-writes/:requestId", (req, res, { params }) => {
+      const receipt = legacyReceipt(db, params.requestId);
+      return receipt ? json(res, 200, receipt) : json(res, 404, { code: "WRITE_RECEIPT_UNKNOWN", error: "尚未找到完成回执，结果仍待核对，请勿另建一次操作" });
+    }),
+    route("GET", "/api/assistants", (req, res) => json(res, 200, listAssistants(db).filter((a) => !isDeleted(a.id)).map(withAssistantVersion))),
     route("GET", "/api/v3/local-assistants", handleV3((req, { url }) => localList(url.searchParams.get("deleted") === "true"))),
     route("POST", "/api/v3/local-assistants/:id/remove-preview", handleV3(async (req, { params }) => deletions.preview(params.id, "remove", await body(req)))),
     route("DELETE", "/api/v3/local-assistants/:id", handleV3(async (req, { params }) => deletions.confirm(params.id, "remove", await body(req)))),
     route("POST", "/api/v3/local-assistants/:id/restore-preview", handleV3(async (req, { params }) => deletions.preview(params.id, "restore", await body(req)))),
     route("POST", "/api/v3/local-assistants/:id/restore", handleV3(async (req, { params }) => deletions.confirm(params.id, "restore", await body(req)))),
-    route("POST", "/api/assistants", (req, res) => edit(req, res)),
-    route("PATCH", "/api/assistants/:id", (req, res, { params }) => {
-      const value = live(params.id);
-      return value ? edit(req, res, value) : json(res, 404, { error: "助手不存在" });
-    }),
+    route("POST", "/api/assistants", guarded((req, res) => edit(req, res))),
+    route("PATCH", "/api/assistants/:id", guarded((req, res, { params }) => edit(req, res, params.id))),
     route("GET", "/api/codex/models", async (req, res) => json(res, 200, await client.models())),
     route("GET", "/api/assistants/:id/runtime", async (req, res, { params }) => {
       const value = assistant(params.id);
@@ -134,13 +145,16 @@ export function routes(db, client = codex) {
       const imported = new Set(listAssistants(db).map((a) => a.codexThreadId));
       json(res, 200, (await client.listSessions()).map((s) => ({ ...s, ...(imported.has(s.threadId) && { imported: true }) })));
     }),
-    route("POST", "/api/assistants/import", async (req, res) => {
-      const { threadIds } = await readJson(req);
+    route("POST", "/api/assistants/import", guarded(async (req, res) => {
+      const payload = await body(req), { threadIds } = payload;
+      const scope = "POST /api/assistants/import";
+      const replay = legacyReplay(db, req, scope, payload);
+      if (replay) return json(res, 200, replay.result);
       if (!Array.isArray(threadIds) || !threadIds.length || threadIds.length > 100 || threadIds.some((id) => typeof id !== "string" || !id)) return json(res, 400, { error: "请选择 1–100 个会话" });
       const ids = [...new Set(threadIds)]; const sessions = await client.listSessions();
       const selected = ids.map((id) => sessions.find((s) => s.threadId === id));
       if (selected.some((s) => !s)) return json(res, 400, { error: "部分会话已不可用或没有名称，请重新读取列表" });
-      json(res, 200, importAssistants(db, selected));
-    }),
+      json(res, 200, legacyWrite(db, req, { scope, payload, mutate: () => importAssistants(db, selected).map(withAssistantVersion) }));
+    })),
   ];
 }

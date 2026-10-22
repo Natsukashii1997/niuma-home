@@ -1,3 +1,4 @@
+import { legacyHeaders } from "./helpers/legacy-headers.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer, request as httpRequest } from "node:http";
@@ -20,8 +21,8 @@ async function setup(t) {
   await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
   t.after(async()=>{ fake.controls.complete?.(); await new Promise(resolve=>server.close(resolve)); db.close(); rmSync(dir,{recursive:true,force:true}); });
   const base = `http://127.0.0.1:${server.address().port}`;
-  const request = (method,url,body)=>fetch(base+url,{method,headers:{"content-type":"application/json"},body:body===undefined?undefined:JSON.stringify(body)});
-  return {...fake,request,base};
+  const request = (method,url,body)=>fetch(base+url,{method,headers:{"content-type":"application/json",...legacyHeaders(db,method,url)},body:body===undefined?undefined:JSON.stringify(body)});
+  return {...fake,request,base,db};
 }
 
 test("模型 API 与设置校验、只改强度、清空恢复、名称编辑保留设置；runtime 来自协议", async (t)=>{
@@ -65,16 +66,18 @@ test("回复中与等待模型校验期间的 PATCH 均返回 409，不更改已
   assert.equal((await(await request("GET","/api/assistants")).json())[0].model,null);
 });
 
-test("延迟 PATCH 请求体重新读取其他编辑后的字段，发送也读取最新选择",async(t)=>{
-  const {request,base,requests} = await setup(t);
+test("延迟 PATCH 遇到其他编辑后停止，不覆盖已保存设置，发送读取最新选择",async(t)=>{
+  const {request,base,requests,db} = await setup(t);
   let delayed;
   const finished=new Promise((resolve,reject)=>{
-    delayed=httpRequest(base+"/api/assistants/1",{method:"PATCH",headers:{"content-type":"application/json"}},res=>{let text="";res.on("data",chunk=>text+=chunk);res.on("end",()=>resolve({status:res.statusCode,value:JSON.parse(text)}));});
+    delayed=httpRequest(base+"/api/assistants/1",{method:"PATCH",headers:{"content-type":"application/json",...legacyHeaders(db,"PATCH","/api/assistants/1")}},res=>{let text="";res.on("data",chunk=>text+=chunk);res.on("end",()=>resolve({status:res.statusCode,value:JSON.parse(text)}));});
     delayed.on("error",reject); delayed.flushHeaders(); delayed.write('{"name":');
   });
   await request("PATCH","/api/assistants/1",{model:"b",effort:"high"});
   delayed.end('"稍后改名"}');
-  const edited=await finished; assert.equal(edited.status,200); assert.equal(edited.value.model,"b");assert.equal(edited.value.effort,"high");
+  const edited=await finished; assert.equal(edited.status,409); assert.equal(edited.value.code,"WRITE_CONFLICT");
+  const kept = (await (await request("GET", "/api/assistants")).json())[0];
+  assert.equal(kept.model,"b"); assert.equal(kept.effort,"high"); assert.notEqual(kept.name,"稍后改名");
   await(await request("POST","/api/assistants/1/messages",{text:"使用新设置"})).text();
   assert.equal(requests.find(r=>r.method==="turn/start").params.model,"b");
 });

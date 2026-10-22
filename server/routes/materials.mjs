@@ -1,4 +1,5 @@
-import { randomUUID } from "node:crypto";
+import { legacyWrite, legacyReplay, materialVersion, withMaterialVersion } from "../legacy-writes.mjs";
+import { randomUUID, createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { json, readJson, route } from "../http.mjs";
@@ -11,7 +12,7 @@ const safeFile = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 const handler = (action) => async (req, res, context) => {
   try { await action(req, res, context); }
-  catch (error) { json(res, error.status || 500, { error: error.status ? error.message : "物料处理失败，请刷新核对后再操作" }); }
+  catch (error) { json(res, error.status || 500, { error: error.status ? error.message : "物料处理失败，请刷新核对后再操作", ...(error.code && { code: error.code }) }); }
 };
 const parseId = (value) => {
   if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value))) fail(404, "物料或图片不存在");
@@ -23,9 +24,10 @@ const requireMaterial = (db, id) => {
   return item;
 };
 
-async function materialBody(req, db, previous = { skus: [], note: "" }) {
-  let body;
-  try { body = await readJson(req); } catch { fail(400, "请求内容不是有效的 JSON"); }
+async function materialBody(req) {
+  try { return await readJson(req); } catch { fail(400, "请求内容不是有效的 JSON"); }
+}
+function materialValue(body, db, previous = { skus: [], note: "" }) {
   if (!body || Array.isArray(body) || typeof body !== "object") fail(400, "物料字段无效");
   const value = { ...previous, ...body };
   if (typeof value.month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(value.month)) fail(400, "月份须为 YYYY-MM");
@@ -62,71 +64,88 @@ async function imageBody(req) {
   return Buffer.concat(chunks);
 }
 
-function deleteWithFiles(db, id, imageId) {
-  const images = listMaterialImages(db, id).filter((image) => !imageId || image.id === imageId);
-  if (imageId && !images.length) fail(404, "该物料中没有这张图片");
+// Keep descriptors alive until both the business rows and durable receipt commit.
+// A receipt/commit failure must restore files, not only SQLite rows.
+function fileDeletion(db, id, imageId) {
   const staged = [];
-  try {
-    for (const image of images) {
-      if (!safeFile.test(image.file)) fail(500, "图片文件名异常，未执行删除");
-      const source = path.join(materialImageDir(db), image.file);
-      const target = path.join(materialImageDir(db), `.delete-${randomUUID()}`);
-      let descriptor;
-      try { descriptor = fs.openSync(source, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW); }
-      catch (error) { if (error.code === "ENOENT") continue; throw error; }
-      const stagedFile = { source, target, descriptor, moved: false, removed: false };
-      staged.push(stagedFile);
-      fs.renameSync(source, target); stagedFile.moved = true;
-    }
-    // 保留文件描述符直到数据库提交；清理失败可还原已 unlink 的文件。
-    deleteMaterial(db, id, imageId, () => {
-      for (const entry of staged) { fs.unlinkSync(entry.target); entry.removed = true; }
-    });
-  } catch (error) {
-    for (const entry of staged.reverse()) {
-      if (entry.removed) fs.writeFileSync(entry.source, fs.readFileSync(entry.descriptor), { flag: "wx" });
-      else if (entry.moved) fs.renameSync(entry.target, entry.source);
-    }
-    throw error;
-  } finally {
-    for (const entry of staged) fs.closeSync(entry.descriptor);
-  }
+  return {
+    mutate() {
+      const images = listMaterialImages(db, id).filter(image => !imageId || image.id === imageId);
+      if (imageId && !images.length) fail(404, "该物料中没有这张图片");
+      for (const image of images) {
+        if (!safeFile.test(image.file)) fail(500, "图片文件名异常，未执行删除");
+        const source = path.join(materialImageDir(db), image.file);
+        const target = path.join(materialImageDir(db), `.delete-${randomUUID()}`);
+        let descriptor;
+        try { descriptor = fs.openSync(source, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW); }
+        catch (error) { if (error.code === "ENOENT") continue; throw error; }
+        const entry = { source, target, descriptor, moved: false, removed: false };
+        staged.push(entry);
+        fs.renameSync(source, target); entry.moved = true;
+      }
+      deleteMaterial(db, id, imageId, () => {
+        for (const entry of staged) { fs.unlinkSync(entry.target); entry.removed = true; }
+      });
+      return imageId ? { ok: true, materialId: id, writeVersion: materialVersion(requireMaterial(db, id)) } : { ok: true, id };
+    },
+    rollback() {
+      for (const entry of [...staged].reverse()) {
+        if (entry.removed) fs.writeFileSync(entry.source, fs.readFileSync(entry.descriptor), { flag: "wx" });
+        else if (entry.moved) fs.renameSync(entry.target, entry.source);
+      }
+    },
+    finally() { for (const entry of staged) fs.closeSync(entry.descriptor); },
+  };
 }
 
 export function routes(db) {
   return [
-    route("GET", "/api/materials", handler((req, res, { url }) => json(res, 200, listMaterials(db, Object.fromEntries(url.searchParams))))),
-    route("POST", "/api/materials", handler(async (req, res) => json(res, 201, saveMaterial(db, await materialBody(req, db))))),
-    route("PATCH", "/api/materials/:id", handler(async (req, res, { params }) => {
-      const id = parseId(params.id);
-      const value = await materialBody(req, db, requireMaterial(db, id));
-      requireMaterial(db, id);
-      json(res, 200, saveMaterial(db, value, id));
+    route("GET", "/api/materials", handler((req, res, { url }) => json(res, 200, listMaterials(db, Object.fromEntries(url.searchParams)).map(withMaterialVersion)))),
+    route("POST", "/api/materials", handler(async (req, res) => {
+      const payload = await materialBody(req), scope = "POST /api/materials";
+      const replay = legacyReplay(db, req, scope, payload);
+      if (replay) return json(res, 201, replay.result);
+      const value = materialValue(payload, db);
+      json(res, 201, legacyWrite(db, req, { scope, payload, mutate: () => withMaterialVersion(saveMaterial(db, value)) }));
     })),
-    route("DELETE", "/api/materials/:id", handler((req, res, { params }) => {
-      const id = parseId(params.id); requireMaterial(db, id);
-      deleteWithFiles(db, id); json(res, 200, { ok: true });
+    route("PATCH", "/api/materials/:id", handler(async (req, res, { params }) => {
+      const id = parseId(params.id), payload = await materialBody(req), scope = `PATCH /api/materials/${id}`;
+      const replay = legacyReplay(db, req, scope, payload);
+      if (replay) return json(res, 200, replay.result);
+      const value = materialValue(payload, db, requireMaterial(db, id));
+      json(res, 200, legacyWrite(db, req, { scope, payload, version: () => materialVersion(requireMaterial(db, id)), mutate: () => withMaterialVersion(saveMaterial(db, value, id)) }));
+    })),
+    route("DELETE", "/api/materials/:id", handler(async (req, res, { params }) => {
+      const id = parseId(params.id), scope = `DELETE /api/materials/${id}`, payload = await materialBody(req);
+      json(res, 200, legacyWrite(db, req, { scope, payload, version: () => materialVersion(requireMaterial(db, id)), ...fileDeletion(db, id) }));
     })),
     route("POST", "/api/materials/:id/images", handler(async (req, res, { params, url }) => {
-      const id = parseId(params.id); requireMaterial(db, id);
+      const id = parseId(params.id);
       const mime = req.headers["content-type"]?.split(";")[0].trim().toLowerCase();
-      const ext = url.searchParams.has("name") ? path.extname(url.searchParams.get("name")) : Object.keys(mimeTypes).find((ext) => mimeTypes[ext] === mime);
+      const ext = url.searchParams.has("name") ? path.extname(url.searchParams.get("name")) : Object.keys(mimeTypes).find(ext => mimeTypes[ext] === mime);
       if (!ext || mimeTypes[ext.toLowerCase()] !== mime) { req.resume(); fail(415, "只接受 PNG、JPG、JPEG、WEBP、GIF 图片，扩展名须与类型一致"); }
       const bytes = await imageBody(req);
       if (!mime || imageMime(bytes) !== mime) fail(415, "文件内容不是所声明的图片格式");
-      requireMaterial(db, id);
-      const file = randomUUID() + ext;
-      const target = path.join(materialImageDir(db), file);
-      const descriptor = fs.openSync(target, "wx");
-      let result;
-      try { fs.writeFileSync(descriptor, bytes); result = addMaterialImage(db, id, file); }
-      catch (error) { fs.unlinkSync(target); throw error; }
-      finally { fs.closeSync(descriptor); }
+      const payload = { mime, name: url.searchParams.get("name"), sha256: createHash('sha256').update(bytes).digest('hex') };
+      const scope = `POST /api/materials/${id}/images`;
+      let target, descriptor;
+      const result = legacyWrite(db, req, { scope, payload, version: () => materialVersion(requireMaterial(db, id)),
+        mutate() {
+          const file = randomUUID() + ext;
+          target = path.join(materialImageDir(db), file);
+          descriptor = fs.openSync(target, "wx");
+          fs.writeFileSync(descriptor, bytes);
+          const image = addMaterialImage(db, id, file);
+          return { ...image, materialId: id, writeVersion: materialVersion(requireMaterial(db, id)) };
+        },
+        rollback() { if (descriptor !== undefined && target) fs.unlinkSync(target); },
+        finally() { if (descriptor !== undefined) fs.closeSync(descriptor); },
+      });
       json(res, 201, result);
     })),
-    route("DELETE", "/api/materials/:id/images/:imageId", handler((req, res, { params }) => {
-      const id = parseId(params.id); requireMaterial(db, id);
-      deleteWithFiles(db, id, parseId(params.imageId)); json(res, 200, { ok: true });
+    route("DELETE", "/api/materials/:id/images/:imageId", handler(async (req, res, { params }) => {
+      const id = parseId(params.id), imageId = parseId(params.imageId), payload = await materialBody(req);
+      json(res, 200, legacyWrite(db, req, { scope: `DELETE /api/materials/${id}/images/${imageId}`, payload, version: () => materialVersion(requireMaterial(db, id)), ...fileDeletion(db, id, imageId) }));
     })),
     route("GET", "/api/images/:file", handler((req, res, { params: { file } }) => {
       if (!safeFile.test(file) || !hasMaterialImageFile(db, file)) fail(404, "图片不存在");

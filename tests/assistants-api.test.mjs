@@ -1,3 +1,4 @@
+import { legacyHeaders } from "./helpers/legacy-headers.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
@@ -20,7 +21,7 @@ async function setup(t) {
   });
   await new Promise((resolve) => server.listen(0,"127.0.0.1",resolve));
   t.after(async () => { await new Promise((resolve) => server.close(resolve)); db.close(); rmSync(dir,{recursive:true,force:true}); });
-  const request = (method,url,body) => fetch(`http://127.0.0.1:${server.address().port}${url}`, {method,headers:{"content-type":"application/json"},body:body===undefined?undefined:JSON.stringify(body)});
+  const request = (method,url,body) => fetch(`http://127.0.0.1:${server.address().port}${url}`, {method,headers:{"content-type":"application/json",...legacyHeaders(db,method,url)},body:body===undefined?undefined:JSON.stringify(body)});
   return { db,dir,calls,client,request };
 }
 

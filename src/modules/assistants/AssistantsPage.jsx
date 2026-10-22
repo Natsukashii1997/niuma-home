@@ -9,6 +9,7 @@ import { DeletedList, useSoftRemove } from "../../ui/soft-delete.jsx";
 import { consumeMessageStream } from "./message-stream.js";
 import ModelControls from "./ModelControls.jsx";
 import { assistantListReader } from "./assistant-list.js";
+import { legacyState, legacyWrite, recoverLegacy, retryLegacy } from "../../ui/legacy-write.js";
 
 const KIND_LABEL = { copywriter: "文案", imported: "Codex 导入", custom: "自建" };
 
@@ -104,7 +105,7 @@ function AssistantDesk({ initial, selectedId }) {
   const [list, setList] = useState(initial), [modal, setModal] = useState(null);
   const current = list.find((a) => String(a.id) === selectedId) || list[0];
   const [reload] = useState(() => assistantListReader(() => apiSend("GET", "/api/assistants"), setList));
-  const saved = async (id) => { await reload(); setModal(null); if (id) window.location.hash = href("assistants", String(id)).slice(1); };
+  const saved = (id) => { setModal(null); if (id) window.location.hash = href("assistants", String(id)).slice(1); };
   // 删除：只给自建和导入的助手；软删除，确认后回读两个列表核对（见 soft-delete.jsx）。
   const [deleted, setDeleted] = useState([]);
   const placed = (r) => { setList(Array.isArray(r.active) ? r.active : r.active?.items || []); setDeleted(r.deleted); };
@@ -248,27 +249,40 @@ function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked 
 }
 function AssistantDialog({ modal, close, saved, reload }) {
   const importing = modal.type === "import", editing = modal.type === "edit";
-  const [name, setName] = useState(modal.assistant?.name || ""), [instructions, setInstructions] = useState(modal.assistant?.instructions || "");
-  const [sessions, setSessions] = useState([]), [selected, setSelected] = useState([]), [search, setSearch] = useState("");
-  const [preview, setPreview] = useState(false), [busy, setBusy] = useState(false), [loading, setLoading] = useState(importing), [error, setError] = useState(""), [uncertain, setUncertain] = useState(false);
+  const scope = importing ? "assistants:import" : editing ? `assistant:${modal.assistant.id}:edit` : "assistants:create";
+  const [initialWrite] = useState(() => legacyState(scope));
+  const [baseVersion] = useState(initialWrite.pending?.baseVersion || modal.assistant?.writeVersion);
+  const [name, setName] = useState(initialWrite.pending?.body?.name ?? modal.assistant?.name ?? ""), [instructions, setInstructions] = useState(initialWrite.pending?.body?.instructions ?? modal.assistant?.instructions ?? "");
+  const [sessions, setSessions] = useState([]), [selected, setSelected] = useState(initialWrite.pending?.body?.threadIds || []), [search, setSearch] = useState("");
+  const [preview, setPreview] = useState(!!initialWrite.pending), [busy, setBusy] = useState(false), [loading, setLoading] = useState(importing), [error, setError] = useState(initialWrite.error || (initialWrite.pending ? "上次保存尚未核对，已恢复原草稿，请重新读取助手列表。" : "")), [uncertain, setUncertain] = useState(!!initialWrite.pending || !!initialWrite.error);
+  const [canRetry, setCanRetry] = useState(false);
   const dialog = useRef(null), lock = useRef(false);
   useEffect(() => { const node = dialog.current; node.showModal(); return () => node.close(); }, []);
   useEffect(() => { if (!importing) return; let live = true; apiSend("GET", "/api/codex/sessions").then((rows) => { if (live) setSessions(rows); }, (e) => { if (live) setError(e.message); }).finally(() => { if (live) setLoading(false); }); return () => { live = false; }; }, [importing]);
+  const verify = async (result) => {
+    const rows = await reload(), expected = importing ? result : [result];
+    return expected.every((item) => rows.some((row) => row.id === item.id && row.name === item.name && row.instructions === item.instructions && row.writeVersion === item.writeVersion));
+  };
   const confirm = async () => {
     if (lock.current || uncertain) return;
     lock.current = true; setBusy(true); setError("");
     try {
-      const result = importing ? await apiSend("POST", "/api/assistants/import", { threadIds: selected }) : await apiSend(editing ? "PATCH" : "POST", editing ? `/api/assistants/${modal.assistant.id}` : "/api/assistants", { name: name.trim(), instructions });
-      const rows = await reload();
-      const expected = importing ? result : [result];
-      if (!expected.every((item) => rows.some((row) => row.id === item.id && row.name === item.name && row.instructions === item.instructions))) throw new Error("保存结果与回读不一致");
-      await saved(expected[0]?.id);
-    } catch (e) { setError(`${e.message}。结果尚未确认，请重新读取助手列表核对。`); setUncertain(true); }
+      const result = await legacyWrite(scope, importing ? { method: "POST", path: "/api/assistants/import", body: { threadIds: selected } }
+        : { method: editing ? "PATCH" : "POST", path: editing ? `/api/assistants/${modal.assistant.id}` : "/api/assistants", body: { name: name.trim(), instructions }, baseVersion }, verify);
+      await saved((importing ? result : [result])[0]?.id);
+    } catch (e) { setError(`${e.message}。结果尚未确认，请重新读取助手列表核对。`); setUncertain(true); setCanRetry(e.code === "WRITE_RECEIPT_UNKNOWN"); }
     finally { lock.current = false; setBusy(false); }
   };
   const recover = async () => {
     if (lock.current) return; lock.current = true; setBusy(true);
-    try { await reload(); close(); } catch (e) { setError(`重新读取失败：${e.message}`); }
+    try { const result = await recoverLegacy(scope, verify); if (result) await saved((importing ? result : [result])[0]?.id); else { await reload(); setUncertain(false); setError(""); } } catch (e) { setError(`重新读取未完成：${e.message}`); setCanRetry(e.code === "WRITE_RECEIPT_UNKNOWN"); }
+    finally { lock.current = false; setBusy(false); }
+  };
+  const retry = async () => {
+    if (lock.current || !canRetry) return;
+    lock.current = true; setBusy(true); setCanRetry(false);
+    try { const result = await retryLegacy(scope, verify); await saved((importing ? result : [result])[0]?.id); }
+    catch (error) { setError(`${error.message}。原操作和草稿已保留，请重新读取核对。`); setCanRetry(error.code === "WRITE_RECEIPT_UNKNOWN"); }
     finally { lock.current = false; setBusy(false); }
   };
   const title = importing ? "导入 Codex 会话" : editing ? "编辑助手" : "新建助手";
@@ -284,7 +298,7 @@ function AssistantDialog({ modal, close, saved, reload }) {
       <p className="muted small">{importing ? "仅导入会话关联；历史仍由 Codex 保存。被其他 Codex 客户端占用时无法续聊，请先在原客户端结束占用。" : "预设说明在新建会话时传入；修改后可点「用最新知识新建会话」，已有会话与历史保留。"}</p>
       {preview && <div className="settings-preview"><h3 className="section-title">{importing ? "导入预览" : "保存预览"}</h3>{importing ? sessions.filter((s) => selected.includes(s.threadId)).map((s) => <p key={s.threadId}>{s.name}<br /><span className="muted small">{s.cwd}</span></p>) : <><strong>{name.trim()}</strong><pre className="pre">{instructions || "（预设说明为空）"}</pre></>}</div>}
       {error && <p className="error" role="alert">{error}</p>}
-      <div className="row">{uncertain ? <Button type="button" disabled={busy} onClick={recover}>重新读取助手列表</Button> : preview ? <><Button type="button" disabled={busy} onClick={() => setPreview(false)}>返回修改</Button><Button type="button" variant="primary" disabled={busy} onClick={confirm}>{importing ? "确认导入" : "确认保存"}</Button></> : <Button type="submit" variant="primary" disabled={loading || (importing ? !selected.length : !name.trim())}>{importing ? "预览导入" : "预览保存"}</Button>}</div>
+      <div className="row">{uncertain ? <><Button type="button" disabled={busy} onClick={recover}>重新读取助手列表</Button>{canRetry && <Button type="button" disabled={busy} onClick={retry}>重试原操作</Button>}</> : preview ? <><Button type="button" disabled={busy} onClick={() => setPreview(false)}>返回修改</Button><Button type="button" variant="primary" disabled={busy} onClick={confirm}>{importing ? "确认导入" : "确认保存"}</Button></> : <Button type="submit" variant="primary" disabled={loading || (importing ? !selected.length : !name.trim())}>{importing ? "预览导入" : "预览保存"}</Button>}</div>
       {busy && <p className="muted" role="status">正在保存并回读…</p>}
     </form>
   </dialog>;

@@ -1,0 +1,81 @@
+{
+  "legacy-ui-verification": {
+    "methodPathCounts": {
+      "('PATCH', '/api/assistants/6')": 1,
+      "('POST', '/api/materials')": 1,
+      "('POST', '/api/materials/1/images?name=A.png')": 1,
+      "('POST', '/api/materials/1/images?name=B.png')": 1,
+      "('POST', '/api/materials/1/images?name=C.png')": 1,
+      "('DELETE', '/api/materials/1')": 1
+    },
+    "remainingMaterials": 0,
+    "remainingImages": 0,
+    "imageFiles": 0
+  },
+  "formal-data-final": {
+    "assistants": {
+      "same": true,
+      "rowsBefore": 5,
+      "rowsAfter": 5
+    },
+    "plans": {
+      "same": true,
+      "rowsBefore": 3,
+      "rowsAfter": 3
+    },
+    "promos": {
+      "same": true,
+      "rowsBefore": 24,
+      "rowsAfter": 24
+    },
+    "settings": {
+      "same": true,
+      "rowsBefore": 6,
+      "rowsAfter": 6
+    },
+    "sku_aliases": {
+      "same": true,
+      "rowsBefore": 2,
+      "rowsAfter": 2
+    },
+    "materials": {
+      "same": true,
+      "rowsBefore": 0,
+      "rowsAfter": 0
+    },
+    "material_images": {
+      "same": true,
+      "rowsBefore": 0,
+      "rowsAfter": 0
+    },
+    "v3_needs": {
+      "same": true,
+      "rowsBefore": 12,
+      "rowsAfter": 12
+    },
+    "v3_documents": {
+      "same": true,
+      "rowsBefore": 58,
+      "rowsAfter": 58
+    }
+  },
+  "collect-cleanup": {
+    "deletedLocalTestOperations": 2,
+    "sourceDeleted": true,
+    "shortcutDeleted": true,
+    "targetDirectoryUnchanged": true,
+    "directoryCount": 9
+  },
+  "checks": {
+    "tests": 664,
+    "passed": 664,
+    "build": "index-DM3Y7-o1.js",
+    "css": "index-B9OdAkaW.css",
+    "mentorRemoteTestMatchesAfterCleanup": 0,
+    "mentorOriginalSemanticXmlEqual": true,
+    "formalReleaseUnchanged": "nm-20261022-204952-2f395cd",
+    "nasMounted": false,
+    "nasRealNewMonthVerified": false,
+    "candidatePublished": false
+  }
+}

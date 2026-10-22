@@ -1,22 +1,38 @@
 import { useEffect, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
-import { apiSend } from "../../api.js";
+import { legacyImageRequest, legacyState, legacyWrite, pendingLegacy } from "../../ui/legacy-write.js";
+import { removeConfirmedUploads, verifyMaterialWrite } from "./material-write.js";
 import { Button, Empty } from "../../ui/components.jsx";
 import MaterialEditor, { MaterialSummary } from "./MaterialEditor.jsx";
 import { uploadImage } from "./upload-image.js";
 
 const types = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif" };
-export default function MaterialDetail({ item, write, disabled, onSaved, onDeleted }) {
+export default function MaterialDetail({ item, write, disabled, onSaved, onDeleted, recoveredRequests = [] }) {
   const [index, setIndex] = useState(0);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(() => !!legacyState(`material:${item.id}:edit`).pending);
   const [removal, setRemoval] = useState(null);
   const [queue, setQueue] = useState([]);
   const [message, setMessage] = useState("");
   const [uploadState, setUploadState] = useState(null);
-  const picker = useRef(null);
+  const picker = useRef(null), queueRef = useRef([]), recoveredRef = useRef(new Set(recoveredRequests.map(op => op.requestId)));
   const position = Math.min(index, Math.max(0, item.images.length - 1));
   const current = item.images[position];
-  useEffect(() => () => queue.forEach((entry) => URL.revokeObjectURL(entry.url)), [queue]);
+  useEffect(() => {
+    queueRef.current.filter(entry => !queue.some(next => next.url === entry.url)).forEach(entry => URL.revokeObjectURL(entry.url));
+    queueRef.current = queue;
+  }, [queue]);
+  useEffect(() => () => queueRef.current.forEach(entry => URL.revokeObjectURL(entry.url)), []);
+  useEffect(() => {
+    const own = recoveredRequests.filter(op => !recoveredRef.current.has(op.requestId) && (op.path === `/api/materials/${item.id}` || op.path.startsWith(`/api/materials/${item.id}/`)));
+    own.forEach(op => recoveredRef.current.add(op.requestId));
+    const ids = own.map(op => op.requestId);
+    if (queueRef.current.some(entry => entry.requestId && ids.includes(entry.requestId))) {
+      setQueue(current => removeConfirmedUploads(current, ids));
+      setUploadState(null); setMessage("已核对上次上传；已保存图片已移出队列，可继续剩余图片。");
+    }
+    if (own.some(op => op.method === "PATCH")) setEditing(false);
+    if (own.some(op => op.method === "DELETE")) setRemoval(null);
+  }, [recoveredRequests, item.id]);
   const choose = (files) => {
     if (disabled) return;
     const selected = [...files];
@@ -29,32 +45,38 @@ export default function MaterialDetail({ item, write, disabled, onSaved, onDelet
   };
   const upload = async () => {
     let completed = 0;
+    const batch = queue, total = batch.length;
     setUploadState({ progress: 0 });
     const ok = await write(async (refresh) => {
-      for (const { file } of queue) {
-        const data = await uploadImage(item.id, file, file.type || types[file.name.split(".").at(-1).toLowerCase()],
-          (fraction) => setUploadState({ progress: (completed + fraction) / queue.length }));
-        const saved = (await refresh()).find((row) => row.id === item.id);
-        if (!saved?.images.some((image) => image.id === data.id && image.url === data.url)) throw new Error("图片记录回读失败");
-        const image = await fetch(data.url);
-        if (!image.ok || (await image.blob()).size !== file.size) throw new Error("图片文件回读失败");
+      let baseVersion = item.writeVersion;
+      for (const entry of batch) {
+        const { file } = entry;
+        const contentType = file.type || types[file.name.split(".").at(-1).toLowerCase()];
+        const scope = `material:${item.id}:upload`;
+        const pending = pendingLegacy(scope);
+        const request = await legacyImageRequest(item.id, file, contentType, pending?.baseVersion || baseVersion);
+        const data = await legacyWrite(scope, request, (result, op) => verifyMaterialWrite(refresh, result, op),
+          headers => {
+            setQueue(current => current.map(row => row.url === entry.url ? { ...row, requestId: headers["X-Workdesk-Request-Id"] } : row));
+            return uploadImage(item.id, file, contentType, (fraction) => setUploadState({ progress: (completed + fraction) / total }), headers);
+          });
+        baseVersion = data.writeVersion;
+        setQueue(current => current.filter(row => row.url !== entry.url));
         completed++;
-        setUploadState({ progress: completed / queue.length });
-        setMessage(`本批次已上传并回读 ${completed} / ${queue.length} 张。`);
+        setUploadState({ progress: completed / total });
+        setMessage(`本批次已上传并回读 ${completed} / ${total} 张。`);
       }
     });
     if (ok) { setUploadState({ progress: 1, done: true }); setQueue([]); setIndex(item.images.length); }
     else {
       setUploadState((old) => ({ ...old, error: "上传结果未完全确认，已停止，请刷新核对" }));
-      setMessage(`本批次已确认 ${completed} / ${queue.length} 张；其余状态未确认，已停止后续上传，请刷新核对，勿整批重复上传。`);
+      setMessage(`本批次已确认 ${completed} / ${total} 张；后续上传已停止，请重新读取核对，确认后只继续队列中的剩余图片。`);
     }
   };
   const remove = () => write(async (refresh) => {
     const urls = removal === "material" ? item.images.map((image) => image.url) : [removal.url];
-    await apiSend("DELETE", removal === "material" ? `/api/materials/${item.id}` : `/api/materials/${item.id}/images/${removal.id}`);
-    const saved = (await refresh()).find((row) => row.id === item.id);
-    if (removal === "material" ? !!saved : !saved || saved.images.some((image) => image.id === removal.id)) throw new Error("删除后的记录回读不一致");
-    for (const url of urls) if ((await fetch(url)).status !== 404) throw new Error("图片删除未能确认");
+    await legacyWrite(`material:${item.id}:delete`, { method: "DELETE", path: removal === "material" ? `/api/materials/${item.id}` : `/api/materials/${item.id}/images/${removal.id}`, baseVersion: item.writeVersion, context: { urls } },
+      (result, op) => verifyMaterialWrite(refresh, result, op));
     if (removal === "material") onDeleted();
     else { setRemoval(null); setMessage("已删除所选图片。"); }
   });

@@ -3,6 +3,7 @@ import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend } from "../../api.js";
 import { Button, Card, PhaseSteps } from "../../ui/components.jsx";
 import { SpecialBlock, TABLE_FIELDS } from "./PromosView.jsx";
+import { legacyState, legacyWrite, recoverLegacy, retryLegacy } from "../../ui/legacy-write.js";
 
 // 方案录入：嵌在「月度促销」上半部分，四步 粘贴 → 解析 → 处理 → 确认。
 // 不选业务线：直接粘贴，按原文里的【…板块】自动识别是大学辅导、国际课程还是申诉服务，写入对应业务线（用户 2026-10-19）。
@@ -19,15 +20,18 @@ const FLOW = [
 ];
 
 function PlanForm({ month, onSaved, onLine }) {
-  const [rawText, setRawText] = useState("");
-  const [rawHtml, setRawHtml] = useState("");
+  const scope = `monthplan:${month}`;
+  const [initialWrite] = useState(() => legacyState(scope));
+  const [rawText, setRawText] = useState(initialWrite.pending?.body?.rawText || "");
+  const [rawHtml, setRawHtml] = useState(initialWrite.pending?.body?.rawHtml || "");
   const [busy, setBusy] = useState("");
   const [progress, setProgress] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const [error, setError] = useState("");
+  const [preview, setPreview] = useState(initialWrite.pending?.context?.preview || null);
+  const [error, setError] = useState(initialWrite.error || (initialWrite.pending ? "上次入库尚未核对，已恢复原文与预览，请重新载入核对。" : ""));
   const [message, setMessage] = useState("");
-  const [needsReload, setNeedsReload] = useState(false);
+  const [needsReload, setNeedsReload] = useState(!!initialWrite.pending || !!initialWrite.error);
   const [saved, setSaved] = useState(false);
+  const [canRetry, setCanRetry] = useState(false);
   const operation = useRef(false);
   const line = preview?.line || null;
   const path = line && "/api/plans/" + encodeURIComponent(month) + "/" + encodeURIComponent(line);
@@ -75,29 +79,51 @@ function PlanForm({ month, onSaved, onLine }) {
     finally { operation.current = false; setBusy(""); }
   }
 
+  async function verify(result, op) {
+    const body = op.body, sourceLine = op.context.preview.line;
+    const [plan, verified] = await Promise.all([
+      apiSend("GET", op.path),
+      apiSend("POST", "/api/plans/parse", { month, line: sourceLine, rawText: body.rawText }),
+    ]);
+    const matches = plan.rawText === body.rawText && (plan.rawHtml || "") === body.rawHtml && plan.special === body.special && verified.special === body.special &&
+      !verified.removed.length && verified.rows.every(row => row.status === "same") && plan.writeVersion === result.writeVersion;
+    if (matches) setPreview(verified);
+    return matches;
+  }
+  async function recover() {
+    if (operation.current) return;
+    operation.current = true; setBusy("read");
+    try {
+      const result = await recoverLegacy(scope, verify);
+      setNeedsReload(false); setError("");
+      if (result) { setSaved(true); setMessage("已核对原操作，促销方案已保存，没有重复入库。"); onSaved?.(); }
+    } catch (error) { setError(`重新核对未完成：${error.message}。原文与预览已保留。`); setCanRetry(error.code === "WRITE_RECEIPT_UNKNOWN"); }
+    finally { operation.current = false; setBusy(""); }
+  }
+
+  async function retryOriginal() {
+    if (operation.current || !canRetry) return;
+    operation.current = true; setBusy("save"); setCanRetry(false);
+    try {
+      await retryLegacy(scope, verify);
+      setNeedsReload(false); setError(""); setSaved(true); setMessage("已核对原操作，促销方案已保存，没有重复入库。"); onSaved?.();
+    } catch (error) { setError(`${error.message}。原文与预览已保留，请重新核对。`); setCanRetry(error.code === "WRITE_RECEIPT_UNKNOWN"); }
+    finally { operation.current = false; setBusy(""); }
+  }
+
   async function save() {
     if (!canSave || operation.current) return;
     operation.current = true;
     setProgress({ label: "入库并回读核对" });
     setBusy("save"); setError(""); setMessage("");
     try {
-      const counts = await apiSend("PUT", path, { rawText, rawHtml, rows: preview.rows, special: preview.special });
-      const [plan, verified] = await Promise.all([
-        apiSend("GET", path),
-        apiSend("POST", "/api/plans/parse", { month, line, rawText }),
-      ]);
-      if (plan.rawText !== rawText || (plan.rawHtml || "") !== rawHtml || plan.special !== preview.special || verified.special !== preview.special ||
-          verified.removed.length || verified.rows.some((row) => row.status !== "same")) {
-        throw new Error("写后回读与确认内容不一致");
-      }
-      setPreview(verified);
+      const counts = await legacyWrite(scope, { method: "PUT", path, body: { rawText, rawHtml, rows: preview.rows, special: preview.special }, baseVersion: preview.writeVersion, context: { preview } }, verify);
       setSaved(true);
       setProgress({ label: "入库并回读核对", done: true });
       setMessage("已写入 " + counts.inserted + " 行，更新 " + counts.updated + " 行，删除 " + counts.removed + " 行");
       onSaved?.();
     } catch (e) {
-      setPreview(null);
-      setNeedsReload(true);
+      setNeedsReload(true); setCanRetry(e.code === "WRITE_RECEIPT_UNKNOWN");
       setProgress({ label: "入库并回读核对", error: "入库结果未确认，请重新载入核对" });
       setError("入库结果未确认，请重新载入原文核对后再试。" + e.message);
     } finally { operation.current = false; setBusy(""); }
@@ -130,7 +156,7 @@ function PlanForm({ month, onSaved, onLine }) {
       </div>
       {progress && <div className="operation-progress"><StepProgress key={progress.label} {...progress} /></div>}
       {error && <p className="error" role="alert">{error}</p>}
-      {needsReload && <Button onClick={() => window.location.reload()}>重新载入核对</Button>}
+      {needsReload && <div className="row"><Button disabled={!!busy} onClick={recover}>重新载入核对</Button>{canRetry && <Button disabled={!!busy} onClick={retryOriginal}>重试原操作</Button>}</div>}
       {message && <p role="status">{message}</p>}
       <div className="split cols-5-7">
         <Card title="方案原文" extra={<Button onClick={() => parse()} disabled={locked || !rawText.trim()}>{busy === "parse" ? "解析中…" : "解析预览"}</Button>}>

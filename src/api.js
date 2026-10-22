@@ -34,10 +34,10 @@ export function useApi(path, sample) {
 
 // 写请求。失败时抛出的错误带 status、code、receipt（后端的收据），由写操作流程判断是「预览失效」还是「结果不明」。
 // 网络中断（fetch 本身失败）没有 status：请求可能已经到达后端，一律按结果不明处理。
-export async function apiSend(method, path, body) {
+export async function apiSend(method, path, body, options = {}) {
   const r = await fetch(path, {
     method,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...options.headers },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const data = await r.json().catch(() => null);

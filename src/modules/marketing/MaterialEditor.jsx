@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { apiSend, useApi } from "../../api.js";
+import { useApi } from "../../api.js";
 import { Button, Tag } from "../../ui/components.jsx";
 import { currentMonth, LINES, monthLabel } from "../../constants.js";
+import { legacyState, legacyWrite } from "../../ui/legacy-write.js";
+import { verifyMaterialWrite } from "./material-write.js";
 
 const defaultTypes = ["海报", "朋友圈图", "社群海报", "落地页", "其他"];
 function configuredTypes(value) {
@@ -24,21 +26,23 @@ export function MaterialSummary({ value }) {
 }
 
 export default function MaterialEditor({ item, write, disabled, onSaved, onCancel }) {
+  const scope = item ? `material:${item.id}:edit` : "materials:create";
+  const [initialWrite] = useState(() => legacyState(scope));
+  const [baseVersion] = useState(initialWrite.pending?.baseVersion || item?.writeVersion);
   const settings = useApi("/api/settings");
   const promos = useApi("/api/promos");
   const types = configuredTypes(settings.data?.material_types);
-  const [draft, setDraft] = useState(item ? { month: item.month, line: item.line, name: item.name, type: item.type, skus: item.skus, note: item.note }
-    : { month: currentMonth(), line: LINES[0], name: "", type: "", skus: [], note: "" });
-  const [preview, setPreview] = useState(null);
+  const [draft, setDraft] = useState(initialWrite.pending?.body || (item ? { month: item.month, line: item.line, name: item.name, type: item.type, skus: item.skus, note: item.note }
+    : { month: currentMonth(), line: LINES[0], name: "", type: "", skus: [], note: "" }));
+  const [preview, setPreview] = useState(initialWrite.pending?.body || null);
   const value = { ...draft, type: draft.type || types[0] };
   const available = [...new Set((promos.data || []).filter((p) => p.month === value.month && p.line === value.line).map((p) => p.sku))];
   const stale = value.skus.filter((sku) => !available.includes(sku));
   const update = (key, next) => setDraft((old) => ({ ...old, [key]: next, ...(["month", "line"].includes(key) ? { skus: [] } : {}) }));
   const save = () => write(async (refresh) => {
-    const saved = await apiSend(item ? "PATCH" : "POST", item ? `/api/materials/${item.id}` : "/api/materials", preview);
-    const current = (await refresh()).find((row) => row.id === saved.id);
-    if (!current || Object.keys(preview).some((key) => JSON.stringify(preview[key]) !== JSON.stringify(current[key]))) throw new Error("保存后的字段回读不一致");
-    onSaved(current);
+    const saved = await legacyWrite(scope, { method: item ? "PATCH" : "POST", path: item ? `/api/materials/${item.id}` : "/api/materials", body: preview, baseVersion },
+      (result, op) => verifyMaterialWrite(refresh, result, op));
+    onSaved(saved);
   });
   return preview ? <div className="stack">
     <h3 className="section-title">{item ? "保存修改预览" : "新建物料预览"}</h3>
