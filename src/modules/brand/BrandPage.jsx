@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
-import { apiSend, useApi } from "../../api.js";
+import { useFreshApi } from "../../api.js";
 import { Button, Loadable, PageHeader, StatStrip, Tag } from "../../ui/components.jsx";
+import { brandVersionIndex } from "./brand-selection.js";
 
 // 品牌数据（用户 2026-10-18 确认草稿 docs/design/brand-data）：飞书品牌多维表格里每一版是一张表，只读。
 // 默认看最新一版；可切到前几版。和上一版按数据项ID比较：值不同算「更新」，名字不同算「改名」，上一版有、本版没有算「下线」；
@@ -24,24 +25,24 @@ export function diffVersion(versions, i) {
 }
 
 export default function BrandPage() {
-  const state = useApi("/api/v3/brand");
-  return <Loadable state={state} name="品牌数据" big>{(data) => <BrandData initial={data} />}</Loadable>;
+  const state = useFreshApi("/api/v3/brand", { refreshPath: "/api/v3/brand/refresh", refreshMethod: "POST" });
+  return <Loadable state={state.data ? { ...state, error: undefined } : state} name="品牌数据" big>{() => <BrandData state={state} />}</Loadable>;
 }
 
-function BrandData({ initial }) {
-  const [data, setData] = useState(initial);
-  const [sync, setSync] = useState({ busy: false, error: "" });
-  const [v, setV] = useState(0);
+function BrandData({ state }) {
+  const data = state.data;
+  const [selectedTable, setSelectedTable] = useState(data.versions[0]?.table);
   const [line, setLine] = useState(""), [q, setQ] = useState(""), [changed, setChanged] = useState(false);
   const versions = data.versions;
+  const v = brandVersionIndex(versions, selectedTable);
   const ver = versions[v], d = useMemo(() => diffVersion(versions, v), [versions, v]);
   const prevVer = versions[v + 1];
-  async function refresh() {
-    setSync({ busy: true, error: "" });
-    try { setData(await apiSend("POST", "/api/v3/brand/refresh")); setSync({ busy: false, error: "" }); }
-    catch (e) { setSync({ busy: false, error: e.message }); }
-  }
-  const pick = (i) => { setV(i); setChanged(false); };
+  useEffect(() => {
+    if (!versions.some(version => version.table === selectedTable)) {
+      setSelectedTable(versions[0]?.table); setChanged(false);
+    }
+  }, [versions, selectedTable]);
+  const pick = (table) => { setSelectedTable(table); setChanged(false); };
   const count = (k) => d.rows.filter((r) => r.kind === k).length;
   const term = q.trim().toLowerCase();
   const shown = d.rows.filter((r) => (!line || r.line === line) && (!term || `${r.id}${r.name}${r.value}`.toLowerCase().includes(term)) && (!changed || r.kind || r.renamed));
@@ -49,13 +50,13 @@ function BrandData({ initial }) {
   const readAt = new Date(data.readAt).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\//g, "-");
   return (
     <div className="brand-page">
-      <PageHeader title="品牌" subtitle={<>最新读取于 <span className="tnum">{readAt}</span>{sync.error && <span className="risk-text"> · 重新读取失败：{sync.error}（下面仍是上次读到的数据）</span>}</>} actions={<>
-        {sync.busy ? <div style={{ width: 200 }}><StepProgress label="读取飞书（只读）" /></div> : <Button onClick={refresh}><PixelIcon name="refresh" />重新读取</Button>}
+      <PageHeader title="品牌" subtitle={<>最新读取于 <span className="tnum">{readAt}</span>{(state.error || data.sourceError) ? <span className="risk-text"> · 重新读取失败：{state.error || data.sourceError}（下面仍是上次读到的数据）</span> : data.stale && <span className="muted"> · {data.refreshing ? "正在更新，先显示上次结果" : "当前显示上次读取的结果"}</span>}</>} actions={<>
+        {state.busy ? <div style={{ width: 200 }}><StepProgress label="读取飞书（只读）" /></div> : <Button onClick={state.reload}><PixelIcon name="refresh" />重新读取</Button>}
         <a className="btn" href={data.source} target="_blank" rel="noreferrer"><PixelIcon name="external" size={14} />在飞书打开</a>
       </>} />
       <div className="brand-vers" role="tablist" aria-label="版本">
         {versions.map((x, i) => (
-          <button key={x.table} type="button" role="tab" aria-selected={i === v} className={`brand-ver${i === v ? " is-on" : ""}${i === 0 ? " is-latest" : ""}`} onClick={() => pick(i)}>
+          <button key={x.table} type="button" role="tab" aria-selected={i === v} className={`brand-ver${i === v ? " is-on" : ""}${i === 0 ? " is-latest" : ""}`} onClick={() => pick(x.table)}>
             <span className="brand-ver-badge">{i === 0 ? "最新" : "历史"}</span>
             <span className="label">{i === 0 ? "当前版本" : "历史版本"} · {x.date}</span>
             <span className="brand-ver-no">{x.version}</span>

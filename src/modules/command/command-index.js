@@ -14,11 +14,11 @@ const PAGES = [
   ["projects/campaign", "项目 · 营销战役", "project", "本月战役的节点、物料决定与复盘"],
   ["marketing/plans", "营销 · 月度促销", "marketing", "按月份、业务线录入促销方案，下方是方案汇总"],
   ["marketing/prices", "营销 · 价格档案", "price", "各 SKU 的价格方案：总价、单价和毛利"],
-  ["marketing/materials", "营销 · 物料沉淀", "image", "物料墙（NAS）、设计参考、本地物料"],
-  ["marketing/brief", "营销 · 设计 brief", "brief", "交付月物料的设计需求"],
+  ["marketing/materials", "营销 · 物料沉淀", "image", "月度物料（NAS）、过往营销、设计参考"],
+  ["marketing/brief", "营销 · 设计 Brief", "brief", "交付月物料的设计需求"],
   ["user/timeline", "策略 · 用户时间", "timeline", "各国大学的选课、开学、考试、出分"],
   ["user/timeline/country", "策略 · 时间线明细表", "timeline", "按国家看每所学校的全部节点"],
-  ["user/timeline/anomalies", "策略 · 时间线异常待确认", "alert", "日期冲突、不完整，需要人工确认"],
+  ["user/timeline/anomalies", "策略 · 时间线 AI 推测", "alert", "查看 AI 推测日期、原文与核查依据"],
   ["user/strategy", "策略 · 用户策略", "user", "主线需求 → 拆解 → 行动"],
   ["voice", "Voice", "voice", "留学之声：大家在说什么"],
   ["brand", "品牌", "brand", "品牌资料"],
@@ -87,17 +87,17 @@ export function buildNeeds(data) {
   }));
 }
 
-// 文档：遍历知识库目录树，只收文件；路径写到上一级目录。
+// 文档：叶子文件与有正文链接的父节点都可查找；路径写到上一级目录。
 export function buildDocs(kb) {
   if (!kb?.tree) return [];
   const out = [];
   const walk = (nodes, path) => nodes.forEach((n) => {
-    if (n.file) {
-      const d = kb.docs?.[n.id] || {};
+    const d = kb.docs?.[n.id] || {};
+    if (n.file || d.url) {
       out.push({
         id: `doc:${n.id}`, kind: "doc", title: n.name, sub: path.join(" / ") || "根目录",
-        keys: `${(d.tags || []).join(" ")} ${d.excerpt || ""}`, icon: "file", go: "知识库",
-        href: href("kb", n.id), preview: { kind: "doc", path: path.join(" / ") || "根目录", doc: d },
+        keys: `${(d.tags || []).join(" ")} ${d.excerpt || ""}`, icon: "file", go: d.url ? "打开正文" : "知识库",
+        href: href("kb", n.id), ...(d.url && { externalUrl: d.url }), preview: { kind: "doc", path: path.join(" / ") || "根目录", doc: d },
       });
     }
     if (n.kids) walk(n.kids, [...path, n.name]);
@@ -112,11 +112,11 @@ export function buildActions(promos = [], dm = deliveryMonth()) {
   const fixed = [
     ["plans", `录入 ${m}促销方案`, "edit", "月度促销 · 粘贴方案原文 → 解析 → 确认", href("marketing", "plans", dm, "大学辅导")],
     ["campaign", `打开 ${m}营销战役`, "marketing", "节点、物料决定与复盘", href("projects", "campaign")],
-    ["brief", `写 ${m}设计 brief`, "brief", "逐节填写，文案助手可以起草", href("marketing", "brief")],
-    ["wall", "看物料墙", "image", "每月交付了哪些物料、沿用了哪一版", href("marketing", "materials", "wall")],
-    ["anomalies", "处理时间线异常", "alert", "冲突和推测的日期，逐条确认", href("user", "timeline", "anomalies")],
-    ["needs", "审主线需求", "target", "采纳后才拆解策略、才能被促销关联", href("user", "strategy")],
-    ["chat", "和 Agent 新开对话", "agent", "文案助手等", href("assistants")],
+    ["brief", `写 ${m}设计 Brief`, "brief", "自动保存，工作台内部规则生成前两节", href("marketing", "brief")],
+    ["wall", "看月度物料", "image", "每月交付了哪些物料、沿用了哪一版", href("marketing", "materials", "wall")],
+    ["anomalies", "查看时间线 AI 推测", "alert", "查看推测日期、原文和官网核查依据", href("user", "timeline", "anomalies")],
+    ["needs", "审主线需求", "target", "采纳需求并拆解用户策略", href("user", "strategy")],
+    ["chat", "打开 Agent 对话", "agent", "文案助手等", href("assistants")],
   ].map(([key, title, icon, sub, to]) => ({ id: `action:${key}`, kind: "action", title, sub, keys: key, icon, go: "跳转", href: to, preview: { kind: "action", desc: sub } }));
   const copies = buildSkus(promos).map(({ preview: { latest } }) => ({
     id: `action:copy|${latest.line}|${latest.sku}`, kind: "action", title: `复制 ${latest.sku}（${latest.line}）${shortMonth(latest.month)}政策`,
@@ -124,6 +124,13 @@ export function buildActions(promos = [], dm = deliveryMonth()) {
     copy: policyText(latest), preview: { kind: "action", desc: `把 ${latest.month} 的四项政策复制到剪贴板，不离开当前页。` },
   }));
   return [...fixed, ...copies];
+}
+
+// 复制前读取最新本地促销数据，旧索引只提供稳定对象 ID，不提供待复制正文。
+export async function latestPolicyAction(item, readPromos) {
+  const latest = buildActions(await readPromos()).find(action => action.id === item.id);
+  if (!latest?.copy) throw new Error("这条政策已移除，请重新搜索");
+  return latest;
 }
 
 // 输入以「>」开头时只搜操作。

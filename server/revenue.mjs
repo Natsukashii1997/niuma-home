@@ -66,6 +66,6 @@ export async function readRevenueSource(cfg, { run, now = Date.now } = {}) {
 
 // 先给上次读到的结果（含重启前的快照），过期后台重读。
 export function createRevenueService(db, { readSource = readRevenueSource, ...options } = {}) {
-  const read = createConfiguredReader(db, 'revenue', () => REVENUE_SOURCE, readSource, { ttl: 600_000, staleWhileRevalidate: true, ...options });
-  return { get: () => read() };
+  const read = createConfiguredReader(db, 'revenue', () => REVENUE_SOURCE, readSource, { ttl: 600_000, staleWhileRevalidate: true, withStatus: true, ...options });
+  return { get: options => read(options) };
 }

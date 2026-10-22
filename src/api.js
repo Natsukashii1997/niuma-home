@@ -52,3 +52,27 @@ export async function apiRead(path) {
   if (r.ok || (r.status === 501 && r.headers.get("x-workdesk-data-origin") === "demo" && body)) return body;
   throw Object.assign(new Error(body?.error || `读取失败（${r.status}）`), { status: r.status, code: body?.code });
 }
+
+// 先展示完整快照，后台读取结束后回读；失败保留内容，停止轮询并显示原因。
+export function useFreshApi(path, { refreshPath = `${path}?refresh=1`, refreshMethod = 'GET' } = {}) {
+  const [state, setState] = useState({ loading: true });
+  const [request, setRequest] = useState({ tick: 0, force: false });
+  const reload = useCallback(() => setRequest(r => ({ tick: r.tick + 1, force: true })), []);
+  useEffect(() => {
+    let active = true, timer;
+    setState(s => ({ ...s, loading: !s.data, busy: true, error: undefined }));
+    async function read(force) {
+      try {
+        const data = force ? await apiSend(refreshMethod, refreshPath) : await apiRead(path);
+        if (!active) return;
+        setState({ data, busy: !!data.refreshing });
+        if (data.refreshing) timer = setTimeout(() => read(false), 1500);
+      } catch (error) {
+        if (active) setState(s => ({ ...s, loading: false, busy: false, error: error.message }));
+      }
+    }
+    read(request.force);
+    return () => { active = false; clearTimeout(timer); };
+  }, [path, refreshPath, refreshMethod, request]);
+  return { ...state, reload };
+}

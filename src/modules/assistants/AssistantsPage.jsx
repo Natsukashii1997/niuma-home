@@ -138,28 +138,67 @@ function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked 
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [uncertain, setUncertain] = useState(false);
   const [settingsBlocked, setSettingsBlocked] = useState(true), [runtimeVersion, setRuntimeVersion] = useState(0);
   const [tab, setTab] = useState("chat"), [modelOpen, setModelOpen] = useState(false);
+  const [conversations, setConversations] = useState({ currentThreadId: assistant.codexThreadId, items: [] });
+  const [viewThread, setViewThread] = useState("");
+  const [sessionNote, setSessionNote] = useState("");
   const lock = useRef(false), controller = useRef(null), bottom = useRef(null);
-  const read = async () => apiSend("GET", `/api/assistants/${assistant.id}/messages`);
+  const base = `/api/assistants/${assistant.id}`;
+  const read = async (threadId = viewThread) => apiSend("GET", `${base}/messages${threadId ? `?threadId=${encodeURIComponent(threadId)}` : ""}`);
+  const readConversations = async () => apiSend("GET", `${base}/conversations`);
+  const readSnapshot = async (selected = viewThread) => {
+    const sessions = await readConversations();
+    const threadId = selected || sessions.currentThreadId;
+    return [threadId ? await read(threadId) : [], sessions];
+  };
   useEffect(() => {
     let live = true;
-    read().then((rows) => { if (live) setMessages(rows); }, (e) => { if (live) { setError(e.message); setUncertain(true); } }).finally(() => { if (live) setLoading(false); });
+    readSnapshot().then(([rows, sessions]) => { if (live) { setMessages(rows); setConversations(sessions); } }, (e) => { if (live) { setError(e.message); setUncertain(true); } }).finally(() => { if (live) setLoading(false); });
     return () => { live = false; controller.current?.abort(); };
   }, [assistant.id]);
   useEffect(() => { bottom.current?.scrollIntoView({ block: "nearest" }); }, [messages, pending]);
   const reload = async () => {
     if (lock.current) return;
     lock.current = true; setLoading(true);
-    try { setMessages(await read()); setPending(null); setUncertain(false); setError(""); }
+    try {
+      const [rows, sessions] = await readSnapshot();
+      setMessages(rows); setConversations(sessions); if (viewThread === sessions.currentThreadId) setViewThread(""); setPending(null); setUncertain(false); setError("");
+      await reloadAssistants();
+    }
     catch (e) { setError(e.message); setUncertain(true); }
     finally { setLoading(false); lock.current = false; }
   };
+  const viewHistory = async (threadId) => {
+    if (lock.current || busy || loading) return;
+    lock.current = true; setLoading(true); setError("");
+    try {
+      const [rows, sessions] = await readSnapshot(threadId);
+      const selected = threadId === sessions.currentThreadId ? "" : threadId;
+      setMessages(rows); setConversations(sessions); setViewThread(selected); setTab("chat"); setPending(null);
+      setSessionNote(selected ? "正在查看历史会话；继续此会话会使用它原有的知识和上下文。" : "");
+    }
+    catch (e) { setError(e.message); }
+    finally { lock.current = false; setLoading(false); }
+  };
+  const changeConversation = async (fresh) => {
+    if (lock.current || busy || loading || uncertain) return;
+    lock.current = true; setLoading(true); setError("");
+    try {
+      const result = await apiSend("POST", `${base}/conversations/${fresh ? "new" : "select"}`, { expectedThreadId: conversations.currentThreadId, ...(!fresh && { threadId: viewThread }) });
+      const [rows, back] = await readSnapshot("");
+      if (back.currentThreadId !== result.currentThreadId) throw new Error("会话切换回读不一致");
+      setConversations(back); setMessages(rows); setViewThread(""); setPending(null);
+      setSessionNote(fresh ? "新会话已就绪，发送第一条消息时带入已保存的最新知识；旧对话保留在历史会话中。" : "已切回历史会话，将沿用这个会话的原有上下文。");
+      setRuntimeVersion(n => n + 1); await reloadAssistants();
+    } catch (e) { setError(`${e.message}。请重新读取历史核对，不会自动重试。`); setUncertain(true); }
+    finally { lock.current = false; setLoading(false); }
+  };
   const send = async () => {
-    if (lock.current || loading || uncertain || settingsBlocked || !draft.trim()) return;
+    if (lock.current || loading || uncertain || settingsBlocked || viewThread || !draft.trim()) return;
     lock.current = true; setBusy(true); setError("");
     const text = draft.trim(); const abort = new AbortController(); controller.current = abort;
     setPending({ text, replies: [] });
     try {
-      const response = await fetch(`/api/assistants/${assistant.id}/messages`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }), signal: abort.signal });
+      const response = await fetch(`/api/assistants/${assistant.id}/messages`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, expectedThreadId: conversations.currentThreadId }), signal: abort.signal });
       await consumeMessageStream(response, (event, data) => {
         if (event !== "delta") return;
         setPending((old) => {
@@ -169,7 +208,8 @@ function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked 
           return { ...old, replies };
         });
       });
-      setMessages(await read()); setPending(null); setDraft("");
+      const [rows, sessions] = await readSnapshot("");
+      setMessages(rows); setConversations(sessions); await reloadAssistants(); setPending(null); setDraft("");
     } catch (e) { setError(`${e.message}。输入已保留，请先重新读取历史核对，避免重复发送。`); setUncertain(true); }
     finally { lock.current = false; setBusy(false); controller.current = null; setRuntimeVersion((n) => n + 1); }
   };
@@ -182,6 +222,16 @@ function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked 
         {remove && <Button disabled={busy || removeLocked} onClick={remove} title="软删除，可在「已删除的助手」里恢复"><PixelIcon name="close" />删除</Button>}
       </div></header>
     <div className={modelOpen ? "model-panel is-open" : "model-panel"}><ModelControls assistant={assistant} busy={busy} version={runtimeVersion} reloadAssistants={reloadAssistants} onBlocked={setSettingsBlocked} /></div>
+    <div className="assistant-status row">
+      <label className="small">会话 <select aria-label="选择会话" value={viewThread} disabled={busy || loading || uncertain} onChange={(e) => viewHistory(e.target.value)}>
+        <option value="">当前对话{conversations.currentThreadId ? "" : "（新会话）"}</option>
+        {conversations.items.filter((entry) => !entry.current).map((entry, i) => <option key={entry.threadId} value={entry.threadId}>历史 {i + 1} · {entry.name} · {new Date(entry.savedAt).toLocaleString("zh-CN")}</option>)}
+      </select></label>
+      {viewThread && <Button disabled={busy || loading || uncertain} onClick={() => changeConversation(false)}>继续此会话</Button>}
+      <Button disabled={busy || loading || uncertain || !conversations.currentThreadId} onClick={() => changeConversation(true)}><PixelIcon name="plus" />用最新知识新建会话</Button>
+    </div>
+    {sessionNote && <p className="assistant-status small muted" role="status">{sessionNote}</p>}
+    {error && <div className="assistant-status"><p className="error" role="alert">{error}</p><Button disabled={busy || loading} onClick={reload}>重新读取历史</Button></div>}
     {tab === "kb" ? <KnowledgePanel assistant={assistant} /> : <>
     <div className="chat-messages" aria-busy={busy || loading}>
       {loading && <p className="muted">正在读取历史…</p>}
@@ -191,9 +241,8 @@ function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked 
       <div ref={bottom} />
     </div>
     {busy && pending && !pending.replies.length && <div className="assistant-wait"><StepProgress label="等待回复首字" /></div>}
-    {error && <div className="assistant-status"><p className="error" role="alert">{error}</p><Button disabled={busy || loading} onClick={reload}>重新读取历史</Button></div>}
-    <footer className="chat-input"><textarea aria-label="消息" placeholder="输入消息，确认后发送" value={draft} onChange={(e) => setDraft(e.target.value)} disabled={busy} maxLength={50000} rows={3} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); } }} /><Button variant="primary" disabled={busy || loading || uncertain || settingsBlocked || !draft.trim()} onClick={send}><PixelIcon name="send" /> 发送</Button></footer>
-    <div className="assistant-status is-hint" role="status">{busy ? "Codex 正在回复…" : "Enter 发送 · Shift+Enter 换行"}</div>
+    <footer className="chat-input"><textarea aria-label="消息" placeholder="输入消息，确认后发送" value={draft} onChange={(e) => setDraft(e.target.value)} disabled={busy || !!viewThread} maxLength={50000} rows={3} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); } }} /><Button variant="primary" disabled={busy || loading || uncertain || settingsBlocked || !!viewThread || !draft.trim()} onClick={send}><PixelIcon name="send" /> 发送</Button></footer>
+    <div className="assistant-status is-hint" role="status">{busy ? "Codex 正在回复…" : viewThread ? "历史会话只读；点击「继续此会话」后可以发送" : "Enter 发送 · Shift+Enter 换行"}</div>
     </>}
   </section>;
 }
@@ -232,7 +281,7 @@ function AssistantDialog({ modal, close, saved, reload }) {
           {!loading && !sessions.length && !error && <Empty>没有可导入的已命名会话。</Empty>}
         </> : <><label className="material-field" htmlFor="assistant-name">名称<input id="assistant-name" required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} /></label><label className="material-field" htmlFor="assistant-instructions">预设说明<textarea id="assistant-instructions" rows={6} maxLength={20000} value={instructions} onChange={(e) => setInstructions(e.target.value)} /></label></>}
       </fieldset>
-      <p className="muted small">{importing ? "仅导入会话关联；历史仍由 Codex 保存。被其他 Codex 客户端占用时无法续聊，请先在原客户端结束占用。" : "预设说明仅在该助手首次创建 Codex 会话时传入；修改不会改变已有会话，也不会清空历史。"}</p>
+      <p className="muted small">{importing ? "仅导入会话关联；历史仍由 Codex 保存。被其他 Codex 客户端占用时无法续聊，请先在原客户端结束占用。" : "预设说明在新建会话时传入；修改后可点「用最新知识新建会话」，已有会话与历史保留。"}</p>
       {preview && <div className="settings-preview"><h3 className="section-title">{importing ? "导入预览" : "保存预览"}</h3>{importing ? sessions.filter((s) => selected.includes(s.threadId)).map((s) => <p key={s.threadId}>{s.name}<br /><span className="muted small">{s.cwd}</span></p>) : <><strong>{name.trim()}</strong><pre className="pre">{instructions || "（预设说明为空）"}</pre></>}</div>}
       {error && <p className="error" role="alert">{error}</p>}
       <div className="row">{uncertain ? <Button type="button" disabled={busy} onClick={recover}>重新读取助手列表</Button> : preview ? <><Button type="button" disabled={busy} onClick={() => setPreview(false)}>返回修改</Button><Button type="button" variant="primary" disabled={busy} onClick={confirm}>{importing ? "确认导入" : "确认保存"}</Button></> : <Button type="submit" variant="primary" disabled={loading || (importing ? !selected.length : !name.trim())}>{importing ? "预览导入" : "预览保存"}</Button>}</div>

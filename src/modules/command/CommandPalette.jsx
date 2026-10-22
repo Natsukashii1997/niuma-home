@@ -1,24 +1,26 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { PixelIcon } from "../../ui/bitmap.jsx";
-import { useApi } from "../../api.js";
+import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Tag } from "../../ui/components.jsx";
 import { deliveryMonth } from "../../constants.js";
-import { GROUP_LABEL, SCOPES, buildActions, buildDocs, buildNeeds, buildPages, buildSchools, buildSkus, parseQuery, pushRecent, readRecent, search } from "./command-index.js";
+import { GROUP_LABEL, SCOPES, buildActions, buildDocs, buildNeeds, buildPages, buildSchools, buildSkus, latestPolicyAction, parseQuery, pushRecent, readRecent, search } from "./command-index.js";
 
 // ⌘K 命令面板（第三轮提案 2）：任何页面按 ⌘K / Ctrl+K 打开。按对象找：页面、SKU、学校、主线需求、知识库文档、操作。
 // ↑↓ 选择，↵ 打开，Tab / ⇧Tab 切换范围，输入「>」只搜操作，Esc 关闭。没输入时显示最近打开的 5 项和全部页面。
-// 第一次打开时才读接口；接口未实现时用示例建索引，该组标「示例」。
+// 每次打开重新读取本地接口；关闭时卸载索引，避免沿用上次打开时的促销和目录。
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 
 export function CommandPalette({ open, onClose }) {
-  const [armed, setArmed] = useState(false);
-  useEffect(() => { if (open) setArmed(true); }, [open]);
-  const promos = useApi(armed ? "/api/promos" : null);
-  const timeline = useApi(armed ? "/api/v3/timeline" : null);
-  const needs = useApi(armed ? `/api/v3/needs?month=${deliveryMonth()}` : null);
-  const kb = useApi(armed ? "/api/v3/kb/tree" : null);
+  return open ? <LoadedPalette onClose={onClose} /> : null;
+}
+
+function LoadedPalette({ onClose }) {
+  const promos = useApi("/api/promos");
+  const timeline = useApi("/api/v3/timeline");
+  const needs = useApi(`/api/v3/needs?month=${deliveryMonth()}`);
+  const kb = useApi("/api/v3/kb/tree");
   const items = useMemo(() => {
     const mark = (list, state) => (state.isSample ? list.map((it) => ({ ...it, sample: true })) : list);
     return [
@@ -32,8 +34,7 @@ export function CommandPalette({ open, onClose }) {
   }, [promos.data, timeline.data, needs.data, kb.data, timeline.isSample, needs.isSample, kb.isSample]);
   const loading = [promos, timeline, needs, kb].some((s) => s.loading);
   const failed = [["促销表", promos], ["时间线", timeline], ["主线需求", needs], ["知识库", kb]].filter(([, s]) => s.error).map(([n]) => n);
-  if (!open) return null;
-  return <Palette items={items} loading={armed && loading} failed={failed} onClose={onClose} />;
+  return <Palette items={items} loading={loading} failed={failed} onClose={onClose} />;
 }
 
 function Palette({ items, loading, failed, onClose }) {
@@ -42,6 +43,7 @@ function Palette({ items, loading, failed, onClose }) {
   const [active, setActive] = useState(0);
   const [note, setNote] = useState("");
   const [recent, setRecent] = useState(readRecent);
+  const copying = useRef(false);
   const input = useRef(null);
   const list = useRef(null);
   useEffect(() => { input.current?.focus(); }, []);
@@ -53,7 +55,8 @@ function Palette({ items, loading, failed, onClose }) {
     const pages = items.filter((it) => it.kind === "page" && (parsed.scope === "all" || parsed.scope === "page"));
     const pool = parsed.scope === "all" ? items : items.filter((it) => it.kind === parsed.scope);
     const out = [];
-    if (parsed.scope === "all" && recent.length) out.push({ kind: "recent", label: GROUP_LABEL.recent, total: recent.length, items: recent });
+    const currentRecent = recent.map((old) => items.find((item) => item.id === old.id)).filter(Boolean);
+    if (parsed.scope === "all" && currentRecent.length) out.push({ kind: "recent", label: GROUP_LABEL.recent, total: currentRecent.length, items: currentRecent });
     if (parsed.scope === "all" || parsed.scope === "page") out.push({ kind: "page", label: GROUP_LABEL.page, total: pages.length, items: pages });
     else out.push({ kind: parsed.scope, label: GROUP_LABEL[parsed.scope], total: pool.length, items: pool.slice(0, 50) });
     return out;
@@ -66,13 +69,19 @@ function Palette({ items, loading, failed, onClose }) {
   async function run(item) {
     if (!item) return;
     if (item.copy) {
-      try { await navigator.clipboard.writeText(item.copy); setNote(`已复制：${item.title.replace(/^复制 /, "")}`); }
-      catch { setNote("复制失败：浏览器不允许写剪贴板"); }
+      if (copying.current) return;
+      copying.current = true; setNote("正在核对最新政策…");
+      try {
+        const latest = await latestPolicyAction(item, () => apiSend("GET", "/api/promos"));
+        await navigator.clipboard.writeText(latest.copy); setNote(`已复制：${latest.title.replace(/^复制 /, "")}`);
+      } catch (e) { setNote(`复制失败：${e.message}`); }
+      finally { copying.current = false; }
       return;
     }
     setRecent(pushRecent(item));
     onClose();
-    location.hash = item.href;
+    if (item.externalUrl) window.open(item.externalUrl, "_blank", "noopener,noreferrer");
+    else location.hash = item.href;
   }
   function onKey(e) {
     if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); onClose(); }

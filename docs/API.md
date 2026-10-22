@@ -71,8 +71,10 @@ type Message = { role: "user" | "assistant"; text: string; at?: string };
 - `POST /api/assistants` 请求 `{ name, instructions }` → `Assistant`（kind = custom）
 - `PATCH /api/assistants/:id` 请求 `{ name?, instructions?, model?, effort? }` → `Assistant`
   - T08：`model` / `effort` 可传 `null` 恢复默认；`model` 须在模型列表中，`effort` 须为该模型支持的强度；`model` 为 `null` 时 `effort` 也须为 `null`；助手回复中返回 409。
-- `GET /api/assistants/:id/messages` → `Message[]`（从 Codex 会话读取历史）
-- `POST /api/assistants/:id/messages` 请求 `{ text }` → 流式返回（`text/event-stream`，事件 `delta` / `done` / `error`）
+- `GET /api/assistants/:id/messages[?threadId=历史ID]` → `Message[]`（从 Codex 会话读取历史；历史 ID 必须属于本助手）
+- `GET /api/assistants/:id/conversations` → `{ currentThreadId, items:[{threadId,name,savedAt,current}] }`。当前会话与本地保留的历史会话。
+- `POST /api/assistants/:id/conversations/new` 请求 `{expectedThreadId}`；`POST .../conversations/select` 请求 `{expectedThreadId,threadId}`。返回同上形状；仅切换本地关联，不删除旧会话、不调用模型。新会话首条消息才采用最新已保存知识。回复中或当前关联已变化返回409；跨助手历史ID拒绝。
+- `POST /api/assistants/:id/messages` 请求 `{ text, expectedThreadId? }` → 流式返回（`text/event-stream`，事件 `delta` / `done` / `error`）
 - `GET /api/codex/sessions` → `{ threadId, name, updatedAt, cwd }[]`（本机 Codex 会话，已导入的标 `imported: true`）
 - `POST /api/assistants/import` 请求 `{ threadIds: string[] }` → `Assistant[]`
 - `GET /api/codex/models` → `CodexModel[]`（T08，缓存 10 分钟；读取失败返回错误，不返回空数组）
@@ -114,8 +116,8 @@ type ReportSource = {
 
 - `GET /api/reports` → `Report[]`，按 `date` 倒序，同日先日报后周报。**兼容旧调用**：任一已配置来源失败时整体返回错误，不返回部分结果。
 - `GET /api/reports?withSources=1` → `{ reports: Report[], sources: ReportSource[] }`（T05B）。
-  - 部分来源失败：200，`reports` 只含成功来源，失败来源在 `sources` 中 `ok: false`。
-  - 全部失败：返回日报来源的错误状态码，body 为 `{ error, sources }`。
+  - 部分来源失败：200；正式服务开启旧快照优先时，`reports` 保留失败来源上次完整结果，来源标记 `ok:false,retained:true,stale:true,error`，不记读取成功。没有完整旧结果的来源不提供篇目。
+  - 全部失败且没有可用完整旧结果：返回日报来源的错误状态码，body 为 `{ error, sources }`；仍有旧结果时200并明确各来源失败状态。
   - 理由：双来源后需要表达「部分成功」，数组形状无法表达；用查询参数新增形状，旧路径与旧形状不变。
 - `refresh=1` 可与上述两种调用组合：重读全部已配置来源（同一链接只读一次）。
 - `GET /api/reports/:id` → 单篇。ID 以 `w-` 开头时属于周报来源，否则属于日报来源（单文档模式下全部属于日报来源）。所属来源读取失败时返回该来源的错误，不返回 404。
@@ -125,7 +127,7 @@ type ReportSource = {
 
 ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来源为 `w-` + `sha256("周报|" + date + "|" + title)` 前 20 位 + `-` + 同键序号。合并后有重复 ID 时返回 500。
 
-缓存：按规范化链接分别缓存 10 分钟；链接变更或清空只作废该来源的缓存；读取失败作废该来源的缓存，下次请求重试，不返回旧内容。
+缓存：按规范化链接分别缓存10分钟，来源变化不沿用旧来源数据。正式服务过期先给完整旧结果并标 `stale:true,refreshing:true`，后台成功后更新；后台失败保留旧结果/旧成功时间，记录本次失败并冷却60秒，手动刷新可重试。页面每1.5秒回读正在更新的来源，结束后停止。底层关闭旧快照优先模式时保持原契约：读取失败清缓存、下次请求重试。Markdown对飞书转义列表统一解析，避免索引不推进导致周报卡死。
 
 ## 本地项目与历史战役 · 删除与恢复（T10-B2，软删除）
 
@@ -186,7 +188,7 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 
 ## 业务 · 营收完成度与图表（飞书只读）
 
-- `GET /api/v3/business/revenue` → `{ period, timePct, updatedAt, source, groups: { label, items }[] }`；只读飞书多维表格《策略数据表单》的仪表盘「当月策略盘」（`server/revenue.mjs`，按组件名找组件）：6 个进度组件给 `current/target`，「总转化率趋势」给本月 `rate` 与上月 `lastMonthRate`（本月还没有转化率时不返回 `conv`）。`period` 为「YYYY 年 M 月」，`timePct` 为当月已过天数占比。缓存 10 分钟，先给上次结果（含重启前快照）、过期后台重读；组件缺失或数据不全报 502。
+- `GET /api/v3/business/revenue[?refresh=1]` → `{ period, timePct, updatedAt, source, groups: { label, items }[], stale, refreshing, sourceError, fetchedAt }`；只读飞书多维表格《策略数据表单》的仪表盘「当月策略盘」（`server/revenue.mjs`，按组件名找组件）：6 个进度组件给 `current/target`，「总转化率趋势」给本月 `rate` 与上月 `lastMonthRate`（本月还没有转化率时不返回 `conv`）。`period` 为「YYYY 年 M 月」，`timePct` 为当月已过天数占比。缓存10分钟，先给上次完整结果（含重启前快照）、过期后台重读；失败保留完整结果及旧更新时间并明确 `sourceError`，60秒冷却后才自动重试。营收 `refresh=1`、品牌 `POST /api/v3/brand/refresh` 强制重读；页面在 `refreshing` 时每1.5秒回读，完成或失败后停止。无完整结果时组件缺失/数据不全报502。品牌同样返回这四个新状态字段；品牌版本选择按table ID保持，所选版本消失回到最新版本。
 - `GET /api/v3/business/charts[?refresh=1]` → `{ source, period: "YYYY-MM", updatedAt: "YYYY-MM-DD HH:mm", charts, stale, refreshing, sourceError? }`。仅 codex/user 读取同一「当月策略盘」，独立于上方指标缓存；完整枚举所有分页并按源布局读取 5 张折线图与 9 张占比图（后续新增 line/pie 自动纳入，当前 14 张缺失/重名/改变统计口径导致不完整时明确报错）。所有图保留 `id/name/type/sourceType/unit/sourceTable/filter/dimension/measure`；`unit` 为 currency 或 percent。折线为 `categories + series[{name,values}]`，年份是独立系列，缺月为 null；占比为 `items[{label,value}] + total + pieAvailable`，空类别显示「未填写」，零值不丢，负值/缺失值保留为明细并停止画占比。大学地区图 CLI 类型 unknown 已按真实一维实收金额结果核对并作为 pie 展示。
   - 图表按原组件配置中的字段、聚合和筛选读取；趋势与占比分别来自原图各自的数据表，不自行统一为上方营收卡口径，不派生同比/环比。完整批次成功才保存 `business-charts-v1` 快照，缓存 10 分钟；过期返回明确 stale 的旧快照并后台更新，刷新失败回传 sourceError，保持原更新时间，60 秒后才后台重试；`refresh=1` 显式现读，失败返回错误。页面在 refreshing 期间每 2 秒回读缓存，完成后更新图形。无成功快照时首次读取失败报错，不显示空图。跨月读取拒绝混合月份结果。
   - 飞书错误码 1 或限流在单个只读请求上有限重试一次；权限拒绝、无效结构不重试。持续失败提示具体图名和错误码。占比含任意缺失值时 `total=null`，显示「数据不完整」；页面占比图和列表按金额降序展示全部分类，完整数值保留源顺序。
@@ -285,7 +287,7 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 
 结构与写作规范见 `docs/用户策略规范.md`。分两层：
 
-- **用户情况**（核心判断、1 全局研判、2 用户洞察、3 机会收敛）按月内置在 `docs/用户情况/YYYY-MM.json`，随版本发布；时间窗、时间全景节点条、各地区节点数、推测节点由 `node scripts/user-insight-facts.mjs YYYY-MM` 按时间线算好写进文件。第一次修改时整月复制到本地 `v3_documents`（kind `user-strategy`，id 为月份），之后以本地为准。
+- **用户情况**（核心判断、1 全局研判、2 用户洞察、3 机会收敛）按月内置在 `docs/用户情况/YYYY-MM.json`，随版本发布；内置客观数据可由 `node scripts/user-insight-facts.mjs YYYY-MM` 初始化；GET时从当前来源最近完整时间线快照及人工裁定派生时间全景、节点数和推测清单，保留人工正文与已生成促销。第一次修改时整月复制到本地 `v3_documents`（kind `user-strategy`，id 为月份），之后以本地为准。
 - **促销策略**（本月目标、核心打法、4.1–4.4）由按钮生成，存在当月记录的 `strategy` 下。
 
 接口：
@@ -345,3 +347,13 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - 新增 `verifications:{checked,confirmed,unresolved,stale}`；核查注解为 `verification:{status,checkedAt,reason,scope,academicYear,sources:[{url,title}]}`。确认事件有 `verified:true`，不同分段保留 `detail`、完整年份及自己的来源格。
 - 官网记录要求表格身份（title+token指纹）、school/country/src及原文问题指纹都一致，合法日期及HTTPS官网依据齐全才应用；来源变化后不借用旧学校/旧表证据。
 - 月视图无确定日期的项仅作为 `pending/from:null` 展示，保留原文和“待确认”，不写入agenda；已有推测/冲突事件也计入本月待确认学校数。取消单独本月待确认区块。
+
+## 2026-10-22 完整性修复补充
+
+- 用户策略 GET 增加 `timelineEvidence:{status:current|changed|unavailable,fingerprint,syncedAt,basedOnSyncedAt,message}`。读取不写本地正文；无匹配完整快照时保留旧依据并提示。预览确认核对时间证据指纹；Brief指纹不受仅同步时间变化影响，日期依据变化只提示核对，不自动重写正文。
+- NAS扫描任一子目录无法完整读取即失败，保留上次完整快照与成功时间；真实空目录仍可正常扫描。
+- 画布失败草稿按浏览器标签页持久化到IndexedDB，跨路由保留；存储故障明确提示且全局离开保护持续生效。结果不明先查operation/receipt，不自动重复写；远端删除冲突保留本地草稿。仅已核实未写入的失败项可以移除。
+- Brief附件选择即自动完成本地preview/confirm和回读，复制全文采用已保存附件名；同步前等待本月附件队列完成，同步中禁止再加入附件。失败队列跨内部路由保留，关闭/刷新有全局保护；文件未声明跨浏览器重启持久化。飞书仍仅写附件名，不上传文件。
+- 自聊撤销预览与回执增加关联记录的撤回/保留说明；未被后续使用的派生草稿随同撤回，已编辑待办、已采纳需求保留。并发变化拒绝，写入事务失败整体回滚。
+- 新项目模板只复制任务结构/名称/阶段/节点类型；清空负责人、开始与完成日期、逾期和交付物。
+- 带教未知回复核对必须同时匹配评论ID（已有时）、段落锚点、完整正文且分页完整；不足时保持unknown，不自动重发。

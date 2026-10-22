@@ -9,10 +9,14 @@ import Thumb from "../../ui/Thumb.jsx";
 import { currentMonth } from "../../constants.js";
 import { BRIEF_SECTIONS as SECTIONS, BRIEF_HEADS, BRIEF_WIDTHS, BRIEF_NUMBERS, briefRows, syncBriefMaterials, normalizeMaterialName } from "../../../server/brief-template.mjs";
 import { briefText } from "./brief-edit.js";
+import { createBriefAttachmentQueue, protectBriefAttachmentQueues } from './brief-attachment-queue.js';
 
 
 import { acquireBriefJournal, createBriefAutosave } from './brief-autosave.js';
 
+const attachmentQueues = new Map(); // Failed uploads survive internal navigation.
+const releaseAttachmentGuard=protectBriefAttachmentQueues(attachmentQueues,window);
+if(import.meta.hot)import.meta.hot.dispose(releaseAttachmentGuard);
 const STATUS = [["todo", "待写"], ["part", "写了一部分"], ["done", "完成"]];
 export default function BriefView() {
   const [month, setMonth] = useState(currentMonth());
@@ -43,8 +47,27 @@ function Brief({ brief, month, setMonth, journal }) {
   if(!saverRef.current)saverRef.current=createBriefAutosave({initial:brief,storage:journal.storage,journalId:journal.journalId,
     send:body=>apiSend('POST',`/api/v3/briefs/${month}/autosave`,body),read:()=>apiSend('GET',`/api/v3/briefs/${month}`)});
   const saver=saverRef.current;
+  const attachmentRef=useRef(null);
+  if(!attachmentRef.current){
+    const path=`/api/v3/briefs/${month}/attachments`;
+    const existing=attachmentQueues.get(month);
+    attachmentRef.current=existing && (existing.state().pending.length || existing.state().busy || existing.state().error) ? existing : createBriefAttachmentQueue({
+      read:()=>apiSend('GET',path), preview:body=>apiSend('POST',`${path}/preview`,body),
+      removePreview:id=>apiSend('POST',`${path}/${encodeURIComponent(id)}/remove-preview`),
+      confirm:body=>apiSend('POST',`${path}/confirm`,body),
+    });
+    attachmentQueues.set(month,attachmentRef.current);
+  }
+  const attachments=attachmentRef.current;
+  const [attachmentState,setAttachmentState]=useState(attachments.state());
+  useEffect(()=>{
+    attachments.setOnChanged(()=>saver.verify());
+    const unsubscribe=attachments.subscribe(setAttachmentState);
+    return()=>{unsubscribe();attachments.setOnChanged(null);};
+  },[attachments,saver]);
   const [saving,setSaving]=useState(saver.state());
   const {draft,saved}=saving;
+  const strategySource=saved.strategySource || brief.strategySource;
   useEffect(()=>{
     const unsub=saver.subscribe(setSaving);
     if(saver.state().draft.materials.some(m=>m.name!==normalizeMaterialName(m.name)))saver.update(d=>Object.assign(d,syncBriefMaterials(d,d.materials)));
@@ -70,6 +93,10 @@ function Brief({ brief, month, setMonth, journal }) {
       saver.update(d=>Object.assign(d,result.value));await saver.flush();setGeneration(result);
     }catch(e){setGenerationError(e.message);}finally{setGenerating(false);}
   };
+  const copyBrief=async()=>{
+    try { await attachments.flush(); await copy(briefText(saver.state().draft,attachments.state().items)," brief 全文"); }
+    catch(e){showToast(`附件未保存完成，暂不能复制全文：${e.message}`);}
+  };
   const show = (n) => all || sec === n;
   const copy = async (text, label) => { try { await navigator.clipboard.writeText(text); showToast(`已复制${label}`); } catch { showToast("复制失败：浏览器不允许写剪贴板"); } };
   const head = (n, extra) => (
@@ -80,9 +107,9 @@ function Brief({ brief, month, setMonth, journal }) {
   );
   return (
     <>
-      <BriefSync month={month} saver={saver} saving={saving} disabled={generating||saving.resolving} onLockChange={setExportLocked}>
-        <MonthSwitch month={month} onChange={async m=>{if(!locked){try{await saver.flush();setMonth(m);}catch{/* Preserve draft. */}}}} mark={month===currentMonth()?"本月":""}/>
-        <Button onClick={()=>copy(briefText(draft)," brief 全文")} title="复制全文"><PixelIcon name="copy"/></Button>
+      <BriefSync month={month} attachments={attachments} saver={saver} saving={saving} disabled={generating||saving.resolving} onLockChange={setExportLocked}>
+        <MonthSwitch month={month} onChange={async m=>{if(!locked){try{await attachments.flush();await saver.flush();setMonth(m);}catch{/* Preserve draft. */}}}} mark={month===currentMonth()?"本月":""}/>
+        <Button onClick={copyBrief} title="复制全文"><PixelIcon name="copy"/></Button>
       </BriefSync>
       {saving.error && <div className="brief-save-error" role="alert"><span>{saving.error.message} 填写内容仍在当前页面。</span>
         {saving.error.code==='BRIEF_SAVE_CONFLICT'?<><Button disabled={saving.resolving} onClick={()=>saver.resolve(true).catch(()=>{})}>保存我的草稿</Button><Button disabled={saving.resolving} onClick={()=>saver.resolve(false).catch(()=>{})}>使用另一页面的版本</Button></>:<Button onClick={()=>saver.flush().catch(()=>{})}>重试自动保存</Button>}
@@ -117,7 +144,7 @@ function Brief({ brief, month, setMonth, journal }) {
               : draft.items.map((it,k)=>({it,k})).filter(({it})=>it.title.trim()).map(({it,k},index) => <BriefItem key={it.id} it={it} index={index} onChange={(fn) => edit((d) => fn(d.items[k]))} />)}</section>}
           {show(5) && <section>{head(5)}<RowsTable widths={draft.specs[0]?.length===4?[140,140,140,140]:BRIEF_WIDTHS.specs} cols={draft.specs[0]?.length===4?['物料','比例','尺寸','格式']:BRIEF_HEADS.specs} rows={draft.specs} onChange={fn=>edit(d=>fn(d.specs))} /></section>}
           {show(6) && <section>{head(6)}<RowsTable widths={draft.owners[0]?.length===3?[135,350,195]:BRIEF_WIDTHS.owners} cols={draft.owners[0]?.length===3?['角色','负责人','状态']:BRIEF_HEADS.owners} header={false} rows={draft.owners} onChange={fn=>edit(d=>fn(d.owners))} allowRows={false} fixedFirst /></section>}
-          {show(7) && <section>{head(7)}<BriefAttachments month={month} onChanged={()=>saver.verify()} /></section>}
+          {show(7) && <section>{head(7)}<BriefAttachments month={month} queue={attachments} state={attachmentState} disabled={locked} /></section>}
           {!all && (
             <div className="doc-pager">
               <Button disabled={sec === 1} onClick={() => setSec(sec - 1)}><PixelIcon name="left" />{sec > 1 ? SECTIONS[sec - 2] : "上一节"}</Button>
@@ -132,10 +159,11 @@ function Brief({ brief, month, setMonth, journal }) {
             <div className="card-body stack-sm">
               <p className="small muted">读取 {month} 的用户策略，综合物料名称补充背景、目的、面向人群与当前待办。已有文字保留。</p>
               <p className="small muted">工作台内部规则生成，可按实际需求修改。交付时间、负责人、详细文案及后三节可留空。</p>
-              <Button variant="primary" disabled={locked || !brief.strategySource?.available} onClick={()=>generate()}>{generating?'正在生成…':'内部生成建议'}</Button>
-              {brief.strategySource?.available && <button className="link-btn" disabled={locked} onClick={()=>setRewrite(!rewrite)}>重新生成第一、二部分</button>}
+              {strategySource?.timelineEvidence?.status==='changed' && <p className="small warn-text" role="status">{strategySource.timelineEvidence.message} 请先核对用户策略，再按需重新生成第一、二部分；已有 Brief 文字不会自动改写。</p>}
+              <Button variant="primary" disabled={locked || !strategySource?.available} onClick={()=>generate()}>{generating?'正在生成…':'内部生成建议'}</Button>
+              {strategySource?.available && <button className="link-btn" disabled={locked} onClick={()=>setRewrite(!rewrite)}>重新生成第一、二部分</button>}
               {rewrite && <div className="stack-sm"><p className="small warn-text">将替换背景、目的和受众文字，其他部分保留。</p><Button disabled={locked} onClick={()=>generate(true)}>确认重新生成</Button><button className="link-btn" onClick={()=>setRewrite(false)}>取消</button></div>}
-              {!brief.strategySource?.available && <p className="small warn-text">这个月份还没有用户策略，请先在用户策略页补充。</p>}
+              {!strategySource?.available && <p className="small warn-text">这个月份还没有用户策略，请先在用户策略页补充。</p>}
               {generation && <p className="small muted">已补充草稿 · 来源：{generation.source.month} 用户策略。已保存到工作台，可在顶部同步到飞书。</p>}
               {generation?.warnings.map(w=><p className="small warn-text" key={w}>{w}</p>)}
               {generationError && <p role="alert" className="small risk-text">{generationError}</p>}

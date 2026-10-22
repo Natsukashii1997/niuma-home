@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { Button, Loadable, Modal } from "../../ui/components.jsx";
-import { ROOT, applyOps, canvasModel, countDocs, fromReceipt, keepOrder, locate, pose, remapOp, reorder } from "./kb-canvas.js";
+import { ROOT, applyOps, canvasModel, countDocs, currentDirectory, fromReceipt, keepOrder, locate, pose, remapOp, reorder } from "./kb-canvas.js";
 import { CollectRecent } from "./CollectPage.jsx";
 
 // 知识库画布 · 档案夹（用户 2026-10-18 从三版草稿里选定 B，草稿见 docs/design/kb-canvas/）：
@@ -75,7 +75,7 @@ function Canvas({ kb: initialKb, focus, initialOrder, ruleIds, reload, onSpace }
   const busyIds = useMemo(() => new Set(ops.map((o) => o.id)), [ops]);
   const ql = q.trim().toLowerCase();
   const hit = (n) => !ql || n.name.toLowerCase().includes(ql) || (docs[n.id]?.excerpt || "").toLowerCase().includes(ql);
-  const hits = (n) => (n.kids ? n.kids.reduce((s, k) => s + hits(k), 0) : hit(n) ? 1 : 0);
+  const hits = (n) => (hit(n) && (!n.kids || docs[n.id]?.url) ? 1 : 0) + (n.kids || []).reduce((s, k) => s + hits(k), 0);
   const latest = (n) => (n.kids ? n.kids.reduce((m, k) => { const v = latest(k); return v > m ? v : m; }, "") : docs[n.id]?.updated || "");
   const unknownCount = (recent.data?.items || []).filter((x) => x.status === "unknown").length;
 
@@ -236,8 +236,7 @@ function Canvas({ kb: initialKb, focus, initialOrder, ruleIds, reload, onSpace }
   };
 
   const drawer = (g, col) => {
-    let dir = g; const trail = [g];
-    for (const id of path) { const f = dir.kids?.find((k) => k.id === id); if (!f) break; dir = f; trail.push(f); }
+    const { dir, trail } = currentDirectory(g, path);
     const kids = dir.kids || [];
     const sorted = [...kids.filter((k) => k.kids), ...kids.filter((k) => !k.kids)];
     return (
@@ -247,7 +246,8 @@ function Canvas({ kb: initialKb, focus, initialOrder, ruleIds, reload, onSpace }
           <h3>{trail.map((f, i) => <span key={f.id}>{i > 0 && <PixelIcon name="right" />}{i < trail.length - 1 ? <button type="button" className="link-btn" onClick={() => setPath(path.slice(0, i))}>{f.name}</button> : f.name}</span>)}</h3>
           <span className="small muted tnum">{countDocs(dir)} 篇 · 文件夹在前 · 把卡片拖到别的文件夹或散卡条就是移动</span>
           <span className="spacer" />
-          <Button disabled={!!lock || syncing} onClick={() => setNaming({ id: g.id, value: g.name })}><PixelIcon name="edit" />改名</Button>
+          {docs[dir.id]?.url && <a className="btn" href={docs[dir.id].url} target="_blank" rel="noreferrer"><PixelIcon name="external" />打开本页正文</a>}
+          {naming?.id === dir.id && dir.id !== g.id ? nameInput(`目录名称：${trail.map((f) => f.name).join(" / ")}`) : <Button disabled={!!lock || syncing} title={`改名：${trail.map((f) => f.name).join(" / ")}`} onClick={() => setNaming({ id: dir.id, value: dir.name })}><PixelIcon name="edit" />改名</Button>}
           <Button onClick={() => { setOpen(null); setPath([]); }}><PixelIcon name="up" />收起</Button>
         </div>
         <div className="kbf-drawer-grid">{sorted.length ? sorted.map(card) : <p className="kbf-empty">这个{trail.length > 1 ? "文件夹" : "分组"}还是空的，把文档拖进来</p>}</div>

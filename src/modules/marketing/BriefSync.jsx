@@ -12,7 +12,7 @@ export function briefSyncTime(iso){
 }
 // One controller owns save, preflight, sync and recovery. Only its short action
 // bar is sticky; differences and recovery details stay in the document flow.
-export function BriefSync({month,saver,saving,disabled,onLockChange,children}){
+export function BriefSync({month,attachments,saver,saving,disabled,onLockChange,children}){
   const path=`/api/v3/briefs/${month}`,busyRef=useRef(false),toolbar=useRef(null);
   useEffect(()=>{
     const node=toolbar.current,parent=node.parentElement,old=parent.style.getPropertyValue('--brief-toolbar-height');
@@ -22,7 +22,7 @@ export function BriefSync({month,saver,saving,disabled,onLockChange,children}){
   },[]);
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),[conflict,setConflict]=useState(null),[choices,setChoices]=useState({}),[pending,setPending]=useState(null),[notice,setNotice]=useState(null),[settled,setSettled]=useState(null);
   const link=saving.saved.feishuDocument,unfinished=pending||(link?.pending?.operationId!==settled&&link?.pending),locked=busy||Boolean(unfinished);
-  useEffect(()=>{onLockChange(locked);},[locked,onLockChange]);
+  useEffect(()=>{onLockChange(locked);attachments?.setLocked(locked);},[locked,onLockChange,attachments]);
   const status=unfinished?(unfinished.status==='resumable'?'部分已同步，可继续':'同步待核对'):busy?'正在同步飞书…':saving.dirty||saving.busy||!link?.synced?(link?.url?'有更新待同步':'尚未生成飞书文档'):'已完成同步';
   const savedStatus=saving.error?'自动保存失败':saving.busy?'正在保存…':saving.dirty?'等待保存…':'已保存到工作台';
   const done=async receipt=>{
@@ -33,8 +33,9 @@ export function BriefSync({month,saver,saving,disabled,onLockChange,children}){
   };
   async function sync(resolution){
     if(busyRef.current||disabled||unfinished)return;
-    busyRef.current=true;setBusy(true);setError('');let preview,submitted=false;
+    busyRef.current=true;attachments?.setLocked(true);setBusy(true);setError('');let preview,submitted=false;
     try{
+      await attachments?.flush();
       const prepared=await saver.verify();
       preview=await apiSend('POST',`${path}/export-preview`,{...prepared,...resolution});
       setConflict(null);submitted=true;
@@ -48,7 +49,7 @@ export function BriefSync({month,saver,saving,disabled,onLockChange,children}){
         // identifies the original attempt. Never issue a replacement create.
         setPending({operationId:preview.operationId||preview.previewId,status:'unknown'});setError('同步回包未收到，先核对这次操作的实际结果。');
       }else setError(e.message);
-    }finally{setBusy(false);busyRef.current=false;}
+    }finally{setBusy(false);busyRef.current=false;attachments?.setLocked(false);}
   }
   async function recover(resume=false){
     if(busyRef.current)return;busyRef.current=true;setBusy(true);setError('');

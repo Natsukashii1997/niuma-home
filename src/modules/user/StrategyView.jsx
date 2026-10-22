@@ -7,6 +7,7 @@ import { Button, Loadable, MonthSwitch, PendingButton, Placeholder, Tag } from "
 import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { BARRIERS, MECHANISMS } from "./playbook.js";
 import { PLAY_BY_ID } from "./playbook-cards.js";
+import { authoredStrategyRecord } from "./strategy-record.js";
 
 // 用户策略（结构见 docs/用户策略规范.md，接口见 T13）：
 // 0 核心结论 → 1 全局研判 → 2 用户洞察（地区矩阵）→ 3 机会收敛 → 4 促销策略 → 附 依据与待确认。
@@ -37,8 +38,8 @@ export function Strategy() {
   const d = view.data;
   const busy = gen.busy || fin.busy || edit.busy;
   const switchMonth = (m) => { if (busy) return; gen.reset(); fin.reset(); edit.reset(); setEditing(null); setMonth(m); };
-  // 回读：重新读取当月记录，和预览里将要写入的整份记录逐字段比较（origin 是读取时附加的「内置 / 已修改」，不在记录里）。
-  const reread = async (receipt, pv) => { const { origin, ...fresh } = await apiSend("GET", path); state.reload(); return sameJson(fresh, pv.value); };
+  // 回读全部可保存正文；时间线派生字段和读取状态可随最近一次同步改变。
+  const reread = async (receipt, pv) => { const fresh = await apiSend("GET", path); state.reload(); return sameJson(authoredStrategyRecord(fresh), authoredStrategyRecord(pv.value)); };
   const confirm = (flow) => flow.confirm((pv) => apiSend("POST", `/api/v3/user-strategy/${month}/confirm`, { previewId: pv.previewId, confirm: true }), reread);
   // 保存成功的格子先显示「已保存」，关掉提示后退出修改。
   useEffect(() => { if (editing?.done && edit.phase === "idle") setEditing(null); }, [editing, edit.phase]);
@@ -71,6 +72,10 @@ export function Strategy() {
           <PendingButton task="T13-用户策略生成">导出到飞书</PendingButton>
         </span>
       </div>
+      {d?.timelineEvidence && <p className={`us-warn-line${d.timelineEvidence.status === "current" ? " muted" : ""}`}>
+        {d.timelineEvidence.status !== "current" && <PixelIcon name="alert" />}{d.timelineEvidence.message}
+        {d.timelineEvidence.syncedAt && <span className="small tnum">同步于 {d.timelineEvidence.syncedAt}</span>}
+      </p>}
       <WriteBox flow={gen} title={`${month} 促销策略 · 生成预览`} confirmLabel={overwrite ? "覆盖定稿并保存为草稿" : "保存为草稿"} savedText="促销策略已保存为草稿，回读核对一致"
         onConfirm={() => confirm(gen)} onRepreview={generate} onReread={() => { gen.resolve(); state.reload(); }}>
         {(pv) => <GenPreview pv={pv} />}

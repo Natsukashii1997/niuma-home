@@ -21,7 +21,7 @@ export function todoView({ timeline, needs, projects, campaign, matrices, settin
     if (broken.length && !scheme.breachReason?.trim()) items.push({ kind: '价格', text: `${matrix.name} · ${scheme.name} · ${broken.join('/')}课时低于毛利底线，需填原因`, due: '', href: '#/marketing/prices', urgent: true });
   }
   const open = timeline.anomalies.filter(a => !a.ruling && a.verification?.status !== 'confirmed').length; // 与时间线页面的待确认口径一致
-  if (open) items.push({ kind: '时间线', text: `${open} 条异常待确认`, due: '', href: '#/user/timeline/anomalies' });
+  if (open) items.push({ kind: '时间线', text: `${open} 条 AI 推测`, due: '', href: '#/user/timeline/anomalies' });
   const draft = needs.needs.filter(n => n.status === '草稿').length, review = needs.needs.filter(n => n.status === '待复核').length;
   if (draft || review) items.push({ kind: '需求', text: [draft && `${draft} 条主线需求草稿待采纳`, review && `${review} 条已采纳需求待复核`].filter(Boolean).join('；'), due: '', href: '#/user/strategy' });
   for (const item of personal.filter(x => !x.done)) items.push({ kind: '待办', text: item.title || item.text, due: item.due || '', href: '#/home' });

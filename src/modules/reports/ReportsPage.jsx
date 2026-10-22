@@ -9,15 +9,22 @@ import { MarkdownTable } from "../../ui/Markdown.jsx";
 function useReports(path) {
   const [state, setState] = useState({ loading: true });
   useEffect(() => {
-    let alive = true;
-    setState({ loading: true });
-    fetch(path).then(async response => {
-      const body = await response.json();
-      if (!alive) return;
-      if (Array.isArray(body?.sources)) setState({ data: { reports: body.reports || [], sources: body.sources } });
-      else setState({ error: body?.error || `读取失败（${response.status}）` });
-    }).catch(error => alive && setState({ error: error.message }));
-    return () => { alive = false; };
+    let alive = true, timer;
+    setState(s => ({ ...s, loading: !s.data, busy: true, error: undefined }));
+    const pollPath = path.replace(/&refresh=1/, '');
+    async function read(target) {
+      try {
+        const response = await fetch(target), body = await response.json();
+        if (!alive) return;
+        if (Array.isArray(body?.sources)) {
+          const busy = body.sources.some(s => s.refreshing);
+          setState({ data: { reports: body.reports || [], sources: body.sources }, busy });
+          if (busy) timer = setTimeout(() => read(pollPath), 1500);
+        } else throw new Error(body?.error || `读取失败（${response.status}）`);
+      } catch (error) { if (alive) setState(s => ({ ...s, loading: false, busy: false, error: error.message })); }
+    }
+    read(path);
+    return () => { alive = false; clearTimeout(timer); };
   }, [path]);
   return state;
 }
@@ -49,10 +56,11 @@ export default function ReportsPage({ route }) {
     <div className="reports-page">
       <PageHeader title="日/周报" subtitle="按日期拆分飞书日报、周报文档，只读；可以按状态和业务线筛选事项" actions={<>
         <a className="btn" href={href("settings")}><PixelIcon name="settings" />设置来源</a>
-        <Button disabled={state.loading} onClick={() => setRefresh(value => value + 1)}><PixelIcon name="refresh" /> {state.loading ? "读取中…" : "刷新"}</Button>
+        <Button disabled={state.busy} onClick={() => setRefresh(value => value + 1)}><PixelIcon name="refresh" /> {state.busy ? "读取中…" : "刷新"}</Button>
       </>} />
-      {refresh > 0 && <div className="operation-progress"><StepProgress key={refresh} label="刷新日/周报" done={!state.loading && !state.error && state.data?.sources.every(s => s.ok)} error={state.error || state.data?.sources.filter(s => !s.ok).map(s => s.error).join("；")} /></div>}
-      <Loadable state={state} name="日/周报" big>
+      {state.error && state.data && <p className="warn-text" role="status">更新未完成：{state.error}。当前仍显示上次完整结果。</p>}
+      {refresh > 0 && <div className="operation-progress"><StepProgress key={refresh} label="刷新日/周报" done={!state.busy && !state.error && state.data?.sources.every(s => s.ok)} error={state.error || state.data?.sources.filter(s => !s.ok).map(s => s.error).join("；")} /></div>}
+      <Loadable state={state.data ? { data: state.data } : state} name="日/周报" big>
         {({ reports, sources }) => {
           const list = reports.filter(r => r.kind === activeKind);
           const current = selectedId ? selected : list[0];
@@ -70,10 +78,11 @@ export default function ReportsPage({ route }) {
                 <div className="row">
                   <span className="label">{source.role === "daily" ? "日报文档" : "周报文档"}</span>
                   {source.ok ? <span className="tnum"><FlipNumber value={source.count} /> 篇{source.ignored ? ` · 忽略 ${source.ignored} 篇` : ""}</span> : <>
-                    <span className="error" role="alert">{source.error}</span>
+                    <span className="error" role="alert">{source.error}{source.retained && '（保留上次内容）'}</span>
                     <Button onClick={() => setRefresh(value => value + 1)}>重试</Button>
                   </>}
                 </div>
+                {source.stale && <span className="small warn-text">{source.refreshing ? '正在更新 · ' : '旧内容 · '}{source.fetchedAt ? `上次读取 ${new Date(source.fetchedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}` : ''}</span>}
                 {source.unrecognized.length > 0 && <details>
                   <summary>{source.unrecognized.length} 个标题未识别</summary>
                   <ul>{source.unrecognized.map(item => <li key={item.lineNo}>第 {item.lineNo} 行：{item.title}</li>)}</ul>

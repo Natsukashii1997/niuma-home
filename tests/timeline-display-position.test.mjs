@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {pendingMonthSpan, timelineReferenceText, monthTimelineData} from '../src/modules/user/timeline-view.js';
+import {pendingMonthSpan, timelineReferenceText, monthTimelineData, monthEventSortDate} from '../src/modules/user/timeline-view.js';
+
+test('节点清单把已核实与推测月日一起按位置排序，不把推测补成确定日期', () => {
+  const events = [{from:'2026-11-23'}, ...[18,4,2,3].map(day => ({from:null,to:null,displaySpan:{start:day}})), {from:null}];
+  const before = structuredClone(events);
+  const sorted = [...events].sort((a,b) => monthEventSortDate(a,'2026-11').localeCompare(monthEventSortDate(b,'2026-11')));
+  assert.deepEqual(sorted.map(e=>e.from || e.displaySpan?.start || '未知'), [2,3,4,18,'2026-11-23','未知']);
+  assert.deepEqual(events, before);
+});
 
 test('参考月日按实际日位定位，但不生成确定年份或排期', () => {
   for (const day of [2, 3, 4, 18, 30]) {

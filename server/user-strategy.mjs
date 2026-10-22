@@ -1,13 +1,16 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createLocalChanges, getRecord } from './local-records.mjs';
+import { createLocalChanges, fingerprint, getRecord } from './local-records.mjs';
+import { getSettings } from './db.mjs';
+import { TIMELINE_SOURCE } from './timeline.mjs';
+import { withRulings } from './timeline-rulings.mjs';
 import { failure, requireMonth } from './v3-common.mjs';
 import { BARRIERS, MECHANISMS, PRIORITY, parseCard } from '../src/modules/user/playbook.js';
 
 // 月度用户策略（T13，结构与写作规范见 docs/用户策略规范.md）分两层：
 // · 用户情况（核心判断、全局研判、用户洞察、机会收敛）：按月预先写好，内置在 docs/用户情况/YYYY-MM.json，打开即可查看；
-//   第一次修改时整月复制到本地记录（v3_documents），之后以本地为准。时间全景、节点数、推测节点由脚本按时间线算好写进文件。
+//   第一次修改时整月复制到本地记录（v3_documents），之后正文以本地为准。时间全景、节点数、推测节点从最近完整时间线快照派生。
 // · 促销策略（本月目标、核心打法、4.1–4.4）：点按钮后按当月用户洞察与打法库内部匹配生成（matchPromo，不调用模型），挂在当月记录的 strategy 下。
 // 修改、生成、定稿都走「预览 → 确认 → 回读」（local-records），只写工作台本地。
 export const USER_STRATEGY_KIND = 'user-strategy';
@@ -80,6 +83,40 @@ export function timelineFacts(timeline, window) {
   const counts = Object.fromEntries(REGIONS.map(([key]) => [key, events.filter(e => regionOf[e.c] === key).length]));
   const guesses = events.filter(e => e.flag).map(e => `${e.c} · ${e.school} · ${e.type} ${e.from.slice(5)}${e.to && e.to !== e.from ? ` → ${e.to.slice(5)}` : ''}`);
   return { lanes, counts, guesses };
+}
+
+// 只覆盖客观展示字段，保留内置或人工正文及其当时依据，读取本身不写入、不调用飞书或模型。
+// 来源不匹配、尚未完整同步时保留原内容并说明，绝不借用其他来源的时间线。
+export function strategyTimelineView(db, record) {
+  const unavailable = () => ({ ...record, timelineEvidence: {
+    status: 'unavailable', fingerprint: null, syncedAt: '', basedOnSyncedAt: record.timelineSyncedAt || '',
+    message: '尚无当前来源的完整时间线快照，暂保留原有依据；请先同步用户时间。',
+  } });
+  let timeline, identity;
+  try {
+    identity = getSettings(db).timeline_source || JSON.stringify(TIMELINE_SOURCE);
+    const row = db.prepare('SELECT payload FROM v3_snapshots WHERE kind=?').get('timeline');
+    if (!row) return unavailable();
+    const snapshot = JSON.parse(row.payload);
+    if (snapshot.identity !== identity || !Array.isArray(snapshot.value?.agenda)) return unavailable();
+    timeline = withRulings(db, snapshot.value);
+  } catch { return unavailable(); }
+  const window = strategyWindow(record.month), facts = timelineFacts(timeline, window);
+  const previousFacts = { lanes: record.overview?.lanes || [], counts: record.overview?.counts || {}, guesses: record.appendix?.guesses || [] };
+  const comparableFacts = value => ({ lanes: value.lanes, counts: REGIONS.map(([key]) => [key, value.counts[key] || 0]), guesses: [...value.guesses].sort() });
+  const changed = fingerprint(comparableFacts(facts)) !== fingerprint(comparableFacts(previousFacts));
+  const events = timeline.agenda.filter(e => e.from <= window.preheatTo && (e.to || e.from) >= window.from)
+    .map(({ c, school, type, from, to, src, flag, detail, verified, ruled }) => ({ c, school, type, from, to, src, flag, detail, verified, ruled }))
+    .sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  return { ...record, window, timelineSyncedAt: timeline.syncedAt,
+    overview: { ...record.overview, lanes: facts.lanes, counts: facts.counts },
+    appendix: { ...record.appendix, guesses: facts.guesses },
+    timelineEvidence: {
+      status: changed ? 'changed' : 'current', fingerprint: fingerprint({ source: JSON.parse(identity), window, events }),
+      syncedAt: timeline.syncedAt || '', basedOnSyncedAt: record.timelineSyncedAt || '',
+      message: changed ? '时间线依据已更新：时间全景、节点数和推测清单已同步；用户洞察、人工正文和已生成策略均保留，请结合新日期核对。' : '客观依据已与最近同步的用户时间一致；正文保留原有内容。',
+    },
+  };
 }
 
 /* ---------------- 校验：结构、编号不对是错误；字数、禁用词、正文编号是提示 ---------------- */
@@ -341,8 +378,14 @@ export function createUserStrategyService(db, { now = Date.now, cards = loadCard
     return base ? { record: { ...base, strategy: null }, origin: '内置' } : null;
   }
   const need = month => { const c = current(month); if (!c) throw failure(404, `${month} 的用户情况还没有准备`); return c.record; };
+  const preview = (month, record) => {
+    const sourceFingerprint = strategyTimelineView(db, record).timelineEvidence.fingerprint;
+    return changes.preview(USER_STRATEGY_KIND, month, record, { validate: () => {
+      if (strategyTimelineView(db, record).timelineEvidence.fingerprint !== sourceFingerprint) throw failure(409, '时间线依据已变化，请重新读取用户策略后预览');
+    } });
+  };
   return {
-    get(month) { const c = current(month); return c ? { ...c.record, origin: c.origin } : { month, status: '未准备' }; },
+    get(month) { const c = current(month); return c ? { ...strategyTimelineView(db, c.record), origin: c.origin } : { month, status: '未准备' }; },
     previewGenerate(body = {}) {
       const { month } = body; const base = need(month);
       if (base.strategy?.status === '定稿' && body.confirmOverwrite !== true) throw failure(409, `${month} 的促销策略已定稿；重新生成会覆盖定稿版本，请明确确认覆盖`);
@@ -351,18 +394,18 @@ export function createUserStrategyService(db, { now = Date.now, cards = loadCard
       if (issues.errors.length) throw Object.assign(failure(500, `匹配结果未通过校验，未保存：${issues.errors.slice(0, 5).join('；')}`), { code: 'STRATEGY_INVALID' });
       const record = { ...base, updatedAt: stamp(), strategy: { status: '草稿', generatedAt: stamp(), model: '内部匹配', ...value, warnings: issues.warnings } };
       // 确认时 local-records 会核对记录自预览后未变化，否则要求重新生成。
-      return { ...changes.preview(USER_STRATEGY_KIND, month, record), overwrite: base.strategy?.status || null };
+      return { ...preview(month, record), overwrite: base.strategy?.status || null };
     },
     previewEdit(month, body = {}) {
       const next = applyEdit(need(month), body.path, body.lines);
       next.updatedAt = stamp();
-      return changes.preview(USER_STRATEGY_KIND, month, next);
+      return preview(month, next);
     },
     previewFinalize(month) {
       const base = need(month);
       if (!base.strategy) throw failure(409, '还没有生成促销策略');
       if (base.strategy.status === '定稿') throw failure(409, '促销策略已经定稿');
-      return changes.preview(USER_STRATEGY_KIND, month, { ...base, updatedAt: stamp(), strategy: { ...base.strategy, status: '定稿', finalizedAt: stamp() } });
+      return preview(month, { ...base, updatedAt: stamp(), strategy: { ...base.strategy, status: '定稿', finalizedAt: stamp() } });
     },
     confirm(month, body) { requireMonth(month); return changes.confirm(USER_STRATEGY_KIND, month, body); },
   };

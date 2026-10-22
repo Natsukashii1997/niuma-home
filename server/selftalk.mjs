@@ -109,6 +109,31 @@ export async function readSelfTalkMessages({ run = execute, now = Date.now() } =
   throw failure(502, '最近十天自言自语超过本次完整读取上限，未更新本地快照');
 }
 
+// 只撤回仍与首次生成内容一致的草稿；采纳记录和后续编辑都视为独立工作。
+function generatedFingerprint(record) {
+  const { generatedFingerprint: ignored, ...value } = record;
+  return fingerprint(value);
+}
+function legacyUntouched(record, kind) {
+  const base = { id: record.id, messageId: record.id, tag: kind === 'selftalk-todo' ? 'todo' : 'need', revision: record.revision, text: record.text, sourceAt: record.sourceAt, updatedAt: record.updatedAt };
+  if (kind === 'selftalk-todo') Object.assign(base, { title: record.text, due: '', done: false });
+  else {
+    if (!Number.isFinite(Date.parse(record.sourceAt))) return false;
+    Object.assign(base, { month: record.month, need: { id: `selftalk-${record.id}`, seg: '待确认', node: '自言自语', when: dayText(record.sourceAt), schools: 0, need: record.text, pain: '', todo: '', source: `飞书自言自语 · ${beijingText(record.sourceAt)}`, status: '草稿', links: '' } });
+  }
+  // 键顺序不是编辑；额外字段则保守视为后续内容。
+  return Object.keys(record).length === Object.keys(base).length && Object.entries(base).every(([key, value]) => JSON.stringify(value) === JSON.stringify(record[key]));
+}
+function reversalPlan(db, id) {
+  return ['selftalk-todo', 'selftalk-need'].flatMap(kind => {
+    const record = getRecord(db, kind, id);
+    if (!record) return [];
+    const adopted = kind === 'selftalk-need' && db.prepare('SELECT * FROM v3_needs WHERE id=?').get(record.need?.id || `selftalk-${id}`);
+    const untouched = record.generatedFingerprint ? record.generatedFingerprint === generatedFingerprint(record) : legacyUntouched(record, kind);
+    return [{ kind, label: kind === 'selftalk-todo' ? '待办' : '需求草稿', action: adopted || !untouched ? 'keep' : 'remove', reason: adopted ? '需求已有采纳或后续处理记录' : !untouched ? '内容已有后续编辑' : '尚未采纳或编辑', state: fingerprint({ record, adopted: adopted || null }) }];
+  });
+}
+
 export function createSelfTalkService(db, { now = Date.now, run, readMessages = readSelfTalkMessages, ttl = 300000, generate = createTextDraftGenerator(db, { now }) } = {}) {
   const changes = createLocalChanges(db, { now }), previews = new Map(), digestPreviews = new Map(), generating = new Set();
   let pending, lastFailed = Boolean(db.prepare('SELECT error FROM v3_source_status WHERE kind=?').get('selftalk')?.error);
@@ -120,7 +145,7 @@ export function createSelfTalkService(db, { now = Date.now, run, readMessages = 
   const item = row => {
     const today = dayText(now()), yesterday = dayText(Date.parse(`${today}T00:00:00+08:00`) - 86400000), date = dayText(row.createdAt);
     const state = localState(row.id).filter(Boolean).sort((a, b) => b.revision - a.revision)[0];
-    return { id: row.id, day: date === today ? '今天' : date === yesterday ? '昨天' : date.slice(5), time: beijingText(row.createdAt).slice(11), text: row.text, tag: state?.tag || '', ...(row.link ? { link: true } : {}), type: row.type, createdAt: row.createdAt };
+    return { id: row.id, day: date === today ? '今天' : date === yesterday ? '昨天' : date.slice(5), time: beijingText(row.createdAt).slice(11), text: row.text, tag: state?.tag || '', ...(row.link ? { link: true } : {}), ...(state?.reversal ? { reversal: state.reversal } : {}), type: row.type, createdAt: row.createdAt };
   };
   async function refresh(force) {
     const cached = snapshot(), instant = now();
@@ -218,20 +243,35 @@ export function createSelfTalkService(db, { now = Date.now, run, readMessages = 
         value.need = { id: `selftalk-${id}`, seg: '待确认', node: '自言自语', when: dayText(message.createdAt), schools: 0, need: message.text, pain: '', todo: '', source: `飞书自言自语 · ${beijingText(message.createdAt)}`, status: '草稿', links: '' };
       }
       if (kind === 'selftalk-todo') { value.title = message.text; value.due = ''; value.done = false; }
+      const related = reversalPlan(db, id);
+      if (['selftalk-todo', 'selftalk-need'].includes(kind)) {
+        const existing = related.find(entry => entry.kind === kind);
+        if (existing?.action === 'keep') throw failure(409, `已有${existing.label}，${existing.reason}，请到对应列表查看；不会覆盖`);
+        value.generatedFingerprint = generatedFingerprint(value);
+      }
+      const reversal = body.tag === '' ? related : [];
+      if (body.tag === '') value.reversal = reversal.map(({ state, ...entry }) => entry);
+      const relatedBefore = fingerprint(related);
       const validate = () => {
+        if (fingerprint(reversalPlan(db, id)) !== relatedBefore) throw failure(409, '关联待办或需求已变化，请重新预览');
         if (fingerprint(localState(id)) !== before) throw failure(409, '消息的本地处理状态已变化，请重新预览');
         if (fingerprint(snapshot()?.rows.find(row => row.id === id) || null) !== sourceBefore) throw failure(409, '消息来源已变化，请重新读取并预览');
       };
       const preview = changes.preview(kind, id, value, { validate });
       for (const [key, p] of previews) if (p.expires <= now()) previews.delete(key);
-      previews.set(preview.previewId, { id, kind, expires: Date.parse(preview.expiresAt) });
+      previews.set(preview.previewId, { id, kind, reversal, expires: Date.parse(preview.expiresAt) });
       return { ...preview, kind };
     },
     confirm(id, body) {
       if (body?.confirm !== true || typeof body.previewId !== 'string') throw failure(400, '请先预览，再明确确认');
       const p = previews.get(body.previewId);
       if (!p || p.id !== id) throw failure(409, '预览目标不匹配，请重新预览');
-      return changes.confirm(p.kind, id, body);
+      return changes.confirm(p.kind, id, body, { beforeCommit: () => {
+        for (const entry of p.reversal || []) if (entry.action === 'remove') {
+          db.prepare('DELETE FROM v3_documents WHERE kind=? AND id=?').run(entry.kind, id);
+          if (getRecord(db, entry.kind, id)) throw failure(500, '关联草稿撤回后回读不一致');
+        }
+      } });
     },
   };
 }

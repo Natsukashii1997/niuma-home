@@ -104,3 +104,37 @@ test("删除助手：预设不能删；自建软删除后不在列表、可恢�
   assert.equal(back.deleted, false);
   assert.ok((await (await request("GET", "/api/assistants")).json()).some((x) => x.id === a.id));
 });
+
+test("助手会话接口：新会话不调用模型，首次发送带最新知识，旧历史可读可续，跨助手拒绝", async t => {
+  const { request, client, calls } = await setup(t);
+  const histories = new Map();
+  client.create = async value => { calls.push(value); const id = `thread-${calls.length}`; histories.set(id, []); return id; };
+  client.send = async (id, text, emit) => { histories.get(id).push({ role: 'user', text }); emit('done', {}); };
+  client.messages = async id => histories.get(id) || [];
+  await (await request('POST', '/api/assistants/1/messages', { text: '旧会话' })).text();
+  const knowledge = await (await request('POST', '/api/v3/assistants/1/knowledge/preview', { title: '新规则', body: '合成更新知识' })).json();
+  await request('POST', '/api/v3/assistants/1/knowledge', { previewId: knowledge.previewId, confirm: true });
+  assert.equal((await request('POST', '/api/assistants/1/conversations/new', {})).status, 400);
+  const fresh = await (await request('POST', '/api/assistants/1/conversations/new', { expectedThreadId: 'thread-1' })).json();
+  assert.equal(fresh.currentThreadId, null); assert.equal(fresh.items[0].threadId, 'thread-1'); assert.equal(calls.length, 1);
+  assert.equal((await request('POST', '/api/assistants/1/messages', { text: '过期标签页', expectedThreadId: 'thread-1' })).status, 409);
+  assert.deepEqual(await (await request('GET', '/api/assistants/1/messages')).json(), []);
+  assert.deepEqual(await (await request('GET', '/api/assistants/1/messages?threadId=thread-1')).json(), [{ role: 'user', text: '旧会话' }]);
+  assert.equal((await request('GET', '/api/assistants/2/messages?threadId=thread-1')).status, 404);
+  await (await request('POST', '/api/assistants/1/messages', { text: '新会话', expectedThreadId: null })).text();
+  assert.equal(calls.length, 2); assert.match(calls[1].instructions, /合成更新知识/);
+  const back = await (await request('POST', '/api/assistants/1/conversations/select', { expectedThreadId: 'thread-2', threadId: 'thread-1' })).json();
+  assert.equal(back.items.length, 2); assert.equal(back.currentThreadId, 'thread-1');
+  await (await request('POST', '/api/assistants/1/messages', { text: '续聊旧会话', expectedThreadId: 'thread-1' })).text();
+  assert.equal(calls.length, 2); assert.equal(histories.get('thread-1').length, 2); assert.equal(histories.get('thread-2').length, 1);
+});
+
+test("回复未完成时禁止新建或切换会话", async t => {
+  const { request, client } = await setup(t);
+  let release; client.send = () => new Promise(resolve => { release = resolve; });
+  const response = await request('POST', '/api/assistants/1/messages', { text: '测试忙碌保护' });
+  while (!release) await new Promise(resolve => setImmediate(resolve));
+  assert.equal((await request('POST', '/api/assistants/1/conversations/new', { expectedThreadId: 'created' })).status, 409);
+  assert.equal((await request('POST', '/api/assistants/1/conversations/select', { expectedThreadId: 'created', threadId: 'created' })).status, 409);
+  release(); await response.text();
+});

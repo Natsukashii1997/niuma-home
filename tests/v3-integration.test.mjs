@@ -110,7 +110,7 @@ test('参考图片实际系统压缩为JPEG，拒绝伪造格式',async()=>{
 test('首页待办使用完整年份、真实草稿和异常，空门禁不误报，外部失败不返回假空',async t=>{
   const {db}=database(t),input={timeline:{anomalies:[{},{verification:{status:'confirmed'}},{ruling:{decision:'exclude'}}]},needs:{needs:[{status:'草稿'},{status:'待复核'}]},projects:[{name:'项目',nodes:[{t:'明年节点',due:'01-01',dueDate:'2027-01-01',done:false,owner:'人'},{t:'空门禁',gate:true,done:false},{t:'待审',gate:true,gateReady:true}]}],campaign:null,matrices:[],settings:{costPerHour:440,floorMargin:.25}};
   const list=todoView(input,Date.parse('2026-12-31T12:00:00+08:00'));assert.equal(list.filter(x=>x.kind==='审核').length,1);assert.match(list.find(x=>x.kind==='项目').text,/1天内/);assert.equal(list.find(x=>x.kind==='项目').dueDate,'2027-01-01');
-  assert.equal(list.find(x=>x.kind==='时间线').text,'1 条异常待确认');
+  assert.equal(list.find(x=>x.kind==='时间线').text,'1 条 AI 推测');
   let month;const read=createTodoReader(db,{timeline:async()=>input.timeline,needs:{list:async m=>{month=m;return input.needs;}},projects:{list:async()=>input.projects},now:()=>Date.parse('2026-12-31T12:00:00+08:00')});await read();assert.equal(month,'2027-01');
   await assert.rejects(createTodoReader(db,{timeline:async()=>{throw Error('source failed');},needs:{list:async()=>input.needs},projects:{list:async()=>[]}})(),/source failed/);
 });
@@ -124,7 +124,7 @@ test('自言自语转需求进入采纳流程，消息草稿变动会撤销原�
 
 test('营收读飞书仪表盘，200 且不再带演示标记',async t=>{
   const {db}=database(t),value={period:'2026 年 10 月',timePct:0.5,updatedAt:'10-20 18:40',groups:[{label:'总进度',items:[]},{label:'业务线',items:[]}]};
-  const result=await invoke(routes(db,undefined,undefined,{revenue:{readSource:async()=>value}}),'GET','/api/v3/business/revenue');assert.equal(result.status,200);assert.equal(result.body.origin,undefined);assert.equal(result.headers['x-workdesk-data-origin'],undefined);assert.deepEqual(result.body,value);
+  const result=await invoke(routes(db,undefined,undefined,{revenue:{readSource:async()=>value}}),'GET','/api/v3/business/revenue');assert.equal(result.status,200);assert.equal(result.body.origin,undefined);assert.equal(result.headers['x-workdesk-data-origin'],undefined);const { stale, refreshing, sourceError, fetchedAt, ...body } = result.body;assert.deepEqual(body,value);assert.equal(stale,false);assert.equal(refreshing,false);assert.equal(sourceError,'');assert.ok(Date.parse(fetchedAt));
 });
 
 test('图表接口复用缓存，显式刷新回报失败且不影响营收卡', async t => {

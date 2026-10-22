@@ -4,16 +4,20 @@
 const cells = (line) => line.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map((c) => c.trim());
 const isSep = (line) => /^\s*\|?\s*:?-{2,}/.test(line) && /^[\s|:-]+$/.test(line);
 const isTableLine = (line) => (line.match(/\|/g) || []).length >= 2;
+const heading = (line) => line.trimEnd().match(/^(#{1,6})\s*(.+)$/);
+const isListLine = (line) => /^\s*([-*•]|\d+[.)])\s+/.test(line.trimEnd());
 
 export function parseMarkdown(text = "") {
-  const lines = String(text).replace(/\r/g, "").split("\n");
+  // 飞书会转义列表符号。统一预处理后，各分支必须检查同一份行内容；
+  // 否则外层识别到列表、内层不识别，索引不前进会无限追加空列表。
+  const lines = String(text).replace(/\r/g, "").split("\n").map(line => line.replace(/^\\(?=[#*-])/, ""));
   const blocks = [];
   let i = 0;
   while (i < lines.length) {
     const raw = lines[i];
-    const line = raw.replace(/^\\(?=[#*-])/, "").trimEnd();
+    const line = raw.trimEnd();
     if (!line.trim()) { i += 1; continue; }
-    const h = line.match(/^(#{1,6})\s*(.+)$/);
+    const h = heading(line);
     if (h) { blocks.push({ type: "heading", level: h[1].length, text: h[2].replace(/^\\/, "") }); i += 1; continue; }
     if (isTableLine(line)) {
       const rows = [];
@@ -26,9 +30,9 @@ export function parseMarkdown(text = "") {
       blocks.push({ type: "table", head: rows[0], rows: rows.slice(1).map((r) => [...r, ...Array(Math.max(0, width - r.length)).fill("")]) });
       continue;
     }
-    if (/^\s*([-*•]|\d+[.)])\s+/.test(line)) {
+    if (isListLine(line)) {
       const items = [];
-      while (i < lines.length && /^\s*([-*•]|\d+[.)])\s+/.test(lines[i])) {
+      while (i < lines.length && isListLine(lines[i])) {
         items.push(lines[i].replace(/^\s*([-*•]|\d+[.)])\s+/, ""));
         i += 1;
       }
@@ -36,7 +40,7 @@ export function parseMarkdown(text = "") {
       continue;
     }
     const para = [];
-    while (i < lines.length && lines[i].trim() && !/^\\?#{1,6}\s/.test(lines[i]) && !isTableLine(lines[i]) && !/^\s*([-*•]|\d+[.)])\s+/.test(lines[i])) {
+    while (i < lines.length && lines[i].trim() && !heading(lines[i]) && !isTableLine(lines[i]) && !isListLine(lines[i])) {
       para.push(lines[i].trim());
       i += 1;
     }

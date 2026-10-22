@@ -1,5 +1,5 @@
-import { useApi } from "../../api.js";
-import { Card, Loadable, PageHeader, SampleStrip } from "../../ui/components.jsx";
+import { useFreshApi } from "../../api.js";
+import { Button, Card, Loadable, PageHeader, SampleStrip } from "../../ui/components.jsx";
 import { BusinessCharts } from "./BusinessCharts.jsx";
 import { PixelBar, PixelIcon } from "../../ui/bitmap.jsx";
 import { LINES } from "../../constants.js";
@@ -24,13 +24,14 @@ const wan = (n) => `${(n / 10000).toLocaleString("en-US", { minimumFractionDigit
 
 // 业务营收完成度：总进度一组、业务线一组。竖线是时间进度；完成度不低于时间进度为绿，落后 15 个百分点以内为琥珀，再落后为红（颜色只上状态标签）。
 function RevenueCard() {
-  const state = useApi("/api/v3/business/revenue");
+  const state = useFreshApi("/api/v3/business/revenue");
   const r = state.data;
   return (
     <Card className={`revenue${state.isSample ? " is-sample" : ""}`} title={<><PixelIcon name="trend" /> 业务营收完成度</>}
-      extra={<>{r && <span className="small muted">{r.period}{r.timePct != null && ` · 时间进度 ${Math.round(r.timePct * 100)}%（竖线）`} · 更新 {r.updatedAt}</span>}</>}>
+      extra={<>{r && <span className="small muted">{r.period}{r.timePct != null && ` · 时间进度 ${Math.round(r.timePct * 100)}%（竖线）`} · 更新 {r.updatedAt}</span>} <Button onClick={state.reload} disabled={state.busy}>{state.busy ? '读取中…' : '重新读取'}</Button></>}>
       {state.isSample && <SampleStrip task={state.task} />}
-      <Loadable state={state} name="营收完成度">
+      {r && (state.error || r.sourceError || r.stale) && <p className="small warn-text" role="status">{state.error || r.sourceError ? `更新未完成：${state.error || r.sourceError}。` : '正在更新。'}当前显示上次完整结果。</p>}
+      <Loadable state={r ? { data: r } : state} name="营收完成度">
         {(data) => (
           <div className="rev-groups">
             {data.groups.map((g) => (

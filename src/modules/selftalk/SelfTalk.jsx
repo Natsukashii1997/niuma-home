@@ -103,10 +103,11 @@ function Drawer({ initial, onClose }) {
         </WriteBox>
       </div>
       <div className="st-filter"><Segmented options={[["open", `未处理 ${items.filter((i) => !i.tag).length}`], ["star", "有价值"], ["archived", "已归档"], ["all", "全部"]]} value={filter} onChange={(v) => { setFilter(v); setCur(0); }} /></div>
-      <WriteBox flow={flow} title="处理预览" className="st-write" onConfirm={confirm} onRepreview={() => pending && run(pending.item, pending.tag)} onReread={reread}>
-        {() => pending && <dl className="kv">
+      <WriteBox flow={flow} title="处理预览" className="st-write" savedText={flow.receipt?.reversal?.length ? `处理已撤销；${flow.receipt.reversal.map((entry) => `${entry.label}${entry.action === "remove" ? "已撤回" : "已保留"}`).join("，")}` : "已保存，回读核对一致"} onConfirm={confirm} onRepreview={() => pending && run(pending.item, pending.tag)} onReread={reread}>
+        {(pv) => pending && <dl className="kv">
           <dt>消息</dt><dd>{pending.item.text.length > 60 ? `${pending.item.text.slice(0, 60)}…` : pending.item.text}</dd>
           <dt>处理</dt><dd><span className="diff-old">{pending.item.tag ? TAG[pending.item.tag][0] : "未处理"}</span> → <span className="diff-new">{ACTION[pending.tag]}</span>{pending.tag === "need" ? `（进入 ${deliveryMonth()} 主线需求，待你在用户策略里采纳）` : ""}</dd>
+          {pv.value?.reversal?.map((entry) => <span key={entry.kind} style={{ display: "contents" }}><dt>{entry.label}</dt><dd>{entry.action === "remove" ? "撤回" : "保留"}：{entry.reason}</dd></span>)}
           <dt>写到哪里</dt><dd>工作台本地，不改飞书消息</dd>
         </dl>}
       </WriteBox>
@@ -119,6 +120,7 @@ function Drawer({ initial, onClose }) {
             <li key={i.id} className={`st-item${k === cur ? " is-cur" : ""}${i.tag === "archived" ? " is-arch" : ""}${pending?.item.id === i.id && flow.phase !== "idle" ? " is-pending" : ""}`} onClick={() => setCur(k)}>
               <div className="st-meta"><span className="tnum small muted">{i.time}</span>{!text && <span className="st-tag">{i.type === "image" ? "图片" : "非文本"}</span>}{i.tag && <span className={`st-tag ${TAG[i.tag][1]}`}>{TAG[i.tag][0]}</span>}</div>
               <p>{i.text}</p>
+              {i.reversal?.some((entry) => entry.action === "keep") && <p className="small muted">已撤销处理标记；{i.reversal.filter((entry) => entry.action === "keep").map((entry) => `${entry.label}因${entry.reason}仍保留`).join("；")}</p>}
               <div className="st-actions">
                 <button type="button" title="标记有价值（S）" className={i.tag === "star" ? "is-on" : ""} disabled={locked} onClick={() => act(i, "star")}><PixelIcon name="star" /></button>
                 <button type="button" title="归档（E）" disabled={locked} onClick={() => act(i, "archived")}><PixelIcon name="archive" /></button>

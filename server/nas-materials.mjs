@@ -62,7 +62,8 @@ export function recognize(line, files) {
 
 function walk(root, rel) {
   let entries;
-  try { entries = fs.readdirSync(path.join(root, rel), { withFileTypes: true }); } catch { return []; }
+  try { entries = fs.readdirSync(path.join(root, rel), { withFileTypes: true }); }
+  catch { throw failure(503, `NAS 目录读取失败：${rel}；本次同步未完成，保留上次完整物料`); }
   return entries.flatMap((e) => {
     if (e.name.startsWith('.')) return [];
     const child = rel ? `${rel}/${e.name}` : e.name;
@@ -128,7 +129,10 @@ export function createNasMaterials(db, { thumbDir = path.join(path.dirname(mater
     recordSource(db, 'nas', { identity: base, attemptAt, at, extra: { network: 'SMB 挂载', thumbBytes: thumbBytes() } });
     return payload;
   }
-  const scan = () => (scanning ||= scanOnce().finally(() => { scanning = null; }));
+  const scan = () => (scanning ||= scanOnce().catch(error => {
+    recordSource(db, 'nas', { identity: root(), attemptAt: now(), error: error.message });
+    throw error;
+  }).finally(() => { scanning = null; }));
 
   const view = (payload) => {
     const ids = new Set(Object.values(payload.lines).flatMap(line => Object.values(line.cells).flat()).map(item => item.id));

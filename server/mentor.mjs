@@ -119,6 +119,7 @@ const ANSWER_RULES = [
 const plainReply = text => text.replace(/\*\*/g, '');
 const commentId = data => data?.comment_id || data?.comment?.comment_id || data?.items?.[0]?.comment_id || '';
 const replyText = comment => (comment?.reply_list?.replies || []).map(r => (r.content?.elements || []).map(e => e.text_run?.text || '').join('')).join('\n');
+const matchesReply = (comment, blockId, text) => Boolean(comment?.comment_id) && comment.extra?.content_anchor_id === blockId && replyText(comment) === text;
 
 export function createMentorService(db, { now = Date.now, readLogs = source => readMentorLogs(source, { now }), generate = createTextDraftGenerator(db, { now }), lark = runLark, ...options } = {}) {
   const config = () => mentorConfig(getSettings(db));
@@ -144,13 +145,18 @@ export function createMentorService(db, { now = Date.now, readLogs = source => r
   };
   const replyPreviews = new Map();
   const checkReply = (name, itemId) => { const r = getRecord(db, 'mentor-reply', replyKey(name, itemId)); if (r && r.state !== 'sent') throw Object.assign(failure(409, '上一次发送结果不明，请先只读核对飞书里有没有这条评论'), { code: 'REPLY_UNKNOWN' }); return r; };
-  async function findComment(source, blockId, text) {
+  async function findComment(source, blockId, text, expectedId) {
     let token = '';
+    const seen = new Set();
     for (let page = 0; page < 20; page++) {
       const data = await lark(['drive', '+list-comments', '--url', source.url, '--comment-scope', 'partial', '--solved-status', 'all', '--page-size', '100', ...(token ? ['--page-token', token] : [])]);
-      const hit = (data.items || []).find(c => c.extra?.content_anchor_id === blockId && replyText(c) === text) || (data.items || []).find(c => replyText(c) === text);
+      if (!Array.isArray(data.items)) throw failure(502, '评论列表不完整，无法确认发送结果');
+      const hit = data.items.find(c => (!expectedId || c.comment_id === expectedId) && matchesReply(c, blockId, text));
       if (hit) return hit;
-      if (!data.has_more || !data.page_token) return null;
+      if (data.items.some(c => expectedId ? c.comment_id === expectedId : replyText(c) === text && !c.extra?.content_anchor_id)) throw failure(502, '评论的原文位置或内容未核对一致，请到飞书里核对');
+      if (data.has_more === false) return null;
+      if (data.has_more !== true || typeof data.page_token !== 'string' || !data.page_token || seen.has(data.page_token)) throw failure(502, '评论分页不完整，无法确认发送结果');
+      seen.add(data.page_token);
       token = data.page_token;
     }
     throw failure(502, '评论太多，未能翻完全部评论，请到飞书里人工核对');
@@ -224,6 +230,7 @@ export function createMentorService(db, { now = Date.now, readLogs = source => r
       if (!preview || preview.value.name !== name || preview.value.itemId !== itemId || preview.expires <= now()) throw failure(409, '回复预览已过期或目标不匹配，请重新预览');
       if (preview.receipt) return structuredClone(preview.receipt);
       if (preview.sending) throw failure(409, '正在发送，请等待结果，不要重复确认');
+      if (preview.key !== replyKey(name, itemId) || itemFor(name, itemId).item.text !== preview.value.quote) throw failure(409, '带教来源或提问已变化，请重新预览回复');
       checkReply(name, itemId);
       const v = preview.value, source = sourceFor(name);
       preview.sending = true;
@@ -240,8 +247,9 @@ export function createMentorService(db, { now = Date.now, readLogs = source => r
       // 回读：按评论编号查回来，核对挂在同一段、内容一致；查不回来就标结果不明。
       try {
         const id = commentId(data);
+        if (id) putRecord(db, 'mentor-reply', preview.key, { ...getRecord(db, 'mentor-reply', preview.key), commentId: id }, now());
         const hit = id ? (await lark(['drive', '+batch-query-comments', '--url', source.url, '--comment-ids', id])).items?.find(c => c.comment_id === id) : await findComment(source, itemId, v.text);
-        if (!hit || replyText(hit) !== v.text) throw failure(502, '飞书里没有查回这条评论');
+        if (!matchesReply(hit, itemId, v.text)) throw failure(502, '评论的原文位置或内容未核对一致');
         const receipt = putRecord(db, 'mentor-reply', preview.key, { itemId, text: v.text, display: v.display, as: v.as, state: 'sent', commentId: hit.comment_id, at: new Date(now()).toISOString() }, now());
         preview.receipt = structuredClone(receipt);
         return receipt;
@@ -255,7 +263,7 @@ export function createMentorService(db, { now = Date.now, readLogs = source => r
       const k = replyKey(name, itemId), record = getRecord(db, 'mentor-reply', k);
       if (!record) return { state: 'none' };
       if (record.state === 'sent') return record;
-      const hit = await findComment(sourceFor(name), itemId, record.text);
+      const hit = await findComment(sourceFor(name), itemId, record.text, record.commentId);
       if (hit) return putRecord(db, 'mentor-reply', k, { ...record, state: 'sent', commentId: hit.comment_id, error: undefined, checkedAt: new Date(now()).toISOString() }, now());
       db.prepare('DELETE FROM v3_documents WHERE kind=? AND id=?').run('mentor-reply', k);
       return { state: 'none', checked: true };

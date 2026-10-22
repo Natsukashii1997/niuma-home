@@ -1,5 +1,10 @@
 export const timelineResolved = a => Boolean(a.ruling || a.verification?.status === 'confirmed');
 
+// 推测日期仅参与视图排序；保留原始 from/to，不写回年度排期。
+export function monthEventSortDate(event, month) {
+  return event.from || (event.displaySpan ? `${month}-${String(event.displaySpan.start).padStart(2, '0')}` : '9999');
+}
+
 // 仅清理常用展示标签；原文仍留在 raw 和悬停详情，不改来源或核实状态。
 export function timelineReferenceText(raw = '') {
   return raw.replace(/https?:\/\/\S+/g, '').replace(/[（(]\s*(?:去年(?:参考)?|待确认|(?:AI\s*)?推测)\s*[）)]/gi, '').trim();

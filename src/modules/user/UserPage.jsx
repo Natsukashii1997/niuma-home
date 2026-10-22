@@ -1,4 +1,4 @@
-import { monthTimelineData, timelineResolved, timelineReferenceText } from "./timeline-view.js";
+import { monthTimelineData, timelineResolved, timelineReferenceText, monthEventSortDate } from "./timeline-view.js";
 import { SuccessNotice } from "../../ui/SuccessNotice.jsx";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
@@ -252,7 +252,7 @@ function OfficialLinks({ verification }) {
 
 // 时间轴下面的文字清单：按开始日期排，一句话写全。
 function MonthList({ list, first, showSrc }) {
-  const rows = [...list].sort((a, b) => byCountry(a.c, b.c) || (a.from || "9999").localeCompare(b.from || "9999"));
+  const rows = [...list].sort((a, b) => byCountry(a.c, b.c) || monthEventSortDate(a, first.slice(0, 7)).localeCompare(monthEventSortDate(b, first.slice(0, 7))));
   return (
     <section className="card month-list">
       <div className="card-head"><h2><PixelIcon name="menu" />本月节点清单</h2><span className="small muted">按国家、开始日期排序 · 悬停一行可看来源单元格</span></div>

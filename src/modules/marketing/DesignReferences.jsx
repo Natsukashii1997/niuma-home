@@ -18,7 +18,7 @@ function Desk({ initial }) {
   const [naming, setNaming] = useState(null), [importing, setImporting] = useState(false), [selected, setSelected] = useState(null), [image, setImage] = useState(0), [over, setOver] = useState(null);
   const drag = useRef(null), ignoreClick = useRef(false);
   const [moving, setMoving] = useState(null);
-  const { value, change, busy, locked, error, warning, dismissWarning, reread, retry, canRetry } = useLocalCanvas(initial, "/api/v3/design-refs", text => setNotice({ text, id: crypto.randomUUID() }));
+  const { value, change, busy, locked, error, warning, dismissWarning, reread, retry, discard, canRetry, canDiscard } = useLocalCanvas(initial, "/api/v3/design-refs", text => setNotice({ text, id: crypto.randomUUID() }));
   const groups = [...value.zones.map(z => z.name), "未分组"], items = value.items;
   useEffect(() => { localStorage.setItem("niuma-design-expanded", JSON.stringify(opened)); }, [opened]);
   const toggle = name => setOpened(old => old.includes(name) ? old.filter(n => n !== name) : [...old, name]);
@@ -85,7 +85,7 @@ function Desk({ initial }) {
       <div className="design-tools"><label className="search-box"><PixelIcon name="search" /><input aria-label="搜索设计参考" placeholder={`搜索 ${items.length} 篇收藏`} value={q} onChange={e => { setQ(e.target.value); setFilter(""); }} /></label><Button onClick={() => setImporting(true)} disabled={busy || locked}><PixelIcon name="star" />从数码世界收藏导入</Button></div>
     </div>
     {naming && <form className="design-naming" onSubmit={nameGroup}><input autoFocus aria-label="分组名称" maxLength={50} placeholder="输入分组名称" value={naming.value} onChange={e => setNaming({ ...naming, value: e.target.value })} /><Button type="submit" disabled={!naming.value.trim() || groups.includes(naming.value.trim()) && naming.value.trim() !== naming.old}>保存</Button><Button onClick={() => setNaming(null)} type="button">取消</Button></form>}
-    {error && <div className="write-box is-error" role="alert">{error}<Button disabled={busy} onClick={reread}>重新读取核对</Button>{canRetry && <Button disabled={busy} onClick={retry}>继续保存草稿</Button>}</div>}
+    {error && <div className="write-box is-error" role="alert">{error}<Button disabled={busy} onClick={reread}>重新读取核对</Button>{canRetry && <Button disabled={busy} onClick={retry}>继续保存草稿</Button>}{canDiscard && <Button disabled={busy} onClick={discard}>移除失败的这一项</Button>}</div>}
     <p className="small muted design-hint">点击分组展开或收起 · 拖动卡片归类 · 拖动组名排序 · 点击卡片看完整帖子</p>
     <div className="design-desk">
       {!items.length && !value.zones.length && <div className="design-empty"><PixelIcon name="star" size={32} /><strong>收好每一篇设计灵感</strong><p>从数码世界「设计参考」分组导入，一篇帖子一张卡，完整图片保存在本机。</p><Button onClick={() => setImporting(true)}>导入收藏</Button></div>}

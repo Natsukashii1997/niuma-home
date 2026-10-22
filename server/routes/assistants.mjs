@@ -1,5 +1,6 @@
 import { json, route, readJson } from "../http.mjs";
 import { listAssistants, getAssistant, saveAssistant, importAssistants, bindAssistantThread, assistantDirectory } from "../db.mjs";
+import { assistantConversations, requireConversation, selectAssistantConversation } from "../assistant-conversations.mjs";
 import { codex } from "../codex.mjs";
 import { composeKnowledgeInstructions } from "../assistant-knowledge.mjs";
 import { routes as knowledgeRoutes } from "./assistant-knowledge.mjs";
@@ -80,18 +81,36 @@ export function routes(db, client = codex) {
       if (sending.has(value.id)) return json(res, 409, { error: "该助手正在回复，请稍后读取生效值" });
       json(res, 200, value.codexThreadId ? await client.runtime(value.codexThreadId) : null);
     }),
-    route("GET", "/api/assistants/:id/messages", async (req, res, { params }) => {
+    route("GET", "/api/assistants/:id/conversations", handleV3((req, { params }) => {
+      if (!live(params.id)) throw failure(404, "助手不存在");
+      return assistantConversations(db, params.id);
+    })),
+    ...["new", "select"].map(action => route("POST", `/api/assistants/:id/conversations/${action}`, handleV3(async (req, { params }) => {
+      const request = await body(req);
+      const value = live(params.id);
+      if (!value) throw failure(404, "助手不存在");
+      if (sending.has(value.id)) throw failure(409, "该助手正在回复，请结束后切换会话");
+      return selectAssistantConversation(db, value.id, request, { fresh: action === "new" });
+    }))),
+    route("GET", "/api/assistants/:id/messages", async (req, res, { params, url }) => {
       const value = assistant(params.id);
       if (!value) return json(res, 404, { error: "助手不存在" });
       if (sending.has(value.id)) return json(res, 409, { error: "该助手仍在回复，请稍后重新读取历史" });
-      json(res, 200, value.codexThreadId ? await client.messages(value.codexThreadId) : []);
+      const requestedThread = url?.searchParams.get("threadId");
+      let threadId = value.codexThreadId;
+      if (requestedThread) {
+        try { threadId = requireConversation(db, value.id, requestedThread); }
+        catch (error) { return json(res, error.status || 400, { error: error.message }); }
+      }
+      json(res, 200, threadId ? await client.messages(threadId) : []);
     }),
     route("POST", "/api/assistants/:id/messages", async (req, res, { params }) => {
       const value = live(params.id);
       if (!value) return json(res, 404, { error: "助手不存在" });
-      const { text } = await readJson(req);
+      const request = await readJson(req), { text } = request;
       if (typeof text !== "string" || !text.trim() || text.length > 50000) return json(res, 400, { error: "请输入 1–50000 字的消息" });
       if (sending.has(value.id)) return json(res, 409, { error: "该助手仍在回复，请稍后重新读取历史" });
+      if (Object.hasOwn(request, "expectedThreadId") && getAssistant(db, value.id).codexThreadId !== request.expectedThreadId) return json(res, 409, { error: "当前会话已变化，请重新读取历史后再发送" });
       sending.add(value.id);
       const controller = new AbortController();
       const disconnected = () => { if (!res.writableEnded) controller.abort(); };

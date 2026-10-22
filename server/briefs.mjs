@@ -24,11 +24,17 @@ function merge(base, patch) {
   return result;
 }
 
+export function briefStrategyFingerprint(source) {
+  if (!source) return fingerprint(source);
+  const { timelineSyncedAt, preparedAt, updatedAt, timelineEvidence, ...content } = source;
+  return fingerprint({ ...content, ...(timelineEvidence?.fingerprint ? { timelineFingerprint: timelineEvidence.fingerprint } : {}) });
+}
+
 export function generatedBrief(db, month, source = createUserStrategyService(db).get(month)) {
   requireMonth(month);
   return {
     month, title: `${month} 设计 brief`, version: 'v0', editedAt: '',
-    strategySource:{month,available:!!source?.summary?.judgement,origin:source?.origin || '',fingerprint:fingerprint(source)},
+    strategySource:{month,available:!!source?.summary?.judgement,origin:source?.origin || '',fingerprint:briefStrategyFingerprint(source),...(source?.timelineEvidence ? {timelineEvidence:{status:source.timelineEvidence.status,fingerprint:source.timelineEvidence.fingerprint,message:source.timelineEvidence.message}} : {})},
     background: { from:'', text:'', goals:[] }, materials:[], audience:[],
     timeline: [], items:[], specs: [], owners: [['需求对接',''],['内容确认',''],['设计对接','']], status: Object.fromEntries(SECTIONS.map((_, i) => [String(i + 1), 'todo'])),
   };

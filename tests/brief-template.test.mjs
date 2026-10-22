@@ -93,3 +93,18 @@ test('选课独立匹配非主战场事实，名称无换行，人工内容保�
  assert.equal(r.warnings.length,0);assert.match(r.value.audience[0][1],/规划下一学期/);assert.match(r.value.audience[0][2],/美国.*加拿大/);assert.match(r.value.audience[0][2],/推测，待确认/);assert.match(r.value.audience[0][2],/待办建议/);assert.equal(r.value.audience[1][1],'指定人群');assert.ok(!r.value.background.text.includes('\n'));
  assert.equal(new Set(r.value.background.goals).size,r.value.background.goals.length);
 });
+
+test('Brief 的策略来源忽略仅同步时间变化，日期证据变化提示但保留人工正文',t=>{
+ const {service,source}=fixture(t);
+ source.timelineSyncedAt='2026-10-21T01:00:00Z';
+ source.timelineEvidence={status:'current',fingerprint:'dates-a',syncedAt:source.timelineSyncedAt,basedOnSyncedAt:'2026-10-20',message:'来源一致'};
+ const before=service.read(month),pv=service.preview(month,{patch:{background:{text:'我填写的背景'}}});
+ source.timelineSyncedAt='2026-10-22T01:00:00Z';source.timelineEvidence.syncedAt=source.timelineSyncedAt;
+ source.timelineEvidence.basedOnSyncedAt='2026-10-21';source.updatedAt='2026-10-22';source.preparedAt='2026-10-22';
+ assert.equal(service.read(month).strategySource.fingerprint,before.strategySource.fingerprint);
+ service.confirm(month,{previewId:pv.previewId,confirm:true});
+ source.timelineEvidence={...source.timelineEvidence,status:'changed',fingerprint:'dates-b',message:'用户时间已更新，策略正文仍保留原稿'};
+ const changed=service.read(month);
+ assert.notEqual(changed.strategySource.fingerprint,before.strategySource.fingerprint);assert.equal(changed.strategySource.timelineEvidence.status,'changed');
+ assert.equal(changed.background.text,'我填写的背景');
+});

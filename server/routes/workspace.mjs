@@ -87,7 +87,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     route("GET", "/api/v3/codex-push", handleV3(() => codexPushStatus(db))),
     ...userRoutes(userServices),
     route('GET', '/api/v3/home/todo', handleV3((req, { url }) => todo(url.searchParams.get('month') || undefined))),
-    route('GET', '/api/v3/business/revenue', handleV3(() => revenue.get())),
+    route('GET', '/api/v3/business/revenue', handleV3((req, { url }) => revenue.get({ refresh: url.searchParams.get('refresh') === '1' }))),
     route('GET', '/api/v3/business/charts', handleV3((req, { url }) => businessCharts.get({ refresh: url.searchParams.get('refresh') === '1' }))),
     ...deliveryRoutes(userServices.needs, db),
     ...projectRoutes(projectServices),

@@ -79,24 +79,40 @@ export function createReportReader(getConfig, { readDocument = readReportDocumen
     for (const url of entries.keys()) if (!active.has(url)) entries.delete(url);
     return list;
   };
-  const read = async (url, refresh) => {
+  const read = async (url, refresh, validate, settled) => {
     if (!entries.has(url)) entries.set(url, { generation: 0 });
     const entry = entries.get(url);
-    if (!refresh && entry.pending && !(staleWhileRevalidate && entry.cache)) return entry.pending;
+    if (!refresh && staleWhileRevalidate && entry.failed && now() < entry.failed.until) {
+      if (entry.cache) return entry.cache;
+      throw entry.failed.error;
+    }
+    if (!refresh && entry.pending) return staleWhileRevalidate && entry.cache ? entry.cache : entry.pending;
     if (!refresh && entry.cache && now() - entry.cache.time < 600000) return entry.cache;
-    const stale = !refresh && staleWhileRevalidate && entry.cache;
-    if (stale && entry.pending) return entry.cache;
+    const stale = staleWhileRevalidate && entry.cache;
     const generation = ++entry.generation;
+    const attemptAt = lastAttempt = Math.max(now(), lastAttempt + 1);
     if (!stale) entry.cache = undefined;
     const request = (async () => {
-      const content = await readDocument(url);
-      const result = { ...parseReportDocument(content), nonempty: !!content.trim(), time: now() };
-      if (entry.generation === generation) entry.cache = result;
-      return result;
+      try {
+        const content = await readDocument(url);
+        const result = { ...parseReportDocument(content), nonempty: !!content.trim(), time: now() };
+        validate(result); // 不能用无效标题覆盖上次完整结果。
+        if (entry.generation === generation) {
+          entry.cache = result; entry.failed = undefined;
+          settled({ parsed: result, attemptAt });
+        }
+        return result;
+      } catch (error) {
+        if (entry.generation === generation) {
+          entry.failed = { error, until: now() + 60000 };
+          settled({ error, attemptAt });
+        }
+        throw error;
+      }
     })();
     entry.pending = request;
     const settle = request.finally(() => { if (entry.generation === generation) entry.pending = undefined; });
-    if (stale) { settle.catch(() => {}); return stale; }
+    if (!refresh && stale) { settle.catch(() => {}); return stale; }
     return await settle;
   };
   const select = (parsed, role, single) => {
@@ -109,22 +125,31 @@ export function createReportReader(getConfig, { readDocument = readReportDocumen
   };
   const load = async (source, single, refresh) => {
     const meta = { role: source.role, url: source.url, ok: false, count: 0, ignored: 0, unrecognized: [] };
-    const attemptAt = lastAttempt = Math.max(now(), lastAttempt + 1);
-    let parsed;
+    const errorMeta = error => ({ status: error.status || 502, error: error.status ? error.message : "飞书文档读取失败，请稍后刷新重试" });
+    const complete = parsed => {
+      const selected = select(parsed, source.role, single);
+      return { ...meta, ok: true, count: selected.length, ignored: parsed.reports.length - selected.length, unrecognized: parsed.unrecognized, fetchedAt: new Date(parsed.time).toISOString(), kinds: [...new Set(selected.map(r => r.kind))] };
+    };
+    const settled = ({ parsed, error, attemptAt }) => onSource({ ...(error ? { ...meta, ...errorMeta(error) } : complete(parsed)), attemptAt, single });
+    const view = parsed => {
+      const { kinds, ...completed } = complete(parsed), entry = entries.get(source.url);
+      const reports = select(parsed, source.role, single).map(r => ({ ...r, id: source.role === "weekly" ? `w-${r.id}` : r.id, source: source.role }));
+      const err = staleWhileRevalidate && entry?.failed?.error;
+      return { reports, meta: { ...completed, ...(staleWhileRevalidate ? { stale: !!err || !!entry?.pending || now() - parsed.time >= 600000, refreshing: !!entry?.pending } : {}), ...(err ? { ok: false, retained: true, ...errorMeta(err) } : {}) } };
+    };
     try {
       if (source.error) throw source.error;
-      parsed = await read(source.url, refresh);
-      const selected = select(parsed, source.role, single);
-      const reports = selected.map(r => ({ ...r, id: source.role === "weekly" ? `w-${r.id}` : r.id, source: source.role }));
-      const completed = { ...meta, ok: true, count: reports.length, ignored: parsed.reports.length - reports.length, unrecognized: parsed.unrecognized, fetchedAt: new Date(parsed.time).toISOString() };
-      onSource({ ...completed, attemptAt, single, kinds: [...new Set(selected.map(r => r.kind))] });
-      return { reports, meta: completed };
+      const parsed = await read(source.url, refresh, p => select(p, source.role, single), settled);
+      const entry = entries.get(source.url);
+      return view(staleWhileRevalidate && entry?.cache && !entry.pending ? entry.cache : parsed);
     } catch (error) {
-      // 只有当前缓存解析失败才清理；旧请求不能清掉新一代成功缓存。
-      if (parsed && entries.get(source.url)?.cache === parsed) entries.get(source.url).cache = undefined;
-      const completed = { ...meta, ignored: error.ignored || 0, unrecognized: error.unrecognized || [], status: error.status || 502, error: error.status ? error.message : "飞书文档读取失败，请稍后刷新重试" };
-      onSource({ ...completed, attemptAt, single });
-      return { reports: [], meta: completed };
+      // 后台或显式刷新失败仍允许带来源状态的页面读取旧内容；旧数组接口继续报告失败。
+      const entry = entries.get(source.url);
+      if (staleWhileRevalidate && entry?.cache) {
+        try { return view(entry.cache); } catch { entry.cache = undefined; }
+      }
+      if (source.error) settled({ error, attemptAt: lastAttempt = Math.max(now(), lastAttempt + 1) });
+      return { reports: [], meta: { ...meta, ignored: error.ignored || 0, unrecognized: error.unrecognized || [], ...errorMeta(error) } };
     }
   };
   const legacy = rows => rows.map(({ source, ...row }) => row);
@@ -141,7 +166,7 @@ export function createReportReader(getConfig, { readDocument = readReportDocumen
     }
     const results = await Promise.all(list.map(source => load(source, single, refresh)));
     const metadata = results.map(r => r.meta), failed = metadata.filter(s => !s.ok);
-    if (failed.length && (!withSources || failed.length === metadata.length)) {
+    if (failed.length && (!withSources || failed.length === metadata.length && !metadata.some(s => s.retained))) {
       throw Object.assign(failure(failed[0].status, failed[0].error), withSources ? { sources: metadata } : {});
     }
     const rows = mergeReports(results.map(r => r.reports));

@@ -49,6 +49,6 @@ export async function readBrandSource(config, { run, now = Date.now } = {}) {
 // 先显示上次读到的结果（含服务重启前存下的快照），过期的话后台再读；「重新读取」现读。
 export function createBrandService(db, { readSource = readBrandSource, ...options } = {}) {
   const config = () => ({ url: getSettings(db).brand_base_url || BRAND_SOURCE.url });
-  const read = createConfiguredReader(db, 'brand', config, readSource, { ttl: 600_000, staleWhileRevalidate: true, ...options });
+  const read = createConfiguredReader(db, 'brand', config, readSource, { ttl: 600_000, staleWhileRevalidate: true, withStatus: true, ...options });
   return { list: ({ refresh = false } = {}) => read({ refresh }) };
 }

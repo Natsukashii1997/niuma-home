@@ -12,7 +12,7 @@ export function briefPatch(saved, draft) {
 const table = (cols, rows) => ([`| ${cols.join(" | ")} |`, `| ${cols.map(() => "---").join(" | ")} |`, ...rows.map((r) => `| ${r.map((c) => String(c).replace(/\|/g, "\\|").replace(/\n/g, " ")).join(" | ")} |`)].join("\n"));
 
 // 复制全文用的 Markdown（页面当前内容，含未保存的改动）。
-export function briefText(b) {
+export function briefText(b, attachments = []) {
   const items = b.items.length ? b.items.map((it) => `### ${it.title}\n\n${it.kind === "skip" ? it.note : it.blocks ? table(BRIEF_HEADS.blocks, it.blocks) : (it.cells || []).map((c, i) => `P${i + 1}：${c}`).join("\n")}`).join("\n\n") : "（空）";
   const body = [
     [b.background.text, ...b.background.goals.map((g) => `- ${g}`)].filter(Boolean).join("\n\n") || "（空）",
@@ -21,7 +21,7 @@ export function briefText(b) {
     items,
     table(BRIEF_HEADS.specs, b.specs.map(r=>r.length===4?[r[0],r.slice(1).join(" / ")]:r)),
     table(BRIEF_HEADS.owners, b.owners.map(r=>r.length===3?[r[0],r.slice(1).join(" / ")]:r)),
-    "（空）",
+    attachments.length ? attachments.map(a=>`- ${a.name}`).join("\n") : "（空）",
   ];
   return `# ${b.title}\n\n${SECTIONS.map((t, i) => `## ${i + 1}. ${t}\n\n${body[i]}`).join("\n\n")}\n`;
 }

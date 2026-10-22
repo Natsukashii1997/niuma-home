@@ -18,7 +18,7 @@ function Canvas({ initial }) {
   const [notice, setNotice] = useState(null), [tag, setTag] = useState(""), [zoom, setZoom] = useState(1);
   const [importing, setImporting] = useState(false), [open, setOpen] = useState(null), [previewPos, setPreviewPos] = useState(null);
   const [toast, showToast] = useToast();
-  const { value: data, change, busy, locked, error, warning, dismissWarning, reread, retry, canRetry } = useLocalCanvas(initial, "/api/v3/refs", text => setNotice({ text, id: crypto.randomUUID() }));
+  const { value: data, change, busy, locked, error, warning, dismissWarning, reread, retry, discard, canRetry, canDiscard } = useLocalCanvas(initial, "/api/v3/refs", text => setNotice({ text, id: crypto.randomUUID() }));
   const wrap = useRef(null), drag = useRef(null), items = data.items;
   const tags = [...new Set(items.flatMap(i => i.tags))];
   const add = list => {
@@ -80,7 +80,7 @@ function Canvas({ initial }) {
       <label className="btn"><PixelIcon name="upload" />上传<input hidden type="file" multiple accept={TYPES.join(",")} disabled={locked} onChange={e => { void addFiles(Array.from(e.target.files)); e.target.value = ""; }} /></label>
       <Button onClick={() => setImporting(true)} disabled={locked}><PixelIcon name="star" />从数码世界导入图片</Button>
     </div>
-    {error && <div className="write-box is-error" role="alert">{error}<Button disabled={busy} onClick={reread}>重新读取核对</Button>{canRetry && <Button disabled={busy} onClick={retry}>继续保存草稿</Button>}</div>}
+    {error && <div className="write-box is-error" role="alert">{error}<Button disabled={busy} onClick={reread}>重新读取核对</Button>{canRetry && <Button disabled={busy} onClick={retry}>继续保存草稿</Button>}{canDiscard && <Button disabled={busy} onClick={discard}>移除失败的这一项</Button>}</div>}
     <div className="canvas-wrap past-canvas" ref={wrap} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { drag.current = null; setPreviewPos(null); }} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); void addFiles(Array.from(e.dataTransfer.files)); }}>
       <div className="canvas-board" style={{ transform: `scale(${zoom})`, width: Math.max(1420, ...items.map(i => i.x + i.w + 40)), height: Math.max(660, ...items.map(i => i.y + 280)) }}>
         {data.zones.map(z => <div className="zone" key={z.name} style={{ left: z.x, top: z.y, width: z.w, height: z.h }}><span>{z.name}</span></div>)}

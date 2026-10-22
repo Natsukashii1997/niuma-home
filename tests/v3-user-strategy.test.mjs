@@ -102,7 +102,9 @@ test('生成促销策略：用户洞察 × 打法库内部匹配，结果确定�
   assert.equal(getRecord(db, USER_STRATEGY_KIND, '2026-11'), null, '预览不写入');
   assert.deepEqual(pv.value.regions, readInsight('2026-11').regions, '用户情况原样保留');
   const saved = confirm(svc, '2026-11', pv);
-  assert.deepEqual(svc.get('2026-11'), { ...saved, origin: '已修改' });
+  const { timelineEvidence, ...readBack } = svc.get('2026-11');
+  assert.equal(timelineEvidence.status, 'unavailable');
+  assert.deepEqual(readBack, { ...saved, origin: '已修改' });
   assert.deepEqual(confirm(svc, '2026-11', pv), saved, '重复确认返回同一回执，不重复写');
 });
 

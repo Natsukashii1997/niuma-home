@@ -12,6 +12,17 @@ export function locate(tree, id, parentId = ROOT) {
   return null;
 }
 
+// 只沿当前分组的真实子级前进；改名和正文入口共用同一个当前目录。
+export function currentDirectory(group, path = []) {
+  let dir = group; const trail = [group];
+  for (const id of path) {
+    const next = dir.kids?.find(node => node.id === id);
+    if (!next) break;
+    dir = next; trail.push(next);
+  }
+  return { dir, trail };
+}
+
 export function countDocs(node) {
   if (!node.kids) return 1;
   return node.kids.reduce((sum, k) => sum + countDocs(k), 0);

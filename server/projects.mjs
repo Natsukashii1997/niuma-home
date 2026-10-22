@@ -130,7 +130,7 @@ export function projectView(source) {
 
 // 只缓存完整读取；失败不会退回旧来源或旧快照伪装成功。
 // staleWhileRevalidate：有旧结果（含服务重启前存下的快照）时先返回旧结果，过期的话后台再读一次；写入前的读取仍传 refresh 现读。
-export function createConfiguredReader(db, kind, config, read, { now = Date.now, ttl = 300_000, onSource, staleWhileRevalidate = false } = {}) {
+export function createConfiguredReader(db, kind, config, read, { now = Date.now, ttl = 300_000, onSource, staleWhileRevalidate = false, withStatus = false } = {}) {
   let cache, inflight, failed;
   if (staleWhileRevalidate) {
     const row = db.prepare('SELECT payload, updated_at FROM v3_snapshots WHERE kind=?').get(kind);
@@ -139,14 +139,19 @@ export function createConfiguredReader(db, kind, config, read, { now = Date.now,
   return async ({ refresh = false } = {}) => {
     const cfg = config(), identity = fingerprint(cfg), at = now();
     if (!refresh && staleWhileRevalidate && cache?.identity === identity) {
-      if (at - cache.at >= ttl && inflight?.identity !== identity) start(cfg, identity, at).catch(() => {});
-      return structuredClone(cache.value);
+      if (at - cache.at >= ttl && inflight?.identity !== identity && !(failed?.identity === identity && at < failed.until)) start(cfg, identity, at).catch(() => {});
+      return result(cache.value, identity);
     }
     if (!refresh && failed?.identity === identity && at < failed.until) throw failed.error;
-    if (!refresh && cache?.identity === identity && at - cache.at < ttl) return structuredClone(cache.value);
-    if (inflight?.identity === identity) return structuredClone(await inflight.promise);
-    return structuredClone(await start(cfg, identity, at));
+    if (!refresh && cache?.identity === identity && at - cache.at < ttl) return result(cache.value, identity);
+    if (inflight?.identity === identity) return result(await inflight.promise, identity);
+    return result(await start(cfg, identity, at), identity);
   };
+  function result(value, identity) {
+    if (!withStatus) return structuredClone(value);
+    return { ...structuredClone(value), stale: !!(cache?.identity === identity && (now() - cache.at >= ttl || failed?.identity === identity)), refreshing: inflight?.identity === identity,
+      sourceError: failed?.identity === identity ? failed.error.message : value.sourceError || '', fetchedAt: cache?.identity === identity ? new Date(cache.at).toISOString() : null };
+  }
   function start(cfg, identity, at) {
     const promise = (async () => {
       try {
@@ -215,7 +220,8 @@ export function createProjectService(db, { readSource = readProjectSource, now =
       const taken = () => [...source, ...locals()].some(p => p.name === name);
       if (taken()) throw failure(400, '已有同名项目');
       const id = `local-${randomUUID()}`; let n = 0;
-      const blank = node => { const { childNodes, kids, ...rest } = node; return { ...rest, id: `${id}-n${++n}`, owner: '—', done: false, statusKnown: true, due: '', dueDate: '', gateReady: false }; };
+      const blank = node => ({ id: `${id}-n${++n}`, ph: node.ph, phases: node.phases, t: node.t, gate: !!node.gate, milestone: !!node.milestone,
+        owner: '—', done: false, statusKnown: true, due: '', dueDate: '', startDate: '', doneDate: '', overdue: '', deliverables: [], gateReady: false });
       const nodes = base.nodes.map(node => { const top = blank(node), children = (node.childNodes || []).map(blank); return children.length ? { ...top, kids: children.map(k => [k.t, false]), childNodes: children } : top; });
       const value = { id, name, template: '项目推进', status: '推进中', phase: -1, phases: base.phases, nodes, local: true, basedOn: { id: base.id, name: base.name }, createdAt: new Date(now()).toISOString() };
       const preview = changes.preview(LOCAL, id, value, { validate: (v, current) => { if (current || locals().some(p => p.name === name)) throw failure(409, '已有同名项目，请重新预览'); } });
