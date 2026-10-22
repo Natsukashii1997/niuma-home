@@ -83,6 +83,48 @@ function operation(xml,key,label,nodes,content,command='block_replace'){
   const locations=ids(nodes);if(!locations.length)throw Error(`「${label}」缺少飞书定位，暂不能安全更新`);
   return{key,label,start:command==='block_insert_after'?locations.at(-1):locations[0],end:locations.at(-1),content,command,from:nodes[0].start,to:nodes.at(-1).end};
 }
+// docs_ai ranges use DocxXML containers, not native docx parent_id. A list's
+// items cannot share a range with the heading before its synthetic ul/ol.
+// Keep unchanged blocks (and their IDs/comments) and replace only changed peers.
+function minimalEdits(xml,edit){
+  if(edit.command!=='block_replace'||edit.key==='title')return[edit];
+  const shift=nodes=>nodes.map(n=>({...n,start:n.start+edit.from,end:n.end+edit.from,children:shift(n.children)}));
+  const old=shift(blocks(xml.slice(edit.from,edit.to))),next=blocks(edit.content),out=[];
+  const value=n=>xml.slice(n.start,n.end),newValue=n=>edit.content.slice(n.start,n.end);
+  const equal=(a,b)=>exactBriefXml(value(a))===exactBriefXml(newValue(b));
+  function diff(before,after,anchor){
+    const first=before[0];before=[...before];after=[...after];
+    while(before.length&&after.length&&equal(before[0],after[0])){anchor=before.shift();after.shift();}
+    while(before.length&&after.length&&equal(before.at(-1),after.at(-1))){before.pop();after.pop();}
+    if(!before.length&&!after.length)return;
+    if(before.length===after.length&&before.every((n,i)=>n.tag===after[i].tag)){
+      before.forEach((n,i)=>{
+        if(equal(n,after[i]))return;
+        if(n.id)out.push(operation(xml,edit.key,edit.label,[n],newValue(after[i])));
+        else if(['ul','ol'].includes(n.tag))diff(n.children,after[i].children,null);
+        else throw Error('该内容容器没有安全定位，原文档未修改');
+      });return;
+    }
+    if(before.length&&after.length&&before[0].tag===after[0].tag){
+      diff(before.slice(0,1),after.slice(0,1),anchor);
+      diff(before.slice(1),after.slice(1),before[0]);return;
+    }
+    if(!before.length){
+      if(!anchor?.id){
+        if(!first?.id)throw Error('新增内容缺少安全定位，原文档未修改');
+        const original=clean(value(first));canonicalXml(original);
+        out.push(operation(xml,edit.key,edit.label,[first],after.map(newValue).join('')+original));return;
+      }
+      out.push(operation(xml,edit.key,edit.label,[anchor],after.map(newValue).join(''),'block_insert_after'));return;
+    }
+    if(before.length===1&&!before[0].id&&['ul','ol'].includes(before[0].tag)&&!after.length){
+      out.push(operation(xml,edit.key,edit.label,before[0].children,'','block_delete'));return;
+    }
+    if(before.some(n=>!n.id))throw Error('修改跨越列表容器，请分开修改内容；原文档已保留');
+    out.push(operation(xml,edit.key,edit.label,before,after.map(newValue).join(''),after.length?'block_replace':'block_delete'));
+  }
+  diff(old,next,null);return out;
+}
 function located(xml){
   const walk=(nodes,path=[],parents=[])=>nodes.flatMap((n,i)=>[{...n,path:[...path,i],parents},...walk(n.children,[...path,i],[...parents,n])]);
   return walk(blocks(xml));
@@ -101,13 +143,14 @@ export function applyBriefEdit(xml,edit){
   const all=located(xml),start=all.find(n=>n.id===edit.start),end=all.find(n=>n.id===edit.end);
   if(!start||!end)throw Error('更新定位已失效');
   if(edit.command==='block_insert_after'){
-    let at=end.end;for(const parent of end.parents)if(['ul','ol'].includes(parent.tag)&&parent.children.at(-1).end===end.end)at=parent.end;
+    let at=end.end;for(const parent of end.parents)if(['ul','ol'].includes(parent.tag)&&parent.children.at(-1).end===end.end&&!/^\s*<li[\s>]/.test(edit.content))at=parent.end;
     return xml.slice(0,at)+edit.content+xml.slice(at);
   }
   let from=start.start,to=end.end;
   // Feishu list items are document blocks; ul/ol are XML presentation wrappers.
-  for(const parent of start.parents)if(['ul','ol'].includes(parent.tag)&&parent.children[0].start===start.start&&end.end>=parent.children.at(-1).end)from=parent.start;
-  for(const parent of end.parents)if(['ul','ol'].includes(parent.tag)&&parent.children.at(-1).end===end.end&&start.start<=parent.children[0].start)to=parent.end;
+  const listItems=edit.command!=='block_delete'&&/^\s*<li[\s>]/.test(edit.content);
+  for(const parent of start.parents)if(!listItems&&['ul','ol'].includes(parent.tag)&&parent.children[0].start===start.start&&end.end>=parent.children.at(-1).end)from=parent.start;
+  for(const parent of end.parents)if(!listItems&&['ul','ol'].includes(parent.tag)&&parent.children.at(-1).end===end.end&&start.start<=parent.children[0].start)to=parent.end;
   return xml.slice(0,from)+(edit.command==='block_delete'?'':edit.content)+xml.slice(to);
 }
 // Two independent baselines remember explicit decisions to keep cloud content.
@@ -214,7 +257,11 @@ export function planBriefSync(base,local,remote,force=[],options={}) {
   }
   // Work from the bottom upwards; insertion after an old heading precedes its
   // replacement, so anchors remain present until they are no longer needed.
-  for(let i=0;i<edits.length;i++)edits[i]=locateBriefEdit(remote,edits[i]);
+  edits.splice(0,edits.length,...edits.flatMap(e=>minimalEdits(remote,e)));
+  for(let i=0;i<edits.length;i++){
+    edits[i]=locateBriefEdit(remote,edits[i]);
+    if(edits[i].start!==edits[i].end&&JSON.stringify(edits[i].startPath.slice(0,-1))!==JSON.stringify(edits[i].endPath.slice(0,-1)))throw Error('更新范围跨越内容容器，原文档未修改');
+  }
   edits.sort((a,b)=>b.to-a.to || (a.command==='block_insert_after'?-1:1));
   let expected=remote;for(const edit of edits)expected=applyBriefEdit(expected,edit);
   return{edits,conflicts,expected,resultMaterials,resultRows};

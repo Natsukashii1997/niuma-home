@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {openDb} from '../../server/db.mjs';
 import {createBriefService} from '../../server/briefs.mjs';
 import {BRIEF_DESTINATION as WIKI} from '../../server/brief-destination.mjs';
-import {briefSections,replaceBriefSection,applyBriefEdit} from '../../server/brief-sync-plan.mjs';
+import {briefSections,replaceBriefSection,applyBriefEdit,locateBriefEdit} from '../../server/brief-sync-plan.mjs';
 
 export function fixture(dir){
   const db=openDb(dir),documents=new Map(),state={creates:0,updates:0,calls:[],failAfterUpdate:false,parent:WIKI.token,user:'ou_isolated'};
@@ -31,6 +31,8 @@ export function fixture(dir){
       const body={command:arg('--command'),...(arg('--command')==='block_delete'?{}:{format:'xml',content:options.input}),revision_id:Number(arg('--revision-id')),...(single?{block_id:start}:{start_block_id:start,end_block_id:end})};
       if(args.includes('--dry-run')){state.onUpdateDry?.();return dry({method:'PUT',url:`/open-apis/docs_ai/v1/documents/${id}`,body});}
       assert.equal(body.revision_id,doc.revision);const remote=stamp(doc);
+      const located=locateBriefEdit(remote,{start,end});
+      assert.deepEqual(located.startPath.slice(0,-1),located.endPath.slice(0,-1),'docs_ai requires XML siblings, even when native docx block parents match');
       if(state.failBeforeUpdate)throw Error('Unknown response before applying');
       doc.content=applyBriefEdit(remote,{start,end,content:options.input,command:body.command});doc.revision++;doc.title=briefSections(doc.content)[0].label;state.updates++;
       if(state.failAfterUpdate===true||state.failAfterUpdate===state.updates)throw Error('Lost response after apply');

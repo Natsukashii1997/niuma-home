@@ -41,12 +41,60 @@ function documentLink(document, allowWiki = false) {
   if (url.pathname !== `/docx/${document.document_id}` && !(allowWiki && /^\/wiki\/[a-zA-Z0-9]+$/.test(url.pathname))) throw new Error('Invalid document URL');
   return { id: document.document_id, url: url.href };
 }
-function defaultRun(command, args, { input, ...options }) {
+export function runFeishuCommand(command, args, { input, ...options }) {
   return new Promise((resolve, reject) => {
-    const child = execFile(command, args, options, (err, stdout, stderr) => err ? reject(err) : resolve({ stdout, stderr }));
+    const child = execFile(command, args, options, (err, stdout, stderr) => err ? reject(Object.assign(err, { stdout, stderr })) : resolve({ stdout, stderr }));
     child.stdin.on('error', () => {});
     child.stdin.end(input || '');
   });
+}
+
+const diagnosticTypes = new Set(['validation', 'api', 'auth', 'network', 'timeout', 'permission', 'internal', 'io', 'protocol', 'unknown']);
+const diagnosticSubtypes = new Set(['invalid_argument', 'unknown', 'unauthorized', 'forbidden', 'not_found', 'permission_denied', 'scope_missing', 'authentication_required', 'rate_limited', 'network_error', 'request_timeout', 'server_error', 'unexpected_response']);
+const diagnosticNumber = value => (typeof value === 'number' || typeof value === 'string' && /^\d{1,10}$/.test(value)) && Number.isSafeInteger(Number(value)) ? Number(value) : undefined;
+const parseCliJson = value => { try { return typeof value === 'string' && value.trim() ? JSON.parse(value) : null; } catch { return null; } };
+const cliResultFailed = value => ['failed', 'partial_success'].includes(value?.data?.result);
+const invalidBlockRangeWarning = 'degrade_code=1002,msg=Invalid block range: start_block_id and end_block_id must be sibling blocks under the same parent. Choose a forward range of direct sibling blocks within one container';
+// Keep only diagnostic metadata: CLI errors may embed document text, command
+// arguments, credentials or troubleshooting URLs in their message and stderr.
+function cliDiagnostic(result, processError, phase) {
+  const detail = plain(result?.error) ? result.error : null;
+  const exitCode = diagnosticNumber(processError?.code);
+  const diagnostic = { phase, outcome: 'unknown', ...(exitCode !== undefined && { exitCode }) };
+  if (cliResultFailed(result)) {
+    diagnostic.phase = 'api'; diagnostic.errorType = 'document_result'; diagnostic.result = result.data.result;
+    const warnings = result.data.warnings;
+    const codes = Array.isArray(warnings) ? warnings.map(w => typeof w === 'string' ? w.match(/^degrade_code=(\d{1,10}),/)?.[1] : undefined).filter(Boolean) : [];
+    if (codes.length === 1) diagnostic.degradeCode = Number(codes[0]);
+    if (result.ok === false && result.data.result === 'failed' && !result.truncated && !result.data.truncated && !processError?.killed && !processError?.signal && Array.isArray(warnings) && warnings.length === 1 && warnings[0] === invalidBlockRangeWarning) {
+      diagnostic.reason = 'invalid_block_range'; diagnostic.outcome = 'rejected';
+    }
+    return diagnostic;
+  }
+  if (!detail) return diagnostic;
+  const errorType = diagnosticTypes.has(detail.type) ? detail.type : undefined, errorSubtype = diagnosticSubtypes.has(detail.subtype) ? detail.subtype : undefined, apiCode = diagnosticNumber(detail.code);
+  if (errorType) diagnostic.errorType = errorType;
+  if (errorSubtype) diagnostic.errorSubtype = errorSubtype;
+  if (apiCode !== undefined) diagnostic.apiCode = apiCode;
+  const httpStatus = diagnosticNumber(detail.http_status ?? detail.http_status_code ?? detail.status_code);
+  if (httpStatus >= 100 && httpStatus <= 599) diagnostic.httpStatus = httpStatus;
+  const requestId = detail.log_id ?? detail.request_id;
+  if (typeof requestId === 'string' && /^20\d{12}[a-fA-F0-9]{8,50}$/.test(requestId)) diagnostic.requestId = requestId;
+  if (processError?.killed || processError?.signal || result?.truncated || result?.data?.truncated) return diagnostic;
+  // The CLI emits this local argument validation envelope on stderr with exit 2.
+  // Validation without a known CLI parameter is not enough to prove no request.
+  if (result?.ok === false && exitCode === 2 && errorType === 'validation' && errorSubtype === 'invalid_argument' && /^--(?:block-id|start-block-id|end-block-id|command|content|doc-format|revision-id|doc|reference-map|src-block-ids)$/.test(detail.param || '')) {
+    diagnostic.phase = 'cli_validation'; diagnostic.outcome = 'not_sent';
+  } else if (result?.ok === false && errorType === 'api') {
+    diagnostic.phase = 'api';
+    // This is an API rejection fact, never permission to replay a whole CLI
+    // workflow: earlier steps may already have written. Other codes stay unknown.
+    if (apiCode === 3380002) diagnostic.outcome = 'rejected';
+  }
+  return diagnostic;
+}
+function cliFailure(diagnostic, message = '飞书操作未取得可验证的完整结果') {
+  return Object.assign(error(502, 'EXPORT_CLI_FAILED', message), { diagnostic });
 }
 
 // Compare the whole document in order, allowing only Markdown presentation differences.
@@ -66,29 +114,38 @@ export function validateExportDocument(document){
     if(format(document)==='xml') { try{canonicalXml(document.xml);}catch{throw error(400,'EXPORT_CONTENT_INVALID','文档结构无法校验');} }
 }
 
-export function createFeishuClient(run = defaultRun) {
+export function createFeishuClient(run = runFeishuCommand) {
   async function invoke(args, input) {
     let result;
+    let output;
     try {
-      const output = await run('lark-cli', ['--profile', 'codex', ...args, '--as', 'user'], { input, shell: false, encoding: 'utf8', timeout: 60000, maxBuffer: 8 * 1024 * 1024 });
-      result = JSON.parse(output.stdout);
-    } catch { throw error(502, 'EXPORT_CLI_FAILED', '飞书操作未取得可验证的完整结果'); }
+      output = await run('lark-cli', ['--profile', 'codex', ...args, '--as', 'user'], { input, shell: false, encoding: 'utf8', timeout: 60000, maxBuffer: 8 * 1024 * 1024 });
+    } catch (cause) {
+      const envelopes = [parseCliJson(cause?.stderr), parseCliJson(cause?.stdout)];
+      const candidates = envelopes.filter(value => plain(value) && (value.ok === false && plain(value.error) || cliResultFailed(value)));
+      // Conflicting output envelopes cannot establish what actually happened.
+      const parsed = envelopes.some(value => value?.ok === true && !cliResultFailed(value)) ? null : candidates.length === 1 ? candidates[0] : candidates.length === 2 && JSON.stringify(candidates[0]) === JSON.stringify(candidates[1]) ? candidates[0] : null;
+      throw cliFailure(cliDiagnostic(parsed, cause, 'process'));
+    }
+    try { result = JSON.parse(output.stdout); }
+    catch { throw cliFailure({ phase: 'parse', outcome: 'unknown' }); }
+    if (result?.ok === false || cliResultFailed(result)) throw cliFailure(cliDiagnostic(result, null, 'protocol'));
     return result;
   }
   async function cli(args, input) {
     const result = await invoke(args, input);
-    if (result.ok !== true || result.identity !== 'user' || !result.data || result.truncated || result.data.truncated) throw error(502, 'EXPORT_CLI_FAILED', '飞书未返回完整的用户身份结果');
+    if (result?.ok !== true || result.identity !== 'user' || !result.data || result.truncated || result.data.truncated) throw cliFailure({ phase: 'protocol', outcome: 'unknown' }, '飞书未返回完整的用户身份结果');
     return result;
   }
   async function whoami() {
     const result = await invoke(['whoami']);
-    if (result.profile !== 'codex' || result.appId !== APP_ID || result.identity !== 'user' || result.available !== true || result.tokenStatus !== 'ready' || typeof result.onBehalfOf?.openId !== 'string' || !result.onBehalfOf.openId) throw error(503, 'EXPORT_IDENTITY_INVALID', '请先确认机械邪龙兽 codex 的 user 身份已就绪；不会切换机器人');
+    if (result?.profile !== 'codex' || result.appId !== APP_ID || result.identity !== 'user' || result.available !== true || result.tokenStatus !== 'ready' || typeof result.onBehalfOf?.openId !== 'string' || !result.onBehalfOf.openId) throw error(503, 'EXPORT_IDENTITY_INVALID', '请先确认机械邪龙兽 codex 的 user 身份已就绪；不会切换机器人');
     return result.onBehalfOf.openId;
   }
   return {cli,whoami};
 }
 
-export function createFeishuExporter(db, { now = Date.now, run = defaultRun, fixedTarget = null } = {}) {
+export function createFeishuExporter(db, { now = Date.now, run = runFeishuCommand, fixedTarget = null } = {}) {
   const {cli,whoami}=createFeishuClient(run);
   async function target(raw, wiki = null) {
     if (wiki) {

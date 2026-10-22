@@ -47,9 +47,10 @@ export function createBriefSync(db,{now=Date.now,run,fixedTarget,...options}={})
     const writes=result.data.api?.filter(a=>!['GET','HEAD'].includes(a.method)),body=writes?.[0]?.body;
     if(edit.key==='title'){
       if(!result.dry_run||ctx?.app_id!=='cli_aacf58ab61b85beb'||ctx.user_open_id!==p.actor||writes?.length!==1||writes[0].method!=='PATCH'||writes[0].url!==`/open-apis/drive/v1/files/${p.link.document.id}`||writes[0].params?.type!=='docx'||body?.new_title!==p.document.title)throw fail('EXPORT_PROTOCOL_CHANGED','飞书改名预演与原文档不一致，未执行',503);
-      return;
+      return fingerprint(writes[0]);
     }
     if(!result.dry_run||ctx?.app_id!=='cli_aacf58ab61b85beb'||ctx.user_open_id!==p.actor||writes?.length!==1||writes[0].method!=='PUT'||writes[0].url!==`/open-apis/docs_ai/v1/documents/${p.link.document.id}`||body?.command!==(edit.command||'block_replace')||(edit.command!=='block_delete'&&body.content!==edit.content)||(edit.command!=='block_delete'&&body.format!=='xml')||body.revision_id!==revision||(edit.start===edit.end?body.block_id!==edit.start:body.start_block_id!==edit.start||body.end_block_id!==edit.end))throw fail('EXPORT_PROTOCOL_CHANGED','飞书更新预演与目标文档或修改范围不一致，未执行',503);
+    return fingerprint(writes[0]);
   }
   async function source(p,load){
     const document=await load(p.scope.context);validateExportDocument(document);
@@ -66,9 +67,9 @@ export function createBriefSync(db,{now=Date.now,run,fixedTarget,...options}={})
       db.exec('COMMIT');return publicReceipt(done);
     }catch(e){db.exec('ROLLBACK');throw e;}
   }
-  function unknown(receipt){
+  function unknown(receipt,cause){
     const latest=getRecord(db,RECEIPTS,receipt.operationId);if(latest?.status==='success')return latest;
-    const next={...latest,...receipt,status:'unknown',checkedAt:new Date(now()).toISOString()};putRecord(db,RECEIPTS,next.operationId,next,now());
+    const next={...latest,...receipt,...(cause?.diagnostic?{diagnostic:cause.diagnostic}:{}),status:'unknown',checkedAt:new Date(now()).toISOString()};putRecord(db,RECEIPTS,next.operationId,next,now());
     throw fail('EXPORT_RESULT_UNKNOWN','更新或回读未能确认，已保留原文档和操作记录。只读核对前不会再次写入或新建',502,{receipt:publicReceipt(next)});
   }
   const view=p=>({operationId:p.operationId,previewId:p.previewId,expiresAt:p.expiresAt,mode:p.edits.length?'update':'unchanged',target:p.link.target,title:p.document.title,document:p.link.document,markdown:p.document.markdown,sections:p.document.sections,changedSections:p.edits.map(e=>e.label)});
@@ -94,7 +95,10 @@ export function createBriefSync(db,{now=Date.now,run,fixedTarget,...options}={})
       let plan;try{plan=planBriefSync(link.localDocument.xml,document.xml,doc.content,force,{baseMaterials:link.localDocument.materials,materials:document.materials,remoteBase:link.remoteDocument,remoteMaterials:link.remoteMaterials,remoteRows:link.remoteRows});}catch(e){throw fail('EXPORT_STRUCTURE_CHANGED',e.message);}
       const p={scope:{kind,id:String(month),context},previewId:randomUUID(),expiresAt:new Date(now()+600000).toISOString(),mode:'update',link,linkFingerprint:fingerprint(link),document,fingerprint:fingerprint(document),sourceIdentity:config,actor,remoteFingerprint,remoteRevision:doc.revision_id,remoteBefore:doc.content,...plan};
       if(plan.conflicts.length){p.mode='conflict';putRecord(db,PREVIEWS,p.previewId,p,now());throw fail('EXPORT_REMOTE_CONFLICT','以下内容两边都有修改，请逐项选择采用哪份',409,{conflict:{id:p.previewId,document:link.document,sections:plan.conflicts}});}
-      p.operationId=fingerprint(['brief-sync',month,link.document.id,p.fingerprint,remoteFingerprint,link.currentOperationId]);
+      const operationId=fingerprint(['brief-sync-v2',month,link.document.id,p.fingerprint,remoteFingerprint,link.currentOperationId,plan.edits]);
+      // A fresh preflight after a confirmed rejection is a new attempt. Keep
+      // the rejected receipt instead of replacing its historical evidence.
+      p.operationId=getRecord(db,RECEIPTS,operationId)?.status==='aborted'?fingerprint([operationId,p.previewId]):operationId;
       for(const edit of plan.edits)await dry(p,edit,doc.revision_id);
       await source(p,load);putRecord(db,PREVIEWS,p.previewId,p,now());return view(p);
     },
@@ -110,6 +114,7 @@ export function createBriefSync(db,{now=Date.now,run,fixedTarget,...options}={})
         if(!getRecord(db,LINKS,month))putRecord(db,LINKS,month,candidate(month),now());return receipt;
       }
       const old=getRecord(db,RECEIPTS,p.operationId);
+      if(old?.status==='aborted')throw fail('EXPORT_PREVIEW_EXPIRED','这次预检已经中止，请重新点击同步以核对最新内容');
       if(old?.status==='success'){
         if(candidate(month)?.currentOperationId!==old.operationId||fingerprint(await load(p.scope.context))!==p.fingerprint||exactBriefXml((await remote(p.link)).content)!==exactBriefXml(p.expected))throw fail('EXPORT_SOURCE_CHANGED','这是旧的同步记录，请重新同步当前内容');
         return old;
@@ -154,6 +159,17 @@ export function createBriefSync(db,{now=Date.now,run,fixedTarget,...options}={})
         const doc=await remote(p.link),actual=exactBriefXml(doc.content);
         if(actual===exactBriefXml(p.expected))return finish(p,receipt,doc);
         if(receipt.attempt){
+          // Only a complete, explicit single-operation rejection plus an exact
+          // unchanged revision/body establishes no write. A timeout never does.
+          // An operator-authorized legacy diagnosis has its own immutable audit
+          // record. It never pretends the original missing response was known.
+          const recovery=receipt.recoveryId&&getRecord(db,'brief-sync-recovery',receipt.recoveryId);
+          const proof=recovery?.status==='rejected'&&receipt.completed===0&&p.edits.length===1&&recovery.revision===p.remoteRevision&&recovery.originalOperationId===receipt.operationId&&recovery.documentId===p.link.document.id&&recovery.beforeFingerprint===fingerprint(exactBriefXml(receipt.attempt.before))&&recovery.afterFingerprint===recovery.beforeFingerprint&&recovery.requestFingerprint===await dry(p,p.edits[0],recovery.revision)?recovery:null;
+          const d=proof?.diagnostic||receipt.diagnostic,revision=receipt.attempt.revision??proof?.revision;
+          if(d?.outcome==='rejected'&&d.reason==='invalid_block_range'&&d.result==='failed'&&d.degradeCode===1002&&Number.isSafeInteger(revision)&&doc.revision_id===revision&&actual===exactBriefXml(receipt.attempt.before)){
+            const stopped={...receipt,status:'aborted',checkedAt:new Date(now()).toISOString(),verificationNote:'飞书明确拒绝了本次更新范围；已核对该步骤未写入，之前完成的内容保留，可以重新同步。'};
+            putRecord(db,RECEIPTS,receipt.operationId,stopped,now());return publicReceipt(stopped);
+          }
           // Matching the BEFORE state does not prove a timed-out request cannot
           // still land. Only an observed AFTER state proves this step completed.
           if(actual!==exactBriefXml(receipt.attempt.after))return unknown(receipt);
@@ -190,7 +206,7 @@ export function createBriefSync(db,{now=Date.now,run,fixedTarget,...options}={})
         if(head.revision_id!==fresh.revision_id||exactBriefXml(head.content)!==exactBriefXml(fresh.content))throw Error('写入前飞书发生变化');
         await checkSource();
         const after=applyBriefEdit(fresh.content,edit);
-        receipt={...receipt,attempt:{key:edit.key,before:fresh.content,after,sentAt:new Date(now()).toISOString()},steps:receipt.steps.map((step,i)=>i===index?{...step,state:'sent'}:step)};
+        receipt={...receipt,attempt:{key:edit.key,before:fresh.content,after,revision:fresh.revision_id,start:edit.start,end:edit.end,command:edit.command||'block_replace',sentAt:new Date(now()).toISOString()},steps:receipt.steps.map((step,i)=>i===index?{...step,state:'sent'}:step)};
         putRecord(db,RECEIPTS,p.operationId,receipt,now());
         const result=await cli(args(p,edit,fresh.revision_id),edit.content);
         if((edit.key==='title'?result.data.updated!==true||result.data.file_token!==p.link.document.id:result.data.result!=='success')||result.data.warnings?.length)throw Error('写入结果不完整');
@@ -201,7 +217,7 @@ export function createBriefSync(db,{now=Date.now,run,fixedTarget,...options}={})
       return finish(p,receipt,current);
     }catch(e){
       if(!receipt.attempt&&!receipt.completed){putRecord(db,RECEIPTS,p.operationId,{...receipt,status:'aborted'},now());throw fail('EXPORT_REMOTE_CHANGED','写入前发现变化或读取失败，尚未修改飞书，请重新点击同步');}
-      return unknown(receipt);
+      return unknown(receipt,e);
     }finally{active.delete(p.operationId);}
   }
 }

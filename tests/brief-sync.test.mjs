@@ -3,13 +3,61 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync} from 'node:fs';
 import path from 'node:path';
 import {fixture} from './helpers/brief-sync-fixture.mjs';
-import {getRecord,putRecord} from '../server/local-records.mjs';
+import {fingerprint,getRecord,putRecord} from '../server/local-records.mjs';
 import {syncBriefMaterials} from '../server/brief-template.mjs';
 import {briefPatch} from '../src/modules/marketing/brief-edit.js';
 import {exactBriefXml} from '../server/brief-sync-plan.mjs';
 
 function setup(t){assert.ok(process.env.WORKDESK_DATA_DIR);const dir=mkdtempSync(path.join(process.env.WORKDESK_DATA_DIR,'brief-sync-')),f=fixture(dir);t.after(()=>{f.db.close();rmSync(dir,{recursive:true,force:true});});return f;}
 const bg=text=>({background:{from:'本月策略',text,goals:['提高咨询']}});
+test('真实范围拒绝回归：只改背景段落不能从章节标题替换到列表末项',async t=>{
+  const f=setup(t);f.save(bg('背景 A'));await f.sync();f.save(bg('背景 B'));await f.sync();
+  const write=f.state.calls.find(c=>c.args.includes('+update')&&!c.args.includes('--dry-run'));
+  assert.ok(write.args.includes('--block-id'));assert.equal(write.input,'<p>背景 B</p>');
+  assert.equal(f.state.creates,1);
+});
+test('目标列表逐项改动、增删与清空保持列表结构和其余章节',async t=>{
+  const f=setup(t);f.save({...bg('原背景'),background:{...bg('原背景').background,goals:['目标一','目标二']}});await f.sync();
+  for(const goals of [['新目标一','目标二'],['新目标一','目标二','新增目标'],['前置目标','新目标一','目标二','新增目标'],['新目标一'],[],['恢复目标']]){
+    f.save({background:{...f.service.read(f.month).background,goals}});await f.sync();
+    const xml=f.documents.get('Doc1').content.replace(/\s+id="[^"]*"/g,'');assert.match(xml,/原背景/);
+    for(const goal of goals)assert.ok(xml.includes(`<li>${goal}</li>`));
+    const count=f.state.updates;await f.sync();assert.equal(f.state.updates,count);
+  }
+  f.save({background:{from:'人工',text:'同时更新背景',goals:[]}});await f.sync();
+  assert.match(f.documents.get('Doc1').content,/同时更新背景/);
+  f.save({background:{from:'人工',text:'再次更新背景',goals:['新目标']}});await f.sync();
+  assert.match(f.documents.get('Doc1').content,/再次更新背景/);assert.match(f.documents.get('Doc1').content,/新目标/);
+  assert.equal(f.state.creates,1);
+});
+test('明确范围拒绝必须同时回读版本和全文未变才解除；超时仍保留未知',async t=>{
+  const f=setup(t);f.save(bg('A'));await f.sync();f.save(bg('B'));f.state.failBeforeUpdate=true;let r;
+  await assert.rejects(f.sync(),e=>{r=e.receipt;return true;});
+  const stored=getRecord(f.db,'feishu-export',r.operationId);
+  assert.equal(stored.attempt.revision,1);
+  const diagnostic={phase:'api',outcome:'rejected',result:'failed',degradeCode:1002,reason:'invalid_block_range'};
+  putRecord(f.db,'feishu-export',r.operationId,{...stored,diagnostic});
+  f.documents.get('Doc1').revision++;
+  await assert.rejects(f.service.exportReconcile(f.month,r.operationId),e=>e.code==='EXPORT_RESULT_UNKNOWN');
+  f.documents.get('Doc1').revision--;
+  assert.equal((await f.service.exportReconcile(f.month,r.operationId)).status,'aborted');
+  await assert.rejects(f.confirm({previewId:stored.previewId}),e=>e.code==='EXPORT_PREVIEW_EXPIRED');assert.equal(f.state.updates,0);
+  f.state.failBeforeUpdate=false;await f.sync();assert.equal(f.state.creates,1);assert.equal(f.state.updates,1);
+  assert.equal(getRecord(f.db,'feishu-export',r.operationId).status,'aborted');
+});
+test('专项恢复证据必须绑定原请求，不能以另一条拒绝解除旧unknown',async t=>{
+  const f=setup(t);f.save(bg('A'));await f.sync();f.save(bg('B'));f.state.failBeforeUpdate=true;let r;
+  await assert.rejects(f.sync(),e=>{r=e.receipt;return true;});
+  const stored=getRecord(f.db,'feishu-export',r.operationId),p=getRecord(f.db,'feishu-export-preview',stored.previewId),edit=p.edits[0];
+  delete stored.attempt.revision;stored.diagnostic={phase:'process',outcome:'unknown'};stored.recoveryId='operator-proof';putRecord(f.db,'feishu-export',r.operationId,stored);
+  const proof={status:'rejected',originalOperationId:r.operationId,documentId:'Doc1',revision:p.remoteRevision,beforeFingerprint:fingerprint(exactBriefXml(stored.attempt.before)),afterFingerprint:fingerprint(exactBriefXml(stored.attempt.before)),requestFingerprint:'another-request',diagnostic:{outcome:'rejected',result:'failed',degradeCode:1002,reason:'invalid_block_range'}};
+  putRecord(f.db,'brief-sync-recovery','operator-proof',proof);
+  await assert.rejects(f.service.exportReconcile(f.month,r.operationId),e=>e.code==='EXPORT_RESULT_UNKNOWN');assert.equal(f.state.updates,0);
+  proof.requestFingerprint=fingerprint({method:'PUT',url:'/open-apis/docs_ai/v1/documents/Doc1',body:{command:'block_replace',format:'xml',content:edit.content,revision_id:p.remoteRevision,block_id:edit.start}});
+  putRecord(f.db,'brief-sync-recovery','operator-proof',proof);
+  assert.equal((await f.service.exportReconcile(f.month,r.operationId)).status,'aborted');assert.equal(f.state.updates,0);
+  assert.deepEqual(getRecord(f.db,'feishu-export',r.operationId).diagnostic,{phase:'process',outcome:'unknown'});
+});
 test('Brief 首次创建、改稿同文档更新、无变化不写、A→B→A 不复用历史成功',async t=>{
   const f=setup(t);f.save(bg('背景 A'));const first=await f.sync();assert.equal(first.document.id,'Doc1');
   f.save(bg('背景 B'));const second=await f.sync();assert.equal(second.document.id,'Doc1');assert.equal(f.state.updates,1);assert.match(f.documents.get('Doc1').content,/背景 B/);
