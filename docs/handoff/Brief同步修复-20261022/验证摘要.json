@@ -12,5 +12,9 @@
   "directoryCountAfter": 6,
   "sameDirectoryNodeIds": true,
   "localVersion": "v3",
-  "formalEffectiveWrites": 1
+  "formalEffectiveWrites": 1,
+  "release": "nm-20261022-194602-2d3785d",
+  "formalBrowserSync": "success/unchanged",
+  "formalTests": 586,
+  "failedTests": 0
 }

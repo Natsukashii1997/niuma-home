@@ -1,0 +1,125 @@
+{
+  "checkedAt": "2026-10-22T19:47:03",
+  "release": "nm-20261022-194602-2d3785d",
+  "pid": 25960,
+  "launchdMatchesRelease": true,
+  "listeningProcessMatchesRelease": true,
+  "servedIndexExactMatch": true,
+  "servedIndexSha256": "a2243037fc3a99fc40c7bb467a66d54b0e7494113e027b1441a31b2d6cf04c9e",
+  "stderrBytes": 0,
+  "tables": {
+    "v3_documents": {
+      "beforeCount": 43,
+      "afterCount": 49,
+      "equal": false,
+      "beforeHash": "ebf5a889b1b2980fc9daa33c3ccab52a9f89fcf209ec4f7859f208fa7e33b9c8",
+      "afterHash": "eb3eddb6c54663f2f2aa2758924fa88343412fe5a8596ff74fce8fb0d03887ae"
+    },
+    "v3_needs": {
+      "beforeCount": 12,
+      "afterCount": 12,
+      "equal": true,
+      "beforeHash": "16bf015e3e8c6a24982868a3534469800157f0280705f5eb3e14ca0ed3532c3e",
+      "afterHash": "16bf015e3e8c6a24982868a3534469800157f0280705f5eb3e14ca0ed3532c3e"
+    },
+    "promos": {
+      "beforeCount": 24,
+      "afterCount": 24,
+      "equal": true,
+      "beforeHash": "6a840731698d0cade4da6b7a7b03cfda6a45a1996784d5f248718265b17f97c8",
+      "afterHash": "6a840731698d0cade4da6b7a7b03cfda6a45a1996784d5f248718265b17f97c8"
+    },
+    "plans": {
+      "beforeCount": 3,
+      "afterCount": 3,
+      "equal": true,
+      "beforeHash": "f9ffbe73d99c9557ad827565fff85b7a86eaa90586fd8ba128b471315b7ca4c0",
+      "afterHash": "f9ffbe73d99c9557ad827565fff85b7a86eaa90586fd8ba128b471315b7ca4c0"
+    },
+    "sku_aliases": {
+      "beforeCount": 2,
+      "afterCount": 2,
+      "equal": true,
+      "beforeHash": "99264c22049d91cdf54f2647c2f6bf9fbf1143484682705d9776c978a7d84e89",
+      "afterHash": "99264c22049d91cdf54f2647c2f6bf9fbf1143484682705d9776c978a7d84e89"
+    },
+    "materials": {
+      "beforeCount": 0,
+      "afterCount": 0,
+      "equal": true,
+      "beforeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "afterHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "material_images": {
+      "beforeCount": 0,
+      "afterCount": 0,
+      "equal": true,
+      "beforeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "afterHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "assistants": {
+      "beforeCount": 5,
+      "afterCount": 5,
+      "equal": true,
+      "beforeHash": "bab2c3a66dd9392104c608c2ca197987eabaad71023c9aa73f82b81e478f4005",
+      "afterHash": "bab2c3a66dd9392104c608c2ca197987eabaad71023c9aa73f82b81e478f4005"
+    }
+  },
+  "recordsTable": "v3_documents (当前数据库无 v3_records，业务记录实际存于 v3_documents)",
+  "businessRecordsExcludingExportMetadata": {
+    "beforeCount": 32,
+    "afterCount": 32,
+    "equal": true,
+    "hash": "7a26814b3619e23899dfae9c54a6e2a8b4ce305a662abd3a6b8f92e6fd19280d",
+    "excludedKinds": [
+      "brief-feishu-link",
+      "brief-sync-recovery",
+      "feishu-export",
+      "feishu-export-preview"
+    ]
+  },
+  "changedRecordKinds": [
+    {
+      "kind": "brief-feishu-link",
+      "beforeCount": 1,
+      "afterCount": 1,
+      "excludedExportMetadata": true
+    },
+    {
+      "kind": "brief-sync-recovery",
+      "beforeCount": 0,
+      "afterCount": 1,
+      "excludedExportMetadata": true
+    },
+    {
+      "kind": "feishu-export",
+      "beforeCount": 4,
+      "afterCount": 6,
+      "excludedExportMetadata": true
+    },
+    {
+      "kind": "feishu-export-preview",
+      "beforeCount": 6,
+      "afterCount": 9,
+      "excludedExportMetadata": true
+    }
+  ],
+  "briefManualContent": {
+    "equal": true,
+    "count": 1,
+    "hash": "98dad9cb2512e7e2a6466bab12deec34eb4fec18691a774eaa3776ef63b54d45"
+  },
+  "universityDates": {
+    "snapshotDateDataEqual": true,
+    "agendaCount": 1058,
+    "anomalyCount": 320,
+    "rulingsEqual": true,
+    "verificationSourceFilesChanged": []
+  },
+  "limits": [
+    "只读取 SQLite 和首页，未调用同步、模型或飞书写入。",
+    "导出回执、预览、链接及恢复元数据按任务范围独立列示，不混同人工 Brief 内容。"
+  ],
+  "dataCheckedAt": "2026-10-22T19:47:23",
+  "readConsistency": "SQLite read-only transactions (BEGIN) on both snapshots"
+}
