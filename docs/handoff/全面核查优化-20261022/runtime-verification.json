@@ -1,0 +1,144 @@
+{
+  "checkedAt": "2026-10-22T18:11:57",
+  "release": "nm-20261022-181059-1625125",
+  "pid": 79681,
+  "requests": {
+    "brand": {
+      "httpStatus": 200,
+      "topLevelKeys": [
+        "source",
+        "readAt",
+        "versions",
+        "stale",
+        "refreshing",
+        "sourceError",
+        "fetchedAt"
+      ],
+      "isArray": false,
+      "stale": false,
+      "refreshing": false,
+      "fetchedAt": "2026-10-22T10:06:58.285Z",
+      "sourceError": "",
+      "versions": [
+        {
+          "table": "tblOasXFkmfbqfSk",
+          "version": "V2026.09.01",
+          "date": "2026-09-01",
+          "itemCount": 85
+        },
+        {
+          "table": "tblH4wqgOdTvJFVo",
+          "version": "V2026.01.31",
+          "date": "2026-01-31",
+          "itemCount": 94
+        },
+        {
+          "table": "tblqyNKK5oT4AXYS",
+          "version": "V2025.07.31",
+          "date": "2025-07-31",
+          "itemCount": 94
+        }
+      ]
+    },
+    "revenue": {
+      "httpStatus": 200,
+      "topLevelKeys": [
+        "period",
+        "timePct",
+        "updatedAt",
+        "source",
+        "groups",
+        "stale",
+        "refreshing",
+        "sourceError",
+        "fetchedAt"
+      ],
+      "isArray": false,
+      "stale": true,
+      "refreshing": true,
+      "fetchedAt": "2026-10-22T09:58:47.335Z",
+      "sourceError": "",
+      "period": "2026 年 10 月",
+      "followup": {
+        "stale": false,
+        "refreshing": false,
+        "sourceError": "",
+        "fetchedAt": "2026-10-22T10:12:05.746Z"
+      }
+    },
+    "reports": {
+      "httpStatus": 200,
+      "topLevelKeys": [
+        "reports",
+        "sources"
+      ],
+      "isArray": false,
+      "reportCount": 154,
+      "sources": [
+        {
+          "role": "daily",
+          "ok": true,
+          "retained": null,
+          "stale": false,
+          "refreshing": false,
+          "fetchedAt": "2026-10-22T10:11:31.960Z",
+          "attemptAt": null,
+          "error": null
+        },
+        {
+          "role": "weekly",
+          "ok": true,
+          "retained": null,
+          "stale": false,
+          "refreshing": false,
+          "fetchedAt": "2026-10-22T10:11:26.354Z",
+          "attemptAt": null,
+          "error": null
+        }
+      ]
+    },
+    "strategy": {
+      "httpStatus": 200,
+      "topLevelKeys": [
+        "month",
+        "window",
+        "timelineSyncedAt",
+        "preparedAt",
+        "summary",
+        "overview",
+        "regions",
+        "opportunities",
+        "appendix",
+        "strategy",
+        "updatedAt",
+        "timelineEvidence",
+        "origin"
+      ],
+      "isArray": false,
+      "month": "2026-11",
+      "timelineEvidence": {
+        "status": "changed",
+        "fingerprint": "223a58bfe0c1319ec8c2cb91f6deb37fbcfa65e4c2681a9daf91f3641fab4799",
+        "syncedAt": "2026-10-22 18:11",
+        "basedOnSyncedAt": "2026-10-20 15:15"
+      },
+      "counts": {
+        "uk": 29,
+        "us": 64,
+        "hk": 13,
+        "au": 32,
+        "ca": 6,
+        "sg": 7,
+        "other": 22
+      },
+      "guessCount": 13,
+      "origin": "已修改"
+    }
+  },
+  "limits": [
+    "仅 GET；未显式刷新、未调用模型、未执行飞书写入。",
+    "数据读取可能触发现有后台缓存更新，仅实际返回状态作为证据。"
+  ],
+  "followupCheckedAt": "2026-10-22T18:12:22",
+  "stderrBytes": 0
+}

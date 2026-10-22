@@ -1,0 +1,35 @@
+{
+  "v3_documents": {
+    "rows": 41,
+    "sha256": "4010baea04aaae4f142ba9562a6a9f67b3856f8cef7847260feb7fe030394760"
+  },
+  "v3_needs": {
+    "rows": 12,
+    "sha256": "3f40b1135da565fa90aaa88aa5f9c28ab2cbb50b8f92804aad48defe9425f6fc"
+  },
+  "promos": {
+    "rows": 24,
+    "sha256": "5bdbd71d49a92b6df328ced4a7435d102572fb9317f7abdbddd4865208d0a578"
+  },
+  "plans": {
+    "rows": 3,
+    "sha256": "3e546ac69bb15b1a8772db502a59ab60de9821b522c3a3c2739b1cd70b356b9f"
+  },
+  "sku_aliases": {
+    "rows": 2,
+    "sha256": "accbf3c95b92469474dc8f767db323b4f42b89d45d26ceb1561b18844114c3e2"
+  },
+  "materials": {
+    "rows": 0,
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "material_images": {
+    "rows": 0,
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "assistants": {
+    "rows": 5,
+    "sha256": "593353d4014bdeab8963a3c456fba85ece3eb0322070ccf1aa17da23053f7593"
+  },
+  "unresolvedOperations": []
+}
