@@ -317,7 +317,7 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `GET /api/v3/briefs/:month`：七节模板，新增 `materials:[{id,name}]` 主表。`audience/timeline/items` 与主表同序、同名，以稳定编号保留改名后的人工内容。新建不再自动从旧需求或价格方案拼物料；旧记录按精确名称迁移，未配对项独立保留。
 - `POST /api/v3/briefs/:month/generate {patch,overwrite?:false}`：只读草稿建议，不写数据库、不调用 Codex 或大模型；读取同月用户策略，补背景/目标和受众表空白；`overwrite:true` 明确重写第一、二节，其余节不变。缺少同月策略返回409。返回 `value,warnings,source`，页面自动保存生成结果；旧preview/confirm接口兼容保留。
 - 新物料 `kind:'framework',blocks:[]`；第四节每个物料一个小节和三列表头「涉及板块/内容/说明/示例」。第五节两列「交付物/规格建议」；第六节固定需求对接/内容确认/设计对接；附件可空。
-- Brief 的 export-preview/export 采用原生XML标题和表格（旧收据和需求策略导出仍兼容Markdown）。界面“同步到飞书”连续调用预检、单次确认及回读；Brief 预检提交 `{baseVersion}`（旧客户端 `{}` 兼容），服务端检查当前版本并固定到路觅策略知识库 / 营销对接Brief（space `7672588453183261977`，node `KiDLwRP8eixgJfkNHvDcGwpQnog`），拒绝前端改目的地。点击创建先flush串行自动保存、回读当前版本，再提交预检；保存失败或版本冲突不导出。完全空白物料占位跳过，未命名且已填内容仍须补名。创建后额外核对 Wiki 空间、父节点、文档身份和标题。需求策略仍使用指定文件夹。按月绑定原文档：首次创建，后续按内容单元更新同一Docx；无变化不写飞书。未知状态只核对原文档，不重建。
+- Brief 的 export-preview/export 采用原生XML标题和表格（旧收据和需求策略导出仍兼容Markdown）。界面“双向同步”连续调用预检、单次确认及回读；Brief 预检提交 `{baseVersion}`（旧客户端 `{}` 兼容），服务端检查当前版本并固定到路觅策略知识库 / 营销对接Brief（space `7672588453183261977`，node `KiDLwRP8eixgJfkNHvDcGwpQnog`），拒绝前端改目的地。点击创建先flush串行自动保存、回读当前版本，再提交预检；保存失败或版本冲突不导出。完全空白物料占位跳过，未命名且已填内容仍须补名。创建后额外核对 Wiki 空间、父节点、文档身份和标题。需求策略仍使用指定文件夹。按月绑定原文档：首次创建，后续按内容单元更新同一Docx；无变化不写飞书。未知状态只核对原文档，不重建。
 - XML回读保留章节、表头/表体、行列、空格子、合并信息和段落换行，忽略自动ID及默认样式；差异进入unknown。附件仅列文件名，不自动上传本机文件。
 
 - `POST /api/v3/briefs/:month/autosave {baseVersion,requestId,patch}`：只写本地。事务内比较版本、校验全稿、写后回读；成功返回 Brief（含version/editedAt/saveRequestId）。重复同一请求回放，不重复增版；同编号不同内容拒绝400，旧基线409 `BRIEF_SAVE_CONFLICT`。旧preview/confirm仍保留兼容。
@@ -327,7 +327,9 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - Brief同步：GET的`feishuDocument`增加`syncedAt/synced/pending`；本地`brief-feishu-link`保存固定文档、上次本地源、实际接受的远端XML、物料ID对应标题和表格行、当前操作。`synced`表示本地源与上次已处理源一致，包括明确保留飞书的选择；不以已有链接推断已同步。附件变化也刷新元数据，显示北京时间。
 - export-preview返回`operationId/previewId/mode:new-only|update|unchanged`。旧唯一成功收据迁移；旧物料缺少ID时仅按唯一名称对应，先同步一次再改名/删除，不按位置猜配。第一篇创建前也拒绝重复物料名。
 - 第四节按物料ID分别处理标题、正文、新增、删除；第二三节按物料行/单元格比较。未涉及云端内容保持原块；增删物料时只重建纯文本表格，保留云端表头、列宽和额外行。遇资源或同名独有行不能安全处理时在写前阻断。
-- 双改返回409 `EXPORT_REMOTE_CONFLICT`与`conflict:{id,document,sections:[{key,label,local,remote}]}`；提交`{resolveConflict:id,resolutions:{[key]:"local"|"remote"}}`逐项明确选择，缺少选择返回400 `EXPORT_CONFLICT_CHOICE_REQUIRED`，不得默认采用本地。选择绑定两端内容/身份/期限；历史保留的飞书人工内容继续受保护，后续改到同一处仍需处理差异。第四、五、六节表格结构稳定时按单元格合并，不同格互不覆盖；无法可靠定位时保留原文档并报告结构或内容冲突。
+- 双改返回409 `EXPORT_REMOTE_CONFLICT`与`conflict:{id,document,sections:[{key,label,local,remote}]}`；提交`{resolveConflict:id,resolutions:{[key]:"local"|"remote"}}`逐项明确选择，缺少选择返回400 `EXPORT_CONFLICT_CHOICE_REQUIRED`，不得默认采用本地。选择绑定两端内容/身份/期限；云端独改回填后成为新的共同基线；此后仅一端修改可继续同步，两端再次同改才要求选择。第四、五、六节表格结构稳定时按单元格合并，不同格互不覆盖；无法可靠定位时保留原文档并报告结构或内容冲突。
+- 双向同步：云端全文核对通过后，标准七节的文字/表格内容回填原 Brief，回填与绑定/收据同事务提交。`feishuSupplement` 按章节保留表外段落、未知行及图片/链接等复杂内容的只读摘要，完整 XML 留在同步快照；不将资源或未知结构强行压成可编辑字段。正文缩进与空行在语义未变时保持原值。每次导入前在 `brief-sync-backup` 保存原本地稿，并使旧 `lastSave` 回执失效；自动保存丢包恢复必须同时匹配 requestId 和 baseVersion+1，不能将云端回填的新版本误认成旧保存成功。
+- 收据与 GET 的 `feishuDocument.localSync` 返回 `status:applied|unchanged|pending`、版本及说明。回填发现另一页面保存了新版时不覆盖新稿，返回 pending 并保留下一次合并所需基线；前端 `acceptSync()` 只在无未保存输入且读取期间无新输入时接纳服务端版本。重复确认按导入后指纹核验，旧确认不能覆盖后来草稿。逐格冲突键含行列号，选择采用飞书只影响该冲突格。
 - 每步预演、紧邻写前重读、先落发送记录、单次写入、全文回读。收据持久化`steps/completed/checkpoint/attempt`，HTTP不返回XML快照。块操作从下往上执行，标题走drive改名。revision_id不是原子CAS，同步期间须暂缓编辑飞书；需求策略仍new-only。
 - `GET .../exports/pending`找回本月未完成操作；GET/reconcile也可用previewId查找。`POST .../exports/:id/reconcile`只读：全量匹配则success；已发送步骤明确匹配写后状态且剩余从未发送则resumable；回读仍像写前不证明未执行，保持unknown。旧收据无逐步证据只做全文核对。
 - `POST .../exports/:id/resume`仅接受resumable且无未决attempt，继续原冻结快照，当前新草稿保留待下次同步；身份、配置和绑定须一致。核对与继续互斥，防旧状态覆盖新的发送标记。首次发送前失败记aborted，可重新预检；不会因失败另建文档。

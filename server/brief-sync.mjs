@@ -6,7 +6,7 @@ import {exactBriefXml,planBriefSync,applyBriefEdit,refreshBriefEdit,captureBrief
 
 const LINKS='brief-feishu-link',PREVIEWS='feishu-export-preview',RECEIPTS='feishu-export';
 const fail=(code,message,status=409,extra={})=>Object.assign(failure(status,message),{code,...extra});
-export function createBriefSync(db,{now=Date.now,run,fixedTarget,...options}={}){
+export function createBriefSync(db,{now=Date.now,run,fixedTarget,project,adopt,...options}={}){
   const creator=createFeishuExporter(db,{now,run,fixedTarget,...options});
   const {cli,whoami}=createFeishuClient(run),active=new Set();
   const pending=month=>listRecords(db,RECEIPTS).find(r=>inMonth(r,month)&&['started','unknown','resumable'].includes(r.status));
@@ -28,8 +28,8 @@ export function createBriefSync(db,{now=Date.now,run,fixedTarget,...options}={})
   function linked(month,document){try{
     const l=candidate(month),unfinished=pending(month);
     if(!l)return unfinished?{pending:publicReceipt(unfinished)}:null;
-    return{...l.document,title:l.localDocument.title,syncedAt:l.syncedAt||getRecord(db,RECEIPTS,l.currentOperationId)?.verifiedAt,pending:unfinished?publicReceipt(unfinished):null,
-      synced:document?exactBriefXml(document.xml)===exactBriefXml(l.localDocument.xml):undefined};
+    return{...l.document,title:l.localDocument.title,localSync:l.localSync,syncedAt:l.syncedAt||getRecord(db,RECEIPTS,l.currentOperationId)?.verifiedAt,pending:unfinished?publicReceipt(unfinished):null,
+      synced:document?l.localSync?.status!=='pending'&&exactBriefXml(document.xml)===exactBriefXml(l.localDocument.xml):undefined};
   }catch(e){return{error:e.message};}}
   const publicReceipt=r=>r?Object.fromEntries(Object.entries(r).filter(([k])=>!['checkpoint','attempt','steps'].includes(k))):r;
   async function remote(link){
@@ -61,8 +61,10 @@ export function createBriefSync(db,{now=Date.now,run,fixedTarget,...options}={})
     if(exactBriefXml(doc.content)!==exactBriefXml(p.expected))throw Error('Updated document differs');
     db.exec('BEGIN IMMEDIATE');
     try{
-      const done={...receipt,status:'success',verifiedAt:new Date(now()).toISOString(),readbackFingerprint:fingerprint(exactBriefXml(doc.content)),revision:doc.revision_id};
-      putRecord(db,LINKS,p.scope.id,{document:p.link.document,target:p.link.target,actor:p.actor,sourceIdentity:p.sourceIdentity,localDocument:p.document,currentOperationId:p.operationId,remoteFingerprint:done.readbackFingerprint,syncedAt:done.verifiedAt,remoteDocument:doc.content,remoteMaterials:captureBriefAnchors(doc.content,p.resultMaterials||p.document.materials||[]),remoteRows:p.resultRows},now());
+      const imported=p.inbound&&adopt?adopt(p):{document:p.document};
+      const baseline=imported.document||p.document;
+      const done={...receipt,...(imported.localSync?{localSync:imported.localSync,localFingerprint:fingerprint(baseline)}:{}),status:'success',verifiedAt:new Date(now()).toISOString(),readbackFingerprint:fingerprint(exactBriefXml(doc.content)),revision:doc.revision_id};
+      putRecord(db,LINKS,p.scope.id,{document:p.link.document,target:p.link.target,actor:p.actor,sourceIdentity:p.sourceIdentity,localDocument:baseline,localSync:imported.localSync,currentOperationId:p.operationId,remoteFingerprint:done.readbackFingerprint,syncedAt:done.verifiedAt,remoteDocument:doc.content,remoteMaterials:captureBriefAnchors(doc.content,p.resultMaterials||baseline.materials||p.document.materials||[]),remoteRows:p.resultRows},now());
       const saved=putRecord(db,RECEIPTS,p.operationId,done,now());if(fingerprint(saved)!==fingerprint(done))throw Error('Receipt mismatch');
       db.exec('COMMIT');return publicReceipt(done);
     }catch(e){db.exec('ROLLBACK');throw e;}
@@ -93,6 +95,7 @@ export function createBriefSync(db,{now=Date.now,run,fixedTarget,...options}={})
       let plan;try{plan=planBriefSync(link.localDocument.xml,document.xml,doc.content,force,{baseMaterials:link.localDocument.materials,materials:document.materials,remoteBase:link.remoteDocument,remoteMaterials:link.remoteMaterials,remoteRows:link.remoteRows});}catch(e){throw fail('EXPORT_STRUCTURE_CHANGED',e.message);}
       const p={scope:{kind,id:String(month),context},previewId:randomUUID(),expiresAt:new Date(now()+600000).toISOString(),mode:'update',link,linkFingerprint:fingerprint(link),document,fingerprint:fingerprint(document),sourceIdentity:config,actor,remoteFingerprint,remoteRevision:doc.revision_id,remoteBefore:doc.content,...plan};
       if(plan.conflicts.length){p.mode='conflict';putRecord(db,PREVIEWS,p.previewId,p,now());throw fail('EXPORT_REMOTE_CONFLICT','以下内容两边都有修改，请逐项选择采用哪份',409,{conflict:{id:p.previewId,document:link.document,sections:plan.conflicts}});}
+      if(project){try{p.inbound=project(p);}catch(e){throw fail('EXPORT_STRUCTURE_CHANGED',e.message);}}
       const operationId=fingerprint(['brief-sync-v2',month,link.document.id,p.fingerprint,remoteFingerprint,link.currentOperationId,plan.edits]);
       // A fresh preflight after a confirmed rejection is a new attempt. Keep
       // the rejected receipt instead of replacing its historical evidence.
@@ -114,7 +117,7 @@ export function createBriefSync(db,{now=Date.now,run,fixedTarget,...options}={})
       const old=getRecord(db,RECEIPTS,p.operationId);
       if(old?.status==='aborted')throw fail('EXPORT_PREVIEW_EXPIRED','这次预检已经中止，请重新点击同步以核对最新内容');
       if(old?.status==='success'){
-        if(candidate(month)?.currentOperationId!==old.operationId||fingerprint(await load(p.scope.context))!==p.fingerprint||exactBriefXml((await remote(p.link)).content)!==exactBriefXml(p.expected))throw fail('EXPORT_SOURCE_CHANGED','这是旧的同步记录，请重新同步当前内容');
+        if(candidate(month)?.currentOperationId!==old.operationId||fingerprint(await load(p.scope.context))!==(old.localFingerprint||p.fingerprint)||exactBriefXml((await remote(p.link)).content)!==exactBriefXml(p.expected))throw fail('EXPORT_SOURCE_CHANGED','这是旧的同步记录，请重新同步当前内容');
         return old;
       }
       unblocked(month);if(Date.parse(p.expiresAt)<=now())throw fail('EXPORT_PREVIEW_EXPIRED','预检已过期，请重新同步');

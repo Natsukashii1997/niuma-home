@@ -195,16 +195,12 @@ export function planBriefSync(base,local,remote,force=[],options={}) {
     }
     const complex=(xml,rs)=>rs.some(row=>row.children.some(c=>/\b(?:rowspan|colspan)="(?!1")/.test(xml.slice(c.start,xml.indexOf('>',c.start)+1))));
     if(complex(base,br)||complex(local,lr)||complex(remote,rr))return false;
-    if(resolutions[key]==='remote')return true;
-    const start=conflicts.length;
     for(let row=0;row<br.length;row++)for(let col=0;col<br[row].children.length;col++){
       const before=slice(base,[br[row].children[col]]),next=slice(local,[lr[row].children[col]]),cell=rr[row].children[col],cloud=slice(remote,[cell]);
-      const value=choose(key,label,before,next,cloud);
-      if(value!==cloud){const node=blocks(value)[0];edits.push(operation(remote,key,label,cell.children,slice(value,node.children)));}
+      const cellKey=`${key}:${row}:${col}`,cellLabel=`${label} · 第${row+1}行第${col+1}列`;
+      const value=choose(cellKey,cellLabel,before,next,cloud);
+      if(value!==cloud){const node=blocks(value)[0];edits.push(operation(remote,cellKey,cellLabel,cell.children,slice(value,node.children)));}
     }
-    // The existing review UI resolves per material/section; present the whole
-    // compared fragment once if several cells in it need an explicit choice.
-    if(conflicts.length>start)Object.assign(conflicts[start],{local:xmlText(slice(local,nextNodes)),remote:xmlText(slice(remote,cloudNodes))});
     return true;
   };
   const {previous,current}=materialsFor(base,local,options);

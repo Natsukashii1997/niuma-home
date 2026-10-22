@@ -57,7 +57,7 @@ test('已同步过的云端详细文案在新增物料后继续保留',async t=>
   await f.sync();assert.equal((xml(f).match(/<h2\b/g)||[]).length,3);await preservedAfterRepeat(f);
 });
 test('删除已保留过云端正文的物料必须先保护，明确保留飞书后仍可继续同步',async t=>{
-  const f=await storedCloud(t,'4');setMaterials(f,[materials[1]]);const before=meaningful(f),updates=f.state.updates;let conflict;
+  const f=await storedCloud(t,'4');f.cloud('4',s=>s.replace(cloudText,cloudText+'再次补写'));setMaterials(f,[materials[1]]);const before=meaningful(f),updates=f.state.updates;let conflict;
   await assert.rejects(f.preview(),e=>{conflict=e.conflict;return e.code==='EXPORT_REMOTE_CONFLICT';});
   assert.ok(conflict.sections.some(s=>s.key==='4:a:delete'));assert.equal(f.state.updates,updates);assert.equal(meaningful(f),before);
   await f.sync({resolveConflict:conflict.id,resolutions:Object.fromEntries(conflict.sections.map(s=>[s.key,'remote']))});
@@ -69,7 +69,7 @@ for(const [section,field,otherColumn,newText] of [['2','audience',2,'本地新�
     await f.sync();assert.ok(xml(f).includes(newText));await preservedAfterRepeat(f);
   });
   test(`第${section}节不能静默替换已同步过的同一云端人工单元格`,async t=>{
-    const f=await storedCloud(t,section);save(f,d=>{d[field][0][1]='本地同格新版本';});const before=meaningful(f),updates=f.state.updates;
+    const f=await storedCloud(t,section);assert.equal(f.service.read(f.month)[field][0][1],cloudText);f.cloud(section,s=>s.replace(cloudText,cloudText+'再次补写'));save(f,d=>{d[field][0][1]='本地同格新版本';});const before=meaningful(f),updates=f.state.updates;
     await assert.rejects(f.preview(),e=>e.code==='EXPORT_REMOTE_CONFLICT');
     assert.equal(f.state.updates,updates);assert.equal(meaningful(f),before);assert.ok(xml(f).includes(cloudText));
   });
@@ -99,7 +99,7 @@ test('选择保留飞书后再次修改同一格，仍须保护该人工内容�
   f.cloud('4',s=>s.replace('最初文本',cloudText));save(f,d=>{d.items[0].blocks[0][1]='本地不同版本';});let conflict;
   await assert.rejects(f.preview(),e=>{conflict=e.conflict;return e.code==='EXPORT_REMOTE_CONFLICT';});
   await f.sync({resolveConflict:conflict.id,resolutions:Object.fromEntries(conflict.sections.map(s=>[s.key,'remote']))});
-  await preservedAfterRepeat(f);const before=meaningful(f),updates=f.state.updates;
+  await preservedAfterRepeat(f);assert.equal(f.service.read(f.month).items[0].blocks[0][1],cloudText);f.cloud('4',s=>s.replace(cloudText,cloudText+'再次补写'));const before=meaningful(f),updates=f.state.updates;
   save(f,d=>{d.items[0].blocks[0][1]='本地未来又改同格';});
   await assert.rejects(f.preview(),e=>e.code==='EXPORT_REMOTE_CONFLICT');
   assert.equal(f.state.updates,updates);assert.equal(meaningful(f),before);
@@ -137,6 +137,9 @@ for(const [name,transform] of [
 ]){
   test(`第五节${name}已同步保留后，本地改格不能沿用旧坐标错写`,async t=>{
     const f=await storedCloud(t,'5',x=>x.cloud('5',transform));
+    // Rows are now imported. Only a subsequent cloud move can invalidate the displayed coordinates.
+    if(name==='同形行重排')f.cloud('5',reorderSpecRows);
+    if(name==='非空首列标签变更')f.cloud('5',s=>s.replace('云端另一个规格名称','再次改名的规格'));
     const before=meaningful(f),updates=f.state.updates;
     save(f,d=>{d.specs[0][1]='仅属于规格A的新内容';});
     await assert.rejects(f.preview(),e=>e.code==='EXPORT_STRUCTURE_CHANGED');
@@ -149,6 +152,7 @@ test('第四节首列为空但文案A/B跨行交换后，不能把A的说明写�
   save(f,d=>{d.items[0].blocks[0][1]='文案A';d.items[0].blocks[1][1]='文案B';});await f.sync();
   f.cloud('4',reorderSpecRows);
   f.save({background:{from:'人工',text:'先保留文案行交换',goals:[]}});await f.sync();
+  assert.equal(f.service.read(f.month).items[0].blocks[0][1],'文案B');f.cloud('4',reorderSpecRows);
   const before=meaningful(f),updates=f.state.updates;
   save(f,d=>{d.items[0].blocks[0][2]='只属于文案A的说明';});
   await assert.rejects(f.preview(),e=>e.code==='EXPORT_STRUCTURE_CHANGED');
@@ -166,7 +170,7 @@ test('本地全空而飞书填入A/B并同步后再换行，须用云端基线�
     return `<tbody>${rows.join('')}</tbody>`;
   }));
   f.save({background:{from:'人工',text:'保存纯云端文案基线',goals:[]}});await f.sync();
-  assert.deepEqual(f.service.read(f.month).items[0].blocks,[['','',''],['','',''],['','','']]);
+  assert.deepEqual(f.service.read(f.month).items[0].blocks,[['','纯云端文案A',''],['','纯云端文案B',''],['','','']]);
   f.cloud('4',reorderSpecRows);
   const before=meaningful(f),updates=f.state.updates;
   save(f,d=>{d.items[0].blocks[0][2]='原第一行文案A的说明';});

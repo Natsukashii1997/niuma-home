@@ -100,10 +100,10 @@ function Brief({ brief, month, setMonth, journal }) {
   const show = (n) => all || sec === n;
   const copy = async (text, label) => { try { await navigator.clipboard.writeText(text); showToast(`已复制${label}`); } catch { showToast("复制失败：浏览器不允许写剪贴板"); } };
   const head = (n, extra) => (
-    <h3><span className="tnum">{BRIEF_NUMBERS[n-1]}、</span>{SECTIONS[n - 1]}{extra}
+    <><h3><span className="tnum">{BRIEF_NUMBERS[n-1]}、</span>{SECTIONS[n - 1]}{extra}
       <span className="spacer" />
       <select className="sec-status" value={draft.status[n] || "todo"} onChange={(e) => edit((d) => { d.status[n] = e.target.value; })} aria-label={`第 ${n} 节状态`}>{STATUS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-    </h3>
+    </h3><CloudSupplement entries={(saved.feishuSupplement||[]).filter(x=>x.section===n)} documentUrl={saved.feishuDocument?.url}/></>
   );
   return (
     <>
@@ -175,6 +175,17 @@ function Brief({ brief, month, setMonth, journal }) {
       {toast}
     </>
   );
+}
+
+function CloudSupplement({entries,documentUrl}) {
+  if(!entries.length)return null;
+  return <details className="small"><summary className="link">飞书补充内容 · {entries.length} 项</summary>
+    <p className="muted">这些段落或富文本保留在飞书原文档中；同步时一起读取，不会被工作台空白覆盖。</p>
+    {entries.map((entry,i)=><div key={i} className="stack-sm"><strong>{entry.label}</strong>{entry.text&&<p style={{whiteSpace:'pre-wrap'}}>{entry.text}</p>}
+      {(entry.links||[]).filter(link=>/^https?:\/\//i.test(link.url)).map((link,j)=><a className="link" key={j} href={link.url} target="_blank" rel="noreferrer">{link.label||link.url}</a>)}
+      {entry.hasResources&&<p className="muted">图片、附件或复杂内容请在原文档查看。</p>}</div>)}
+    {documentUrl&&<a className="link" href={documentUrl} target="_blank" rel="noreferrer">打开飞书原文档</a>}
+  </details>;
 }
 
 const confirm_ = (text) => window.confirm(text);

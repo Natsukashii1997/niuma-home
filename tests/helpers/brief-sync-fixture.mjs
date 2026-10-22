@@ -6,7 +6,7 @@ import {briefSections,replaceBriefSection,applyBriefEdit,locateBriefEdit} from '
 
 export function fixture(dir){
   const db=openDb(dir),documents=new Map(),state={creates:0,updates:0,calls:[],failAfterUpdate:false,parent:WIKI.token,user:'ou_isolated'};
-  const stamp=doc=>{let n=0;return doc.content.replace(/\s+id="[^"]*"/g,'').replace(/<(title|h[1-6]|p|li|table)(?=[\s>])/g,(_,tag)=>`<${tag} id="${tag==='title'?doc.id:`b${doc.revision}_${++n}`}"`);};
+  const stamp=doc=>{let n=0;return doc.content.replace(/\s+id="[^"]*"/g,'').replace(/<(title|h[1-6]|p|li|table)(?=[\s>])/g,(_,tag)=>`<${tag} id="${tag==='title'?doc.id:`b${state.stableIds?'stable':doc.revision}_${++n}`}"`);};
   const run=async(command,args,options)=>{
     assert.equal(command,'lark-cli');assert.deepEqual(args.slice(0,2),['--profile','codex']);assert.deepEqual(args.slice(-2),['--as','user']);
     const arg=k=>args[args.indexOf(k)+1],result=(data,more={})=>({stdout:JSON.stringify({ok:true,identity:'user',...more,data})});
@@ -35,6 +35,7 @@ export function fixture(dir){
       assert.deepEqual(located.startPath.slice(0,-1),located.endPath.slice(0,-1),'docs_ai requires XML siblings, even when native docx block parents match');
       if(state.failBeforeUpdate)throw Error('Unknown response before applying');
       doc.content=applyBriefEdit(remote,{start,end,content:options.input,command:body.command});doc.revision++;doc.title=briefSections(doc.content)[0].label;state.updates++;
+      state.afterUpdate?.();
       if(state.failAfterUpdate===true||state.failAfterUpdate===state.updates)throw Error('Lost response after apply');
       return result({result:'success'});
     }

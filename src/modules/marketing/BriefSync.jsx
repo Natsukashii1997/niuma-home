@@ -21,19 +21,26 @@ export function BriefSync({month,attachments,saver,saving,disabled,onLockChange,
     return()=>{observer.disconnect();if(old)parent.style.setProperty('--brief-toolbar-height',old);else parent.style.removeProperty('--brief-toolbar-height');};
   },[]);
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),[conflict,setConflict]=useState(null),[choices,setChoices]=useState({}),[pending,setPending]=useState(null),[notice,setNotice]=useState(null),[settled,setSettled]=useState(null);
-  const link=saving.saved.feishuDocument,unfinished=pending||(link?.pending?.operationId!==settled&&link?.pending),locked=busy||Boolean(unfinished);
+  const link=saving.saved.feishuDocument,unfinished=pending||(link?.pending?.operationId!==settled&&link?.pending),locked=busy||Boolean(unfinished),localPending=link?.localSync?.status==='pending'?link.localSync:null;
   useEffect(()=>{onLockChange(locked);attachments?.setLocked(locked);},[locked,onLockChange,attachments]);
-  const status=unfinished?(unfinished.status==='resumable'?'部分已同步，可继续':'同步待核对'):busy?'正在同步飞书…':saving.dirty||saving.busy||!link?.synced?(link?.url?'有更新待同步':'尚未生成飞书文档'):'已完成同步';
+  const status=unfinished?(unfinished.status==='resumable'?'部分已同步，可继续':'同步待核对'):busy?'正在双向同步…':localPending?'有云端内容待合并':saving.dirty||saving.busy||!link?.synced?(link?.url?'有更新待同步':'尚未生成飞书文档'):'已完成同步';
   const savedStatus=saving.error?'自动保存失败':saving.busy?'正在保存…':saving.dirty?'等待保存…':'已保存到工作台';
   const done=async receipt=>{
     const back=await apiSend('GET',`${path}/exports/${receipt.operationId}`);
     if(back.status!=='success'||!back.document?.url)throw Error('同步结果还需要核对');
-    setPending(null);setSettled(back.operationId);setConflict(null);await saver.verify();
-    setNotice(back.mode==='unchanged'?'内容已是最新':'已同步到飞书');
+    setPending(null);setSettled(back.operationId);setConflict(null);
+    // The remote receipt is already verified. A local refresh failure must not
+    // mislabel that successful write as unknown or invite a replacement create.
+    try{await saver.acceptSync();}
+    catch(e){setError(`飞书同步结果已确认；${e.message} 请先处理当前草稿，再同步。`);return;}
+    if(back.localSync?.status==='pending'){
+      setError(back.localSync.message||'同步期间工作台有新的填写，已保留。请再次双向同步，核对两边差异。');return;
+    }
+    setNotice(back.localSync?.status==='applied'?'已完成双向同步，飞书补写已同步到工作台':back.mode==='unchanged'?'两边内容已是最新':back.localSync?'已完成双向同步':'已生成飞书文档');
   };
   async function sync(resolution){
     if(busyRef.current||disabled||unfinished)return;
-    busyRef.current=true;attachments?.setLocked(true);setBusy(true);setError('');let preview,submitted=false;
+    busyRef.current=true;attachments?.setLocked(true);setBusy(true);setError('');setNotice(null);let preview,submitted=false;
     try{
       await attachments?.flush();
       const prepared=await saver.verify();
@@ -52,7 +59,7 @@ export function BriefSync({month,attachments,saver,saving,disabled,onLockChange,
     }finally{setBusy(false);busyRef.current=false;attachments?.setLocked(false);}
   }
   async function recover(resume=false){
-    if(busyRef.current)return;busyRef.current=true;setBusy(true);setError('');
+    if(busyRef.current)return;busyRef.current=true;setBusy(true);setError('');setNotice(null);
     const id=unfinished?.operationId||'pending';
     try{
       const r=await apiSend('POST',`${path}/exports/${encodeURIComponent(id)}/${resume?'resume':'reconcile'}`,{});
@@ -68,16 +75,17 @@ export function BriefSync({month,attachments,saver,saving,disabled,onLockChange,
       <div className="brief-sync-status small" role="status"><span className={saving.error?'risk-text':'muted'}>{savedStatus}</span><span>{status}</span>{link?.syncedAt&&<span className="muted">上次同步 {briefSyncTime(link.syncedAt)}（北京时间）</span>}</div>
       <span className="spacer" />
       {link?.url&&<a className="link small" href={link.url} target="_blank" rel="noreferrer">打开飞书文档<PixelIcon name="external"/></a>}
-      <Button variant="primary" disabled={disabled||busy||Boolean(unfinished)} onClick={()=>sync()}><PixelIcon name="external"/>{busy?'同步中…':link?.url?'同步到飞书':'生成飞书文档'}</Button>
+      <Button variant="primary" disabled={disabled||busy||Boolean(unfinished)} onClick={()=>sync()}><PixelIcon name="external"/>{busy?'同步中…':link?.url?'双向同步':'生成飞书文档'}</Button>
     </div>
     {notice&&<SuccessNotice identity={notice} onClose={()=>setNotice(null)}><span>{notice}</span></SuccessNotice>}
     {busy&&<p className="small muted">正在核对并同步，同步期间请暂缓编辑飞书原文档。</p>}
     {error&&<p className="small risk-text" role="alert">{error}</p>}
+    {localPending&&!error&&!busy&&<p className="small warn-text" role="status">{localPending.message||'工作台的新填写已保留，请再次双向同步，核对尚未合并的飞书内容。'}</p>}
     {unfinished&&<div className="write-box is-warn" role="alert"><strong>{unfinished.status==='resumable'?'已核对完成的部分，可以继续':'上次同步需要核对'}</strong><p className="small">{unfinished.verificationNote||'原文档和操作记录已保留。先只读核对，继续时只完成上次提交的内容；之后的新草稿会保留待同步。'}</p><div className="row"><Button disabled={busy} onClick={()=>recover()}>重新读取核对</Button>{unfinished.status==='resumable'&&<Button disabled={busy} variant="primary" onClick={()=>recover(true)}>继续未完成部分</Button>}</div></div>}
-    {conflict&&<div className="write-box brief-conflicts"><strong>以下内容两边都有修改，请逐项选择</strong><p className="small muted">未涉及的物料和飞书补写内容会保留。保留飞书后，本次取舍会被记住。</p>
+    {conflict&&<div className="write-box brief-conflicts"><strong>以下内容两边都有修改，请逐项选择</strong><p className="small muted">未选择前不会覆盖任何一边。只处理选中的差异，其他填写会合并保留；保留飞书的内容也会同步回工作台。</p>
       {conflict.sections.map(s=><div key={s.key} className="brief-conflict-item"><details><summary>{s.label}</summary><div className="brief-conflict-columns"><div><b>工作台</b><pre>{s.local||'（删除或空白）'}</pre></div><div><b>飞书</b><pre>{s.remote||'（空白）'}</pre></div></div></details><div className="row small">{[['local','采用工作台'],['remote','保留飞书']].map(([value,label])=><label key={value}><input type="radio" name={`conflict-${s.key}`} checked={choices[s.key]===value} onChange={()=>setChoices(c=>({...c,[s.key]:value}))}/>{label}</label>)}</div></div>)}
       <div className="row"><Button disabled={busy||conflict.sections.some(s=>!choices[s.key])} onClick={()=>sync({resolveConflict:conflict.id,resolutions:choices})}>按选择同步</Button><Button onClick={()=>setConflict(null)}>暂不同步</Button></div>
     </div>}
-    <p className="small muted brief-sync-destination">位置：<a className="link" href={BRIEF_DESTINATION.url} target="_blank" rel="noreferrer">{BRIEF_DESTINATION.label}</a> · 每月固定一篇，修改后同步到原文档。</p>
+    <p className="small muted brief-sync-destination">位置：<a className="link" href={BRIEF_DESTINATION.url} target="_blank" rel="noreferrer">{BRIEF_DESTINATION.label}</a> · 每月固定一篇。双向同步会读回飞书补写并更新原文档，有冲突先核对。</p>
   </>;
 }

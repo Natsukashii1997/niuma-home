@@ -144,10 +144,11 @@ test('只改物料名只写标题和名称单元格，飞书正文及交付字�
 test('每份物料冲突独立选取，保留飞书决定不会下次反复提示',async t=>{
  const f=setup(t);setMaterials(f,[{id:'a',name:'海报A'},{id:'b',name:'海报B'}]);materialSave(f,d=>{d.items[0].blocks[0][1]='旧A';d.items[1].blocks[0][1]='旧B';});await f.sync();
  f.cloud('4',s=>s.replace('旧A','云端A'));materialSave(f,d=>{d.items[0].blocks[0][1]='本地A';d.items[1].blocks[0][1]='本地B';});let conflict;
- await assert.rejects(f.preview(),e=>{conflict=e.conflict;return e.code==='EXPORT_REMOTE_CONFLICT';});assert.equal(conflict.sections.length,1);assert.equal(conflict.sections[0].key,'4:a:body');
- await f.sync({resolveConflict:conflict.id,resolutions:{'4:a:body':'remote'}});assert.match(f.documents.get('Doc1').content,/云端A/);assert.match(f.documents.get('Doc1').content,/本地B/);
+ await assert.rejects(f.preview(),e=>{conflict=e.conflict;return e.code==='EXPORT_REMOTE_CONFLICT';});assert.equal(conflict.sections.length,1);assert.equal(conflict.sections[0].key,'4:a:body:1:1');
+ await f.sync({resolveConflict:conflict.id,resolutions:{'4:a:body:1:1':'remote'}});assert.match(f.documents.get('Doc1').content,/云端A/);assert.match(f.documents.get('Doc1').content,/本地B/);
  const count=f.state.updates;await f.sync();assert.equal(f.state.updates,count);
- materialSave(f,d=>{d.items[0].blocks[0][1]='新一版A';});await assert.rejects(f.preview(),e=>e.code==='EXPORT_REMOTE_CONFLICT');assert.match(f.documents.get('Doc1').content,/云端A/);
+ assert.equal(f.service.read(f.month).items[0].blocks[0][1],'云端A');
+ f.cloud('4',s=>s.replace('云端A','云端A又更新'));materialSave(f,d=>{d.items[0].blocks[0][1]='新一版A';});await assert.rejects(f.preview(),e=>e.code==='EXPORT_REMOTE_CONFLICT');assert.match(f.documents.get('Doc1').content,/云端A又更新/);
 });
 test('删除有云端补写的物料只提示该物料，可保留为云端独有内容',async t=>{
  const f=setup(t);setMaterials(f,[{id:'a',name:'海报A'},{id:'b',name:'海报B'}]);await f.sync();f.cloud('4',s=>s.replace('</h2>','</h2><p>云端A文案</p>'));

@@ -4,8 +4,9 @@ import { BRIEF_SECTIONS as SECTIONS, BRIEF_HEADS, BRIEF_NUMBERS, BRIEF_WIDTHS, b
 import { generateBriefSuggestions } from './brief-generate.mjs';
 import { BRIEF_DESTINATION } from './brief-destination.mjs';
 import { requireMonth, failure, beijingText } from './v3-common.mjs';
-import { literalMarkdown, markdownTable } from './feishu-export.mjs';
+import { literalMarkdown, markdownTable, validateExportDocument } from './feishu-export.mjs';
 import { createBriefSync } from './brief-sync.mjs';
+import { projectBriefCloud } from './brief-cloud-project.mjs';
 import { attachmentMarkdownLine, createBriefAttachments } from './brief-attachments.mjs';
 
 const editable = ['title', 'background', 'materials', 'audience', 'timeline', 'items', 'specs', 'owners', 'status'];
@@ -100,7 +101,7 @@ export function briefXml(brief, attachments=[]) {
 
 export function createBriefService(db, { now = Date.now, exports: exportOptions = {}, strategy = createUserStrategyService(db) } = {}) {
   const changes = createLocalChanges(db, { now });
-  const exporter = createBriefSync(db, { now, ...exportOptions, fixedTarget: BRIEF_DESTINATION });
+  const exporter = createBriefSync(db, { now, ...exportOptions, fixedTarget: BRIEF_DESTINATION, project:projectCloud, adopt:adoptCloud });
   const previewViews = new Map();
   const attachments = createBriefAttachments(db, { now });
   function linkedView(month,value){
@@ -112,8 +113,8 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
   }
   function read(month) {
     const base = generatedBrief(db, month, strategy.get(month)), stored = getRecord(db, 'brief', month);
-    if (!stored) return {...base,feishuDocument:linkedView(month,base)};
-    let value={ ...merge(base, stored.overrides), version: `v${stored.revision}`, editedAt: stored.editedAt, saveRequestId:stored.lastSave?.id };
+    if (!stored) return {...base,feishuSupplement:[],feishuDocument:linkedView(month,base)};
+    let value={ ...merge(base, stored.overrides), version: `v${stored.revision}`, editedAt: stored.editedAt, saveRequestId:stored.lastSave?.id, feishuSupplement:stored.feishuSupplement||[] };
     // Older saved Briefs predate the material-name master list. Hydrate stable rows in memory.
     if(stored.overrides.materials===undefined){
       const slots=[];
@@ -144,8 +145,40 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
     }).filter(i=>i>=0);
     for(const key of ['materials','audience','timeline','items']) brief[key]=keep.map(i=>brief[key][i]);
     if(new Set(brief.materials.map(m=>m.name)).size!==brief.materials.length)fail('物料名称重复，请给每份物料一个不同的名称');
-    return { title: brief.title, materials:brief.materials.map(({id,name})=>({id,name})), sections: SECTIONS, markdown: briefMarkdown(brief, attachments.list(month).items), format:'xml', xml:briefXml(brief,attachments.list(month).items) };
+    return contentFor(brief,attachments.list(month).items);
   };
+  function contentFor(brief,files) {
+    return {title:brief.title,materials:brief.materials.map(({id,name})=>({id,name})),sections:SECTIONS,markdown:briefMarkdown(brief,files),format:'xml',xml:briefXml(brief,files),briefState:Object.fromEntries(editable.map(k=>[k,structuredClone(brief[k])])),briefVersion:brief.version};
+  }
+  function projectCloud(p) {
+    const original=p.document.briefState;
+    if(!original)return null; // Older frozen recovery requests keep their original scope.
+    const projected=projectBriefCloud({brief:original,xml:p.expected,materials:p.resultMaterials||p.document.materials,rows:p.resultRows,documentUrl:p.link.document.url});
+    validateBrief(projected.brief);
+    const document=contentFor({...projected.brief,version:p.document.briefVersion},attachments.list(p.scope.id).items);
+    validateExportDocument(document);
+    return {...projected,document};
+  }
+  // Called inside the sync receipt transaction after complete cloud readback.
+  // A second page's newer draft is never replaced by the frozen sync result.
+  function adoptCloud(p) {
+    const month=p.scope.id,current=read(month),stored=getRecord(db,'brief',month);
+    if(current.version!==p.document.briefVersion)return {document:p.document,localSync:{status:'pending',version:current.version,message:'飞书已同步，但另一页面刚修改了工作台；新草稿已保留，请再次双向同步合并飞书内容。'}};
+    const next=p.inbound.brief;
+    const fields=editable.filter(k=>JSON.stringify(next[k])!==JSON.stringify(p.document.briefState[k]));
+    const supplement=p.inbound.supplement||[];
+    const changed=fields.length||fingerprint(stored?.feishuSupplement||[])!==fingerprint(supplement);
+    let version=current.version;
+    if(changed){
+      // Keep the exact original local snapshot for explicit conflict decisions
+      // and recovery; never discard the losing draft without an audit copy.
+      putRecord(db,'brief-sync-backup',p.operationId,{month,before:stored,local:p.document.briefState,imported:next,at:new Date(now()).toISOString()},now());
+      const record={...stored,lastSave:undefined,overrides:{...(stored?.overrides||{}),...Object.fromEntries(editable.map(k=>[k,structuredClone(next[k])]))},revision:(stored?.revision||0)+1,editedAt:beijingText(now()),feishuSupplement:supplement};
+      const saved=putRecord(db,'brief',month,record,now());if(fingerprint(record)!==fingerprint(saved))throw Error('飞书回填工作台后回读不一致');
+      version=`v${record.revision}`;
+    }
+    return {document:{...p.inbound.document,briefVersion:version},localSync:{status:changed?'applied':'unchanged',version,importedFields:fields,message:changed?'飞书补写内容已合并回工作台':'两边内容已核对'}};
+  }
   return {
     read,
     attachments,
@@ -163,7 +196,7 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
         if(current.version!==body.baseVersion) throw Object.assign(failure(409,'另一页面已更新这份 Brief。当前草稿已保留，请选择保留哪一份。'),{code:'BRIEF_SAVE_CONFLICT'});
         const next=merge(current,body.patch);validateBrief(next);
         if(editable.every(k=>JSON.stringify(next[k])===JSON.stringify(current[k]))){db.exec('COMMIT');return current;}
-        const record={overrides:Object.fromEntries(editable.map(k=>[k,next[k]])),revision:(stored?.revision||0)+1,editedAt:beijingText(now()),lastSave:{id:body.requestId,signature}};
+        const record={...stored,overrides:Object.fromEntries(editable.map(k=>[k,next[k]])),revision:(stored?.revision||0)+1,editedAt:beijingText(now()),lastSave:{id:body.requestId,signature}};
         const back=putRecord(db,'brief',month,record,now());
         if(fingerprint(back)!==fingerprint(record)) throw failure(500,'自动保存回读不一致');
         const value=read(month);db.exec('COMMIT');return value;
@@ -181,14 +214,14 @@ export function createBriefService(db, { now = Date.now, exports: exportOptions 
       if (body.patch.background !== undefined && (!plain(body.patch.background) || !keys(body.patch.background, ['from', 'text', 'goals']))) fail('背景只接受来源、文字与目标字段');
       const stored = getRecord(db, 'brief', month), base = generatedBrief(db, month,strategy.get(month));
       const sourceFingerprint = fingerprint(base);
-      const value = { overrides: merge(stored && stored.overrides.materials===undefined ? Object.fromEntries(editable.map(k=>[k,read(month)[k]])) : stored?.overrides || {}, body.patch), revision: (stored?.revision || 0) + 1, editedAt: beijingText(now()), sourceFingerprint };
+      const value = { ...stored, lastSave:undefined, overrides: merge(stored && stored.overrides.materials===undefined ? Object.fromEntries(editable.map(k=>[k,read(month)[k]])) : stored?.overrides || {}, body.patch), revision: (stored?.revision || 0) + 1, editedAt: beijingText(now()), sourceFingerprint };
       const validate = candidate => {
         if (fingerprint(generatedBrief(db, month,strategy.get(month))) !== sourceFingerprint) throw failure(409, '同月用户策略已变化，请重新读取 brief 后预览');
         validateBrief(merge(base, candidate.overrides));
       };
       const preview = changes.preview('brief', month, value, { validate });
       for (const [id, entry] of previewViews) if (entry.expires <= now()) previewViews.delete(id);
-      const view = { ...merge(base, value.overrides), version: `v${value.revision}`, editedAt: value.editedAt, feishuDocument:exporter.linked(month) };
+      const view = { ...merge(base, value.overrides), version: `v${value.revision}`, editedAt: value.editedAt, saveRequestId:value.lastSave?.id, feishuSupplement:value.feishuSupplement||[], feishuDocument:exporter.linked(month) };
       previewViews.set(preview.previewId, { view, expires: Date.parse(preview.expiresAt) });
       return { previewId: preview.previewId, expiresAt: preview.expiresAt, before: read(month), value: view };
     },
