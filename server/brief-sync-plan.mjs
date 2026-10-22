@@ -158,13 +158,54 @@ export function applyBriefEdit(xml,edit){
 export function planBriefSync(base,local,remote,force=[],options={}) {
   const b=briefSections(base),l=briefSections(local),r=briefSections(remote),rb=briefSections(options.remoteBase||base),edits=[],conflicts=[];
   const resolutions=Array.isArray(force)?Object.fromEntries(force.map(k=>[k,'local'])):force;
-  const choose=(key,label,before,next,cloud,cloudBefore=before)=>{
+  const choose=(key,label,before,next,cloud)=>{
     if(briefMeaning(next)===briefMeaning(before)||briefMeaning(next)===briefMeaning(cloud))return cloud;
     if(resolutions[key]==='remote')return cloud;
-    if(resolutions[key]!=='local'&&briefMeaning(cloud)!==briefMeaning(cloudBefore)){
-      conflicts.push({key,label,local:xmlText(next),remote:xmlText(cloud)});return cloud;
+    // Cloud-only text remains protected after earlier successful syncs. The
+    // last remote snapshot is not consent to replace it with a stale local cell.
+    if(resolutions[key]!=='local'&&briefMeaning(cloud)!==briefMeaning(before)){
+      if(!conflicts.some(c=>c.key===key))conflicts.push({key,label,local:xmlText(next),remote:xmlText(cloud)});return cloud;
     }
     return next;
+  };
+  // The standard framework/spec/owner tables have stable row and cell slots.
+  // Update only changed cells, leaving cloud paragraphs, links, resources,
+  // formatting and comments on other cells at their original block IDs.
+  const mergeCells=(key,label,beforeNodes,nextNodes,cloudNodes,cloudBeforeNodes)=>{
+    if(briefMeaning(slice(base,beforeNodes))===briefMeaning(slice(local,nextNodes)))return true;
+    const table=nodes=>nodes.filter(n=>n.tag==='table');
+    const [bt,lt,rt,rbt]=[beforeNodes,nextNodes,cloudNodes,cloudBeforeNodes].map(table);
+    if(bt.length!==1||lt.length!==1||rt.length!==1||rbt.length!==1)return false;
+    const others=(xml,nodes)=>nodes.filter(n=>n.tag!=='table').map(n=>slice(xml,[n])).join('');
+    if(exactBriefXml(others(base,beforeNodes))!==exactBriefXml(others(local,nextNodes)))return false;
+    const rows=t=>t.children.filter(n=>['thead','tbody'].includes(n.tag)).flatMap(n=>n.children.filter(c=>c.tag==='tr'));
+    const [br,lr,rr,rbr]=[bt[0],lt[0],rt[0],rbt[0]].map(rows);
+    const shape=rs=>rs.map(row=>row.children.map(c=>c.tag).join(',')).join(';');
+    if(!br.length||shape(br)!==shape(lr)||shape(br)!==shape(rr)||shape(rr)!==shape(rbr))return false;
+    const headers=(xml,t)=>slice(xml,t.children.filter(n=>n.tag==='thead'));
+    if(briefMeaning(headers(base,bt[0]))!==briefMeaning(headers(remote,rt[0])))throw Error(`「${label}」的飞书表头已变化，无法确认列对应；原内容已保留`);
+    for(let row=0;row<br.length;row++){
+      const name=nameOf(slice(base,[br[row].children[0]]));
+      if(name&&name!==nameOf(slice(remote,[rr[row].children[0]])))throw Error(`「${label}」的飞书行名或顺序已变化，无法确认行对应；原内容已保留`);
+    }
+    for(const [xml,prior] of [[base,br],[options.remoteBase||base,rbr]])for(let row=0;row<prior.length;row++)for(let col=0;col<prior[row].children.length;col++){
+      const priorCell=prior[row].children[col],value=slice(xml,[priorCell]),same=cell=>briefMeaning(value)===briefMeaning(slice(remote,[cell]));
+      const nonempty=briefMeaning(value)!==briefMeaning(`<${priorCell.tag}><p></p></${priorCell.tag}>`);
+      if(nonempty&&!same(rr[row].children[col])&&rr.some((r,index)=>index!==row&&same(r.children[col])))throw Error(`「${label}」的飞书内容已跨行移动，无法确认行对应；原内容已保留`);
+    }
+    const complex=(xml,rs)=>rs.some(row=>row.children.some(c=>/\b(?:rowspan|colspan)="(?!1")/.test(xml.slice(c.start,xml.indexOf('>',c.start)+1))));
+    if(complex(base,br)||complex(local,lr)||complex(remote,rr))return false;
+    if(resolutions[key]==='remote')return true;
+    const start=conflicts.length;
+    for(let row=0;row<br.length;row++)for(let col=0;col<br[row].children.length;col++){
+      const before=slice(base,[br[row].children[col]]),next=slice(local,[lr[row].children[col]]),cell=rr[row].children[col],cloud=slice(remote,[cell]);
+      const value=choose(key,label,before,next,cloud);
+      if(value!==cloud){const node=blocks(value)[0];edits.push(operation(remote,key,label,cell.children,slice(value,node.children)));}
+    }
+    // The existing review UI resolves per material/section; present the whole
+    // compared fragment once if several cells in it need an explicit choice.
+    if(conflicts.length>start)Object.assign(conflicts[start],{local:xmlText(slice(local,nextNodes)),remote:xmlText(slice(remote,cloudNodes))});
+    return true;
   };
   const {previous,current}=materialsFor(base,local,options);
   const bg=bindGroups(base,previous).out,lg=bindGroups(local,current).out;
@@ -181,7 +222,7 @@ export function planBriefSync(base,local,remote,force=[],options={}) {
       continue;
     }
     const heading=choose(`4:${m.id}:heading`,`${m.name} · 名称`,old.heading,next.heading,cloud.heading,cloudBefore.heading);
-    const body=choose(`4:${m.id}:body`,`${m.name} · 文案框架`,old.body,next.body,cloud.body,cloudBefore.body);
+    const body=mergeCells(`4:${m.id}:body`,`${m.name} · 文案框架`,old.nodes.slice(1),next.nodes.slice(1),cloud.nodes.slice(1),cloudBefore.nodes.slice(1))?cloud.body:choose(`4:${m.id}:body`,`${m.name} · 文案框架`,old.body,next.body,cloud.body,cloudBefore.body);
     if(heading!==cloud.heading)edits.push(operation(remote,`4:${m.id}:heading`,`${m.name} · 名称`,cloud.nodes.slice(0,1),heading));
     if(body!==cloud.body){
       if(cloud.nodes.length>1)edits.push(operation(remote,`4:${m.id}:body`,`${m.name} · 文案框架`,cloud.nodes.slice(1),body,body?'block_replace':'block_delete'));
@@ -252,6 +293,7 @@ export function planBriefSync(base,local,remote,force=[],options={}) {
     resultRows[i]=rowMeta;
   }
   for(const i of [0,1,5,6,7]){
+    if([5,6].includes(i)&&mergeCells(l[i].key,l[i].label,b[i].nodes,l[i].nodes,r[i].nodes,rb[i].nodes))continue;
     const value=choose(l[i].key,l[i].label,b[i].xml,l[i].xml,r[i].xml,rb[i].xml);
     if(value!==r[i].xml)edits.push(operation(remote,l[i].key,l[i].label,r[i].nodes,value));
   }

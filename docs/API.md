@@ -327,7 +327,7 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - Brief同步：GET的`feishuDocument`增加`syncedAt/synced/pending`；本地`brief-feishu-link`保存固定文档、上次本地源、实际接受的远端XML、物料ID对应标题和表格行、当前操作。`synced`表示本地源与上次已处理源一致，包括明确保留飞书的选择；不以已有链接推断已同步。附件变化也刷新元数据，显示北京时间。
 - export-preview返回`operationId/previewId/mode:new-only|update|unchanged`。旧唯一成功收据迁移；旧物料缺少ID时仅按唯一名称对应，先同步一次再改名/删除，不按位置猜配。第一篇创建前也拒绝重复物料名。
 - 第四节按物料ID分别处理标题、正文、新增、删除；第二三节按物料行/单元格比较。未涉及云端内容保持原块；增删物料时只重建纯文本表格，保留云端表头、列宽和额外行。遇资源或同名独有行不能安全处理时在写前阻断。
-- 双改返回409 `EXPORT_REMOTE_CONFLICT`与`conflict:{id,document,sections:[{key,label,local,remote}]}`；提交`{resolveConflict:id,resolutions:{[key]:"local"|"remote"}}`逐项选择（旧客户端仅resolveConflict兼容全部采用本地）。选择绑定两端内容/身份/期限；双基线记住保留飞书的决定。
+- 双改返回409 `EXPORT_REMOTE_CONFLICT`与`conflict:{id,document,sections:[{key,label,local,remote}]}`；提交`{resolveConflict:id,resolutions:{[key]:"local"|"remote"}}`逐项明确选择，缺少选择返回400 `EXPORT_CONFLICT_CHOICE_REQUIRED`，不得默认采用本地。选择绑定两端内容/身份/期限；历史保留的飞书人工内容继续受保护，后续改到同一处仍需处理差异。第四、五、六节表格结构稳定时按单元格合并，不同格互不覆盖；无法可靠定位时保留原文档并报告结构或内容冲突。
 - 每步预演、紧邻写前重读、先落发送记录、单次写入、全文回读。收据持久化`steps/completed/checkpoint/attempt`，HTTP不返回XML快照。块操作从下往上执行，标题走drive改名。revision_id不是原子CAS，同步期间须暂缓编辑飞书；需求策略仍new-only。
 - `GET .../exports/pending`找回本月未完成操作；GET/reconcile也可用previewId查找。`POST .../exports/:id/reconcile`只读：全量匹配则success；已发送步骤明确匹配写后状态且剩余从未发送则resumable；回读仍像写前不证明未执行，保持unknown。旧收据无逐步证据只做全文核对。
 - `POST .../exports/:id/resume`仅接受resumable且无未决attempt，继续原冻结快照，当前新草稿保留待下次同步；身份、配置和绑定须一致。核对与继续互斥，防旧状态覆盖新的发送标记。首次发送前失败记aborted，可重新预检；不会因失败另建文档。

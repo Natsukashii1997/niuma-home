@@ -1,0 +1,49 @@
+{
+  "originalDocument": {
+    "id": "B9iydf2ocoS67SxyhwtcVlfynPh",
+    "revisionBefore": 24,
+    "revisionAfter": 24,
+    "bodyHashBefore": "07455f225526cd08abec46b86efa032dabbb312a0f6014429f12530c599ae38d",
+    "bodyHashAfter": "07455f225526cd08abec46b86efa032dabbb312a0f6014429f12530c599ae38d"
+  },
+  "temporaryDocument": {
+    "id": "AIypdqIIIovWd6xxxzEcA6Jrngb",
+    "finalRevision": 15,
+    "manualBlocksVerified": 3
+  },
+  "stages": {
+    "background": {
+      "status": "success",
+      "mode": "update"
+    },
+    "other-cell": {
+      "status": "success",
+      "mode": "update"
+    },
+    "rename-add": {
+      "status": "success",
+      "mode": "update"
+    },
+    "repeat": {
+      "status": "success",
+      "mode": "unchanged"
+    },
+    "keep-conflict": {
+      "status": "success",
+      "mode": "unchanged"
+    }
+  },
+  "browserEffectiveWrites": 1,
+  "tests": {
+    "pass": 607,
+    "fail": 0,
+    "skip": 0
+  },
+  "build": "pass",
+  "cleanup": {
+    "ready": true,
+    "parentNodeCountBefore": 6,
+    "parentNodeCountAfter": 6,
+    "originalNodeSetUnchanged": true
+  }
+}

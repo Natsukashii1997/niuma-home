@@ -72,16 +72,16 @@ test('飞书补写文案和资源保留；同章双改阻断并提供精确差�
   const before=f.documents.get('Doc1').content;f.save(bg('背景 B'));await f.sync();assert.match(f.documents.get('Doc1').content,/ImageReference/);assert.equal(f.state.updates,1);
   f.cloud('1',s=>s.replace('背景 B','飞书修改'));f.save(bg('背景 C'));
   let conflict;await assert.rejects(f.preview(),e=>{conflict=e.conflict;return e.code==='EXPORT_REMOTE_CONFLICT';});assert.equal(conflict.sections.length,1);assert.match(conflict.sections[0].remote,/飞书修改/);assert.equal(f.state.updates,1);
-  await f.sync({resolveConflict:conflict.id});assert.match(f.documents.get('Doc1').content,/背景 C/);assert.match(f.documents.get('Doc1').content,/ImageReference/);assert.equal(f.state.creates,1);assert.notEqual(before,f.documents.get('Doc1').content);
+  await f.sync({resolveConflict:conflict.id,resolutions:{'1':'local'}});assert.match(f.documents.get('Doc1').content,/背景 C/);assert.match(f.documents.get('Doc1').content,/ImageReference/);assert.equal(f.state.creates,1);assert.notEqual(before,f.documents.get('Doc1').content);
 });
 test('段落内云端链接也算修改；冲突令牌绑定当前内容与云端版本',async t=>{
   const f=setup(t);f.save(bg('背景 A'));await f.sync();f.cloud('1',s=>s.replace('背景 A','<a href="https://example.com">背景 A</a>'));f.save(bg('背景 B'));
   let conflict;await assert.rejects(f.preview(),e=>{conflict=e.conflict;return e.code==='EXPORT_REMOTE_CONFLICT';});f.cloud('1',s=>s.replace('背景 A','再次修改'));
   await assert.rejects(f.preview({resolveConflict:conflict.id}),e=>e.code==='EXPORT_SOURCE_CHANGED');assert.equal(f.state.updates,0);
 });
-test('飞书在空白尾行插图后，同章改动必须提示冲突，不能当作空行抹除',async t=>{
+test('飞书在空白尾行插图后，只改其他单元格仍保留图片',async t=>{
   const f=setup(t);await f.sync();f.cloud('6',s=>s.replace(/<td><p><\/p><\/td>(?=<\/tr><\/tbody>)/,'<td><image token="OnlyImage" /></td>'));f.save({owners:[['需求提出','某人'],['内容确认',''],['设计对接','']]});
-  await assert.rejects(f.preview(),e=>e.code==='EXPORT_REMOTE_CONFLICT');assert.match(f.documents.get('Doc1').content,/OnlyImage/);assert.equal(f.state.updates,0);
+  await f.sync();assert.match(f.documents.get('Doc1').content,/OnlyImage/);assert.match(f.documents.get('Doc1').content,/某人/);assert.equal(f.state.updates,2);
 });
 test('预检后云端变化、另页同步和旧确认重放不能覆盖最新文档',async t=>{
   const f=setup(t);f.save(bg('背景 A'));const createPreview=await f.preview();await f.confirm(createPreview);f.save(bg('背景 B'));const old=await f.preview();
@@ -107,7 +107,7 @@ test('多章部分完成只读核对后继续未发送部分，同一操作互�
   const f=setup(t);f.save(bg('背景 A'));await f.sync();f.save({...bg('背景 B'),owners:[['需求提出','某人'],['内容确认',''],['设计对接','']]});f.state.failAfterUpdate=1;
   let receipt;await assert.rejects(f.sync(),e=>{receipt=e.receipt;return e.code==='EXPORT_RESULT_UNKNOWN';});f.state.failAfterUpdate=false;
   const check=await f.service.exportReconcile(f.month,receipt.operationId);assert.equal(check.status,'resumable');assert.equal(check.completed,1);await assert.rejects(f.preview(),e=>e.code==='EXPORT_RESULT_UNKNOWN');assert.equal(f.state.updates,1);
-  const attempts=await Promise.allSettled([f.service.exportResume(f.month,receipt.operationId),f.service.exportResume(f.month,receipt.operationId)]);assert.equal(attempts.filter(r=>r.status==='fulfilled').length,1);assert.equal(f.state.updates,2);assert.equal(f.state.creates,1);assert.equal(f.service.exportStatus(f.month,receipt.operationId).status,'success');
+  const attempts=await Promise.allSettled([f.service.exportResume(f.month,receipt.operationId),f.service.exportResume(f.month,receipt.operationId)]);assert.equal(attempts.filter(r=>r.status==='fulfilled').length,1);assert.equal(f.state.updates,3);assert.equal(f.state.creates,1);assert.equal(f.service.exportStatus(f.month,receipt.operationId).status,'success');
 });
 test('旧成功收据迁移绑定忽略布局升级和尾空行，不另建文档',async t=>{
   const f=setup(t);f.save(bg('背景 A'));await f.sync();const link=getRecord(f.db,'brief-feishu-link',f.month),r=getRecord(f.db,'feishu-export',link.currentOperationId),p=getRecord(f.db,'feishu-export-preview',r.previewId);
@@ -147,7 +147,7 @@ test('每份物料冲突独立选取，保留飞书决定不会下次反复提�
  await assert.rejects(f.preview(),e=>{conflict=e.conflict;return e.code==='EXPORT_REMOTE_CONFLICT';});assert.equal(conflict.sections.length,1);assert.equal(conflict.sections[0].key,'4:a:body');
  await f.sync({resolveConflict:conflict.id,resolutions:{'4:a:body':'remote'}});assert.match(f.documents.get('Doc1').content,/云端A/);assert.match(f.documents.get('Doc1').content,/本地B/);
  const count=f.state.updates;await f.sync();assert.equal(f.state.updates,count);
- materialSave(f,d=>{d.items[0].blocks[0][1]='新一版A';});await f.sync();assert.match(f.documents.get('Doc1').content,/新一版A/);
+ materialSave(f,d=>{d.items[0].blocks[0][1]='新一版A';});await assert.rejects(f.preview(),e=>e.code==='EXPORT_REMOTE_CONFLICT');assert.match(f.documents.get('Doc1').content,/云端A/);
 });
 test('删除有云端补写的物料只提示该物料，可保留为云端独有内容',async t=>{
  const f=setup(t);setMaterials(f,[{id:'a',name:'海报A'},{id:'b',name:'海报B'}]);await f.sync();f.cloud('4',s=>s.replace('</h2>','</h2><p>云端A文案</p>'));

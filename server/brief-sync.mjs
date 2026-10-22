@@ -87,10 +87,8 @@ export function createBriefSync(db,{now=Date.now,run,fixedTarget,...options}={})
       if(body.resolveConflict){
         const review=getRecord(db,PREVIEWS,body.resolveConflict);
         if(review?.mode!=='conflict'||!inMonth(review,month)||Date.parse(review.expiresAt)<=now()||review.actor!==actor||review.fingerprint!==fingerprint(document)||review.remoteFingerprint!==remoteFingerprint||review.linkFingerprint!==fingerprint(link))throw fail('EXPORT_SOURCE_CHANGED','工作台或飞书内容已变化，请重新查看差异');
-        if(body.resolutions){
-          if(typeof body.resolutions!=='object'||Array.isArray(body.resolutions)||Object.keys(body.resolutions).length!==review.conflicts.length||review.conflicts.some(c=>!['local','remote'].includes(body.resolutions[c.key])))throw fail('EXPORT_CONFLICT_CHOICE_REQUIRED','请为每一项差异选择采用哪份内容',400);
-          force=body.resolutions;
-        }else force=review.conflicts.map(c=>c.key);
+        if(!body.resolutions||typeof body.resolutions!=='object'||Array.isArray(body.resolutions)||Object.keys(body.resolutions).length!==review.conflicts.length||review.conflicts.some(c=>!['local','remote'].includes(body.resolutions[c.key])))throw fail('EXPORT_CONFLICT_CHOICE_REQUIRED','请为每一项差异选择采用哪份内容',400);
+        force=body.resolutions;
       }
       let plan;try{plan=planBriefSync(link.localDocument.xml,document.xml,doc.content,force,{baseMaterials:link.localDocument.materials,materials:document.materials,remoteBase:link.remoteDocument,remoteMaterials:link.remoteMaterials,remoteRows:link.remoteRows});}catch(e){throw fail('EXPORT_STRUCTURE_CHANGED',e.message);}
       const p={scope:{kind,id:String(month),context},previewId:randomUUID(),expiresAt:new Date(now()+600000).toISOString(),mode:'update',link,linkFingerprint:fingerprint(link),document,fingerprint:fingerprint(document),sourceIdentity:config,actor,remoteFingerprint,remoteRevision:doc.revision_id,remoteBefore:doc.content,...plan};
