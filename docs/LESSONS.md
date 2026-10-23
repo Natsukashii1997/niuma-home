@@ -10,9 +10,9 @@
 
 ## 怎么升级
 
-- 同类坑第 2 次出现：把正确做法写进 AGENTS.md 或 docs/STYLE-GUIDE.md，条目的「升级」改成写到了哪里。
+- 同类坑第 2 次出现：把正确做法写进 AGENTS.md、docs/OPERATIONS.md 或 docs/STYLE-GUIDE.md（一句话硬约束进 AGENTS.md，操作细节进 OPERATIONS.md），条目的「升级」改成写到了哪里。
 - 能用机器判定的：写成测试或脚本（如 `tests/style-rules.test.mjs`、`scripts/verify-release.sh`），条目注明。
-- 条目超过约 30 条时整理一次：已升级、且之后没再犯的，归档到 `docs/history/`。每周五的定时整理提案（见 AGENTS.md「发布」）会提醒漏记、该升级和该归档的条目。
+- 条目超过约 30 条时整理一次：已升级、且之后没再犯的，归档到 `docs/history/`。每周五的定时整理提案（见 docs/OPERATIONS.md「每周整理」）会提醒漏记、该升级和该归档的条目。
 
 ---
 
@@ -94,7 +94,7 @@
 - 根因：`mentor.mjs` 建读取器时没开 `staleWhileRevalidate`，有落库快照也不先回；`reports.mjs` 的缓存不落库。
 - 正确做法：接外部只读来源一律用 `createConfiguredReader(db, kind, …, { staleWhileRevalidate: true })`（或同样的「先回落库快照、超时后台刷新、刷新接口现读」），页面用 `useFreshApi` 或照常读，不让用户等现读。
 - 证据：`docs/handoff/UI与功能审核-20261023/审核记录.md` 第 3、4 条；本轮修复见 CURRENT.md「审核后一次性优化」；`tests/mentor-snapshot.test.mjs`、`tests/reports-persist.test.mjs`。
-- 升级：已写进 AGENTS.md「规则」。
+- 升级：已写进 docs/OPERATIONS.md「写接口与接外部来源」（2026-10-24 从 AGENTS.md「规则」搬来）。
 
 ## L-11 请求来源校验只做在一组接口上，其余接口裸奔（2026-10-23）
 
@@ -102,4 +102,11 @@
 - 根因：校验写在模块里，没有放到入口统一做。
 - 正确做法：横切的保护（来源校验、正文大小、统一错误响应）放 `server/index.mjs` / `server/http.mjs` 对全部 `/api/` 生效，模块里只做自己的业务校验（如配对码）。
 - 证据：审核记录第 1 条；`server/http.mjs` `checkOrigin`、`tests/request-guard.test.mjs`。
-- 升级：已写进 AGENTS.md「规则」。
+- 升级：已写进 docs/OPERATIONS.md「写接口与接外部来源」（2026-10-24 从 AGENTS.md「规则」搬来）。
+
+## L-12 `set -u` 脚本里可选开关裸引用，变量不设就整段退出（2026-10-24）
+
+- 现象：`verify-release.sh` 第 7 步（可选冒烟）写成 `[ -n "$NIUMA_SMOKE" ]`，脚本开头是 `set -uo pipefail`；正常发布不带这个变量，`release-app.sh` 末尾自动回读在 7 项全 ✓ 之后报 `NIUMA_SMOKE: unbound variable` 退出，被判成「完整回读未通过」「发布中止」（服务其实已切到新快照 `nm-20261024-002313-87c6e99`）。每日巡检同样不带变量跑这个脚本，不修就天天报未通过。
+- 根因：只跑了 `bash -n` 和带 `NIUMA_SMOKE=1` 的那条路径，没跑「变量不设」的默认路径；`bash -n` 只查语法，查不出 `set -u` 下的未定义引用。
+- 正确做法：可选开关一律写 `${VAR:-}`；改带 `set -u` 的脚本后，开关设与不设各跑一遍；发布前先在主工作区单独跑一次 `bash scripts/verify-release.sh`。
+- 证据：`~/Library/Application Support/NiumaHome/evidence/全面优化-20261023/release.log`；修复提交号见 CURRENT.md「审核后一次性优化」的「发布」一行。

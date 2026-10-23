@@ -68,7 +68,7 @@ if [ -s "$LOG" ]; then bad "错误日志不为空（$(wc -l < "$LOG" | tr -d ' '
 grep -qF "\"$SHA\"" "$REL"/dist/assets/*.js 2>/dev/null && ok "版本号 $SHA 已写进构建" || bad "构建里找不到版本号 $SHA"
 
 # 7（可选）. 页面冒烟：NIUMA_SMOKE=1 时用本机 Chrome 只读打开全部路由（不点任何写操作），截图到证据目录
-if [ -n "$NIUMA_SMOKE" ]; then
+if [ -n "${NIUMA_SMOKE:-}" ]; then
   SMOKE_OUT="${NIUMA_SMOKE_OUT:-$HOME/Library/Application Support/NiumaHome/evidence/smoke-$NAME}"
   if node "$(dirname "$0")/smoke-pages.mjs" --base "$URL" --out "$SMOKE_OUT"; then ok "页面冒烟通过（$SMOKE_OUT）"; else bad "页面冒烟未通过（$SMOKE_OUT）"; fi
 fi
