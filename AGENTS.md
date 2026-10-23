@@ -69,7 +69,7 @@ fixtures/            验收样例（飞书复制的方案原文）
 - 未实现的按钮用 `<PendingButton task="T0x">`；实现时换成 `<Button>`。
 - 接口路径与数据形状以 [docs/API.md](docs/API.md) 为准；改接口时同步更新文档，并在交接里说明理由。
 - 表结构只在 `server/db.mjs` 的 SCHEMA 里改；已有列不改名、不删。
-- 视觉以 [docs/STYLE-GUIDE.md](docs/STYLE-GUIDE.md)（v2 位图风）为准：新样式先用已有变量和类；图标只用 `PixelIcon`；动效只用 `src/ui/bitmap.jsx` 的按帧组件，不写 CSS transition。不引入 UI 框架、CSS-in-JS 或图标库。新增依赖须在交接里说明理由。
+- 视觉以 [docs/STYLE-GUIDE.md](docs/STYLE-GUIDE.md)（v2 位图风）为准：新样式先用已有变量和类；图标只用 `PixelIcon`；动效只用 `src/ui/bitmap.jsx` 的按帧组件，不写 CSS transition。不引入 UI 框架、CSS-in-JS 或图标库。新增依赖须先改 `scripts/check-style.mjs` 的 `ALLOWED_DEPS` 白名单（否则 `npm test` 不过），并在交接里说明理由。
 - 所有写入真实数据的操作必须「先预览、后确认」。唯一例外：知识库快捷收藏（T12，只新建指向原文的快捷方式）用户 2026-10-18 确认点击即收藏，但仍须只写一次、不自动重试、写后回读、结果不明时锁住核对。
 - 访问飞书一律用本机 `lark-cli`，固定 `--profile codex`（机械邪龙兽应用）：读写资源用该应用的 user 身份，发评论用 bot 身份；不回退其他机器人，不在代码里写 token。
 - 只监听 127.0.0.1。
@@ -87,9 +87,10 @@ fixtures/            验收样例（飞书复制的方案原文）
 
 ## 交接格式
 
-每轮完成后，在 CURRENT.md 顶部新增一节（旧节保留在下面，过长时归档到 `docs/history/`）：
+每轮完成后，在 CURRENT.md 顶部新增一节（旧节保留在下面，过长时归档到 `docs/history/`），骨架照抄 [docs/templates/handoff.md](docs/templates/handoff.md)；`tests/handoff-format.test.mjs` 会检查顶部一节有没有日期、「时间：开工」「测试：」「本轮新坑：」三行，新坑编号在 LESSONS 里要存在：
 
 - 标题写明内容、日期、谁做的、用户是否同意、发布状态
+- 时间：开工 `YYYY-MM-DD HH:mm`（`date '+%F %H:%M'` 记录；早于它的构建、截图、测试结果不算本轮的）
 - 改了哪些文件（一句话说明各自做了什么）
 - 测试：命令与结果（通过 / 失败数）
 - 验证：隔离端口与数据、看了哪些宽度和页面

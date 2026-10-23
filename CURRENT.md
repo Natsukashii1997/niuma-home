@@ -2,6 +2,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 交接模板 + 依赖白名单（审核后第 8 批，2026-10-24，Claude，用户同意分批计划，确认后提交并快进 main；无需发布）
+
+- 时间：开工 `2026-10-24 00:02`（`date '+%F %H:%M'` 记录）。来由：审核发现「开工记时间」连漏两轮是因为没有骨架可抄；依赖检查用黑名单认不出新出的库。
+- 改了哪些文件：`docs/templates/handoff.md`（新，交接一节的骨架，★ 标出三行硬要求）；`tests/handoff-format.test.mjs`（新，检查 CURRENT.md 顶部一节：标题带日期、有「时间：开工」「测试：」「本轮新坑：」，新坑编号在 LESSONS 里存在；另用样本证明能抓缺项、不误报）；`scripts/check-style.mjs`（package.json 依赖改白名单 `ALLOWED_DEPS`：react、react-dom、vite、@vitejs/plugin-react，其余一律报 `deps`；src 里的 import 黑名单保留）；`tests/style-rules.test.mjs`（样本加 dayjs，期望改为两条 `deps`）；`AGENTS.md`（规则：新增依赖先改白名单；交接格式：指向模板与测试，加「时间：开工」一行）。
+- 测试：定向 `node --test`（style-rules、handoff-format、beijing-time）原样结果 `ℹ pass 6` / `ℹ fail 0`；`npm run check:style` 通过；临时副本 package.json 加 `dayjs` 后检查报 `package.json:22 dayjs`、退出码 1；干净克隆（`c3f5bf6` + 本批 5 个文件）全量原样结果 `ℹ pass 723` / `ℹ fail 0`。
+- 验证：无界面改动；本目录 `npm test` 仍被另一会话 32 个未提交文件（含删除 `styles-v3.css`）挂住，不在本目录跑全量（L-07）。
+- 截图：无。
+- 发布与回读：未发布、无需发布。
+- 与授权不一致：W-1 原建议另加一条 LESSONS，本批没加——另一会话正在工作树里加 L-10、L-11，再加会撞编号；模板 + 测试已覆盖根因。`decisions.md` 已记 W-1 采纳。
+- 本轮新坑：无。
+
 ## 每周整理升级：自证未改、提案落盘、记否决（审核后第 7 批，2026-10-23，Claude，用户同意分批计划；仓库内只改 AGENTS 一行与本节，确认后提交并快进 main；定时任务已更新并试跑）
 
 - 时间：开工 `2026-10-23 23:47`（`date` 记录）。来由：审核发现每周整理「只读」只靠提示词、提案只留在会话里（违反「报告与验收」第 1 条）、被否决的条目会每周重提。

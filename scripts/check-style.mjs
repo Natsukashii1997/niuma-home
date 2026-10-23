@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 const RULES = {
   motion: '动效只用 src/ui/bitmap.jsx 的按帧组件，不写 CSS transition / animation / @keyframes（AGENTS.md 规则、STYLE-GUIDE 动效）',
   library: '不引入图标库、UI 框架、CSS-in-JS 或动画库，图标只用 PixelIcon（AGENTS.md 规则）',
+  deps: '依赖只许 react、react-dom、vite、@vitejs/plugin-react；要加依赖，先改 scripts/check-style.mjs 的 ALLOWED_DEPS，并在交接里说明理由（AGENTS.md 规则）',
   listen: '只监听 127.0.0.1（AGENTS.md 规则）',
   time: '页面上的时间用 src/constants.js 的 beijingTime 按北京时间显示，不直接截取 ISO 字符串（LESSONS L-03）；截取的确实是北京时间字符串时，在行内注释写「北京时间」',
 };
@@ -20,6 +21,8 @@ const LISTEN_OK = /\.listen\(\s*[\w.]+\s*,\s*['"]127\.0\.0\.1['"]/;
 const BANNED = ['lucide', 'lucide-react', 'react-icons', '@heroicons', '@fortawesome', '@mui', 'antd', '@ant-design', '@chakra-ui', '@radix-ui',
   'bootstrap', 'react-bootstrap', 'tailwindcss', 'styled-components', '@emotion', 'framer-motion', 'motion', 'gsap'];
 const banned = name => BANNED.some(b => name === b || name.startsWith(`${b}/`));
+// package.json 用白名单：黑名单认不出新出的库，白名单逼着每个新依赖都过一遍交接
+const ALLOWED_DEPS = ['react', 'react-dom', 'vite', '@vitejs/plugin-react'];
 
 function files(dir, exts) {
   if (!fs.existsSync(dir)) return [];
@@ -44,7 +47,7 @@ export function checkStyle(root) {
   if (fs.existsSync(pkgFile)) {
     const text = fs.readFileSync(pkgFile, 'utf8'), pkg = JSON.parse(text), lines = text.split('\n');
     const at = key => lines.findIndex(line => line.includes(`"${key}":`)) + 1;
-    for (const name of Object.keys({ ...pkg.dependencies, ...pkg.devDependencies }).filter(banned)) hit(pkgFile, at(name), 'library', name);
+    for (const name of Object.keys({ ...pkg.dependencies, ...pkg.devDependencies }).filter(n => !ALLOWED_DEPS.includes(n))) hit(pkgFile, at(name), 'deps', name);
     // 开发页 / 预览页须带 --host 127.0.0.1；vite build 不监听端口
     for (const [name, command] of Object.entries(pkg.scripts ?? {}))
       if (/\bvite\b(?!\s+build)/.test(command) && !/--host\s+127\.0\.0\.1\b/.test(command)) hit(pkgFile, at(name), 'listen', `${name}: ${command}`);

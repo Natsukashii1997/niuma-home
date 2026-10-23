@@ -40,11 +40,12 @@ test('每条规则都能抓到违规样本，合规写法不误报', t => {
   ].join('\n'));
   put('package.json', JSON.stringify({
     scripts: { dev: 'vite --host 127.0.0.1', preview: 'vite preview', build: 'vite build' },
-    dependencies: { react: '19.2.0', 'styled-components': '6.1.0' },
+    dependencies: { react: '19.2.0', 'styled-components': '6.1.0', dayjs: '1.11.0' },
   }, null, 2));
   assert.deepEqual(checkStyle(root).map(v => `${v.file}:${v.line} ${v.kind}`).sort(), [
+    'package.json:10 deps',
     'package.json:4 listen',
-    'package.json:9 library',
+    'package.json:9 deps',
     'server/index.mjs:2 listen',
     'src/a.css:3 motion',
     'src/a.css:4 motion',
