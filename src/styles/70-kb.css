@@ -69,7 +69,7 @@
 
 /* 知识库书架（用户 2026-10-23 从三轮设计稿选定「V4 书架精修」，稿件 docs/design-drafts/kb/v4-2.html，本地不入库）：
    一整个书柜两格并排；书一律等高，书名竖排、按实测字宽断列；类型只看书尾（白 = 文档，网点 = 表格，墨 = 多维表，虚线框 = 文件），
-   近 3 天更新的书顶上夹橙色书签；子目录是档案盒，点开成敞口盒；根目录没归类的书横放在柜顶「待上架」。
+   近 3 天更新的书在书尾上方裹一道橙色腰封；子目录是档案盒，点开成敞口盒；根目录没归类的书横放在柜顶「待上架」。
    抽出、开盒用 bitmap.jsx 的按帧动效，不写 CSS transition。 */
 .kbs { position: relative; min-width: 0; }
 .kbs-meter { position: absolute; left: -9999px; top: 0; visibility: hidden; writing-mode: vertical-rl; white-space: pre; font-family: var(--font-sans); font-size: 13px; line-height: 17px; letter-spacing: 1px; }
@@ -93,7 +93,7 @@
 .kbs-lg.t-bitable::after { background: var(--text); }
 .kbs-lg.t-file { border-style: dashed; }
 .kbs-lg.is-box { width: 14px; border-top-width: 5px; }
-.kbs-lg.is-new::before { content: ""; position: absolute; right: 0; top: -6px; width: 4px; height: 8px; background: var(--signal); }
+.kbs-lg.is-new::before { content: ""; position: absolute; left: 0; right: 0; bottom: 7px; height: 3px; background: var(--signal); }
 .kbs-piles { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--s5) 48px; min-height: 28px; }
 .kbs-pile { display: flex; flex-direction: column; align-items: flex-start; }
 .kbs-pile > .kbs-slot + .kbs-slot { margin-top: -2px; }
@@ -104,8 +104,9 @@
 .kbs-flat.t-sheet .tl { background-image: var(--dither-ink-2); }
 .kbs-flat.t-bitable .tl { background: var(--text); }
 .kbs-flat.t-file { border-style: dashed; }
+/* 近 3 天更新：橙色腰封，不出书的轮廓（用户 2026-10-24 从样稿 docs/design-drafts/kb/recent-mark.html 选定 A）：竖放的书是书尾上方一道横带，横放的书是书尾前一道竖带 */
 .kbs-rb { position: absolute; z-index: 1; background: var(--signal); }
-.kbs-flat .kbs-rb { right: -10px; top: 4px; width: 8px; height: 6px; }
+.kbs-flat .kbs-rb { right: 18px; top: 0; bottom: 0; width: 5px; }
 
 /* 书柜：外框 2px，柜顶和柜底 6px，层板 4px，中间一块 2px 隔板 */
 .kbs-cab { display: grid; grid-template-columns: repeat(var(--bays), minmax(0, 1fr)); border: 2px solid var(--text); border-top-width: 6px; border-bottom-width: 6px; background: var(--panel); }
@@ -151,7 +152,7 @@
 .kbs-bk.t-sheet .kbs-tail { background-image: var(--dither-ink-2); }
 .kbs-bk.t-bitable .kbs-tail { background: var(--text); }
 .kbs-bk.t-file { border-style: dashed; }
-.kbs-bk .kbs-rb { top: -8px; right: 5px; width: 6px; height: 16px; }
+.kbs-bk .kbs-rb { left: 0; right: 0; bottom: 20px; height: 5px; }
 /* 档案盒：盒盖 7px，书名加框成标签窗，盒尾写篇数 */
 .kbs-bk.is-box::before { left: 0; right: 0; top: 0; height: 7px; }
 .kbs-bk.is-box .kbs-tx { font-weight: 600; outline: 1px solid var(--text); outline-offset: 4px; }

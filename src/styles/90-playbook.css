@@ -1,9 +1,4 @@
 /* ---------- 策略 · 打法库（docs/打法库/） ---------- */
-/* 决策障碍筛选：A / B / C 每组一行，组名一列对齐；「全部障碍」在第一行最前（用户 2026-10-23） */
-.filter-bar.plb-bars { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); align-items: center; gap: var(--s2) var(--s3); }
-.plb-all { grid-column: 1; grid-row: 1; }
-.plb-bar-name { grid-column: 2; }
-.plb-bar-group { grid-column: 3; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .plb-cat-head .plb-cat-count { margin-left: auto; }
 .plb-grid { display: grid; gap: var(--s4); }
 .plb-tile { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; padding: var(--s4); background: var(--panel); border: var(--border) solid var(--line); color: var(--text); text-decoration: none; }

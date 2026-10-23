@@ -2,6 +2,26 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 书架「近 3 天更新」标记改腰封 + 促销打法去掉障碍筛选（2026-10-24，Claude，用户从三稿里选定 A 腰封、确认障碍筛选整块删除；已提交（本提交含本节，提交号见 git log）、未发布）
+
+- 时间：开工 `2026-10-24 00:46`（`date '+%F %H:%M'` 记录）。来由：用户看到页面后提的两条新需求——书架近 3 天更新的橙色顶签想换一种版式（先看三稿再选），促销打法页圈了整个障碍筛选块要删；与当晚发布无关。
+- 改了哪些文件：
+  - 样稿：`docs/design-drafts/kb/recent-mark.html`（新；静态页直接引用 `src/styles.css`、`src/styles/index.css`，书脊 DOM 照 `KbShelf.jsx`、断列用同一个 `kb-shelf.js`，并排放现状顶签 + A 腰封 / B 星头 / C NEW 字牌，各带名字与一句取舍；由仓库根目录的只读静态服务 5297 打开）。
+  - 书架：`src/styles/70-kb.css`（只改三条标记规则：`.kbs-bk .kbs-rb` 从顶签 6×16 凸出书顶 8px 改成书尾上方一道 5px 横带 `left/right: 0; bottom: 20px`；`.kbs-flat .kbs-rb` 从右侧小块改成书尾前一道 5px 竖带；图例 `.kbs-lg.is-new::before` 同步改底部横带；加一行注释写明来源是样稿 A）；`src/modules/kb/KbShelf.jsx` 头部注释一句；`docs/STYLE-GUIDE.md` 书架条目一句。JSX 结构、`isRecent` 判断、其余书架样式不动。
+  - 促销打法：`src/modules/user/PlaybookView.jsx`（删「全部障碍」+ A/B/C 三行的筛选块、`bar` 状态、`count`、`rank` 排序，以及随之无用的 `Fragment`、`BARRIERS` 导入；计数文案去掉「主要解决该障碍的排在前面」；空状态文案改「换一个阶段或关键词试试」；注释记录决定）；`src/styles/90-playbook.css`（删 `.filter-bar.plb-bars`、`.plb-all`、`.plb-bar-name`、`.plb-bar-group` 四条与注释）。阶段分段、搜索框、「47 / 47 种」、卡片与详情页不动；`playbook.js` 的 `BARRIERS` 与卡片里的 `barriers` 数据保留（用户策略页还在用）。
+- 测试：改完书架后 `npm test` 原样结果 `ℹ tests 737` / `ℹ pass 737` / `ℹ fail 0`，`npm run check:style` 退出码 0（`npm-test-1.log`、`check-style-1.log`）；两处都改完复跑 `npm test` 原样结果 `ℹ tests 737` / `ℹ pass 737` / `ℹ fail 0`，`npm run check:style` 退出码 0，`git diff --check` 通过（`npm-test-2.log`、`check-style-2.log`）；`npm run build` 两次通过。日志在 `~/Library/Application Support/NiumaHome/evidence/书架更新标记与障碍筛选-20261024/`。本目录含另一会话未提交的 `.claude/launch.json` 与 `CURRENT.md` 一行改动（L-07），与这两页无关，提交时不带。
+- 验证：
+  - 样稿：`.claude/launch.json` 的 `kb-drafts`（python http.server 5297，只监听 127.0.0.1）已由另一会话起着、指向本目录，直接复用；内置浏览器 1440 宽实看，无头 Chrome 2 倍截图；用户看图后选 A。
+  - 改前图取自正式 5280 只读打开（页面冒烟此前已确认这两条路由只有 GET）；改后在隔离 5290 实看：正式库 `sqlite3 .backup` 副本加 `images/` 放会话 scratch 目录（`WORKDESK_DATA_DIR`），假 `lark-cli` 前置 PATH，`npm run build` 后 `npm start`（日志 `server-5290.log`）。
+  - 书架逐项对照（L-01）：第 01 层 7 本新书、柜顶横放的「路觅教育公司级新人知识库：内容架构」、第 05 层「月度物料文档」（网点书尾上方）三处标记位置变了；待上架橙色数字、层名与篇数、书尾类型、档案盒、侧栏选中橙条、状态栏的颜色与强调全部一致。
+  - 促销打法：障碍块整块消失，页面上 `.plb-bars` / `.plb-all` / `plb-bar-*` 为 0 个，筛选条只剩阶段 + 搜索 + 计数；页内点测（DOM 触发）：全部 47 / 47，续费 33，新签 38，搜「早鸟」7，搜不到时显示空状态新文案，清空回到 47；分类内顺序与改前一致（限时折扣、直降 / 立减、支付立减）。
+  - 未做：没有在正式 5280 看改后效果（未发布）；本轮不涉及飞书写入。
+- 截图：`docs/handoff/书架更新标记与障碍筛选-20261024/`（不入库）11 张：`样稿-四方案-1440.png`、`样稿-现状顶签.png`、`样稿-A腰封.png`、`样稿-B星头.png`、`样稿-C-NEW字牌.png`、`改前-正式5280-kb书架-1440.png`、`改后-隔离5290-kb书架-1440.png`、`改前-正式5280-kb书架-第01层放大.png`、`改后-隔离5290-kb书架-第01层放大.png`、`改前-正式5280-促销打法-1440.png`、`改后-隔离5290-促销打法-1440.png`。
+- 提交（用户同意，`2026-10-24 01:06`）：只含本轮 7 个文件——`src/styles/70-kb.css`、`src/modules/kb/KbShelf.jsx`、`docs/STYLE-GUIDE.md`、`src/modules/user/PlaybookView.jsx`、`src/styles/90-playbook.css`、`docs/design-drafts/kb/recent-mark.html`、`CURRENT.md`（本节）。`CURRENT.md` 用 `git show HEAD:CURRENT.md` 加本节生成 blob 写暂存区，另一会话在该文件未提交的一行改动与 `.claude/launch.json` 都没带（L-07）；暂存前每个文件看过 `git diff -U0` 分块。
+- 发布与回读：未发布。
+- 与授权不一致 / 遗留 / 范围外发现：① 内置浏览器的 `preview_start` 因本目录已有 5 个其他会话的开发服务而起不了，样稿复用已在跑的 5297，隔离 5290 用 Bash 后台 `npm start` 起的，看完手动停；② `src/modules/user/UserPage.jsx` 促销打法页签说明仍写「月度用户策略按决策障碍从这里选打法」，说的是用户策略页的用法，不是筛选，未动；③ 书架图例「近 3 天更新」的小样随标记一起改成底部横带（标记的一部分）。
+- 本轮新坑：无。
+
 ## AGENTS 瘦身：入口 + 导航表，操作细节搬 docs/OPERATIONS.md（2026-10-24，Claude，用户同意方案 A 与推荐项；确认后提交并快进 main；无需发布）
 
 - 时间：开工 `2026-10-24 00:12`（`date '+%F %H:%M'` 记录）。来由：AGENTS.md 一天长到 114 行，走上分享警告的「说明书越写越长」老路；按「入口只放怎么开始和做什么事之前读哪份，知识按需读」瘦身，只搬家、不删规矩。

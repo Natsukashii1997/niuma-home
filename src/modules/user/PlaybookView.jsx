@@ -1,12 +1,13 @@
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { PixelIcon } from "../../ui/bitmap.jsx";
 import { href } from "../../router.js";
 import { Card, Placeholder, Segmented } from "../../ui/components.jsx";
-import { BARRIERS, CATEGORIES, MECHANISMS } from "./playbook.js";
+import { CATEGORIES, MECHANISMS } from "./playbook.js";
 import { PLAYS } from "./playbook-cards.js";
 
 // 打法库：卡片正文是 docs/打法库/P*.md，结构与分类见 docs/打法库/README.md。
-// 卡片第二行的障碍、阶段是隐藏标签，只用于筛选和排序，页面上不展示（用户 2026-10-20）。
+// 卡片第二行的障碍、阶段是隐藏标签，页面上不展示（用户 2026-10-20）；阶段只用于筛选。障碍筛选块（「全部障碍」+ A/B/C 三行）
+// 2026-10-24 按用户要求整块去掉，障碍标签不再参与筛选和排序，数据保留给用户策略页用。
 const README = Object.values(import.meta.glob("../../../docs/打法库/README.md", { query: "?raw", import: "default", eager: true }))[0] || "";
 // 列表底部只放库说明里的「价格秩序」「呈现手段」两节
 const NOTES = README.split(/\n(?=## )/).filter((s) => /^## [三四]、/.test(s)).map((s) => {
@@ -16,8 +17,6 @@ const NOTES = README.split(/\n(?=## )/).filter((s) => /^## [三四]、/.test(s))
 
 const STAGES = [["", "全部阶段"], ["新签", "新签"], ["续费", "续费"]];
 const mechName = (m) => MECHANISMS[m]?.[0] || m;
-// 选中某个障碍时：主障碍排前（0），辅障碍其次（1），不相关为 -1；没选障碍时都算 0。
-const rank = (p, bar) => (!bar || p.barriers.main.includes(bar) ? 0 : p.barriers.sub.includes(bar) ? 1 : -1);
 // 列表卡只放定位的开头：第一句太短（如「早鸟价是一笔双向交易。」）时带上第二句
 const leadOf = (s) => { const [a = s, b = ""] = s.match(/[^。]+。/g) || []; return a.length < 24 ? a + b : a; };
 
@@ -30,40 +29,22 @@ export function Playbook({ route }) {
 }
 
 function PlayList() {
-  const [bar, setBar] = useState("");
   const [stage, setStage] = useState("");
   const [q, setQ] = useState("");
   const kw = q.trim().toLowerCase();
   // 「通用」同时属于新签和续费
-  const base = PLAYS.filter((p) => (!stage || p.stage === stage || p.stage === "通用")
+  const list = PLAYS.filter((p) => (!stage || p.stage === stage || p.stage === "通用")
     && (!kw || `${p.name}${p.lead}${p.mechs.map(mechName).join("")}`.toLowerCase().includes(kw)));
-  const count = (b) => base.filter((p) => rank(p, b) >= 0).length;
-  const list = base.filter((p) => rank(p, bar) >= 0);
   return (
     <>
-      <div className="filter-bar plb-bars">
-        <button type="button" className={`chip plb-all${!bar ? " is-on" : ""}`} onClick={() => setBar("")}>全部障碍 <span className="tnum">{base.length}</span></button>
-        {BARRIERS.map(([group, groupName, items], i) => (
-          <Fragment key={group}>
-            <span className="label plb-bar-name" style={{ gridRow: i + 1 }}>{group} {groupName}</span>
-            <span className="plb-bar-group" style={{ gridRow: i + 1 }}>
-              {items.map(([code, name]) => (
-                <button key={code} type="button" className={`chip${bar === code ? " is-on" : ""}`} aria-pressed={bar === code} onClick={() => setBar(bar === code ? "" : code)}>
-                  {code} {name} <span className="tnum">{count(code)}</span>
-                </button>
-              ))}
-            </span>
-          </Fragment>
-        ))}
-      </div>
       <div className="filter-bar">
         <Segmented options={STAGES} value={stage} onChange={setStage} />
         <label className="search-box"><PixelIcon name="search" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜打法或心理机制，如 早鸟 / 损失厌恶" aria-label="搜索打法" />{q && <button type="button" className="icon-btn" onClick={() => setQ("")} aria-label="清除搜索"><PixelIcon name="close" /></button>}</label>
-        <span className="small muted">{list.length} / {PLAYS.length} 种{bar ? "，主要解决该障碍的排在前面" : ""}</span>
+        <span className="small muted">{list.length} / {PLAYS.length} 种</span>
       </div>
-      {!list.length && <Placeholder icon="search" title="没有符合条件的打法">换一个障碍、阶段或关键词试试。</Placeholder>}
+      {!list.length && <Placeholder icon="search" title="没有符合条件的打法">换一个阶段或关键词试试。</Placeholder>}
       {CATEGORIES.map(([name, question], i) => {
-        const items = list.filter((p) => p.cat === i + 1).sort((a, b) => rank(a, bar) - rank(b, bar));
+        const items = list.filter((p) => p.cat === i + 1);
         if (!items.length) return null;
         return (
           <section key={name}>

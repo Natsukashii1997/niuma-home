@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>知识库书架 · 「近 3 天更新」标记样稿</title>
+<!-- 样稿（2026-10-24）：只比较「近 3 天更新」的标记画法。样式直接引用项目的 src/styles.css 与 src/styles/index.css，
+     书脊 DOM 与 src/modules/kb/KbShelf.jsx 一致，竖排断列用同一个 src/modules/kb/kb-shelf.js。
+     由仓库根目录的只读静态服务打开（.claude/launch.json 的 kb-drafts：python http.server 5297，只监听 127.0.0.1）。 -->
+<link rel="stylesheet" href="/src/styles.css">
+<link rel="stylesheet" href="/src/styles/index.css">
+<link rel="stylesheet" href="/src/styles-layout.css">
+<style>
+/* 样稿页自己的排版：四块两行并排。每块只覆盖标记本身（书上的 .kbs-rb、横放书的 .kbs-flat .kbs-rb、图例的 .kbs-lg.is-new），
+   其余书架样式原样来自 src/styles/70-kb.css；不写 transition / animation。 */
+.rm-page { max-width: 1376px; margin: 0 auto; padding: 28px 32px 56px; }
+.rm-page > header { margin-bottom: var(--s5); }
+.rm-page > header h1 { font-size: 22px; }
+.rm-page > header p { margin: var(--s1) 0 0; font-size: 12px; color: var(--muted); }
+.rm-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s5); }
+.rm-panel { min-width: 0; background: var(--panel); border: 2px solid var(--line); }
+.rm-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s2); padding: var(--s3) var(--s4); border-bottom: 1px solid var(--line); }
+.rm-head h2 { font-size: 14px; }
+.rm-head .rm-what { flex: 1 1 100%; margin: 0; font-size: 12px; color: var(--text-2); }
+.rm-head .rm-why { flex: 1 1 100%; margin: 0; font-size: 12px; color: var(--muted); }
+.rm-head .rm-why b { color: var(--text); font-weight: 600; }
+.rm-body { padding: var(--s3) var(--s3) var(--s4); }
+.rm-body .kbs-top { padding: var(--s3) var(--s4) 0; }
+.rm-body .kbs-top-head { margin-bottom: var(--s4); }
+.rm-body .kbs-act { visibility: visible; } /* 样稿里把「改名 / 本页正文」常显，对照截图 */
+.rm-body .kbs-meta { visibility: hidden; }
+
+/* A 腰封：书尾上方一道橙色横带，裹在书脊上，不出书的轮廓 */
+.rm-panel[data-v="a"] .kbs-bk .kbs-rb { top: auto; right: 0; bottom: 20px; left: 0; width: auto; height: 5px; }
+.rm-panel[data-v="a"] .kbs-flat .kbs-rb { right: 18px; top: 0; bottom: 0; width: 5px; height: auto; }
+.rm-panel[data-v="a"] .kbs-lg.is-new::before { top: auto; right: 0; bottom: 7px; left: 0; width: auto; height: 3px; }
+
+/* B 星头：书头那道线换成一颗橙色像素星（PixelIcon star，7×7 按 14px 渲染），压在书名之上 */
+.rm-panel[data-v="b"] .kbs-bk .kbs-rb { top: 0; right: auto; left: 50%; width: 14px; height: 14px; margin-left: -7px; background: none; color: var(--signal); }
+.rm-panel[data-v="b"] .kbs-rb .pixel-icon { display: block; vertical-align: 0; } /* 星按块排，和书名之间留 2px，不压字 */
+.rm-panel[data-v="b"] .kbs-bk.is-new::before { display: none; }
+.rm-panel[data-v="b"] .kbs-flat .kbs-rb { right: -20px; top: 50%; width: 14px; height: 14px; margin-top: -7px; background: none; color: var(--signal); }
+.rm-panel[data-v="b"] .kbs-lg.is-new::before { display: none; }
+.rm-panel[data-v="b"] .kbs-lg.is-new .pixel-icon { position: absolute; left: 50%; top: -9px; margin-left: -7px; color: var(--signal); }
+
+/* C NEW 字牌：书顶夹一块与书脊同宽的橙色小牌，白字 NEW（Geist Mono 9px） */
+.rm-panel[data-v="c"] .kbs-bk .kbs-rb { top: -10px; right: -2px; left: -2px; width: auto; height: 12px; font: 600 9px/12px var(--font-mono); letter-spacing: .08em; color: var(--panel); text-align: center; }
+.rm-panel[data-v="c"] .kbs-flat .kbs-rb { right: -36px; top: 50%; width: 30px; height: 12px; margin-top: -6px; font: 600 9px/12px var(--font-mono); letter-spacing: .08em; color: var(--panel); text-align: center; }
+.rm-panel[data-v="c"] .kbs-rb::after { content: "NEW"; }
+.rm-panel[data-v="c"] .kbs-lg.is-new::before { top: -8px; right: -5px; left: -5px; width: auto; height: 8px; }
+</style>
+</head>
+<body>
+<main class="rm-page">
+  <header>
+    <h1>知识库书架 · 「近 3 天更新」标记样稿</h1>
+    <p>只比较标记本身，书脊、书尾类型、层板、悬停抽出都和线上一致。书名照线上那一层，更新日期是样例，今天按 2026-10-24 算；带标记的是 10-22 之后更新的书。四块各带自己的图例。</p>
+  </header>
+  <section class="rm-grid" id="grid"></section>
+</main>
+<template id="panel">
+  <article class="rm-panel">
+    <div class="rm-head"><span class="label"></span><h2></h2><p class="rm-what"></p><p class="rm-why"></p></div>
+    <div class="rm-body">
+      <div class="kbs">
+        <div class="kbs-top">
+          <div class="kbs-top-head">
+            <div>
+              <div class="kbs-top-title"><strong>待上架</strong><span class="kbs-count">2</span><span class="kbs-unit">本</span></div>
+              <p class="kbs-hint">收藏时归类不明确的书先放柜顶，拖到任一层即上架（在飞书里移动）</p>
+            </div>
+            <div class="kbs-legend" aria-hidden="true">
+              <span class="kbs-legend-label">图例</span>
+              <span><i class="kbs-lg"></i>文档</span><span><i class="kbs-lg t-sheet"></i>表格</span><span><i class="kbs-lg t-bitable"></i>多维表</span>
+              <span><i class="kbs-lg t-file"></i>文件</span><span><i class="kbs-lg is-box"></i>档案盒</span><span><i class="kbs-lg is-new"></i>近 3 天更新</span>
+            </div>
+          </div>
+          <div class="kbs-piles"><div class="kbs-pile"></div></div>
+        </div>
+        <div class="kbs-cab" style="--bays: 1">
+          <section class="kbs-bay is-last">
+            <header class="kbs-bay-head"><span class="kbs-no">01</span><strong>新人必读</strong><span class="kbs-meta">9 篇 · 更新 10-24</span><span class="kbs-act"><button type="button"></button><a href="#" onclick="return false"></a></span></header>
+            <div class="kbs-rows"></div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </article>
+</template>
+<script type="module">
+import { breakColumns, isRecent, packRows, spineName, spineText, splitNumber, tokenize, wordStarts } from "/src/modules/kb/kb-shelf.js";
+import { ICONS7 } from "/src/ui/icons7.js";
+
+// ---- 网点变量：照 src/ui/bitmap.jsx 的 installBitmap（样稿不跑 React） ----
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+const tile = (t, c) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" shape-rendering="crispEdges" fill="${c}">${BAYER.map((v, i) => (v < t ? `<rect x="${(i % 4) * 2}" y="${Math.floor(i / 4) * 2}" width="2" height="2"/>` : "")).join("")}</svg>`)}")`;
+const rootStyle = document.documentElement.style;
+[2, 4, 6, 8].forEach((t, i) => rootStyle.setProperty(`--dither-${i + 1}`, tile(t, "#C9CCD3")));
+[4, 8, 12, 16].forEach((t, i) => rootStyle.setProperty(`--dither-ink-${i + 1}`, tile(t, "#0D0E10")));
+[4, 8].forEach((t, i) => rootStyle.setProperty(`--dither-signal-${i + 1}`, tile(t, "#FF4F1F")));
+
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const icon = (name) => `<svg class="pixel-icon" width="14" height="14" viewBox="0 0 7 7" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true">${ICONS7[name].flatMap((r, y) => [...r].map((c, x) => (c === "#" ? `<rect x="${x}" y="${y}" width="1" height="1"/>` : ""))).join("")}</svg>`;
+
+// ---- 竖排实测 + 断列：同 KbShelf.jsx 的 measure / spine（只有普通字重） ----
+const H = 188, COLW = 17, PADX = 7, TOP = 16, TAIL = 26, GAP = 8, cap = H - 4 - TOP - TAIL;
+const ADV = new Map();
+const meter = Object.assign(document.createElement("div"), { className: "kbs-meter" });
+meter.setAttribute("aria-hidden", "true"); document.body.append(meter);
+const tcy = (s) => Object.assign(document.createElement("span"), { className: "kbs-tcy", textContent: s });
+const nodes = (t) => (t.k === "tcy" ? [tcy(t.t)] : t.k === "up" ? [...t.t].map(tcy) : [t.t]);
+const key = (t) => `${t.k}\u0000${t.t}`;
+function measure(toks) {
+  const need = [...new Map(toks.filter((t) => !ADV.has(key(t))).map((t) => [key(t), t])).values()];
+  if (!need.length) return;
+  const spans = need.map((t) => { const s = document.createElement("span"); s.append(...nodes(t)); return s; });
+  meter.replaceChildren(...spans.flatMap((s) => [s, document.createElement("br")]));
+  spans.forEach((s, i) => ADV.set(key(need[i]), s.getBoundingClientRect().height));
+  meter.replaceChildren();
+}
+const tokHTML = (t) => (t.k === "tcy" ? `<span class="kbs-tcy">${esc(t.t)}</span>` : t.k === "up" ? [...t.t].map((ch) => `<span class="kbs-tcy">${esc(ch)}</span>`).join("") : esc(t.t));
+function spine(label) {
+  const toks = tokenize(spineText(label) || "未命名");
+  measure(toks);
+  const { segs, more } = breakColumns(toks, toks.map((t) => ADV.get(key(t)) || 14), cap, wordStarts(toks.map((t) => t.t).join("")));
+  const cols = segs.map(([i, j]) => toks.slice(i, j));
+  return { w: 4 + PADX * 2 + cols.length * COLW, html: `<span class="kbs-tx" style="height:${cap}px">${cols.map((col, x) => `<span class="kbs-c">${col.map(tokHTML).join("")}${more && x === cols.length - 1 ? "…" : ""}</span>`).join("")}</span>` };
+}
+
+// ---- 样例：线上那一层的书名，日期是样例 ----
+const TODAY = "2026-10-24";
+const BOOKS = [
+  ["文档 1 · 认识路觅", "docx", "2026-10-23"],
+  ["文档 2 · 留学教育与用户", "docx", "2026-10-23"],
+  ["文档 3 · 业务线与产品", "docx", "2026-10-15"],
+  ["文档 4 · 业务链路与协作", "docx", "2026-10-22"],
+  ["文档 5 · 规则与红线", "docx", "2026-10-08"],
+  ["文档 6 · 新人入职与办事指南", "docx", "2026-10-24"],
+  ["术语与简称表", "docx", "2026-10-23"],
+  ["新人培训安排表", "sheet", "2026-10-23"],
+  ["常用系统账号", "bitable", "2026-10-22"],
+];
+const FLATS = [["12｜机械邪龙兽已确认 FAQ", "docx", "2026-10-12"], ["路觅教育信息储存中心操作指南", "docx", "2026-10-23"]];
+const tailOf = (type) => ({ sheet: " t-sheet", bitable: " t-bitable", file: " t-file" })[type] || "";
+const VARIANTS = [
+  ["now", "现状", "顶签", "书顶夹一张橙色书签（6×16px），凸出书顶 8px。", "<b>取舍</b>：像真书签、辨识度高；但凸出书顶，一排里标记多时顶边参差。"],
+  ["a", "方案 A", "腰封", "书尾上方一道橙色横带（5px）裹在书脊上，不出书的轮廓；横放的书是书尾前一道竖带。", "<b>取舍</b>：书顶齐、整排干净，一眼能数出几本新书；橙色面积略大，标记多时整排下方连成一条橙线，离类型书尾也近。"],
+  ["b", "方案 B", "星头", "书头那道线换成一颗橙色像素星（PixelIcon star，14px），压在书名之上，不出轮廓。", "<b>取舍</b>：最贴位图风、面积最小、最安静；远看不如色块醒目，并且和书头线互斥（新书没有书头线）。"],
+  ["c", "方案 C", "NEW 字牌", "书顶夹一块和书脊同宽的橙色小牌（12px），白字 NEW；横放的书在书尾外侧挂一块。", "<b>取舍</b>：不看图例也能读懂；凸出最高（10px）、字只有 9px，标记多时一排 NEW 显得吵。"],
+];
+
+const star = (v) => (v === "b" ? icon("star") : "");
+const book = (v, [name, type, updated]) => {
+  const s = spine(name), fresh = isRecent(updated, TODAY);
+  return { w: s.w, html: `<span class="kbs-slot" data-slot="book"><a class="kbs-bk${tailOf(type)}${fresh ? " is-new" : ""}" style="height:${H}px;width:${s.w}px" href="#" onclick="return false" aria-label="${esc(name)}">${s.html}<span class="kbs-tail"></span>${fresh ? `<i class="kbs-rb">${star(v)}</i>` : ""}</a></span>` };
+};
+const flat = (v, [name, type, updated]) => {
+  const [no, nm] = splitNumber(spineName(name)), fresh = isRecent(updated, TODAY);
+  return `<span class="kbs-slot" data-slot="flat"><a class="kbs-flat${tailOf(type)}" href="#" onclick="return false"><span class="hd">${esc(no)}</span><span class="nm">${esc(nm)}</span><span class="tl"></span>${fresh ? `<i class="kbs-rb">${star(v)}</i>` : ""}</a></span>`;
+};
+
+await document.fonts.ready;
+const grid = document.getElementById("grid"), tpl = document.getElementById("panel");
+for (const [v, tag, name, what, why] of VARIANTS) {
+  const el = tpl.content.firstElementChild.cloneNode(true);
+  el.dataset.v = v;
+  el.querySelector(".label").textContent = tag;
+  el.querySelector("h2").textContent = name;
+  el.querySelector(".rm-what").textContent = what;
+  el.querySelector(".rm-why").innerHTML = why;
+  if (v === "b") el.querySelector(".kbs-lg.is-new").insertAdjacentHTML("beforeend", icon("star"));
+  el.querySelector(".kbs-act button").innerHTML = `${icon("edit")}改名`;
+  el.querySelector(".kbs-act a").innerHTML = `${icon("external")}本页正文`;
+  el.querySelector(".kbs-pile").innerHTML = FLATS.map((f) => flat(v, f)).join("");
+  grid.append(el);
+  const books = BOOKS.map((b) => book(v, b));
+  // 按柜宽装行（同 KbShelf 的 packRows）；窗口变宽变窄就重排
+  const pack = () => {
+    const rows = packRows(books.map((b) => b.w), el.querySelector(".kbs-cab").clientWidth - 4 - 48, GAP);
+    el.querySelector(".kbs-rows").innerHTML = rows.map((row) => `<div class="kbs-row">${row.map(({ i }) => books[i].html).join("")}</div>`).join("");
+  };
+  pack();
+  new ResizeObserver(pack).observe(el);
+}
+document.body.dataset.ready = "1";
+</script>
+</body>
+</html>
