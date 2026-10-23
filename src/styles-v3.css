@@ -1119,18 +1119,8 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .kb-recent-main { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .kb-recent-title { overflow-wrap: anywhere; }
 
-/* 知识库画布 · 档案夹（用户 2026-10-18 选定 B，草稿 docs/design/kb-canvas/）：
-   网点底画布；最上面一条散卡；每组是一个文件夹（黑色页签写组名、夹子里露出两篇、底部篇数和更新）；
-   打开后在这一行下面拉出整行抽屉，箭头指向被打开的文件夹。拖动目标用信号橙虚线 + 浅网点；不写 CSS transition。 */
+/* 知识库画布：工具栏一行，下面状态条（同步中、写入中、结果不明锁住、最近一条结果），再下面是书柜 */
 .kbf { display: flex; flex-direction: column; gap: var(--s3); min-width: 0; }
-.kbf-bar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); padding: var(--s2) var(--s3); border: var(--border) solid var(--line); background: var(--panel); }
-.kbf-chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: var(--border) solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
-.kbf-chip:hover { border-color: var(--text); }
-.kbf-chip i { font-style: normal; font-family: var(--font-pixel); color: var(--muted); }
-.kbf-chip.is-on { border-color: var(--text); background: var(--text); color: var(--panel); }
-.kbf-chip.is-on i { color: var(--signal); }
-.kbf-chip.is-add { border-style: dashed; color: var(--muted); }
-.kbf-search { width: 220px; }
 .kbf-badge { margin-left: 4px; padding: 0 5px; background: var(--signal); color: var(--panel); font-family: var(--font-pixel); }
 .kbf-syncing { max-width: 360px; }
 .kbf-note { display: flex; align-items: center; gap: var(--s2); margin: 0; padding: var(--s2) var(--s3); border: 1px solid var(--line); border-left: 4px solid var(--line); background: var(--panel); font-size: 12px; }
@@ -1138,84 +1128,134 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .kbf-note.is-warn { border-left-color: var(--warn); }
 .kbf-note.is-error { border-left-color: var(--risk); }
 .kbf-note .icon-btn { margin-left: auto; }
-.kbf-board { display: flex; flex-direction: column; gap: 56px; min-height: max(720px, calc(100vh - 300px)); padding: 48px; border: var(--border) solid var(--line); background-color: var(--panel-soft); background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1.3px); background-size: 16px 16px; }
-.kbf-empty { margin: 0; font-size: 12px; color: var(--muted); }
 .kbc-collect-tip { display: flex; align-items: flex-start; gap: var(--s2); margin: 0 0 var(--s2); }
-
-/* 散卡区：顶部一行标题（名称 · 篇数 · 说明 · 右侧提示），下面是卡片 */
-.kbf-loose { display: flex; flex-direction: column; gap: var(--s4); padding: var(--s4) var(--s5) var(--s5); border: 2px dashed var(--line); background: var(--panel); }
-.kbf-loose-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s2) var(--s3); }
-.kbf-loose-head strong { font-size: 14px; }
-.kbf-loose-head i { font-style: normal; font-family: var(--font-pixel); font-size: 15px; color: var(--signal); }
-.kbf-loose.is-empty { padding: var(--s3) var(--s5); }
-.kbf-loose-cards { display: flex; flex-wrap: wrap; gap: var(--s4); }
-.kbf-loose-hint { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; font-size: 11px; color: var(--muted); }
-.kbf-loose.is-over, .kbf-drawer.is-over, .kbf-folder.is-over .kbf-case, .kbf-card.is-folder.is-over { border-style: dashed; border-color: var(--signal); background-image: var(--dither-1); }
-
-/* 文件夹 */
-.kbf-grid { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 64px 40px; align-content: start; }
-.kbf-folder { position: relative; min-width: 0; padding-top: 30px; }
-.kbf-folder.is-dim { opacity: 0.4; }
-.kbf-tab { position: absolute; left: 0; top: 0; z-index: 2; display: flex; align-items: center; max-width: 88%; height: 32px; background: var(--text); color: var(--panel); cursor: grab; }
-.kbf-tab-name { display: flex; align-items: center; gap: var(--s2); min-width: 0; height: 100%; padding: 0 10px 0 12px; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
-.kbf-tab-name strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.kbf-tab-name i { font-style: normal; font-family: var(--font-pixel); font-size: 14px; color: var(--signal); }
-.kbf-tab-edit { display: grid; place-items: center; width: 28px; height: 100%; border: 0; border-left: 1px solid var(--text-2); background: none; color: var(--panel); cursor: pointer; visibility: hidden; }
-.kbf-folder:hover .kbf-tab-edit, .kbf-tab-edit:focus-visible { visibility: visible; }
-.kbf-folder.is-open .kbf-tab, .kbf-folder.is-new .kbf-tab { background: var(--signal); }
-.kbf-folder.is-open .kbf-tab-name i { color: var(--panel); }
-.kbf-folder.is-over-tab .kbf-tab { outline: 2px dashed var(--signal); outline-offset: 3px; }
-.kbf-case { position: relative; display: block; width: 100%; height: 240px; padding: 0; overflow: hidden; border: var(--border) solid var(--text); background: var(--panel); font: inherit; color: var(--text); text-align: left; cursor: pointer; }
-.kbf-case:hover { background-image: var(--dither-1); }
-.kbf-folder.is-open .kbf-case { border-color: var(--signal); }
-.kbf-peek { position: absolute; left: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; height: 104px; padding: 10px 12px; border: var(--border) solid var(--line); background: var(--panel); }
-.kbf-peek strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; font-weight: 600; line-height: 1.45; }
-.kbf-peek.is-folder { border-left: 4px solid var(--text); }
-.kbf-peek.is-back strong { -webkit-line-clamp: 1; } /* 叠在后面的纸只露出 40px，标题第二行会被前一张盖住，只留一行（用户 2026-10-23） */
-.kbf-peek.is-empty { border-style: dashed; }
-.kbf-peek.is-empty strong { font-weight: 400; color: var(--muted); }
-.kbf-lip { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 12px; border-top: var(--border) solid var(--text); background-color: var(--panel-soft); background-image: var(--dither-1); font-family: var(--font-mono); font-size: 11px; color: var(--text-2); }
-.kbf-folder.is-open .kbf-lip { border-top-color: var(--signal); }
 .kbf-name-input { min-width: 180px; height: 32px; padding: 0 var(--s2); border: 2px solid var(--signal); background: var(--panel); color: var(--text); font: inherit; font-size: 13px; }
 .kbf-name-input:focus { outline: none; }
+.kbs-tools { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2) var(--s3); }
+.kbs-search { flex: 0 1 260px; min-width: 160px; }
+.btn.kbs-new { border-style: dashed; border-color: var(--line); background: var(--panel); color: var(--muted); }
+.kbs-sync-at { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+@media (max-width: 1200px) { .kbs-sync-at { display: none; } } /* 窄了只留按钮，悬停按钮看同步时间 */
 
-/* 抽屉：整行，箭头指向被打开的文件夹 */
-.kbf-drawer { grid-column: 1 / -1; position: relative; margin-top: -36px; padding: var(--s4); border: var(--border) solid var(--signal); background: var(--panel); }
-.kbf-drawer::before { content: ""; position: absolute; top: -12px; left: var(--notch); width: 20px; height: 20px; border-left: var(--border) solid var(--signal); border-top: var(--border) solid var(--signal); background: var(--panel); transform: rotate(45deg); }
-.kbf-drawer-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2) var(--s3); margin-bottom: var(--s3); }
-.kbf-drawer-head h3 { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin: 0; font-size: 16px; }
-.kbf-drawer-head h3 span { display: inline-flex; align-items: center; gap: 4px; }
-.kbf-drawer-head > .small { flex: 1 1 220px; min-width: 0; }
-.kbf-drawer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--s3); }
+/* 知识库书架（用户 2026-10-23 从三轮设计稿选定「V4 书架精修」，稿件 docs/design-drafts/kb/v4-2.html，本地不入库）：
+   一整个书柜两格并排；书一律等高，书名竖排、按实测字宽断列；类型只看书尾（白 = 文档，网点 = 表格，墨 = 多维表，虚线框 = 文件），
+   近 3 天更新的书顶上夹橙色书签；子目录是档案盒，点开成敞口盒；根目录没归类的书横放在柜顶「待上架」。
+   抽出、开盒用 bitmap.jsx 的按帧动效，不写 CSS transition。 */
+.kbs { position: relative; min-width: 0; }
+.kbs-meter { position: absolute; left: -9999px; top: 0; visibility: hidden; writing-mode: vertical-rl; white-space: pre; font-family: var(--font-sans); font-size: 13px; line-height: 17px; letter-spacing: 1px; }
+.kbs-meter .is-bold { font-weight: 600; }
+.kbs-tcy { text-combine-upright: all; }
 
-/* 横版卡 */
-.kbf-card { position: relative; height: 92px; min-width: 0; border: var(--border) solid var(--line); background: var(--panel); cursor: grab; }
-.kbf-loose .kbf-card { width: 260px; height: 84px; }
-.kbf-card:hover { border-color: var(--text); }
-.kbf-card-hit { display: flex; width: 100%; height: 100%; padding: 0; border: 0; background: none; color: var(--text); font: inherit; text-align: left; text-decoration: none; cursor: inherit; }
-.kbf-cover { position: relative; flex: none; display: flex; align-items: flex-end; width: 64px; padding: 4px; border-right: var(--border) solid var(--line); background-color: var(--panel-soft); }
-.kbf-loose .kbf-cover { width: 56px; }
-.kbf-cover b { padding: 1px 3px; background: var(--panel); font-family: var(--font-pixel); font-weight: 400; font-size: 13px; line-height: 1.1; }
-.kbf-sc { position: absolute; left: 4px; top: 4px; padding: 0 3px; background: var(--text); color: var(--panel); font-style: normal; font-family: var(--font-mono); font-size: 9px; }
-.kbf-card.is-folder { border-left: 6px solid var(--text); }
-.kbf-card.is-folder .kbf-cover { background: var(--text); }
-.kbf-card.is-folder .kbf-cover b { background: var(--signal); color: var(--panel); }
-.kbf-card-body { display: flex; flex-direction: column; flex: 1; min-width: 0; padding: 8px 10px; }
-.kbf-card-body strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font-size: 12px; font-weight: 600; line-height: 1.45; }
-.kbf-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-top: auto; font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
-.kbf-card.is-dim { opacity: 0.35; }
-.kbf-card.is-dragging { opacity: 0.4; }
-.kbf-card.is-busy { border-style: dashed; border-color: var(--signal); }
-.kbf-sync { color: var(--signal); }
+/* 柜顶：待上架，横放成摞 */
+.kbs-top { padding: 0 var(--s5); }
+.kbs-top-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s1) var(--s3); margin-bottom: var(--s5); }
+.kbs-top-head strong { font-size: 14px; }
+.kbs-count { font-family: var(--font-pixel); font-size: 16px; color: var(--signal); }
+.kbs-hint { font-size: 12px; color: var(--muted); }
+.kbs-legend { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s1) var(--s4); margin-left: auto; font-size: 11px; color: var(--muted); }
+.kbs-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.kbs-lg { position: relative; display: inline-block; width: 10px; height: 20px; border: 2px solid var(--text); background: var(--panel); }
+.kbs-lg::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px; border-top: 2px solid var(--text); }
+.kbs-lg.t-sheet::after { background-image: var(--dither-ink-2); }
+.kbs-lg.t-bitable::after { background: var(--text); }
+.kbs-lg.t-file { border-style: dashed; }
+.kbs-lg.is-box { width: 14px; border-top-width: 5px; }
+.kbs-lg.is-new::before { content: ""; position: absolute; right: 0; top: -6px; width: 4px; height: 8px; background: var(--signal); }
+.kbs-piles { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--s4) var(--s6); min-height: 28px; }
+.kbs-pile { display: flex; flex-direction: column; align-items: flex-start; }
+.kbs-pile > .kbs-slot + .kbs-slot { margin-top: -2px; }
+.kbs-flat { position: relative; display: flex; align-items: stretch; height: 30px; border: 2px solid var(--text); background: var(--panel); color: var(--text); font-size: 12px; }
+.kbs-flat .hd { flex: none; display: grid; place-items: center; width: 30px; border-right: 2px solid var(--text); font-family: var(--font-mono); font-size: 11px; color: var(--text-2); }
+.kbs-flat .nm { max-width: 280px; padding: 0 var(--s3); overflow: hidden; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
+.kbs-flat .tl { flex: none; width: 14px; border-left: 2px solid var(--text); }
+.kbs-flat.t-sheet .tl { background-image: var(--dither-ink-2); }
+.kbs-flat.t-bitable .tl { background: var(--text); }
+.kbs-flat.t-file { border-style: dashed; }
+.kbs-rb { position: absolute; z-index: 1; background: var(--signal); }
+.kbs-flat .kbs-rb { right: -10px; top: 4px; width: 8px; height: 6px; }
+
+/* 书柜：外框 2px，柜顶和柜底 6px，层板 4px，中间一块 2px 隔板 */
+.kbs-cab { display: grid; grid-template-columns: repeat(var(--bays), minmax(0, 1fr)); border: 2px solid var(--text); border-top-width: 6px; border-bottom-width: 6px; background: var(--panel); }
+.kbs-bay { display: flex; flex-direction: column; min-width: 0; border-bottom: 4px solid var(--text); }
+.kbs-bay.is-left { border-right: 2px solid var(--text); }
+.kbs-bay.is-last { border-bottom: 0; }
+.kbs-bay.is-filler { background-image: var(--dither-1); }
+.kbs-bay-head { position: relative; display: flex; align-items: baseline; gap: var(--s2); padding: var(--s4) var(--s5) 0; }
+.kbs-no { flex: none; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.kbs-bay-head strong { min-width: 0; overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.kbs-meta { flex: none; margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.kbs-rows { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; }
+.kbs-row { display: flex; align-items: flex-end; gap: var(--s2); padding: var(--s5) var(--s5) 0; }
+.kbs-row + .kbs-row { border-top: 4px solid var(--text); }
+.kbs-empty { padding-bottom: var(--s2); font-size: 12px; color: var(--muted); }
+
+/* 系列：同名前缀 / 后缀的书靠紧，上方细括号写系列名 */
+.kbs-grp { position: relative; flex: none; display: flex; align-items: flex-end; gap: 4px; padding-top: 30px; }
+.kbs-grp::before { content: ""; position: absolute; left: 0; right: 0; top: 18px; height: 5px; border: 1px solid var(--muted); border-bottom: 0; }
+.kbs-grp-cap { position: absolute; left: 0; top: 0; overflow: hidden; font-size: 11px; line-height: 14px; color: var(--text-2); text-overflow: ellipsis; white-space: nowrap; }
+
+/* 书：等高，书头一道线，书尾一格表示类型；悬停按帧抽出两格 */
+.kbs-slot { position: relative; flex: none; }
+.kbs-slot[data-pull="1"] { transform: translateY(-3px); }
+.kbs-slot[data-pull="2"] { transform: translateY(-6px); }
+.kbs-slot[data-slot="flat"][data-pull="1"] { transform: translateX(4px); }
+.kbs-slot[data-slot="flat"][data-pull="2"] { transform: translateX(8px); }
+.kbs-bk { position: relative; display: flex; flex-direction: column; align-items: center; padding: 16px 0 0; border: 2px solid var(--text); background: var(--panel); color: var(--text); font: inherit; cursor: pointer; }
+.kbs-bk::before { content: ""; position: absolute; left: 3px; right: 3px; top: 5px; height: 2px; background: var(--text); }
+.kbs-tx { display: block; overflow: hidden; writing-mode: vertical-rl; font-size: 13px; line-height: 17px; letter-spacing: 1px; }
+.kbs-c { display: block; white-space: nowrap; }
+.kbs-tail { position: absolute; left: 0; right: 0; bottom: 0; height: 18px; border-top: 2px solid var(--text); }
+.kbs-bk.t-sheet .kbs-tail { background-image: var(--dither-ink-2); }
+.kbs-bk.t-bitable .kbs-tail { background: var(--text); }
+.kbs-bk.t-file { border-style: dashed; }
+.kbs-bk .kbs-rb { top: -8px; right: 5px; width: 6px; height: 16px; }
+/* 档案盒：盒盖 7px，书名加框成标签窗，盒尾写篇数 */
+.kbs-bk.is-box::before { left: 0; right: 0; top: 0; height: 7px; }
+.kbs-bk.is-box .kbs-tx { font-weight: 600; outline: 1px solid var(--text); outline-offset: 4px; }
+.kbs-bk.is-box .kbs-tail { display: grid; place-items: center; font-family: var(--font-pixel); font-size: 12px; line-height: 1; }
+.kbs-bk.is-ghost { border: 2px dashed var(--line); color: var(--muted); cursor: default; }
+.kbs-bk.is-ghost::before { display: none; }
+/* 敞口盒：盒盖变橙，标签横写，书逐本取出；盒里放不下就再起一行 */
+.kbs-obox { position: relative; display: flex; flex-direction: column; border: 2px solid var(--text); background: var(--panel); }
+.kbs-obox-lid { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 var(--s2); overflow: hidden; border: 0; border-top: 5px solid var(--signal); border-bottom: 2px solid var(--text); background: var(--panel); color: var(--text); font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; text-align: left; cursor: pointer; }
+div.kbs-obox-lid { cursor: default; }
+.kbs-obox-lid .tnum { font-size: 11px; font-weight: 400; color: var(--muted); }
+.kbs-obox-lid .close { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 0 0 0 var(--s3); border: 0; background: none; font: inherit; font-weight: 400; color: var(--text-2); cursor: pointer; }
+.kbs-obox-lid:hover .close, .kbs-obox-lid .close:hover { color: var(--signal); }
+.kbs-crumb { padding: 0; border: 0; background: none; font: inherit; font-weight: 400; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.kbs-crumb:hover { color: var(--signal); }
+.kbs-obox-in { flex: 1; display: flex; flex-wrap: wrap; align-items: flex-end; align-content: flex-end; gap: var(--s2) 4px; padding: var(--s2) var(--s2) 0; }
+
+/* 搜索：没命中的书退成灰线（不用透明度）；没命中的层收成一行层名 */
+.kbs-slot.is-dim .kbs-bk, .kbs-slot.is-dim .kbs-flat, .kbs-slot.is-dim .kbs-flat .hd, .kbs-slot.is-dim .kbs-flat .tl { color: var(--line); border-color: var(--line); }
+.kbs-slot.is-dim .kbs-bk::before { background: var(--line); }
+.kbs-slot.is-dim .kbs-tail { border-color: var(--line); background: none; }
+.kbs-slot.is-dim .kbs-rb { display: none; }
+.kbs-slot.is-dim .kbs-bk.is-box .kbs-tx { outline-color: var(--line); }
+.kbs-slot.is-dim .kbs-flat .tl { background: none; }
+.kbs-bay.is-dim .kbs-bay-head { padding-bottom: var(--s4); }
+.kbs-bay.is-dim .kbs-bay-head strong { color: var(--muted); }
+.kbs-bay.is-dim .kbs-rows { display: none; }
+
+/* 悬停卡：网点错位 6px 作浮起感（规范「悬浮效果」），不用阴影 */
+.kbs-tip { position: absolute; z-index: 20; width: 300px; pointer-events: none; }
+.kbs-tip-sh { position: absolute; left: 6px; top: 6px; right: -6px; bottom: -6px; background-image: var(--dither-ink-2); }
+.kbs-tip-card { position: relative; padding: var(--s3) 14px; border: 2px solid var(--text); background: var(--panel); }
+.kbs-tip-meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.kbs-tip-meta .is-new { color: var(--signal); }
+.kbs-tip-title { margin-top: 4px; font-size: 14px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.kbs-tip-ex { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 6px 0 0; font-size: 12px; line-height: 1.55; color: var(--text-2); }
+.kbs-tip-list { margin: 6px 0 0; padding: 0; list-style: none; font-size: 12px; line-height: 1.6; color: var(--text-2); }
+.kbs-tip-list li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kbs-tip-list li::before { content: "· "; color: var(--muted); }
+.kbs-tip-foot { display: flex; align-items: center; gap: var(--s2); margin-top: 10px; padding-top: var(--s2); border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.kbs-tip-foot > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kbs-tip-foot .go { flex: none; display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: var(--text); }
 
 @media (max-width: 600px) {
-  .kbf-search { width: 100%; }
-  .kbf-board { padding: var(--s3); gap: var(--s5); }
-  .kbf-grid { gap: 48px var(--s4); }
-  .kbf-loose { padding: var(--s3); }
-  .kbf-loose .kbf-card { width: 100%; }
-  .kbf-tab-edit { display: none; } /* 手机上不能拖动整理，只看；改名在电脑上做 */
-  .kbf-drawer-head > .small, .kbf-loose-hint { display: none; }
+  .kbs-search { flex-basis: 100%; }
+  .kbs-top { padding: 0 var(--s3); }
+  .kbs-legend { margin-left: 0; }
 }
 .set-rules td { vertical-align: middle; }
 .set-rules .set-rules-dir { width: 150px; white-space: nowrap; }
@@ -1556,10 +1596,6 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .plan-raw.is-empty { background: var(--panel-soft); }
 .plan-raw-text { flex: 1; margin: var(--s2); padding: var(--s1) var(--s2) var(--s1) calc(var(--s4) - var(--s2)); max-height: 420px; /* 滚动条离框边留一格，文字仍和标题对齐 */ overflow: auto; white-space: pre-wrap; word-break: break-word; font: 13px/1.7 var(--font-sans); }
 @media (max-width: 900px) { .plan-raw-board { grid-template-columns: minmax(0, 1fr); } }
-
-/* 知识库画布：搜索和刷新单独一行（用户 2026-10-19） */
-.kbf-tools { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); }
-.kbf-tools .kbf-search { flex: 1 1 320px; width: auto; }
 
 /* 管培带教 v4（用户 2026-10-19）：左侧卡点与提问原话，右侧反馈栏。卡点数字红色，提问数字蓝色 */
 .mq-count { display: inline-block; min-width: 18px; margin-left: 4px; padding: 0 4px; font: 400 12px var(--font-pixel); text-align: center; color: var(--text); }

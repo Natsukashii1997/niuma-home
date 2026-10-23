@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyOp, applyOps, canvasModel, countDocs, fromReceipt, keepOrder, pose, remapOp, reorder } from "../src/modules/kb/kb-canvas.js";
+import { applyOp, applyOps, canvasModel, countDocs, fromReceipt, keepOrder, remapOp, reorder } from "../src/modules/kb/kb-canvas.js";
 
 const tree = () => [
   { id: "A", name: "📢 营销策划", kids: [{ id: "a1", name: "促销方案", file: true }, { id: "sub", name: "子目录", kids: [{ id: "s1", name: "深层", file: true }] }] },
@@ -30,11 +30,9 @@ test("本地先应用变更：移动、改名、新建；放进自己子孙或�
   assert.deepEqual(remapOp({ type: "move", id: "x", parentId: "g1" }, { g1: "Real1" }), { type: "move", id: "x", parentId: "Real1" });
 });
 
-test("回执树转画布形状；纸堆姿态由 id 决定且稳定", () => {
+test("回执树转画布形状", () => {
   assert.deepEqual(fromReceipt([{ id: "A", name: "目录", kids: [{ id: "a", name: "文", file: true }] }, { id: "E", name: "空目录", kids: [] }]),
     [{ id: "A", name: "目录", kids: [{ id: "a", name: "文", file: true }] }, { id: "E", name: "空目录", file: true }]);
-  assert.deepEqual(pose("abc", 2), pose("abc", 2));
-  assert.ok(Math.abs(pose("abc", 0)[0]) <= 3);
 });
 
 test("回执按 ID 排序的树，按写入前的位置排回去；新节点排在同级最后", () => {

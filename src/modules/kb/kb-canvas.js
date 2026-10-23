@@ -1,4 +1,4 @@
-// 知识库画布的纯函数（便于测试）：哪些是分组、怎么排、本地先应用一项变更、纸堆姿态。
+// 知识库画布的纯函数（便于测试）：哪些是分组、怎么排、本地先应用一项变更。
 // 分组 = 根目录下有子节点的目录，或收藏规则里的一级目录，或画布上排过序 / 新建的目录；其余根节点是散卡。
 
 export const ROOT = "";
@@ -92,12 +92,4 @@ export function keepOrder(next, prev) {
   const sort = (ns) => ns.map((n, k) => ({ n: n.kids ? { ...n, kids: sort(n.kids) } : n, k }))
     .sort((a, b) => (at.get(a.n.id) ?? 1e9 + a.k) - (at.get(b.n.id) ?? 1e9 + b.k)).map((x) => x.n);
   return sort(next);
-}
-
-// 纸堆姿态：由 id 决定，刷新后不跳。返回 [角度, x 偏移, y 偏移]。
-export function pose(id, i) {
-  let h = 2166136261;
-  for (const ch of String(id)) h = Math.imul(h ^ ch.codePointAt(0), 16777619) >>> 0;
-  const r = (k) => (((h >>> k) & 255) / 255 - 0.5);
-  return [Math.round(r(0) * (i ? 14 : 6)), Math.round(r(8) * 14), Math.round(r(16) * 8 + i * -3)];
 }
