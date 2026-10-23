@@ -51,19 +51,23 @@ export const pendingReviews = (path) => path.lines.reduce((s, l) => s + l.nodes.
 
 /* ---------- 山形 ---------- */
 export const LEDGE = 14;   // 营地平台半宽：图标立在这段平路上，不压线
-// 地图按周定宽（用户 10-23：横向拉长到约 3 倍，每周固定宽度）：左边大本营 170 + 每周 WEEK_W + 右边山顶 248；赛季周数变了地图跟着变长
-export const WEEK_W = 140;
+// 地图按周定宽（用户 10-23：横向拉长到约 3 倍，每周固定宽度；随后嫌看不出坡度，压到 3/4）：左边大本营 170 + 每周 WEEK_W + 右边山顶 248；赛季周数变了地图跟着变长
+export const WEEK_W = 105;
 export const mapWidth = (weeks) => 170 + weeks * WEEK_W + 248;
+export const SUN = { r: 30, glow: 54 };   // 太阳核心、光晕半径（用户 10-23：再大一点，原 22 / 40）
 const KEYS = ["biz", "ai"];
 function makeRng(seed) { const r = () => (r.seed = (r.seed * 9301 + 49297) % 233280) / 233280; r.seed = seed; return r; }
 // 控制点之间插两处起伏（间距大于 min 才插，amp 控制幅度），控制点本身仍在山脊线上
-function crest(points, rnd, { min = 60, amp = 1 } = {}) {
+// climb：上坡路不往回掉，两处起伏加起来不超过这段爬升的 3 成
+function crest(points, rnd, { min = 60, amp = 1, climb = false } = {}) {
   const out = [points[0]];
   for (let k = 1; k < points.length; k++) {
     const [ax, ay] = points[k - 1], [bx, by] = points[k], dx = bx - ax;
     if (dx > min) {
-      out.push([ax + dx * 0.32, ay + (by - ay) * 0.32 - (10 + rnd() * 26) * amp]);
-      out.push([ax + dx * 0.66, ay + (by - ay) * 0.66 + (4 + rnd() * 14) * amp]);
+      let up = (10 + rnd() * 26) * amp, dn = (4 + rnd() * 14) * amp;
+      if (climb) { const s = Math.min(1, (0.3 * Math.abs(by - ay)) / (up + dn)); up *= s; dn *= s; }
+      out.push([ax + dx * 0.32, ay + (by - ay) * 0.32 - up]);
+      out.push([ax + dx * 0.66, ay + (by - ay) * 0.66 + dn]);
     }
     out.push([bx, by]);
   }
@@ -82,22 +86,23 @@ export function layout({ W, H }, path, clock) {
   const X1 = 170, XS = W - 156, X24 = XS - 92; // 第 0 周、山顶、最后一周的横坐标
   const xw = (w) => X1 + (w / clock.weeks) * (X24 - X1);
   const lines = Object.fromEntries(path.lines.map((l) => [l.key, l]));
-  // 营地高度：1440×900 时相邻营地上下差约 65px，完整标牌刚好错开
-  const step = (from, to, n) => (from - to) / Math.max(1, n - 1);
-  const yOf = { biz: (i) => yg - 104 - i * step(yg - 104, 290, lines.biz.nodes.length), ai: (i) => yg - 280 - i * step(yg - 280, 190, lines.ai.nodes.length) };
+  // 营地高度按周数抬升：第一关、最后一关高度不变，中间同样的周数爬同样的高度，坡度一路均匀（按关数抬升时隔得久的两关之间近乎平路）
+  const ends = { biz: [yg - 104, 290], ai: [yg - 280, 190] };
+  const yOf = (k, w) => { const ns = lines[k].nodes, w0 = ns[0].week[1], w1 = ns.at(-1).week[1], [y0, y1] = ends[k]; return w1 > w0 ? y0 - ((w - w0) / (w1 - w0)) * (y0 - y1) : y0; };
   const summit = [XS, 118];
-  const camps = Object.fromEntries(KEYS.map((k) => [k, lines[k].nodes.map((n, i) => ({ id: n.id, n, i, x: xw(n.week[1]), y: yOf[k](i), line: k }))]));
+  const camps = Object.fromEntries(KEYS.map((k) => [k, lines[k].nodes.map((n, i) => ({ id: n.id, n, i, x: xw(n.week[1]), y: yOf(k, n.week[1]), line: k }))]));
   const base = { biz: [X1 - 24, yg - 62], ai: [X1 - 24, yg - 250] };
   // 山脊 = 山脚 + 路线 + 山顶另一侧。路线在大本营和每个营地处走一段平台，平台之间只在宽坡上加缓起伏
   const flat = ([x, y], w) => [[x - w, y], [x + w, y]];
   const ridgeOf = (k, foot, tail) => {
     const trail = [...flat(base[k], 16), ...camps[k].flatMap((c) => flat([c.x, c.y], LEDGE)), summit];
-    return [...crest([foot, trail[0]], rnd).slice(0, -1), ...crest(trail, rnd, { min: 100, amp: 0.7 }), ...crest([summit, ...tail], rnd).slice(1)];
+    return [...crest([foot, trail[0]], rnd).slice(0, -1), ...crest(trail, rnd, { min: 100, amp: 0.35, climb: true }), ...crest([summit, ...tail], rnd).slice(1)];
   };
   const ridge = { biz: ridgeOf("biz", [0, yg - 28], [[XS + 70, 250], [W, 330]]), ai: ridgeOf("ai", [0, yg - 220], [[XS + 60, 190], [W, 250]]) };
   const XE = XS - 22;   // 路线画到雪线为止，山顶只留旗子和雪
-  // 远山：每 420px 一起一伏，高低随机，长图上不显得平
-  const far = crest(Array.from({ length: Math.ceil(W / 420) + 1 }, (_, k) => [Math.min(W, k * 420), (k % 2 ? 214 : 286) + rnd() * 44]), rnd);
+  // 远山：每 3 周宽一起一伏，高低随机，长图上不显得平
+  const FAR = 3 * WEEK_W;
+  const far = crest(Array.from({ length: Math.ceil(W / FAR) + 1 }, (_, k) => [Math.min(W, k * FAR), (k % 2 ? 214 : 286) + rnd() * 44]), rnd);
   const xNow = xw(clock.nowW), sun = [xNow, 132];
 
   // 现在在哪：在途的关按今天在计划周期里的位置；超期的停在营地前。没有在途的关就没有登山者，实线走到最后一个通关营地
@@ -134,10 +139,10 @@ export function layout({ W, H }, path, clock) {
   // 地平线：月份分界、周次格、营地刻度
   const months = clock.months.map((m) => ({ ...m, x: xw(m.w) })).filter((m) => m.x < X24 + 1);
   const weeks = Array.from({ length: clock.weeks }, (_, k) => ({ w: k + 1, a: xw(k), b: xw(k + 1), cur: k + 1 === clock.week, from: clock.weekStart(k + 1) }));
-  // 云每 4 周一朵、高低错开；鸟一群跟着太阳，另外两群散在后面
+  // 云每 4 周一朵、高低错开，不压太阳和右边「今天」那行字；鸟一群跟着太阳，另外两群散在后面
   const decor = {
-    clouds: Array.from({ length: Math.floor(clock.weeks / 4) }, (_, k) => [xw(1.2 + k * 4 + (k % 2) * 1.4), [112, 96, 128][k % 3], k % 3 === 2 ? 3 : 4]),
-    birds: [[xNow - 92, 104], [xNow - 74, 116], [xw(clock.weeks * 0.55), 160], [xw(clock.weeks * 0.8), 140]],
+    clouds: Array.from({ length: Math.floor(clock.weeks / 4) }, (_, k) => [xw(1.2 + k * 4 + (k % 2) * 1.4), [112, 96, 128][k % 3], k % 3 === 2 ? 3 : 4]).filter(([x]) => x < xNow - SUN.glow - 70 || x > xNow + SUN.glow + 260),
+    birds: [[xNow - SUN.glow - 52, 104], [xNow - SUN.glow - 34, 116], [xw(clock.weeks * 0.55), 160], [xw(clock.weeks * 0.8), 140]],
   };
   return { W, H, RB, yg, X1, XS, X24, XE, xNow, sun, summit, base, camps, ridge, far, me, trail, snow: [...snowTop, ...snowBot], ropes, months, weeks, decor, seedAfter: rnd.seed };
 }
@@ -166,7 +171,7 @@ export function fixedLabels(geo, sizes) {
   });
   return {
     ridge: { biz: box(24, base.biz[1] - 22, sizes.ridge.biz.w, sizes.ridge.biz.h), ai: box(24, base.ai[1] - 22, sizes.ridge.ai.w, sizes.ridge.ai.h) },
-    today: box(sun[0] + 48, sun[1] - 16, sizes.today.w, sizes.today.h),
+    today: box(sun[0] + SUN.glow + 8, sun[1] - 16, sizes.today.w, sizes.today.h),
     summit: box(summit[0] + 24, summit[1] + 10, sizes.summit.w, sizes.summit.h),
     // 「本周攀登」卡固定在可视区右下、不在图上时不传 week
     week: sizes.week ? box(W - 24 - sizes.week.w, yg - 14 - sizes.week.h, sizes.week.w, sizes.week.h) : null,
@@ -185,7 +190,7 @@ function obstacles(geo, labels) {
   const { base, sun, summit, me, camps } = geo;
   return [
     ...labels.map((b) => ({ ...b, m: 6 })),
-    { l: sun[0] - 42, t: sun[1] - 42, r: sun[0] + 42, b: sun[1] + 42, m: 0 },
+    { l: sun[0] - SUN.glow - 2, t: sun[1] - SUN.glow - 2, r: sun[0] + SUN.glow + 2, b: sun[1] + SUN.glow + 2, m: 0 },
     { l: summit[0] - 12, t: summit[1] - 50, r: summit[0] + 42, b: summit[1] + 6, m: 2 },
     ...KEYS.map((k) => ({ l: base[k][0] - 18, t: base[k][1] - 36, r: base[k][0] + 18, b: base[k][1] + 2, m: 2 })),
     ...KEYS.filter((k) => me[k]).map((k) => ({ l: me[k].x - 16, t: me[k].y - 43, r: me[k].x + 16, b: me[k].y, m: 2 })),

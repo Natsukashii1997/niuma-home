@@ -3,7 +3,7 @@ import { DitherBar, DitherPattern, PixelIcon, PixelSprite, SPRITES, SpriteCells,
 import { apiRead, apiSend, useApi } from "../../api.js";
 import { Button, Loadable, PageHeader, Placeholder, Tabs, Tag } from "../../ui/components.jsx";
 import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
-import { avgScore, busyBoxes, doneCount, findNode, fixedLabels, isLate, labelBoxes, lateWeeks, layout, lineStars, mapWidth, pendingReviews, pines, placePlates, placeRopeLabels, plateStyle, poly, prereqs, seasonClock, shortUnlock, slopeOf, stars, unlockText } from "./mentor-path.js";
+import { avgScore, busyBoxes, doneCount, findNode, fixedLabels, isLate, labelBoxes, lateWeeks, layout, lineStars, mapWidth, pendingReviews, SUN, pines, placePlates, placeRopeLabels, plateStyle, poly, prereqs, seasonClock, shortUnlock, slopeOf, stars, unlockText } from "./mentor-path.js";
 
 // 带教 · 培养路径（定稿 V7 远征登山，用户 2026-10-23）：横向全景，前山是业务线、后山是 AI 线；一关是一段坡，坡顶的营地是通关点，越往右越高，
 // 两条路在山顶汇合（结业）。太阳 = 今天，橙色虚线从太阳垂到地面；登山者站在现在的位置；绳桥是跨线依赖。橙色只表示「现在」。
@@ -113,7 +113,7 @@ function Mountain({ path, clock, season, hl, onHover, onOpen }) {
     const el = scrollRef.current;
     if (!el || !P) return;
     const view = el.clientWidth, page = el.getBoundingClientRect(), card = el.parentElement.querySelector(".m7-week")?.getBoundingClientRect();
-    const keep = [{ l: geo.sun[0] - 42, r: geo.sun[0] + 42, b: geo.sun[1] + 42 }, ...KEYS.filter((k) => geo.me[k]).map((k) => ({ l: geo.me[k].x - 16, r: geo.me[k].x + 16, b: geo.me[k].y })), ...KEYS.map((k) => doing[k] && P.plates[doing[k].id]?.at.r).filter(Boolean)];
+    const keep = [{ l: geo.sun[0] - SUN.glow - 2, r: geo.sun[0] + SUN.glow + 2, b: geo.sun[1] + SUN.glow + 2 }, ...KEYS.filter((k) => geo.me[k]).map((k) => ({ l: geo.me[k].x - 16, r: geo.me[k].x + 16, b: geo.me[k].y })), ...KEYS.map((k) => doing[k] && P.plates[doing[k].id]?.at.r).filter(Boolean)];
     let s = geo.xNow - view * 0.4;
     keep.forEach((k) => { s = Math.max(s, k.r - view + 16, card && k.b > card.top - page.top - 8 ? k.r - (card.left - page.left - 16) : -Infinity); });
     keep.forEach((k) => { s = Math.min(s, k.l - 16); });
@@ -136,7 +136,7 @@ function Mountain({ path, clock, season, hl, onHover, onOpen }) {
           <svg className="m7-svg" viewBox={`0 0 ${geo.W} ${geo.H}`} width={geo.W} height={geo.H}>
             {lower}
             <Highlight geo={geo} id={hl} />
-            <line x1={geo.xNow} y1={geo.sun[1] + 26} x2={geo.xNow} y2={geo.yg} stroke={SIGNAL} strokeWidth="2" strokeDasharray="2 5" />
+            <line x1={geo.xNow} y1={geo.sun[1] + SUN.r + 4} x2={geo.xNow} y2={geo.yg} stroke={SIGNAL} strokeWidth="2" strokeDasharray="2 5" />
             {geo.ropes.map((r) => <path key={`${r.from}>${r.to}`} className={`m7-rope${hl && (hl === r.from || hl === r.to) ? " on" : ""}`} d={r.d} fill="none" strokeDasharray="1 4" strokeLinecap="round" />)}
             {upper}
             <Climbers me={geo.me} />
@@ -182,8 +182,8 @@ function MapLower({ geo, pineXs }) {
         <DitherPattern id="m7-pSun" threshold={5} color={SIGNAL} />
       </defs>
       {/* 天空：太阳（= 今天）、云、鸟 */}
-      <circle cx={sun[0]} cy={sun[1]} r="40" fill="url(#m7-pSun)" />
-      <circle cx={sun[0]} cy={sun[1]} r="22" fill={SIGNAL} />
+      <circle cx={sun[0]} cy={sun[1]} r={SUN.glow} fill="url(#m7-pSun)" />
+      <circle cx={sun[0]} cy={sun[1]} r={SUN.r} fill={SIGNAL} />
       {decor.clouds.map(([x, y, cell]) => <SpriteCells key={x} rows={SPRITES.cloud} x={x} y={y} cell={cell} color={INK} bg={PANEL} />)}
       {decor.birds.map(([x, y]) => <SpriteCells key={x} rows={SPRITES.bird} x={x} y={y} cell={3} color={INK} />)}
       {/* 山：远山 → 后山（AI）→ 前山（业务），越往下网点越密 */}

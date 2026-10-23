@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { WEEK_W, busyBoxes, fixedLabels, isLate, labelBoxes, layout, mapWidth, pendingReviews, pines, placePlates, placeRopeLabels, plateStyle, seasonClock, shortUnlock, slopeOf, unlockText, yAt } from "../src/modules/projects/mentor-path.js";
+import { SUN, WEEK_W, busyBoxes, fixedLabels, isLate, labelBoxes, layout, mapWidth, pendingReviews, pines, placePlates, placeRopeLabels, plateStyle, seasonClock, shortUnlock, slopeOf, unlockText, yAt } from "../src/modules/projects/mentor-path.js";
 import { MENTOR_PATH_SAMPLE } from "./helpers/mentor-path-sample.mjs";
 
 const { today } = MENTOR_PATH_SAMPLE;
@@ -70,50 +70,7 @@ test("layout：营地立在山脊的平台上，越往右越高；登山者在�
   }
 });
 
-test("layout：与定稿一致（1232×814 登山者坐标、绳桥弧线）", () => {
-  const { geo } = place(1232, 814);
-  assert.ok(near(geo.me.biz.x, 421.95238095238096, 1e-9) && near(geo.me.biz.y, 510.214258810869, 1e-9));
-  assert.ok(near(geo.me.ai.x, 373.4166666666667, 1e-9) && near(geo.me.ai.y, 384.96271186440674, 1e-9));
-  assert.deepEqual(geo.ropes.map((r) => r.d), [
-    "M389.5 543.3333333333334Q390.45833333333337 494.0666666666667 391.4166666666667 372.8",
-    "M660.8333333333334 418.66666666666663Q814.4166666666667 390.3333333333333 968 194",
-    "M559.0833333333333 313.2Q593.9583333333333 401.9333333333333 628.8333333333334 418.66666666666663",
-  ]);
-});
-
-test("绳桥：弧线不穿过别的营地", () => {
-  for (const H of [814, 710]) {
-    const { geo } = place(1232, H);
-    const all = [...geo.camps.biz, ...geo.camps.ai];
-    geo.ropes.forEach((r) => {
-      all.filter((c) => c.id !== r.from && c.id !== r.to).forEach((c) => {
-        for (let i = 0; i <= 40; i++) {
-          const [x, y] = r.at(i / 40);
-          assert.ok(!(x > c.x - 18 && x < c.x + 18 && y > c.y - 38 && y < c.y + 4), `${r.from}→${r.to} 穿过 ${c.id}（${H}）`);
-        }
-      });
-    });
-  }
-});
-
-// 定稿在 1232 宽（V7 原来的地图宽）下摆出来的标牌位置：[左, 上, 是否小牌]。页面 10-23 起按周定宽（见文件末尾），这几项留作窄图的算法回归
-
-const DRAFT = {
-  814: { B1: [228, 700, 0], B2: [296, 630, 0], B3: [364, 559, 0], B4: [465, 489, 0], B5: [635, 427, 1], B6: [771, 364, 0], B7: [974, 302, 0], A1: [126, 418, 1], A2: [206, 358, 1], A3: [233, 264, 0], A4: [369, 196, 0], A5: [667, 145, 0], A6: [810, 77, 0] },
-  710: { B1: [64, 455, 0], B2: [296, 575, 0], B3: [364, 506, 0], B4: [465, 437, 0], B5: [527, 275, 0], B6: [771, 347, 0], B7: [974, 302, 0], A1: [126, 314, 1], A2: [206, 275, 1], A3: [233, 201, 0], A4: [465, 163, 0], A5: [667, 124, 0], A6: [858, 77, 0] },
-};
-
-test("placePlates：与定稿摆放一致（814 高 A1、A2、B5 小牌；710 高 A1、A2 小牌）", () => {
-  for (const H of [814, 710]) {
-    const { plates } = place(1232, H);
-    plates.forEach((p) => {
-      const [l, t, mini] = DRAFT[H][p.id];
-      assert.ok(near(p.at.l, l) && near(p.at.t, t), `${p.id}@${H}: ${p.at.l},${p.at.t} ≠ ${l},${t}`);
-      assert.equal(p.at.mini, !!mini, `${p.id}@${H} 小牌`);
-    });
-  }
-});
-
+// 1232 宽（V7 原来的地图宽）下的规则检查，留作窄图的算法回归；页面 10-23 起按周定宽，定稿坐标见文件末尾
 test("placePlates：标牌、引线、固定文字两两不相交，不出框；正在爬的两关不收小牌", () => {
   for (const H of [814, 710, 680]) {
     const { geo, labels, plates } = place(1232, H);
@@ -145,21 +102,6 @@ test("placePlates：小牌展开不出右边界，往上挂的底边不动；引
   });
 });
 
-// 已知：1232×814 下 B3→A3 那条几乎竖直、夹在 B3 标牌、登山者和 A1/A2 小牌之间，沿线找不到空位，说明会压到 A1 旗子右边约 14px（只在悬停时出现）
-test("绳桥说明与松树：与定稿一致，说明不压标牌和文字", () => {
-  const expect = { 814: { "B3>A3": [241, 466.5], "B5>A6": [786, 286], "A4>B5": [503.5, 341] }, 710: { "B3>A3": [241, 400.5], "B5>A6": [786, 274], "A4>B5": [433, 351.5] } };
-  const pine = { 814: [18, 52, 104, 179, 414, 446, 496, 531, 580, 620, 655, 698, 737], 710: [18, 52, 104, 179, 221, 258, 291, 338, 376, 414, 446, 496, 531, 580, 620, 655, 698, 737] };
-  for (const H of [814, 710]) {
-    const { geo, fl, labels, plates, ropes } = place(1232, H);
-    Object.entries(expect[H]).forEach(([k, [l, t]]) => assert.ok(near(ropes[k].l, l, 0.5) && near(ropes[k].t, t, 0.5), `${k}@${H}`));
-    Object.entries(ropes).forEach(([k, r]) => [...labels, ...plates.map((p) => p.at.r)].forEach((b) => assert.ok(!hit(r, b), `${k}@${H}`)));
-    const icons = busyBoxes(geo, plates, labels).filter((b) => !labels.includes(b) && !plates.some((p) => p.at.r === b));
-    Object.entries(ropes).forEach(([k, r]) => icons.forEach((b) => assert.ok(!hit(r, b) || (H === 814 && k === "B3>A3" && b.id === "A1"), `${k}@${H} 压到 ${b.id ?? "图标"}`)));
-    assert.deepEqual(pines(geo, plates, fl.week.l), pine[H]);
-    assert.deepEqual([fl.late.ai.l, fl.late.ai.t].map(Math.round), H === 814 ? [363, 400] : [363, 329]);
-  }
-});
-
 test("高亮：营地 = 上一营地到这一营地的坡，第一关从大本营起；山顶 = 两条线最后一段", () => {
   const { geo } = place(1232, 814);
   const [b4] = slopeOf(geo, "B4");
@@ -181,7 +123,7 @@ test("layout：一条线没有在途的关时没有登山者，实线走到最�
   assert.equal(plates.length, 13);
 });
 
-// 按周定宽（用户 10-23：横向拉长到约 3 倍）：每周 WEEK_W，24 周地图 3778 宽；「本周攀登」卡固定在可视区，不在图上。
+// 按周定宽（用户 10-23：横向拉长到约 3 倍，随后压到 3/4）：每周 WEEK_W，24 周地图 2938 宽；「本周攀登」卡固定在可视区，不在图上。
 // 标牌按页面实测：完整 200×76（多一行待办 / 产出），小牌尺寸同上
 const WIDE = Object.fromEntries(Object.entries(PLATES).map(([id, [w, h, bw = 1]]) => [id, { full: { w: 200, h: 76, bw }, mini: { w, h, bw } }]));
 function placeWide(H) {
@@ -191,14 +133,16 @@ function placeWide(H) {
   return { geo, fl, labels, plates, ropes: placeRopeLabels(geo, ROPES, busyBoxes(geo, plates, labels)) };
 }
 
-test("按周定宽：24 周 3778 宽，营地横坐标 = 170 + 结束周 × WEEK_W；云每 4 周一朵；周次带起始日；本周攀登卡不在图上", () => {
-  assert.equal(WEEK_W, 140);
-  assert.equal(mapWidth(24), 3778);
+test("按周定宽：24 周 2938 宽，营地横坐标 = 170 + 结束周 × WEEK_W；云每 4 周一朵、让开太阳和「今天」；周次带起始日；本周攀登卡不在图上", () => {
+  assert.equal(WEEK_W, 105);
+  assert.equal(mapWidth(24), 2938);
   const { geo, fl, labels } = placeWide(810);
-  assert.equal(geo.W, 3778);
+  assert.equal(geo.W, 2938);
   [...geo.camps.biz, ...geo.camps.ai].forEach((c) => assert.equal(c.x, 170 + c.n.week[1] * WEEK_W, c.id));
-  assert.equal(geo.summit[0], 3778 - 156);
-  assert.equal(geo.decor.clouds.length, 6);
+  assert.equal(geo.summit[0], 2938 - 156);
+  // 6 朵（296 / 863 / 1136 / 1703 / 1976 / 2543）里第 2、3 朵落在太阳（950）左边光晕外 70px 到「今天」那行字右边之间，不画
+  assert.deepEqual(geo.decor.clouds.map(([x]) => Math.round(x)), [296, 1703, 1976, 2543]);
+  assert.equal(fl.today.l, geo.sun[0] + SUN.glow + 8);
   assert.equal(geo.weeks[7].from, "10-20");
   assert.equal(fl.week, null);
   assert.equal(labels.length, 5); // 两块山名、今天、山顶、A3 超期小牌
@@ -225,5 +169,62 @@ test("按周定宽：标牌全部完整摆开、两两不相交、不出框；�
         assert.ok(!(x > c.x - 18 && x < c.x + 18 && y > c.y - 38 && y < c.y + 4), `${r.from}→${r.to} 穿过 ${c.id}（${H}）`);
       }
     }));
+  }
+});
+
+test("按周定宽：营地按周数抬升（首尾两关高度不变、每周爬升相同），两条路从大本营到雪线一路不往回掉", () => {
+  for (const H of [810, 699, 640]) {
+    const { geo } = placeWide(H);
+    const ends = { biz: [geo.yg - 104, 290], ai: [geo.yg - 280, 190] };
+    for (const k of ["biz", "ai"]) {
+      const cs = geo.camps[k], c0 = cs[0], c1 = cs.at(-1), per = (c0.y - c1.y) / (c1.n.week[1] - c0.n.week[1]);
+      assert.deepEqual([c0.y, c1.y], ends[k]);
+      cs.forEach((c) => assert.ok(near(c.y, c0.y - (c.n.week[1] - c0.n.week[1]) * per, 1e-9), `${c.id}@${H}`));
+      for (let x = geo.base[k][0] + 1; x <= geo.XE; x++) assert.ok(yAt(geo.ridge[k], x) <= yAt(geo.ridge[k], x - 1) + 1e-9, `${k}@${H} 在 ${x} 往回掉`);
+    }
+  }
+});
+
+// 本版定稿（用户 10-23 确认「按这版收尾」）在 2938 宽下的坐标：登山者、绳桥弧线、标牌 [左, 上]（全部完整牌）、绳桥说明、A3 超期小牌
+const FINAL = {
+  810: {
+    me: { biz: [950, 565.5106432427112], ai: [871, 420.37053769612635] },
+    ropes: ["M816 596.7272727272727Q852.5 544.9545454545455 889 421.1818181818182", "M1656 462.1818181818182Q2165 412.0909090909091 2674 194", "M1341 367.72727272727275Q1482.5 450.9545454545455 1624 462.1818181818182"],
+    plates: { B1: [370, 672], B2: [580, 638.36], B3: [790, 604.73], B4: [1105, 554.27], B5: [1630, 470.18], B6: [2050, 402.91], B7: [2680, 302], A1: [190, 363], A2: [400, 336.27], A3: [715, 296.18], A4: [1135, 242.73], A5: [1660, 175.91], A6: [2500, 69] },
+    ropeLabels: { "B3>A3": [784.5, 533], "B5>A6": [2091, 376], "A4>B5": [1403.5, 439] }, late: [861, 429],
+  },
+  699: {
+    me: { biz: [950, 482.3181060377406], ai: [871, 333.3939061169766] },
+    ropes: ["M816 505.9090909090909Q852.5 456.6590909090909 889 335.40909090909093", "M1656 411.72727272727275Q2165 386.8636363636364 2674 194", "M1341 302.1363636363636Q1482.5 392.9318181818182 1624 411.72727272727275"],
+    plates: { B1: [370, 561], B2: [580, 537.45], B3: [790, 513.91], B4: [1105, 478.59], B5: [1630, 419.73], B6: [2050, 372.64], B7: [2680, 302], A1: [190, 252], A2: [400, 235.36], A3: [715, 210.41], A4: [1135, 177.14], A5: [1660, 135.55], A6: [2500, 69] },
+    ropeLabels: { "B3>A3": [784.5, 414], "B5>A6": [2091, 320], "A4>B5": [1403.5, 381] }, late: [861, 341],
+  },
+};
+
+test("按周定宽：与本版定稿一致（810 / 699 高的登山者、绳桥、标牌、绳桥说明、超期小牌）", () => {
+  for (const H of [810, 699]) {
+    const { geo, fl, plates, ropes } = placeWide(H), f = FINAL[H];
+    for (const k of ["biz", "ai"]) assert.ok(near(geo.me[k].x, f.me[k][0], 1e-9) && near(geo.me[k].y, f.me[k][1], 1e-9), `${k} 登山者@${H}`);
+    assert.deepEqual(geo.ropes.map((r) => r.d), f.ropes);
+    plates.forEach((p) => {
+      const [l, t] = f.plates[p.id];
+      assert.ok(near(p.at.l, l, 0.01) && near(p.at.t, t, 0.01) && !p.at.mini, `${p.id}@${H}: ${p.at.l},${p.at.t} ≠ ${l},${t}`);
+    });
+    Object.entries(f.ropeLabels).forEach(([k, [l, t]]) => assert.ok(near(ropes[k].l, l, 0.5) && near(ropes[k].t, t, 0.5), `${k}@${H}`));
+    assert.deepEqual([fl.late.ai.l, fl.late.ai.t].map(Math.round), f.late);
+  }
+});
+
+test("按周定宽：绳桥说明不压营地、大本营和登山者；松树不种在压到地平线附近的标牌下、不挨着大本营", () => {
+  for (const H of [810, 699, 640]) {
+    const { geo, labels, plates, ropes } = placeWide(H);
+    const icons = busyBoxes(geo, plates, labels).filter((b) => !labels.includes(b) && !plates.some((p) => p.at.r === b));
+    Object.entries(ropes).forEach(([k, r]) => icons.forEach((b) => assert.ok(!hit(r, b), `${k}@${H} 压到 ${b.id ?? "图标"}`)));
+    const xs = pines(geo, plates, geo.W);
+    assert.ok(xs.length > 40, `松树太少（${H}）`);
+    xs.forEach((x) => {
+      assert.ok(Math.abs(x - geo.base.biz[0]) >= 30, `${x} 挨着大本营（${H}）`);
+      plates.forEach(({ id, at: { r } }) => assert.ok(!(x + 15 > r.l && x < r.r && r.b > geo.yg - 24), `${x} 在 ${id} 下面（${H}）`));
+    });
   }
 });
