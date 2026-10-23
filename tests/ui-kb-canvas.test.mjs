@@ -8,7 +8,7 @@ const tree = () => [
   { id: "x", name: "散文档", file: true },
 ];
 
-test("画布分组：有子节点、收藏规则里的、排过序的目录是分组，其余根节点是散卡；按保存顺序排", () => {
+test("画布分组：有子节点、收藏规则里的、排过序的目录是分组，其余根节点待上架；按保存顺序排", () => {
   const m = canvasModel(tree(), { ruleIds: ["B"], order: ["B"] });
   assert.deepEqual(m.groups.map((g) => g.id), ["B", "A"]);
   assert.deepEqual(m.loose.map((n) => n.id), ["x"]);

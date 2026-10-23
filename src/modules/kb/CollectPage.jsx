@@ -4,7 +4,7 @@ import { apiSend, useApi } from "../../api.js";
 import { Card, Loadable, Tag } from "../../ui/components.jsx";
 
 // 最近收藏（T12）：收藏只走 Chrome 扩展「牛马之家 · 收藏」（飞书文档页右下角的按钮），工作台不再提供粘贴链接收藏（用户 2026-10-18）。
-// 只命中一个目录的进那一组；不明确的放知识库根目录，在画布散卡区，拖进分组即可。
+// 只命中一个目录的进那一组；不明确的放知识库根目录，在书柜顶上的「待上架」，拖到任一层即可。
 // 结果不明的记录可以在这里只读核对，绝不重新创建。
 
 function timeText(iso) {
@@ -30,7 +30,7 @@ export function CollectRecent({ onVerified, bare = false }) {
     finally { setBusy(false); }
   }
   const body = <>
-      <p className="small muted kbc-collect-tip"><PixelIcon name="star" />在 Chrome 打开飞书文档，点右下角「收藏」。归类明确的进对应分组，不明确的放进散卡区。</p>
+      <p className="small muted kbc-collect-tip"><PixelIcon name="star" />在 Chrome 打开飞书文档，点右下角「收藏」。归类明确的进对应分组，不明确的先放在书柜顶上的「待上架」。</p>
       {check && <p className={`small ${/仍未能/.test(check) ? "warn-text" : "muted"}`}>{check}</p>}
       <Loadable state={state} name="最近收藏">{(d) => d.items.length ? (
         <ol className="list kb-recent">
