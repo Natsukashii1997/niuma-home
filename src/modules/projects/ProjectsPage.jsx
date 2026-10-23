@@ -7,6 +7,7 @@ import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { DeletedList, useSoftRemove } from "../../ui/soft-delete.jsx";
 import { localDate } from "../../constants.js";
 import { nodeState, projectSummary } from "./project-view.js";
+import { mentorReplyTime } from "./mentor-view.js";
 import CampaignView from "../marketing/CampaignView.jsx";
 
 // 项目（v3）：项目推进读飞书「AI管培工作台 / 任务事项」；管培带教读两位管培生近 30 天日志，回复确认后挂回飞书原话。
@@ -385,7 +386,7 @@ function Feedback({ person, item, onReread }) {
         <a className="link" href={item.src} target="_blank" rel="noreferrer">在飞书打开原话<PixelIcon name="link" /></a>
       </blockquote>
       {reply?.state === "sent" && <div className="mq-sent">
-        <div className="small"><PixelIcon name="check" /> 已挂在飞书原话那一段 · {AS_TEXT[reply.as]} · <span className="tnum">{String(reply.at || "").slice(5, 16).replace("T", " ")}</span></div>
+        <div className="small"><PixelIcon name="check" /> 已挂在飞书原话那一段 · {AS_TEXT[reply.as]} · <span className="tnum" title="北京时间">{mentorReplyTime(reply.at)}</span></div>
         <p><MarkText text={reply.display || reply.text} /></p>
         <span className="small muted">再发一条会作为新评论挂在同一段。</span>
       </div>}
