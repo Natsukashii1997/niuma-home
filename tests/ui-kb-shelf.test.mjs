@@ -91,6 +91,8 @@ test("柜顶书摞：每 3 本一摞、窄的在上；近 3 天更新含今天",
   assert.deepEqual(ps.map((p) => p.length), [3, 3, 1]);
   assert.deepEqual(ps[0].map((n) => n.id), [0, 1, 2]);
   assert.deepEqual(ps[1].map((n) => n.id), [4, 5, 3]);
+  // 一排放不下时页面改成每摞多叠一本（1024 宽下是 4 本一摞）
+  assert.deepEqual(piles(ps.flat().sort((a, b) => a.id - b.id), 4).map((p) => p.length), [4, 3]);
   assert.equal(isRecent("2026-10-21", "2026-10-23"), true);
   assert.equal(isRecent("2026-10-23", "2026-10-23"), true);
   assert.equal(isRecent("2026-10-20", "2026-10-23"), false);

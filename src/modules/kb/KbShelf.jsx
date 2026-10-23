@@ -8,7 +8,8 @@ import { breakColumns, cleanName, isRecent, packRows, piles, shelfItems, spineNa
 // - 书一律等高，书名竖排、从同一条线起排，按页面实测的字宽断列。类型只看书尾：文档白、表格网点、多维表墨、文件虚线框；
 //   近 3 天更新的书顶上夹一张橙色书签。不显示「快捷」标记（用户 10-23）。
 // - 子目录是档案盒：点开变成敞口盒，书逐帧取出；盒里还有盒，点它就在原盒里进入，盒盖上写路径、可逐级返回（用户 10-23）。
-// - 根目录下没进分组的文档横放在柜顶「待上架」，三本一摞。
+// - 根目录下没进分组的文档横放在柜顶「待上架」，三本一摞；一排放不下时每摞多叠一本（最多 5 本），书都落在柜顶上不悬空。
+//   柜顶表头两行（待上架 N 本 / 说明），图例单独放右上角（用户 10-23 确认稿件 docs/design-drafts/kb/v4-3.html）。
 // - 悬停或聚焦一本书：按帧抽出两格，再弹一张卡（全名、类型、更新、摘要、位置）。⌘K 打开某篇时开盒、抽出这本。
 // - 搜索：没命中的层收成一行，含命中的盒子自动打开，没命中的书退成灰线。
 // - 拖放（写飞书由 KbCanvas 的队列做）：书、整个盒子拖到层 / 盒 / 柜顶 = 移动；拖层名到另一层 = 排到它前面（只存本机）。
@@ -120,7 +121,15 @@ export default function KbShelf({ model, docs, q = "", focus = "", busy, landed 
   // 打开的档案盒：盒 id → 在盒里逐层进入的子盒 id。⌘K 打开的那篇在盒里时，先把盒子打开到它那一层。
   const [open, setOpen] = useState(() => { const t = focus && trailTo(roots, focus); return new Map(t && t.length >= 3 ? [[t[1].id, t.slice(2, -1).map((n) => n.id)]] : []); });
   const [shut, setShut] = useState({ q: "", ids: new Set() }); // 搜索时自动打开、又被手动收起的盒子（只对这个搜索词有效）
+  // 柜顶几本一摞：宽度、字体或待上架的书变了从 3 本重新试；排完一排放不下就多叠一本，最多 5 本
+  const pilesRef = useRef(null), pileAt = `${width}:${fonts}:${model.loose.map((n) => n.id).join()}`;
+  const [pileFit, setPileFit] = useState({ at: "", size: 3 });
+  const pileSize = pileFit.at === pileAt ? pileFit.size : 3;
 
+  useLayoutEffect(() => {
+    const ps = [...(pilesRef.current?.children || [])], bottom = (p) => p.offsetTop + p.offsetHeight; // 书摞底对齐，比底边
+    if (pileSize < 5 && ps.some((p) => bottom(p) !== bottom(ps[0]))) setPileFit({ at: pileAt, size: pileSize + 1 });
+  });
   useLayoutEffect(() => {
     const el = root.current;
     if (!el) return undefined;
@@ -404,14 +413,17 @@ export default function KbShelf({ model, docs, q = "", focus = "", busy, landed 
     <div ref={root} className="kbs" {...hover}>
       <div className={`kbs-top${over === `in:${ROOT}` ? " is-over" : ""}`} {...into(ROOT)}>
         <div className="kbs-top-head">
-          <strong>待上架</strong><span className="kbs-count">{loose.length}</span>
-          <span className="kbs-hint">{loose.length ? "收藏时归类不明确的书先放柜顶，拖到任一层即上架（在飞书里移动）" : "书都上架了"}</span>
-          <span className="kbs-legend" aria-hidden="true">
+          <div>
+            <div className="kbs-top-title"><strong>待上架</strong><span className="kbs-count">{loose.length}</span><span className="kbs-unit">本</span></div>
+            <p className="kbs-hint">{loose.length ? "收藏时归类不明确的书先放柜顶，拖到任一层即上架（在飞书里移动）" : "书都上架了"}</p>
+          </div>
+          <div className="kbs-legend" aria-hidden="true">
+            <span className="kbs-legend-label">图例</span>
             <span><i className="kbs-lg" />文档</span><span><i className="kbs-lg t-sheet" />表格</span><span><i className="kbs-lg t-bitable" />多维表</span>
             <span><i className="kbs-lg t-file" />文件</span><span><i className="kbs-lg is-box" />档案盒</span><span><i className="kbs-lg is-new" />近 3 天更新</span>
-          </span>
+          </div>
         </div>
-        <div className="kbs-piles">{piles(loose).map((p) => <div key={p[0].id} className="kbs-pile">{p.map(flat)}</div>)}</div>
+        <div ref={pilesRef} className="kbs-piles">{piles(loose, pileSize).map((p) => <div key={p[0].id} className="kbs-pile">{p.map(flat)}</div>)}</div>
       </div>
       <div className="kbs-cab" style={{ "--bays": bays }}>{cells}</div>
       <Tip ref={tip} describe={describe} />

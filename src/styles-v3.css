@@ -1151,14 +1151,17 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .kbs-meter .is-bold { font-weight: 600; }
 .kbs-tcy { text-combine-upright: all; }
 
-/* 柜顶：待上架，横放成摞 */
-.kbs-top { padding: 0 var(--s5); }
-.kbs-top-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s1) var(--s3); margin-bottom: var(--s5); }
-.kbs-top-head strong { font-size: 14px; }
-.kbs-count { font-family: var(--font-pixel); font-size: 16px; color: var(--signal); }
-.kbs-hint { font-size: 12px; color: var(--muted); }
-.kbs-legend { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s1) var(--s4); margin-left: auto; font-size: 11px; color: var(--muted); }
-.kbs-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+/* 柜顶：待上架，横放成摞（v4-3：和工具栏、书摞各拉开 32px，书摞之间 48px；表头两行，图例单独放右上角两行三列） */
+.kbs-top { padding: var(--s6) var(--s5) 0; }
+.kbs-top-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: var(--s4) var(--s6); margin-bottom: var(--s6); }
+.kbs-top-title { display: flex; align-items: baseline; gap: var(--s2); height: 24px; }
+.kbs-top-head strong { font-size: 16px; }
+.kbs-count { font-family: var(--font-pixel); font-size: 22px; line-height: 1; color: var(--signal); }
+.kbs-unit { font-size: 12px; color: var(--muted); }
+.kbs-hint { margin: var(--s2) 0 0; font-size: 12px; line-height: 18px; color: var(--muted); }
+.kbs-legend { display: grid; grid-template-columns: auto repeat(3, auto); align-items: center; gap: var(--s2) var(--s5); font-size: 11px; color: var(--muted); }
+.kbs-legend > span { display: inline-flex; align-items: center; gap: 6px; height: 20px; }
+.kbs-legend > .kbs-legend-label { grid-row: span 2; align-self: stretch; height: auto; padding-right: var(--s4); border-right: 2px solid var(--line); font-family: var(--font-mono); letter-spacing: 1px; }
 .kbs-lg { position: relative; display: inline-block; width: 10px; height: 20px; border: 2px solid var(--text); background: var(--panel); }
 .kbs-lg::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px; border-top: 2px solid var(--text); }
 .kbs-lg.t-sheet::after { background-image: var(--dither-ink-2); }
@@ -1166,12 +1169,12 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .kbs-lg.t-file { border-style: dashed; }
 .kbs-lg.is-box { width: 14px; border-top-width: 5px; }
 .kbs-lg.is-new::before { content: ""; position: absolute; right: 0; top: -6px; width: 4px; height: 8px; background: var(--signal); }
-.kbs-piles { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--s4) var(--s6); min-height: 28px; }
+.kbs-piles { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--s5) 48px; min-height: 28px; }
 .kbs-pile { display: flex; flex-direction: column; align-items: flex-start; }
 .kbs-pile > .kbs-slot + .kbs-slot { margin-top: -2px; }
 .kbs-flat { position: relative; display: flex; align-items: stretch; height: 30px; border: 2px solid var(--text); background: var(--panel); color: var(--text); font-size: 12px; }
 .kbs-flat .hd { flex: none; display: grid; place-items: center; width: 30px; border-right: 2px solid var(--text); font-family: var(--font-mono); font-size: 11px; color: var(--text-2); }
-.kbs-flat .nm { max-width: 280px; padding: 0 var(--s3); overflow: hidden; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
+.kbs-flat .nm { max-width: 320px; padding: 0 var(--s3); overflow: hidden; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
 .kbs-flat .tl { flex: none; width: 14px; border-left: 2px solid var(--text); }
 .kbs-flat.t-sheet .tl { background-image: var(--dither-ink-2); }
 .kbs-flat.t-bitable .tl { background: var(--text); }
@@ -1291,8 +1294,12 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 
 @media (max-width: 600px) {
   .kbs-search { flex-basis: 100%; }
-  .kbs-top { padding: 0 var(--s3); }
-  .kbs-legend { margin-left: 0; }
+  .kbs-top { padding: var(--s5) var(--s3) 0; }
+  .kbs-piles { column-gap: var(--s5); }
+  .kbs-legend { grid-template-columns: repeat(3, auto); column-gap: var(--s4); }
+  .kbs-legend > .kbs-legend-label { display: none; }
+  .kbs-legend > span { white-space: nowrap; }
+  .kbs-flat .nm { max-width: 220px; }
 }
 .set-rules td { vertical-align: middle; }
 .set-rules .set-rules-dir { width: 150px; white-space: nowrap; }

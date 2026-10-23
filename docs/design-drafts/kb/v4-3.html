@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>知识库 · V4-3 待上架加宽</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* V4 书架 · 精修（10-23 第三轮）。在 V4 上收拾三件事：
+   1. 竖排对齐：书一律等高，书名从同一条线起排；按实测字宽断列、各列尽量等长，优先在「-」「丨」、括号前断开，
+      不留单字孤列；两位以内的数字/字母横排压成一格（7月、T1、AI），年份和全大写缩写逐字竖立，版本号和英文单词侧转；
+      彩色 emoji 和文件扩展名不上书脊（悬停卡里看全名）。
+   2. 干净：一整个书柜代替 12 个带框的小书架；去掉每本书上的类型字、每层的网点读数条和黑页签；
+      类型只看书尾（白 = 文档，网点 = 表格，墨 = 多维表，虚线框 = 文件），近 3 天更新的书顶上夹一张橙色书签。
+   3. 细节：同一系列的书（04 的 T1、10 的标准模版……）并排靠紧，上方一道细括号写系列名，书脊只写区分的那半截；
+      档案盒有盒盖和标签窗，点开变成敞口盒、书逐本取出；悬停书脊按帧抽出两格，弹出一张写全名、类型、更新、摘要、位置的卡。 */
+.case { position: relative; }
+.case .drop.is-over { outline: none !important; background-image: none !important; }
+.case .is-busy { outline: none; }
+.case .is-dragging { opacity: 1; }
+.meter { position: absolute; left: -9999px; top: 0; visibility: hidden; writing-mode: vertical-rl; white-space: pre; font-family: var(--font-sans); font-size: 13px; line-height: 17px; letter-spacing: 1px; }
+.meter .b { font-weight: 600; }
+.meter .m { display: inline; }
+.tcy { text-combine-upright: all; }
+.up { text-orientation: upright; }
+
+/* 柜顶：待上架（V4-3，10-23 用户：待上架太挤、和下面书柜比显得窄小；表头一行排得怪）
+   - 柜顶单独留出一块：和工具栏拉开 32px，表头和书摞之间 32px，书摞之间 48px，书名最长 320px
+   - 表头分两行：「待上架 7 本」比层名大一号，说明另起一行；不再和图例挤在同一条基线上
+   - 图例从表头那一行拿出来，单独放右上角：「图例」+ 两行三列，和左边两行表头上下对齐
+   - 窗口窄、一排放不下时每摞多叠一本（最多 5 本），书都落在柜顶上，不再有一排悬空 */
+.top { padding: var(--s6) var(--s5) 0; }
+.top-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: var(--s4) var(--s6); margin-bottom: var(--s6); }
+.top-title { display: flex; align-items: baseline; gap: var(--s2); height: 24px; }
+.top-title strong { font-size: 16px; }
+.top-title strong.is-blink { background: var(--text); color: var(--panel); }
+.top-title .px { font-size: 22px; line-height: 1; color: var(--signal); }
+.top-title .unit { font-size: 12px; color: var(--muted); }
+.top-head .hint { margin: var(--s2) 0 0; font-size: 12px; line-height: 18px; color: var(--muted); }
+.legend { display: grid; grid-template-columns: auto repeat(3, auto); align-items: center; gap: var(--s2) var(--s5); font-size: 11px; color: var(--muted); }
+.legend > span { display: inline-flex; align-items: center; gap: 6px; height: 20px; }
+.legend > .lg-label { grid-row: span 2; align-self: stretch; height: auto; padding-right: var(--s4); border-right: 2px solid var(--line); font-family: var(--font-mono); letter-spacing: 1px; }
+.lg { position: relative; display: inline-block; width: 10px; height: 20px; border: 2px solid var(--text); background: var(--panel); }
+.lg::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px; border-top: 2px solid var(--text); }
+.lg.t-sheet::after { background-image: var(--dither-ink-2); }
+.lg.t-bitable::after { background: var(--text); }
+.lg.t-file { border-style: dashed; }
+.lg.is-box { width: 14px; border-top-width: 5px; }
+.lg.is-new::before { content: ""; position: absolute; right: 0; top: -6px; width: 4px; height: 8px; background: var(--signal); }
+.piles { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--s5) 48px; min-height: 28px; }
+.pile { display: flex; flex-direction: column; align-items: flex-start; }
+.pile > .slot + .slot { margin-top: -2px; }
+.flat { position: relative; display: flex; align-items: stretch; height: 30px; border: 2px solid var(--text); background: var(--panel); color: var(--text); font-size: 12px; }
+.flat .hd { flex: none; display: grid; place-items: center; width: 30px; border-right: 2px solid var(--text); font-family: var(--font-mono); font-size: 11px; color: var(--text-2); }
+.flat .nm { max-width: 320px; padding: 0 var(--s3); overflow: hidden; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
+.flat .tl { flex: none; width: 14px; border-left: 2px solid var(--text); }
+.flat.t-sheet .tl { background-image: var(--dither-ink-2); }
+.flat.t-bitable .tl { background: var(--text); }
+.flat.t-file { border-style: dashed; }
+.flat .rb { position: absolute; right: -10px; top: 4px; width: 8px; height: 6px; background: var(--signal); }
+.top-empty { padding-bottom: var(--s3); font-size: 12px; color: var(--muted); }
+
+/* 书柜：外框 2px，柜顶和柜底 6px，层板 4px，中间一块 2px 隔板 */
+.cab { display: grid; grid-template-columns: repeat(var(--bays), minmax(0, 1fr)); border: 2px solid var(--text); border-top-width: 6px; border-bottom-width: 6px; background: var(--panel); }
+.bay { display: flex; flex-direction: column; min-width: 0; border-bottom: 4px solid var(--text); }
+.bay.is-left { border-right: 2px solid var(--text); }
+.bay.is-last { border-bottom: 0; }
+.bay-head { position: relative; display: flex; align-items: baseline; gap: var(--s2); padding: var(--s4) var(--s5) 0; }
+.bay-head .no { flex: none; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.bay-head strong { min-width: 0; overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.bay-head strong.is-blink { background: var(--text); color: var(--panel); }
+.bay-head .meta { flex: none; margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+/* 改名、本页正文平时藏起来，悬停这一层时换掉右侧的篇数和更新，同一个位置，不挤占层名 */
+.bay-head .act { position: absolute; right: var(--s5); bottom: 0; display: inline-flex; gap: var(--s3); padding-left: var(--s3); background: var(--panel); visibility: hidden; }
+.bay:hover .act, .bay:focus-within .act { visibility: visible; }
+.bay:hover .meta, .bay:focus-within .meta { visibility: hidden; }
+.bay-head .act a, .bay-head .act button { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; font-size: 12px; color: var(--text-2); cursor: pointer; }
+.bay-head .act a:hover, .bay-head .act button:hover { color: var(--signal); }
+.bay.is-dim .bay-head strong { color: var(--muted); }
+.bay.is-over .bay-head strong { color: var(--signal); }
+.bay.is-filler { background-image: var(--dither-1); }
+.rows { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; }
+.row { display: flex; align-items: flex-end; gap: var(--s2); padding: var(--s5) var(--s5) 0; }
+.row + .row { border-top: 4px solid var(--text); }
+.empty-hint { padding-bottom: var(--s2); font-size: 12px; color: var(--muted); }
+
+/* 系列：同名前缀 / 后缀的书靠紧，上方细括号写系列名 */
+.grp { position: relative; flex: none; display: flex; align-items: flex-end; gap: 4px; padding-top: 30px; }
+.grp::before { content: ""; position: absolute; left: 0; right: 0; top: 18px; height: 5px; border: 1px solid var(--muted); border-bottom: 0; }
+.grp-cap { position: absolute; left: 0; top: 0; overflow: hidden; font-size: 11px; line-height: 14px; color: var(--text-2); text-overflow: ellipsis; white-space: nowrap; }
+
+/* 书：等高，书头一道线，书尾一格表示类型 */
+.slot { position: relative; flex: none; }
+.slot[data-pull="1"] { transform: translateY(-3px); }
+.slot[data-pull="2"] { transform: translateY(-6px); }
+.fslot[data-pull="1"] { transform: translateX(4px); }
+.fslot[data-pull="2"] { transform: translateX(8px); }
+.bk { position: relative; display: flex; flex-direction: column; align-items: center; padding: 16px 0 0; border: 2px solid var(--text); background: var(--panel); color: var(--text); font: inherit; text-decoration: none; cursor: pointer; }
+.bk::before { content: ""; position: absolute; left: 3px; right: 3px; top: 5px; height: 2px; background: var(--text); }
+.tx { display: block; overflow: hidden; writing-mode: vertical-rl; font-size: 13px; line-height: 17px; letter-spacing: 1px; }
+.tx .c { display: block; white-space: nowrap; }
+.bk .tail { position: absolute; left: 0; right: 0; bottom: 0; height: 18px; border-top: 2px solid var(--text); }
+.bk.t-sheet .tail { background-image: var(--dither-ink-2); }
+.bk.t-bitable .tail { background: var(--text); }
+.bk.t-file { border-style: dashed; }
+.bk .rb { position: absolute; z-index: 1; top: -8px; right: 5px; width: 6px; height: 16px; background: var(--signal); }
+/* 档案盒：盒盖 7px，书名加框成标签窗，盒尾写篇数 */
+.bk.box::before { left: 0; right: 0; top: 0; height: 7px; }
+.bk.box .tx { font-weight: 600; outline: 1px solid var(--text); outline-offset: 4px; }
+.bk.box .tail { display: grid; place-items: center; font-family: var(--font-pixel); font-size: 12px; line-height: 1; }
+.bk.is-ghost { border: 2px dashed var(--line); color: var(--muted); cursor: default; }
+.bk.is-ghost::before { display: none; }
+/* 敞口盒：盒盖变橙，标签横写，书逐本取出 */
+.obox { position: relative; display: flex; flex-direction: column; border: 2px solid var(--text); background: var(--panel); }
+.obox-lid { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 var(--s2); border: 0; border-top: 5px solid var(--signal); border-bottom: 2px solid var(--text); background: var(--panel); font-size: 12px; font-weight: 600; white-space: nowrap; text-align: left; cursor: pointer; }
+.obox-lid .tnum { font-size: 11px; font-weight: 400; color: var(--muted); }
+.obox-lid .close { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding-left: var(--s3); font-weight: 400; color: var(--text-2); }
+.obox-lid:hover .close { color: var(--signal); }
+.obox-in { flex: 1; display: flex; align-items: flex-end; gap: 4px; padding: var(--s2) var(--s2) 0; }
+
+/* 拖放：落点出现一本橙色虚线的空书「放这里」 */
+.bay.is-over .row:last-child::after, .obox.is-over .obox-in::after { content: "放这里"; flex: none; box-sizing: border-box; width: 35px; height: 188px; padding-top: 16px; border: 2px dashed var(--signal); writing-mode: vertical-rl; font-size: 12px; line-height: 31px; letter-spacing: 1px; color: var(--signal); }
+.obox.is-over .obox-in::after { height: 146px; }
+.obox.is-over { border-color: var(--signal); }
+.slot.box-slot.is-over .bk { border-style: dashed; border-color: var(--signal); }
+.slot.box-slot.is-over .bk::before { background: var(--signal); }
+.top.is-over .piles::after { content: "放回柜顶"; align-self: flex-end; height: 30px; padding: 0 var(--s3); border: 2px dashed var(--signal); font-size: 12px; line-height: 26px; color: var(--signal); }
+.slot.is-dragging .bk, .slot.is-dragging .flat { border-style: dashed; border-color: var(--line); color: transparent; }
+.slot.is-dragging .bk::before, .slot.is-dragging .tail, .slot.is-dragging .rb, .slot.is-dragging .tl { visibility: hidden; }
+.slot.is-dragging .flat .hd { border-color: var(--line); color: transparent; }
+.slot.is-busy .bk, .slot.is-busy .flat { border-style: dashed; border-color: var(--signal); }
+.slot > .busy { position: absolute; left: 50%; top: -10px; transform: translate(-50%, -100%); padding: 0 4px; background: var(--panel); white-space: nowrap; }
+.fslot > .busy { left: 100%; top: 50%; transform: translate(14px, -50%); }
+/* 搜索：没命中的书退成灰线，不用透明度 */
+.slot.is-dim .bk, .slot.is-dim .flat, .slot.is-dim .flat .hd, .slot.is-dim .flat .tl { color: var(--line); border-color: var(--line); }
+.slot.is-dim .bk::before { background: var(--line); }
+.slot.is-dim .tail { border-color: var(--line); background: none; }
+.slot.is-dim .rb { display: none; }
+.slot.is-dim .bk.box .tx { outline-color: var(--line); }
+.slot.is-dim .flat .tl { background: none; }
+/* 搜索时没命中的层收成一行层名，命中的层顶上来 */
+.bay.is-dim .rows { display: none; }
+.bay.is-dim .bay-head { padding-bottom: var(--s4); }
+
+/* 悬停卡：网点错位 6px 作浮起感（规范「悬浮效果」），不用阴影 */
+.tip { position: absolute; z-index: 20; width: 300px; pointer-events: none; }
+.tip-sh { position: absolute; left: 6px; top: 6px; right: -6px; bottom: -6px; background-image: var(--dither-ink-2); }
+.tip-card { position: relative; padding: var(--s3) 14px; border: 2px solid var(--text); background: var(--panel); }
+.tip-meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.tip-meta .is-new { color: var(--signal); }
+.tip-title { margin-top: 4px; font-size: 14px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.tip-ex { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 6px 0 0; font-size: 12px; line-height: 1.55; color: var(--text-2); }
+.tip-list { margin: 6px 0 0; padding: 0; list-style: none; font-size: 12px; line-height: 1.6; color: var(--text-2); }
+.tip-list li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tip-list li::before { content: "· "; color: var(--muted); }
+.tip-foot { display: flex; align-items: center; gap: var(--s2); margin-top: 10px; padding-top: var(--s2); border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.tip-foot > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tip-foot .go { flex: none; display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: var(--text); }
+</style>
+</head>
+<body>
+<main id="page">
+  <p id="kb-note" class="kb-note" hidden></p>
+  <section class="case" id="board"></section>
+</main>
+<script src="icons7.js"></script>
+<script src="kb-data.js"></script>
+<script src="common.js"></script>
+<script>
+const { icon, esc, model, count, latest, mmdd, isNew, hit, hits, docs, state, TYPE_ZH, frames, locate } = NB;
+const H = 188, COLW = 17, PADX = 7, TOP = 16, TAIL = 26, GAP = 8, SGAP = 4, LID = 32;
+const capOf = (h, box) => h - 4 - TOP - TAIL - (box ? 6 : 0);
+const board = document.getElementById("board");
+const openBox = new Set();
+const q = () => state.q.trim();
+
+// ---- 名称：去彩色 emoji、去扩展名（只影响书脊和卡片显示） ----
+const EMOJI = /[\p{Extended_Pictographic}\u{1F000}-\u{1F2FF}️‍⃣]/gu;
+const clean = (s) => s.replace(EMOJI, "").replace(/\s+/g, " ").trim();
+const spineName = (s) => clean(s).replace(/\.(pdf|docx?|xlsx?|pptx?)$/i, "");
+const groupName = (s) => { const m = /^(\d+)｜(.*)$/.exec(s); return m ? [m[1], m[2]] : ["", s]; };
+
+// ---- 竖排：切词 → 实测每个词的竖向长度 → 选列数和断点 ----
+const OPEN = "（「『【《(〈", CLOSE = "、，。：；）」』】》)!?！？…〉,.", SEP = "丨｜-－—–·/";
+// 两位以内横排压成一格（7月、T1、AI）；3–4 位数字或全大写缩写逐字竖立（2025、FAQ）；其余英文和版本号侧转（Brief、V1.3）
+const latin = (t) => ({ t, k: t.length <= 2 ? "tcy" : /^(\d{3,4}|[A-Z]{3,4})$/.test(t) ? "up" : "side" });
+function tokenize(s) {
+  const out = [];
+  for (const [t] of s.matchAll(/[A-Za-z0-9](?:[A-Za-z0-9.+_]*[A-Za-z0-9])?|\s+|[\s\S]/gu)) {
+    if (/^\s+$/.test(t)) out.push({ t: " ", k: "sp" });
+    else if (/^[A-Za-z0-9]/.test(t)) out.push(latin(t));
+    else out.push({ t, k: SEP.includes(t) ? "sep" : CLOSE.includes(t) ? "close" : OPEN.includes(t) ? "open" : "cjk" });
+  }
+  return out;
+}
+// 竖立的数字 / 缩写逐字单独压成一格，和汉字一样宽，竖排节奏不松
+const tokHtml = (t) => (t.k === "tcy" ? `<span class="tcy">${esc(t.t)}</span>` : t.k === "up" ? [...t.t].map((ch) => `<span class="tcy">${esc(ch)}</span>`).join("") : esc(t.t));
+const meter = Object.assign(document.createElement("div"), { className: "meter" });
+document.body.appendChild(meter);
+const ADV = new Map();
+const keyOf = (t, b) => `${b ? 1 : 0}${t.k}\u0000${t.t}`;
+function measure(toks, b) {
+  const need = [...new Map(toks.filter((t) => !ADV.has(keyOf(t, b))).map((t) => [keyOf(t, b), t])).values()];
+  if (!need.length) return;
+  meter.innerHTML = need.map((t) => `<span class="m${b ? " b" : ""}">${tokHtml(t)}</span>`).join("<br>");
+  const spans = meter.querySelectorAll(".m");
+  need.forEach((t, i) => ADV.set(keyOf(t, b), spans[i].getBoundingClientRect().height));
+  meter.innerHTML = "";
+}
+// 断列：1 列放得下就 1 列；否则在 2、3 列里找各列都放得下、代价最小的断法。
+// 代价 = 各列长短差的一半 + 断点代价：「-」「丨」、空格处断开（并去掉这个符号）-30；括号前后、中英文交界 5；
+// 中文词边界 20（浏览器自带分词 Intl.Segmenter，再补一个小词表：品牌名和工作流、全链路这类分词会切开的词）；词中间 120；单字成列再加 300。
+const SEGMENTER = new Intl.Segmenter("zh-Hans", { granularity: "word" });
+const ATOMS = ["路觅教育", "路觅", "工作流", "工作台", "全链路", "方法论", "仪表盘", "时间线", "价值链", "新员工", "管培生", "双十一", "知识库", "机器人", "实验室"];
+function wordStarts(str) {
+  const set = new Set([...SEGMENTER.segment(str)].map((x) => x.index));
+  ATOMS.forEach((w) => { for (let i = str.indexOf(w); i >= 0; i = str.indexOf(w, i + 1)) for (let k = i + 1; k < i + w.length; k++) set.delete(k); });
+  return set;
+}
+const isLatin = (t) => t.k === "tcy" || t.k === "up" || t.k === "side";
+function columns(name, cap, b) {
+  const toks = tokenize(name); measure(toks, b);
+  const a = toks.map((t) => ADV.get(keyOf(t, b)) || 14), n = toks.length;
+  const len = (i, j) => { let s = 0; for (let x = i; x < j; x++) s += a[x]; return s; };
+  if (len(0, n) <= cap + 0.5) return { toks, segs: [[0, n]] };
+  const starts = wordStarts(toks.map((t) => t.t).join("")), off = [];
+  toks.reduce((o, t, i) => { off[i] = o; return o + t.t.length; }, 0);
+  const cuts = [];
+  for (let i = 1; i < n; i++) {
+    const p = toks[i - 1], c = toks[i];
+    const numDash = c.k === "sep" && isLatin(p) && toks[i + 1] && isLatin(toks[i + 1]); // 2026-10 这类日期、区间不拆
+    if ((c.k === "sep" || c.k === "sp") && i < n - 1 && !numDash) { cuts.push({ end: i, start: i + 1, pen: -30 }); continue; }
+    if (numDash) continue;
+    if (p.k === "open" || p.k === "sep" || p.k === "sp" || c.k === "close") continue;
+    if (/^[月年日号期版]$/.test(c.t) && isLatin(p)) continue;
+    const pen = p.k === "close" || c.k === "open" || isLatin(p) !== isLatin(c) ? 5 : starts.has(off[i]) ? 20 : 120;
+    cuts.push({ end: i, start: i, pen });
+  }
+  const segsOf = (cs) => { const s = []; let at = 0; cs.forEach((c) => { s.push([at, c.end]); at = c.start; }); s.push([at, n]); return s; };
+  for (const k of [2, 3]) {
+    let best = null;
+    const tryCuts = (cs) => {
+      const segs = segsOf(cs), L = segs.map(([i, j]) => len(i, j));
+      if (L.some((l) => l > cap + 0.5)) return;
+      const sc = (Math.max(...L) - Math.min(...L)) / 2 + cs.reduce((t, c) => t + c.pen, 0) + (L.some((l) => l < 27) ? 300 : 0);
+      if (!best || sc < best.sc) best = { sc, segs };
+    };
+    if (k === 2) cuts.forEach((c) => tryCuts([c]));
+    else cuts.forEach((c1, x) => cuts.slice(x + 1).forEach((c2) => { if (c2.end > c1.start) tryCuts([c1, c2]); }));
+    if (best) return { toks, segs: best.segs };
+  }
+  const segs = []; let at = 0;
+  for (let k = 0; k < 3 && at < n; k++) { let e = at, l = 0; const lim = k === 2 ? cap - 16 : cap; while (e < n && l + a[e] <= lim) l += a[e++]; segs.push([at, e]); at = e; while (at < n && toks[at].k === "sp") at++; }
+  return { toks, segs, more: at < n };
+}
+function spineText(name, h, box) {
+  const r = columns(spineName(name), capOf(h, box), box);
+  const html = r.segs.map(([i, j], x) => `<span class="c">${r.toks.slice(i, j).map(tokHtml).join("")}${r.more && x === r.segs.length - 1 ? "…" : ""}</span>`).join("");
+  return { n: r.segs.length, html: `<span class="tx" style="height:${capOf(h, box)}px">${html}</span>` };
+}
+const cv = document.createElement("canvas").getContext("2d");
+const hw = (text, font) => { cv.font = font; return Math.ceil(cv.measureText(text).width); };
+
+// ---- 系列：同一层里 ≥2 本书在最后一个「-」前（或后）完全相同，就并成一组 ----
+function seriesOf(list) {
+  const cand = new Map();
+  const add = (key, v) => (cand.get(key) || cand.set(key, []).get(key)).push(v);
+  for (const k of list) {
+    const nm = spineName(k.name), i = Math.max(nm.lastIndexOf("-"), nm.lastIndexOf("－"), nm.lastIndexOf("—"));
+    if (i < 2 || i > nm.length - 3) continue;
+    const pre = nm.slice(0, i).trim(), suf = nm.slice(i + 1).trim();
+    add(`p${pre}`, { k, label: pre, part: suf }); add(`s${suf}`, { k, label: suf, part: pre });
+  }
+  const res = new Map();
+  [...cand.entries()].filter(([, v]) => v.length >= 2).sort((x, y) => y[1].length - x[1].length || y[1][0].label.length - x[1][0].label.length)
+    .forEach(([key, v]) => { if (!v.some((x) => res.has(x.k.id))) v.forEach((x) => res.set(x.k.id, { gid: key, label: x.label, part: x.part })); });
+  return res;
+}
+
+// ---- 单本、档案盒、敞口盒、系列组 → { w, html } ----
+function bookEl(n, h, label) {
+  const d = docs[n.id] || {}, t = spineText(label, h, false), w = 4 + PADX * 2 + t.n * COLW;
+  return { w, html: `<span class="slot${q() && !hit(n) ? " is-dim" : ""}" data-doc="${n.id}" draggable="true">
+    <a class="bk t-${d.type || "docx"}" style="height:${h}px;width:${w}px" href="${esc(d.url || "#")}" target="_blank" rel="noreferrer" aria-label="${esc(clean(n.name))}，点击打开飞书原文">${t.html}<span class="tail"></span>${isNew(d.updated) ? `<i class="rb"></i>` : ""}</a></span>` };
+}
+function boxEl(n, h, label) {
+  const t = spineText(label, h, true), w = 4 + 20 + Math.max(2, t.n) * COLW;
+  return { w, html: `<span class="slot box-slot drop${q() && !hits(n) ? " is-dim" : ""}" data-doc="${n.id}" data-drop="${n.id}" draggable="true">
+    <button type="button" class="bk box" style="height:${h}px;width:${w}px" onclick="toggleBox('${n.id}')" aria-label="档案盒 ${esc(clean(n.name))}，${count(n)} 篇，点击打开">${t.html}<span class="tail">${count(n)}</span></button></span>` };
+}
+function oboxEl(n, h) {
+  const ih = h - 4 - LID - 6, inner = itemsFor(n.kids, ih, false);
+  const lid = `${clean(n.name)} ${count(n)} 篇 收起`, innerW = inner.reduce((s, it) => s + it.w, 0) + SGAP * Math.max(0, inner.length - 1);
+  const w = Math.max(4 + 16 + innerW, hw(lid, "600 12px Geist, PingFang SC") + 60);
+  return { w, html: `<span class="slot" data-doc="${n.id}" draggable="true"><span class="obox drop" data-drop="${n.id}" style="height:${h}px;width:${w}px">
+    <button type="button" class="obox-lid" onclick="toggleBox('${n.id}')">${esc(clean(n.name))}<span class="tnum">${count(n)} 篇</span><span class="close">${icon("up")}收起</span></button>
+    <span class="obox-in">${inner.length ? inner.map((it) => it.html).join("") : `<span class="empty-hint">空盒子，把书拖进来</span>`}</span></span></span>` };
+}
+function single(k, h, label) {
+  if (!k.kids) return bookEl(k, h, label);
+  const open = (openBox.has(k.id) || (q() && hits(k) > 0)) && h >= 150;
+  return open ? oboxEl(k, h) : boxEl(k, h, label);
+}
+function itemsFor(kids, h, allowSeries) {
+  const sorted = [...kids.filter((k) => k.kids), ...kids.filter((k) => !k.kids)];
+  const ser = allowSeries ? seriesOf(sorted) : new Map(), done = new Set(), out = [];
+  for (const k of sorted) {
+    const s = ser.get(k.id);
+    if (!s) { out.push(single(k, h, k.name)); continue; }
+    if (done.has(s.gid)) continue;
+    done.add(s.gid);
+    const ms = sorted.filter((x) => ser.get(x.id)?.gid === s.gid).map((x) => single(x, h, ser.get(x.id).part));
+    out.push({ grp: true, cap: s.label, w: ms.reduce((t, m) => t + m.w, 0) + SGAP * (ms.length - 1), html: ms.map((m) => m.html).join("") });
+  }
+  return out;
+}
+
+// ---- 一格书柜：层名 → 按宽度装行（放不下就加一块层板）→ 系列名只占到下一组之前 ----
+function bayHtml(g, avail, cls) {
+  const its = itemsFor(g.kids, H, true), rows = [];
+  let cur = [], x = 0;
+  for (const it of its) { if (cur.length && x + GAP + it.w > avail) { rows.push(cur); cur = []; x = 0; } it.x = cur.length ? x + GAP : 0; x = it.x + it.w; cur.push(it); }
+  if (cur.length) rows.push(cur);
+  const rowHtml = (row) => row.map((it, i) => {
+    if (!it.grp) return it.html;
+    const next = row.slice(i + 1).find((o) => o.grp), maxW = (next ? next.x : avail) - it.x - 12;
+    return `<span class="grp" style="width:${it.w}px"><span class="grp-cap" style="max-width:${maxW}px" title="${esc(it.cap)}">${esc(it.cap)}</span>${it.html}</span>`;
+  }).join("");
+  const [no, name] = groupName(g.name), url = docs[g.id]?.url;
+  const body = rows.length ? rows.map((r) => `<div class="row">${rowHtml(r)}</div>`).join("")
+    : `<div class="row"><span class="slot"><span class="bk is-ghost" style="height:${H}px;width:35px">${spineText("空书架", H, false).html}</span></span><span class="empty-hint">把书拖上来</span></div>`;
+  return `<section class="bay drop${cls}${q() && !hits(g) ? " is-dim" : ""}" data-drop="${g.id}" id="b-${g.id}">
+    <header class="bay-head"><span class="no">${no}</span><strong>${esc(name)}</strong><span class="meta">${q() && !hits(g) ? "没有命中" : count(g) ? `${count(g)} 篇 · 更新 ${mmdd(latest(g))}` : "空"}${q() && hits(g) ? ` · 命中 ${hits(g)}` : ""}</span>
+      <span class="act"><button type="button" title="改名（写入飞书）">${icon("edit")}改名</button>${url ? `<a href="${esc(url)}" target="_blank" rel="noreferrer">${icon("external")}本页正文</a>` : ""}</span></header>
+    <div class="rows">${body}</div></section>`;
+}
+
+// ---- 柜顶的书：横放成摞，窄的压在宽的上面 ----
+function flatEl(n) {
+  const d = docs[n.id] || {}, nm = spineName(n.name), m = /^(\d{1,3})[｜|丨]\s*(.+)$/.exec(nm);
+  return `<span class="slot fslot${q() && !hit(n) ? " is-dim" : ""}" data-doc="${n.id}" draggable="true"><a class="flat t-${d.type || "docx"}" href="${esc(d.url || "#")}" target="_blank" rel="noreferrer" aria-label="${esc(clean(n.name))}，点击打开飞书原文"><span class="hd">${m ? m[1] : ""}</span><span class="nm">${esc(m ? m[2] : nm)}</span><span class="tl"></span>${isNew(d.updated) ? `<i class="rb"></i>` : ""}</a></span>`;
+}
+
+function render() {
+  const m = model(), W = board.clientWidth, bays = W >= 640 ? 2 : 1;
+  const avail = Math.floor((W - 4 - (bays - 1) * 2) / bays - 48);
+  const piles = []; m.loose.forEach((n, i) => (piles[Math.floor(i / pileK)] ||= []).push(n));
+  const lastStart = m.groups.length - (m.groups.length % bays || bays);
+  const cells = m.groups.map((g, i) => bayHtml(g, avail, `${bays > 1 && i % bays < bays - 1 ? " is-left" : ""}${i >= lastStart ? " is-last" : ""}`));
+  if (m.groups.length % bays) cells.push(`<section class="bay is-filler is-last"></section>`);
+  board.innerHTML = `<div class="top drop" data-drop="">
+      <div class="top-head">
+        <div><div class="top-title"><strong>待上架</strong><span class="px">${m.loose.length}</span><span class="unit">本</span></div>
+          <p class="hint">${m.loose.length ? "收藏时归类不明确的书先放柜顶，拖到任一层即上架（在飞书里移动）" : "书都上架了"}</p></div>
+        <div class="legend" aria-hidden="true"><span class="lg-label">图例</span><span><i class="lg"></i>文档</span><span><i class="lg t-sheet"></i>表格</span><span><i class="lg t-bitable"></i>多维表</span><span><i class="lg t-file"></i>文件</span><span><i class="lg is-box"></i>档案盒</span><span><i class="lg is-new"></i>近 3 天更新</span></div></div>
+      <div class="piles">${piles.map((p) => `<div class="pile">${[...p].sort((a, b) => spineName(a.name).length - spineName(b.name).length).map(flatEl).join("")}</div>`).join("")}</div>
+    </div>
+    <div class="cab" style="--bays:${bays}">${cells.join("")}</div>
+    <div class="tip" hidden><div class="tip-sh"></div><div class="tip-card"></div></div>`;
+}
+
+// ---- 悬停 / 聚焦：两帧抽出，第二帧弹出卡片 ----
+const pathOf = (id) => { const out = []; let h = locate(id); while (h?.parent) { out.unshift(h.parent.name.replace("｜", " ")); h = locate(h.parent.id); } return out; };
+function tipHtml(id) {
+  const n = locate(id)?.node, d = docs[id] || {};
+  if (!n) return "";
+  const where = pathOf(id).join(" › ") || "待上架";
+  if (n.kids) return `<div class="tip-meta">档案盒 · ${count(n)} 篇 · 更新 ${mmdd(latest(n))}</div><div class="tip-title">${esc(clean(n.name))}</div>
+    <ul class="tip-list">${n.kids.slice(0, 4).map((k) => `<li>${esc(clean(k.name))}</li>`).join("")}${n.kids.length > 4 ? `<li>还有 ${n.kids.length - 4} 篇</li>` : ""}</ul>
+    <div class="tip-foot"><span>${esc(where)}</span><span class="go">${openBox.has(id) ? "点盒盖收起" : "点击打开盒子"}</span></div>`;
+  let ex = (d.excerpt || "").trim(); if (ex.startsWith(n.name)) ex = ex.slice(n.name.length).trim(); ex = clean(ex);
+  return `<div class="tip-meta">${TYPE_ZH[d.type] || "文档"} · <span class="${isNew(d.updated) ? "is-new" : ""}">更新 ${mmdd(d.updated)}</span></div><div class="tip-title">${esc(clean(n.name))}</div>
+    ${ex ? `<p class="tip-ex">${esc(ex)}</p>` : ""}<div class="tip-foot"><span>${esc(where)}</span><span class="go">打开飞书原文 ${icon("external")}</span></div>`;
+}
+function showTip(slot) {
+  const tip = board.querySelector(".tip"); if (!tip) return;
+  tip.querySelector(".tip-card").innerHTML = tipHtml(slot.dataset.doc); tip.hidden = false;
+  const cr = board.getBoundingClientRect(), r = (slot.querySelector(".bk, .flat, .obox-lid") || slot).getBoundingClientRect();
+  const left = Math.max(0, Math.min(r.left - cr.left - 8, cr.width - tip.offsetWidth - 8));
+  const above = r.top - tip.offsetHeight - 16 > 40;
+  tip.style.left = `${left}px`;
+  tip.style.top = `${above ? r.top - cr.top - tip.offsetHeight - 16 : r.bottom - cr.top + 14}px`;
+}
+function hideTip() { const tip = board.querySelector(".tip"); if (tip) tip.hidden = true; }
+let dragging = false;
+function pullIn(slot) {
+  if (dragging) return;
+  if (slot.querySelector(".obox")) { showTip(slot); return; } // 敞口盒不整体上抽，只弹卡
+  let f = Number(slot.dataset.pull || 0); clearInterval(slot._p);
+  slot._p = setInterval(() => { slot.dataset.pull = String(++f); if (f >= 2) { clearInterval(slot._p); showTip(slot); } }, 66.7);
+}
+function pushOut(slot) {
+  let f = Number(slot.dataset.pull || 0); clearInterval(slot._p); hideTip();
+  slot._p = setInterval(() => { f -= 1; if (f <= 0) { clearInterval(slot._p); delete slot.dataset.pull; } else slot.dataset.pull = String(f); }, 66.7);
+}
+const slotOf = (el) => el?.closest?.(".slot[data-doc]");
+const innermost = (e) => { const s = slotOf(e.target); return s && !s.querySelector(".obox") ? s : (e.target.closest(".obox-lid") ? s : null); };
+board.addEventListener("mouseover", (e) => { const s = innermost(e); if (s && !s.contains(e.relatedTarget)) pullIn(s); });
+board.addEventListener("mouseout", (e) => { const s = innermost(e); if (s && !s.contains(e.relatedTarget)) pushOut(s); });
+board.addEventListener("focusin", (e) => { const s = slotOf(e.target); if (s) pullIn(s); });
+board.addEventListener("focusout", (e) => { const s = slotOf(e.target); if (s) pushOut(s); });
+document.addEventListener("dragstart", () => { dragging = true; hideTip(); });
+document.addEventListener("dragend", () => { dragging = false; });
+
+// ---- 档案盒：点开后书逐帧一本本取出 ----
+function toggleBox(id) {
+  const opening = !openBox.has(id);
+  opening ? openBox.add(id) : openBox.delete(id);
+  hideTip(); NB.render();
+  if (!opening) return;
+  const ins = [...board.querySelectorAll(`.obox[data-drop="${id}"] .obox-in > *`)];
+  ins.forEach((el) => (el.style.visibility = "hidden"));
+  frames(ins.length, (f) => (ins[f - 1].style.visibility = ""));
+}
+// 落定：所在那层的名字反色闪两下
+NB.onLanded = (pid) => {
+  let top = pid; for (let h = locate(pid); h?.parent; h = locate(h.parent.id)) top = h.parent.id;
+  const el = pid ? board.querySelector(`#b-${CSS.escape(top)} .bay-head strong`) : board.querySelector(".top-title strong");
+  if (el) frames(4, (f) => el.classList.toggle("is-blink", f % 2 === 1));
+};
+
+let lastW = 0;
+new ResizeObserver(() => { if (board.clientWidth !== lastW) { lastW = board.clientWidth; NB.render(); } }).observe(board);
+if (NB.params.has("box")) { const want = NB.params.get("box"); (function walk(ns) { ns.forEach((n) => { if (n.kids) { if (n.name.includes(want)) openBox.add(n.id); walk(n.kids); } }); })(model().groups); }
+// 书摞一排放不下时，不让上一排悬在半空：每摞多叠一本再排，最多 5 本一摞；还放不下才换行
+let pileK = 3;
+const wraps = () => { const ps = [...board.querySelectorAll(".pile")], bot = (p) => p.offsetTop + p.offsetHeight; return ps.some((p) => bot(p) !== bot(ps[0])); }; // 书摞底对齐，比底边
+function fit() { pileK = 3; render(); while (wraps() && pileK < 5) { pileK++; render(); } }
+NB.start("V4-3 待上架加宽", fit);
+document.fonts.ready.then(() => {
+  ADV.clear();
+  if (NB.params.has("q")) { state.q = NB.params.get("q"); document.getElementById("kb-q").value = state.q; }
+  NB.render();
+  if (NB.params.has("hover")) { const want = NB.params.get("hover"); const s = [...board.querySelectorAll(".slot[data-doc]")].find((x) => (x.querySelector("[aria-label]")?.getAttribute("aria-label") || "").includes(want)); if (s) pullIn(s); }
+});
+</script>
+</body>
+</html>
