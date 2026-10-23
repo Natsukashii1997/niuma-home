@@ -296,15 +296,29 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `POST /api/v3/mentor/:name/items/:id/reply` 请求 `{ previewId, confirm: true }` → 回复记录（`state: "sent"`）。用 `lark-cli drive +add-comment --block-id <id>` 在原话那一段挂评论（user = 常浩本人，bot = 机械邪龙兽应用），只发一次，再按评论编号回读核对；同一预览重复确认返回同一回执。授权被拒（确定没执行）清掉记录；其他失败或回读不一致记为 `unknown` 并返回 502 `REPLY_UNKNOWN`。
 - `POST /api/v3/mentor/:name/items/:id/reply/reconcile` 请求 `{}`：只读翻这篇文档的划词评论，找到同一段、同样内容的评论记为 `sent`；没找到清掉记录（`{ state: "none", checked: true }`），可重新发送。
 
-## 带教 · 培养路径（T14，待实现，2026-10-23）
+## 带教 · 培养路径（T14，2026-10-23）
 
-- `GET /api/v3/mentor/path` 目前返回 501 `{ error, task: "T14" }`，页面显示 `src/samples.js` 的 `MENTOR_PATH_SAMPLE` 并标「示例」。真实来源（飞书表、本地表或手填）未定，见 [docs/tasks/T14-培养路径真实数据.md](tasks/T14-培养路径真实数据.md)。
-- 约定形状（实现时按此返回，示例同形）：`{ season: { name, start: "YYYY-MM-DD", weeks, pass, rank, next, reviewer }, today: "YYYY-MM-DD", trainees: [{ name, role, path: { lines, links } | null }] }`。
+数据全放工作台本地（用户 2026-10-23 确认），每位管培生一份路径：定义存 `v3_documents`（kind `mentor-path`，id 为姓名），每关的营地记录存 `v3_documents`（kind `mentor-camp`，id 为 `姓名:关卡编号`）。没有新表。
+
+- `GET /api/v3/mentor/path` → `{ today: "YYYY-MM-DD", trainees: [{ name, role, path: { season, lines, links } | null }] }`。
+  - 名单沿用带教来源（设置 `mentor_sources`，默认林瑶、胡贵兰）；没导入路径的人 `path` 为 null，页面把这个人的按钮置灰。
+  - `today` 按北京时间由后端给，页面不读浏览器时间。
+  - `season`：`{ name, start: "YYYY-MM-DD"（入职日）, weeks, pass, rank, next, reviewer }`。**2026-10-23 从顶层挪进每人的 `path` 里**：以后管培生入职日不同，第几周、超期都按各自的入职日算。
   - `lines`：两条线，`key` 为 `biz`（业务线，前山）和 `ai`（AI 线，后山），各带 `code`、`name`、`desc`、`nodes`。
-  - `nodes[]`：`{ id, stage, title, week: [起, 止], status: "done" | "doing" | "locked", score?, at?, boss?, goal, todo[], todoDone?, output[], outDone?, rubric: [{ name, weight, score?, note? }] }`；`week` 是第几周（入职日所在周为第 1 周），营地横坐标取 `week[1]`。
+  - `nodes[]`：`{ id, stage, title, week: [起, 止], boss?, goal, todo[], output[], rubric: [{ name, weight, score?, note? }], status, score?, at?, todoDone, todoChecked, outDone, outLinks, review }`；`week` 是第几周（入职日所在周为第 1 周），营地横坐标取 `week[1]`。
+  - 后面几项由营地记录推出，不另存：
+    - `score` = 各评分项之和，定义里每一项都有分才有；`at` = 最近一次评分的日期（MM-DD）。
+    - `status`：`score ≥ pass` 为 `done`；否则前一关和绳桥依赖都已通关为 `doing`；其余 `locked`。
+    - `todoDone` / `outDone`：要做的事勾了几项、产出物交了几份（有链接算交）；`todoChecked` 与 `todo`、`outLinks` 与 `output` 一一对应（没勾为 false，没交为 null）。
+    - `review`（待评分）：进行中、交了产出，且还没评过分或产出在最近一次评分之后又更新过。
+    - 记录按事项原文、产出物名、评分项名对应定义；定义里改了措辞的条目视为没有记录。
   - `links[]`：跨线依赖 `{ from, to, note }`，`note` 写前一关的哪份产出被后一关用到。
-  - `today` 由后端给（今天落在第几周、谁超期都按它算），页面不读浏览器时间。没有路径的人 `path` 为 null，页面把这个人的按钮置灰。
-- 评分、打开产出物暂不提供，页面按钮为 `PendingButton`（T14）；以后接写入时走「预览 → 确认 → 回读」。
+- 路径定义的来源是仓库里的 `docs/培养路径/<姓名>.json`，用 `npm run import:mentor-path -- <姓名> [--file 路径] [--confirm]` 导入：默认只预览（目标、赛季、关卡数、与现有定义的差异、失去对应关卡的营地记录），加 `--confirm` 才写入并回读。只换定义，不动营地记录。校验：两条线依次是 biz、ai；关卡 id 不重复；周次在赛季内且一关排在上一关之后；评分项不重名、权重合计 100；跨线依赖必须连接两条线。
+- `POST /api/v3/mentor/path/:name/nodes/:id/record/preview` 请求 `{ todoDone: [事项原文], outLinks: { 产出物名: 链接 }, rubric: { 评分项名: { score: 整数 | null, note } } }`（营地日志表单整份提交）→ `{ previewId, expiresAt, before, value, scored, node, effects }`：
+  - `value` 是要存的营地记录 `{ name, node, todoDone, outLinks, rubric, scoredAt?, outAt?, updatedAt, history? }`；`before` 是现有记录或 null；`node` 是这一关写入后的样子（与 GET 里的关卡同形，页面回读按它核对）；`effects` 是状态会变的关 `[{ id, title, from, to }]`；`scored` 表示这次算不算一次评分。
+  - 规则：每一项都打分才算一次评分，分数全部留空只更新进度；分数是 0 到该项满分的整数，评语最多 200 字；链接以 http:// 或 https:// 开头；评分项（分数或评语）有改动才更新 `scoredAt`，产出物链接有改动才更新 `outAt`；旧记录进 `history`（最近 20 条）。
+  - 错误：内容不合规或没有改动 400；没有这个人的路径或没有这一关 404；这一关还没解锁 409。
+- `POST /api/v3/mentor/path/:name/nodes/:id/record` 请求 `{ previewId, confirm: true }` → 保存后回读的营地记录；预览 10 分钟内有效，同一预览重复确认返回同一回执。预览之后路径定义或这个人的任何营地记录变了，返回 409，须重新预览。只写工作台本地，不回写飞书。
 
 ## 策略 · 月度用户策略（T13，2026-10-20）
 

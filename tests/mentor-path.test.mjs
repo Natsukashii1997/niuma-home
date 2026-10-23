@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { busyBoxes, fixedLabels, isLate, labelBoxes, layout, pendingReviews, pines, placePlates, placeRopeLabels, plateStyle, seasonClock, shortUnlock, slopeOf, unlockText, yAt } from "../src/modules/projects/mentor-path.js";
-import { MENTOR_PATH_SAMPLE } from "../src/samples.js";
+import { MENTOR_PATH_SAMPLE } from "./helpers/mentor-path-sample.mjs";
 
-const { season, today } = MENTOR_PATH_SAMPLE;
-const path = MENTOR_PATH_SAMPLE.trainees[0].path;
+const { today } = MENTOR_PATH_SAMPLE;
+const path = MENTOR_PATH_SAMPLE.trainees[0].path, season = path.season;
 const clock = seasonClock(season, today);
 
 // 定稿 v7.html 在 Chrome 里实测的尺寸（Geist 字体）：标牌完整 184×60、小牌按文字宽；正在爬的两块边框 2px
@@ -178,14 +178,4 @@ test("layout：一条线没有在途的关时没有登山者，实线走到最�
   assert.equal(geo.trail.ai.done.at(-1)[0], geo.camps.ai[2].x);
   const plates = placePlates(geo, plateSizes, labelBoxes(fixedLabels(geo, { ...LABELS, late: {} })));
   assert.equal(plates.length, 13);
-});
-
-test("接口：/api/v3/mentor/path 真实来源未定，返回 501 + T14，页面据此显示示例", async () => {
-  const { projectRoutes } = await import("../server/routes/projects.mjs");
-  const { match } = await import("../server/http.mjs");
-  const found = match(projectRoutes({ projects: {}, mentor: {}, kb: {} }), "GET", "/api/v3/mentor/path");
-  let status, body;
-  await found.handler({}, { writeHead: (s) => (status = s), end: (b) => (body = JSON.parse(b)) }, { params: found.params });
-  assert.equal(status, 501);
-  assert.equal(body.task, "T14");
 });

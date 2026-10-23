@@ -11,7 +11,8 @@
     "build": "vite build",
     "start": "node server/index.mjs",
     "test": "WORKDESK_DATA_DIR=${WORKDESK_DATA_DIR:-$(mktemp -d)} node --test tests/*.test.mjs",
-    "import:feishu": "node scripts/import-feishu.mjs"
+    "import:feishu": "node scripts/import-feishu.mjs",
+    "import:mentor-path": "node scripts/import-mentor-path.mjs"
   },
   "dependencies": {
     "react": "19.2.0",

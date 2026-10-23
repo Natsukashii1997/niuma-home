@@ -1,15 +1,16 @@
-import { pending, readJson, route } from '../http.mjs';
+import { readJson, route } from '../http.mjs';
 import { handleV3 } from './user.mjs';
 import { failure } from '../v3-common.mjs';
 import { createProjectService } from '../projects.mjs';
 import { createMentorService } from '../mentor.mjs';
+import { createMentorPathService } from '../mentor-path.mjs';
 import { createKnowledgeTreeService } from '../knowledge-tree.mjs';
 
 async function body(req) { try { return await readJson(req); } catch { throw failure(400, '请求内容不是有效 JSON'); } }
 export function createProjectServices(db, options = {}) {
-  return { projects: createProjectService(db, options.projects), mentor: createMentorService(db, options.mentor), kb: createKnowledgeTreeService(db, { staleWhileRevalidate: true, ...options.kb }) };
+  return { projects: createProjectService(db, options.projects), mentor: createMentorService(db, options.mentor), mentorPath: createMentorPathService(db, options.mentorPath), kb: createKnowledgeTreeService(db, { staleWhileRevalidate: true, ...options.kb }) };
 }
-export function projectRoutes({ projects, mentor, kb }) {
+export function projectRoutes({ projects, mentor, mentorPath, kb }) {
   return [
     route('GET', '/api/v3/projects', handleV3(() => projects.list())),
     // 新建本地项目：路径与 /api/v3/projects/:id 分开，避免被当成项目编号。
@@ -27,7 +28,9 @@ export function projectRoutes({ projects, mentor, kb }) {
     route('GET', '/api/v3/mentor', handleV3(() => mentor.list())),
     route('POST', '/api/v3/mentor/refresh', handleV3(() => mentor.list({ refresh: true }))),
     // 培养路径（定稿 V7）：真实来源未定，先返回 501，页面显示示例（T14）
-    route('GET', '/api/v3/mentor/path', pending('T14')),
+    route('GET', '/api/v3/mentor/path', handleV3(() => mentorPath.get())),
+    route('POST', '/api/v3/mentor/path/:name/nodes/:id/record/preview', handleV3(async (req, { params }) => mentorPath.recordPreview(params.name, params.id, await body(req)))),
+    route('POST', '/api/v3/mentor/path/:name/nodes/:id/record', handleV3(async (req, { params }) => mentorPath.recordConfirm(params.name, params.id, await body(req)))),
     route('POST', '/api/v3/mentor/:name/records/preview', handleV3(async (req, { params }) => mentor.preview(params.name, await body(req)))),
     route('POST', '/api/v3/mentor/:name/records', handleV3(async (req, { params }) => mentor.confirm(params.name, await body(req)))),
     route('POST', '/api/v3/mentor/:name/draft/preview', handleV3(async (req, { params }) => mentor.previewDraft(params.name, await body(req)))),

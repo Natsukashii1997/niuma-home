@@ -1,14 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { DitherBar, DitherPattern, PixelIcon, PixelSprite, SPRITES, SpriteCells, frames, prefersReducedMotion } from "../../ui/bitmap.jsx";
-import { useApi } from "../../api.js";
-import { Button, Loadable, PageHeader, PendingButton, Placeholder, SampleBadge, Tabs, Tag } from "../../ui/components.jsx";
-import { MENTOR_PATH_SAMPLE } from "../../samples.js";
+import { apiRead, apiSend, useApi } from "../../api.js";
+import { Button, Loadable, PageHeader, Placeholder, Tabs, Tag } from "../../ui/components.jsx";
+import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { avgScore, busyBoxes, doneCount, findNode, fixedLabels, isLate, labelBoxes, lateWeeks, layout, lineStars, pendingReviews, pines, placePlates, placeRopeLabels, plateStyle, poly, prereqs, seasonClock, shortUnlock, slopeOf, stars, unlockText } from "./mentor-path.js";
 
 // 带教 · 培养路径（定稿 V7 远征登山，用户 2026-10-23）：横向全景，前山是业务线、后山是 AI 线；一关是一段坡，坡顶的营地是通关点，越往右越高，
 // 两条路在山顶汇合（结业）。太阳 = 今天，橙色虚线从太阳垂到地面；登山者站在现在的位置；绳桥是跨线依赖。橙色只表示「现在」。
 // 地图最小 1232 宽（1440×900 下的主区宽），窗口窄时横向滚动；页头和营地日志固定在可视区。坐标全部由 mentor-path.js 计算。
-// 数据：GET /api/v3/mentor/path 还没接真实来源（T14），先显示示例；评分、打开产出物也待 T14。
+// 数据（T14）：GET /api/v3/mentor/path，每人一份路径，只存工作台本地；营地日志里评分走「预览 → 确认 → 回读」。
 const INK = "#0D0E10", PANEL = "#FBFBFC", SIGNAL = "#FF4F1F", BLUE = "#2563EB", GRAY = "#C9CCD3", MUTED = "#686D76", LOCKED = "#9CA0A8";
 const MOUNT = { biz: "前山", ai: "后山" }, LNAME = { biz: "业务线", ai: "AI 线" }, LCOLOR = { biz: INK, ai: BLUE };
 const KEYS = ["biz", "ai"];
@@ -16,37 +16,38 @@ const pick = (t) => t?.closest?.("[data-hit]")?.dataset.hit ?? null;
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 export default function MentorPath({ tabs }) {
-  const state = useApi("/api/v3/mentor/path", MENTOR_PATH_SAMPLE);
+  const state = useApi("/api/v3/mentor/path");
+  const [fresh, setFresh] = useState(null);   // 保存后回读到的整份数据，页面按它重画，不重新加载
   return (
-    <Loadable state={state} name="培养路径" big>
+    <Loadable state={fresh ? { data: fresh } : state} name="培养路径" big>
       {(data) => (data.trainees.some((t) => t.path)
-        ? <PathPage data={data} tabs={tabs} sample={state.isSample ? state.task : null} />
-        : <><PageHeader title="带教" /><Tabs items={tabs} active="path" /><Placeholder icon="route" title="还没有培养路径">管培生的培养路径接通后，这里显示两条线的营地、进度和本周攀登。</Placeholder></>)}
+        ? <PathPage data={data} tabs={tabs} onFresh={setFresh} />
+        : <><PageHeader title="带教" /><Tabs items={tabs} active="path" /><Placeholder icon="route" title="还没有培养路径">导入管培生的培养路径后，这里显示两条线的营地、进度和本周攀登。</Placeholder></>)}
     </Loadable>
   );
 }
 
-function PathPage({ data, tabs, sample }) {
-  const clock = useMemo(() => seasonClock(data.season, data.today), [data]);
+// 每人一份路径、各自的入职日：第几周、超期都按当前选中的人算
+function PathPage({ data, tabs, onFresh }) {
   const [who, setWho] = useState(() => data.trainees.findIndex((t) => t.path));
-  const path = data.trainees[who].path;
+  const path = data.trainees[who].path, season = path.season;
+  const clock = useMemo(() => seasonClock(season, data.today), [season, data.today]);
   const [selected, setSelected] = useState(null);   // 抽屉里打开的营地 id，或 summit / base
   const [hover, setHover] = useState(null);
   const switchTo = (k) => { setWho(k); setSelected(null); setHover(null); };
   return (
     <div className="m7-page">
-      <Mountain key={who} path={path} clock={clock} season={data.season} hl={hover ?? selected} onHover={setHover} onOpen={setSelected} />
+      <Mountain key={who} path={path} clock={clock} season={season} hl={hover ?? selected} onHover={setHover} onOpen={setSelected} />
       <header className="m7-head">
         <div className="m7-crumb"><h1>带教</h1>
-          <nav className="m7-tabs">{tabs.map((t) => <a key={t.key} href={t.href} className={t.key === "path" ? "on" : ""}>{t.label}</a>)}</nav>
-          {sample && <SampleBadge task={sample} />}</div>
+          <nav className="m7-tabs">{tabs.map((t) => <a key={t.key} href={t.href} className={t.key === "path" ? "on" : ""}>{t.label}</a>)}</nav></div>
         <div className="m7-people">{data.trainees.map((t, k) => (
           <button key={t.name} type="button" className={k === who ? "on" : ""} disabled={!t.path} title={t.path ? "" : "还没有培养路径"} onClick={() => switchTo(k)}>
-            {t.name}<small>{t.path ? `第 ${clock.week} 周` : "—"}</small></button>))}</div>
+            {t.name}<small>{t.path ? `第 ${seasonClock(t.path.season, data.today).week} 周` : "—"}</small></button>))}</div>
         <span className="spacer" />
-        <Kpis path={path} clock={clock} pass={data.season.pass} />
+        <Kpis path={path} clock={clock} pass={season.pass} />
       </header>
-      {selected && <CampDrawer key={who} id={selected} path={path} clock={clock} season={data.season} onOpen={setSelected} onClose={() => setSelected(null)} />}
+      {selected && <CampDrawer key={who} id={selected} name={data.trainees[who].name} path={path} clock={clock} season={season} onFresh={onFresh} onOpen={setSelected} onClose={() => setSelected(null)} />}
     </div>
   );
 }
@@ -251,6 +252,8 @@ function Climbers({ me }) {
   return KEYS.filter((k) => me[k]).map((k) => <SpriteCells key={k} rows={SPRITES.climb[f]} x={me[k].x - 14} y={me[k].y - 41} cell={4} color={SIGNAL} outline bg={PANEL} />);
 }
 
+// 没评分的关卡：分数位「—」，文字「未评分」
+const scoreText = (n) => (n.score == null ? "未评分" : `${n.score} 分`);
 const Tagged = ({ id }) => <i className={`m7-tag${id[0] === "A" ? " is-ai" : ""}`}>{id}</i>;
 function Stars({ n, pass }) {
   const k = n.status === "done" ? stars(n.score, pass) : 0;
@@ -264,8 +267,8 @@ function Plate({ c, p, hl, clock, path, pass }) {
   const s = a && plateStyle(p, a);
   const cls = ["m7-plate", `is-${n.status}`, line === "ai" && "is-ai", late && "is-late", a?.mini && "is-mini", a && `is-${a.side}`, hl === c.id && "is-hl", peek && "is-peek"].filter(Boolean).join(" ");
   const sc = n.status === "done" ? <>{n.score} 分 <Stars n={n} pass={pass} />· {n.at} 通关</>
-    : late ? `${n.score} 分 · 超期 ${lateWeeks(n, clock.week)} 周`
-    : n.status === "doing" ? `${n.score} 分 · 差 ${pass - n.score} 分通关` : shortUnlock(path, n.id);
+    : late ? `${scoreText(n)} · 超期 ${lateWeeks(n, clock.week)} 周`
+    : n.status === "doing" ? (n.score == null ? `未评分 · W${n.week[1]} 截止` : `${n.score} 分 · 差 ${pass - n.score} 分通关`) : shortUnlock(path, n.id);
   return (
     <div className={cls} data-id={c.id} data-hit={c.id} style={s && { left: s.left, top: s.top, "--lx": `${s.lx}px`, "--lh": `${s.lh}px`, "--lt": `${s.lt}px` }}>
       <span className="meta"><Tagged id={n.id} />{n.stage} · W{n.week[0]}–{n.week[1]}</span>
@@ -290,7 +293,7 @@ function WeekCard({ style, lines, doing, clock, pass }) {
           <button key={k} type="button" className="m7-row" data-hit={n.id}><i style={{ background: LCOLOR[k] }} /><span>
             <span className="l1"><strong>{MOUNT[k]} · {LNAME[k]}</strong><span>{doneCount(l)}/{l.nodes.length} 营地 · ★{lineStars(l, pass)}</span></span>
             <span className="l2">{late ? `卡在营地 ${i + 1} 前` : `正在爬第 ${i + 1} 段坡`} · {n.title}<span className="spacer" />{meter(n)}</span>
-            <span className="l2"><b>{n.score} 分</b>差 {pass - n.score} 分通关 · {late ? <span className="risk">计划 W{n.week[1]} 结束，已超期 {lateWeeks(n, clock.week)} 周</span> : `坡上 ${Math.round(pct(n) * 100)}% · W${n.week[1]} 截止`}</span>
+            <span className="l2">{n.score == null ? <b>未评分</b> : <><b>{n.score} 分</b>差 {pass - n.score} 分通关 · </>}{late ? <span className="risk">计划 W{n.week[1]} 结束，已超期 {lateWeeks(n, clock.week)} 周</span> : `坡上 ${Math.round(pct(n) * 100)}% · W${n.week[1]} 截止`}</span>
           </span></button>
         );
       })}
@@ -308,7 +311,7 @@ function WeekCard({ style, lines, doing, clock, pass }) {
 /* ---------- 营地日志（抽屉） ---------- */
 
 // 从右侧按帧滑入（3 帧）；Esc 或 × 关闭；营地之间用上一营地 / 下一营地或 ← →
-function CampDrawer({ id, path, clock, season, onOpen, onClose }) {
+function CampDrawer({ id, name, path, clock, season, onFresh, onOpen, onClose }) {
   const ref = useRef(null);
   useLayoutEffect(() => {
     if (prefersReducedMotion()) return undefined;
@@ -336,7 +339,7 @@ function CampDrawer({ id, path, clock, season, onOpen, onClose }) {
       <div className="m7-drawer-body" key={id}>
         {id === "summit" ? <SummitLog path={path} clock={clock} season={season} />
           : id === "base" ? <BaseLog path={path} clock={clock} season={season} />
-          : <CampLog f={f} path={path} clock={clock} season={season} onOpen={onOpen} />}
+          : <CampLog f={f} name={name} path={path} clock={clock} season={season} onFresh={onFresh} onOpen={onOpen} />}
       </div>
     </aside>
   );
@@ -346,15 +349,16 @@ function CampHead({ ico, title, sub, children }) {
   return <div className="m7-camp-top"><span className="m7-camp-ico">{ico}</span><span className="m7-camp-name"><b>{title}</b><span>{sub}</span></span>{children}</div>;
 }
 
-function CampLog({ f, path, clock, season, onOpen }) {
+function CampLog({ f, name, path, clock, season, onFresh, onOpen }) {
   const { n, line: l, i } = f, prev = l.nodes[i - 1], next = l.nodes[i + 1], pass = season.pass;
   const weeks = Array.from({ length: n.week[1] - n.week[0] + 1 }, (_, k) => n.week[0] + k);
   const late = isLate(n, clock.week);
   const pct = Math.round(clamp01((clock.nowW - (n.week[0] - 1)) / weeks.length) * 100);
+  const need = n.score == null ? "还没评分" : `还差 ${pass - n.score} 分`;
   const cell = (w) => (n.status === "done" ? "past" : n.status === "locked" ? "" : late ? "late" : w < clock.week ? "past" : w === clock.week ? "now" : "");
   const txt = n.status === "done" ? `${n.at} 通关 · 这段坡已经爬完`
-    : late ? <><span className="risk">计划 W{n.week[1]} 结束，已超期 {lateWeeks(n, clock.week)} 周</span>，还差 {pass - n.score} 分</>
-    : n.status === "doing" ? <>今天走到这段坡的 <b>{pct}%</b>，还差 {pass - n.score} 分，W{n.week[1]} 截止</> : `还没到 · W${n.week[0]} 开始`;
+    : late ? <><span className="risk">计划 W{n.week[1]} 结束，已超期 {lateWeeks(n, clock.week)} 周</span>，{need}</>
+    : n.status === "doing" ? <>今天走到这段坡的 <b>{pct}%</b>，{need}，W{n.week[1]} 截止</> : `还没到 · W${n.week[0]} 开始`;
   const ico = n.status === "done" ? <PixelSprite rows={SPRITES.flag} cell={4} color={LCOLOR[l.key]} />
     : <PixelSprite rows={n.boss ? SPRITES.keep : SPRITES.tent} cell={4} color={n.status === "doing" ? SIGNAL : n.boss ? INK : LOCKED} />;
   const { feeds } = prereqs(path, n.id);
@@ -374,19 +378,19 @@ function CampLog({ f, path, clock, season, onOpen }) {
       </div>
       {n.status === "locked" && <div className="m7-note"><PixelIcon name="lock" /><span><b>解锁条件</b>　{unlockText(path, n.id, pass)}</span></div>}
       {feeds.length > 0 && n.status !== "locked" && <div className="m7-note is-link"><PixelIcon name="link" /><span><b>跨线</b>　用到 {feeds.map((k) => `${k.from} 的${k.note}`).join("、")}</span></div>}
-      <NodeDetail n={n} season={season} />
+      <NodeDetail n={n} name={name} path={path} clock={clock} season={season} onFresh={onFresh} />
     </>
   );
 }
 
 const STATUS = { done: ["已通关", "green"], doing: ["进行中", "blue"], locked: ["未解锁", "neutral"] };
 
-// 关卡详情：阶段目标 / 要做的事 / 产出物 / 评分标准；评分与打开产出物待 T14
-function NodeDetail({ n, season }) {
+// 关卡详情：阶段目标 / 要做的事 / 产出物（有链接的那一行可以打开）/ 评分标准；「评分」「改评分」切到营地记录表单
+function NodeDetail({ n, name, path, clock, season, onFresh }) {
+  const [edit, setEdit] = useState(false);
+  const [saved, setSaved] = useState(null);
+  if (edit) return <CampRecord n={n} name={name} path={path} clock={clock} season={season} onClose={() => setEdit(false)} onSaved={(fresh, text) => { onFresh(fresh); setSaved(text); setEdit(false); }} />;
   const { pass, reviewer } = season, locked = n.status === "locked";
-  const todoDone = n.todoDone ?? (n.status === "done" ? n.todo.length : 0);
-  const outDone = n.outDone ?? (n.status === "done" ? n.output.length : 0);
-  const total = n.rubric.reduce((s, x) => s + (x.score ?? 0), 0);
   return (
     <div className="m7-detail">
       <div className="m7-detail-head">
@@ -396,24 +400,137 @@ function NodeDetail({ n, season }) {
           <span className="small muted mono">第 {n.week[0]}–{n.week[1]} 周{n.at ? ` · 最近评分 ${n.at}` : ""} · 评分人 {reviewer}</span>
         </div>
         {locked ? <div className="m7-score is-locked"><PixelIcon name="lock" /><span className="small muted">完成前置关卡后解锁</span></div>
-          : <div className="m7-score"><span className="num m7-score-num">{n.score}</span><span className="m7-score-of mono">/ 100</span><Stars n={n} pass={pass} /></div>}
+          : <div className="m7-score"><span className="num m7-score-num">{n.score ?? "—"}</span><span className="m7-score-of mono">/ 100</span>{n.score == null ? <span className="small muted m7-unscored">未评分</span> : <Stars n={n} pass={pass} />}</div>}
       </div>
       <section className="m7-sec"><span className="label">阶段目标</span><p>{n.goal}</p></section>
-      <section className="m7-sec"><span className="label">要做的事 · {todoDone}/{n.todo.length}</span>
-        <ul className="m7-todo">{n.todo.map((t, i) => <li key={t} className={i < todoDone ? "done" : ""}><i className="m7-box">{i < todoDone && <PixelIcon name="tick" />}</i>{t}</li>)}</ul></section>
+      <section className="m7-sec"><span className="label">要做的事 · {n.todoDone}/{n.todo.length}</span>
+        <ul className="m7-todo">{n.todo.map((t, i) => <li key={t} className={n.todoChecked[i] ? "done" : ""}><i className="m7-box">{n.todoChecked[i] && <PixelIcon name="tick" />}</i>{t}</li>)}</ul></section>
       <section className="m7-sec"><span className="label">产出物</span>
-        <ul className="m7-out">{n.output.map((o, i) => <li key={o}><PixelIcon name="file" /><span>{o}</span>{i < outDone ? <Tag tone={n.status === "done" ? "green" : "amber"}>{n.status === "done" ? "已交" : "初稿"}</Tag> : <Tag>{locked ? "—" : "未交"}</Tag>}</li>)}</ul></section>
+        <ul className="m7-out">{n.output.map((o, i) => <li key={o}><PixelIcon name="file" /><span>{o}</span>
+          {n.outLinks[i] ? <><Tag tone={n.status === "done" ? "green" : "amber"}>{n.status === "done" ? "已交" : "初稿"}</Tag><a className="link m7-open" href={n.outLinks[i]} target="_blank" rel="noreferrer" title={n.outLinks[i]}>打开<PixelIcon name="external" /></a></> : <Tag>{locked ? "—" : "未交"}</Tag>}</li>)}</ul></section>
       <section className="m7-sec"><span className="label">评分标准 · 满分 100，{pass} 分通关</span>
         <table className="m7-rubric"><tbody>
           {n.rubric.map((x) => <tr key={x.name}><td>{x.name}{x.note && <span className="small muted"> · {x.note}</span>}</td><td className="tnum muted">{x.weight}</td><td className="tnum">{x.score ?? "—"}</td></tr>)}
-        </tbody><tfoot><tr><td>合计</td><td className="tnum muted">100</td><td className="tnum"><b>{locked ? "—" : total}</b></td></tr></tfoot></table>
-        {!locked && <div className="m7-bar-row"><span className="m7-bar"><DitherBar value={n.score / 100} /><i className="m7-passline" style={{ left: `${pass}%` }} /></span><span className={`small mono ${n.score >= pass ? "ok-text" : "warn-text"}`}>{n.score >= pass ? "已过通关线" : `差 ${pass - n.score} 分通关`}</span></div>}
+        </tbody><tfoot><tr><td>合计</td><td className="tnum muted">100</td><td className="tnum"><b>{locked ? "—" : n.score ?? "—"}</b></td></tr></tfoot></table>
+        {!locked && <div className="m7-bar-row"><span className="m7-bar"><DitherBar value={(n.score ?? 0) / 100} /><i className="m7-passline" style={{ left: `${pass}%` }} /></span><span className={`small mono ${n.score >= pass ? "ok-text" : "warn-text"}`}>{n.score == null ? "未评分" : n.score >= pass ? "已过通关线" : `差 ${pass - n.score} 分通关`}</span></div>}
       </section>
       <div className="m7-actions">
-        {locked ? <Button disabled><PixelIcon name="lock" />未解锁</Button> : <PendingButton task="T14"><PixelIcon name="link" />打开产出物</PendingButton>}
+        {locked && <Button disabled><PixelIcon name="lock" />未解锁</Button>}
         <span className="spacer" />
-        {n.status === "doing" ? <PendingButton task="T14" variant="primary"><PixelIcon name="edit" />评分</PendingButton> : n.status === "done" ? <PendingButton task="T14"><PixelIcon name="edit" />改评分</PendingButton> : null}
+        {n.status === "doing" ? <Button variant="primary" onClick={() => setEdit(true)}><PixelIcon name="edit" />评分</Button> : n.status === "done" ? <Button onClick={() => setEdit(true)}><PixelIcon name="edit" />改评分</Button> : null}
       </div>
+      <SavedNote text={saved} onClose={() => setSaved(null)} />
+    </div>
+  );
+}
+
+// 这一关的后续关：下一关，以及靠绳桥依赖它的关；need 是除了这一关之外还没满足的前置
+function downstream(path, n, pass) {
+  const f = findNode(path.lines, n.id), next = f.line.nodes[f.i + 1];
+  const cands = [next, ...path.links.filter((k) => k.from === n.id).map((k) => findNode(path.lines, k.to)?.n)].filter(Boolean);
+  return cands.map((c) => {
+    const { prev, feeds } = prereqs(path, c.id);
+    const need = [prev && prev.id !== n.id && prev.status !== "done" && `${prev.id} 达到 ${pass} 分`,
+      ...feeds.filter((k) => k.from !== n.id && findNode(path.lines, k.from)?.n.status !== "done").map((k) => `${k.from} 的${k.note}`)].filter(Boolean);
+    return { c, need };
+  });
+}
+
+// 回读核对用：这一关写入后应有的样子
+const campKey = (x) => JSON.stringify([x.status, x.score ?? null, x.todoChecked, x.outLinks, x.rubric]);
+
+// 营地记录：勾要做的事、填产出物链接、逐项打分。每一项都打分才算一次评分，分数全部留空只更新进度；合计 ≥ 通关线即通关。
+// 写入走「预览 → 确认 → 回读」：回读整份培养路径，这一关和预览里写入后的样子一致才算保存。
+function CampRecord({ n, name, path, clock, season, onClose, onSaved }) {
+  const { pass, reviewer } = season;
+  const init = useMemo(() => ({
+    todo: [...n.todoChecked],
+    out: n.outLinks.map((u) => u ?? ""),
+    score: n.rubric.map((x) => (x.score == null ? "" : String(x.score))),
+    note: n.rubric.map((x) => x.note ?? ""),
+  }), [n]);
+  const [f, setF] = useState(init);
+  const flow = useWriteFlow();
+  const locked = flow.busy || flow.phase === "unknown";
+  const set = (k, i, v) => { setF((s) => ({ ...s, [k]: s[k].map((x, j) => (j === i ? v : x)) })); flow.reset(); };
+  const over = n.rubric.map((x, i) => f.score[i] !== "" && !(/^\d+$/.test(f.score[i]) && +f.score[i] <= x.weight));
+  const badUrl = f.out.map((u) => u.trim() !== "" && !/^https?:\/\/\S+$/.test(u.trim()));
+  const filled = f.score.filter((s) => s !== "").length;
+  const total = filled === n.rubric.length && !over.some(Boolean) ? f.score.reduce((s, v) => s + +v, 0) : null;
+  const changed = JSON.stringify(f) !== JSON.stringify(init);
+  const rubricChanged = JSON.stringify([f.score, f.note]) !== JSON.stringify([init.score, init.note]);
+  const problem = over.some(Boolean) ? "分数要是整数，不超过这一项的满分"
+    : filled > 0 && filled < n.rubric.length ? "每一项都打分才算一次评分；只更新进度就把分数全部留空"
+    : badUrl.some(Boolean) ? "链接要以 http:// 或 https:// 开头" : !changed ? "还没有改动" : null;
+  const base = `/api/v3/mentor/path/${encodeURIComponent(name)}/nodes/${encodeURIComponent(n.id)}/record`;
+  const body = () => ({
+    todoDone: n.todo.filter((_, i) => f.todo[i]),
+    outLinks: Object.fromEntries(n.output.map((o, i) => [o, f.out[i].trim()]).filter(([, u]) => u)),
+    rubric: Object.fromEntries(n.rubric.map((x, i) => [x.name, { score: f.score[i] === "" ? null : Number(f.score[i]), note: f.note[i].trim() }])),
+  });
+  const preview = () => flow.preview(() => apiSend("POST", `${base}/preview`, body()));
+  const confirm = () => flow.confirm((pv) => apiSend("POST", base, { previewId: pv.previewId, confirm: true }), async (receipt, pv) => {
+    const fresh = await apiRead("/api/v3/mentor/path");
+    const p = fresh.trainees.find((t) => t.name === name)?.path, now = p && findNode(p.lines, n.id)?.n;
+    if (!now || campKey(now) !== campKey(pv.node)) return false;
+    onSaved(fresh, `已保存，回读核对一致：${n.id} ${scoreText(now)} · ${STATUS[now.status][0]}`);
+    return true;
+  });
+  const reread = async () => { const fresh = await apiRead("/api/v3/mentor/path"); flow.resolve(); onSaved(fresh, null); };
+  const scored = flow.pv ? flow.pv.scored : rubricChanged;
+  return (
+    <div className="m7-detail m7-form">
+      <div className="m7-detail-head">
+        <div className="m7-detail-title">
+          <span className="row m7-gap6"><Tag tone="frame">{n.id}</Tag><span className="label">{n.stage}</span><Tag tone="amber">{n.status === "done" ? "改评分" : "评分"}</Tag></span>
+          <h3>{n.title}</h3>
+          <span className="small muted mono">营地记录 · {clock.today} · 评分人 {reviewer}</span>
+        </div>
+        <div className="m7-score"><span className="num m7-score-num">{total ?? "—"}</span><span className="m7-score-of mono">/ 100</span>{total == null ? <span className="small muted m7-unscored">未评分</span> : <Stars n={{ status: total >= pass ? "done" : "doing", score: total }} pass={pass} />}</div>
+      </div>
+      <section className="m7-sec"><span className="label">要做的事 · {f.todo.filter(Boolean).length}/{n.todo.length} · 点一下勾上</span>
+        <ul className="m7-todo">{n.todo.map((t, i) => <li key={t} className={f.todo[i] ? "done" : ""}>
+          <button type="button" className="m7-check" aria-pressed={f.todo[i]} disabled={locked} onClick={() => set("todo", i, !f.todo[i])}><i className="m7-box">{f.todo[i] && <PixelIcon name="tick" />}</i>{t}</button></li>)}</ul></section>
+      <section className="m7-sec"><span className="label">产出物 · 填了链接算已交</span>
+        <ul className="m7-out">{n.output.map((o, i) => <li key={o}><PixelIcon name="file" /><span>{o}</span>
+          <input className={`set-input${badUrl[i] ? " is-bad" : ""}`} value={f.out[i]} onChange={(e) => set("out", i, e.target.value)} placeholder="粘贴链接（飞书文档等）" maxLength={500} disabled={locked} aria-label={`${o}的链接`} /></li>)}</ul></section>
+      <section className="m7-sec"><span className="label">评分 · 每项打到这一项的满分为止，{pass} 分通关</span>
+        <table className="m7-rubric is-edit"><tbody>
+          {n.rubric.map((x, i) => [
+            <tr key={x.name} className="is-item"><td>{x.name}</td><td className="tnum muted">{x.weight}</td>
+              <td className="m7-in"><input className={`set-input${over[i] ? " is-bad" : ""}`} inputMode="numeric" value={f.score[i]} onChange={(e) => set("score", i, e.target.value.trim())} placeholder="—" disabled={locked} aria-label={`${x.name}的分数，满分 ${x.weight}`} /></td></tr>,
+            <tr key={`${x.name}-note`} className="is-note"><td colSpan={3}><input className="set-input" value={f.note[i]} onChange={(e) => set("note", i, e.target.value)} placeholder="这一项的评语（可不填）" maxLength={200} disabled={locked} aria-label={`${x.name}的评语`} /></td></tr>,
+          ])}
+        </tbody><tfoot><tr><td>合计</td><td className="tnum muted">100</td><td className="tnum"><b>{total ?? "—"}</b></td></tr></tfoot></table>
+        <div className="m7-bar-row"><span className="m7-bar"><DitherBar value={(total ?? 0) / 100} /><i className="m7-passline" style={{ left: `${pass}%` }} /></span>
+          <span className={`small mono ${total != null && total >= pass ? "ok-text" : "warn-text"}`}>{total == null ? "未评分" : total >= pass ? "达到通关线" : `差 ${pass - total} 分通关`}</span></div>
+      </section>
+      <div className="m7-actions">
+        <span className={`small ${problem && changed ? "warn-text" : "muted"}`}>{problem ?? "预览确认后才保存；只存工作台本地"}</span>
+        <span className="spacer" />
+        <Button onClick={onClose} disabled={locked}>取消</Button>
+        <Button variant="primary" onClick={preview} disabled={!!problem || locked}><PixelIcon name="eye" />{rubricChanged ? "预览评分" : "预览进度"}</Button>
+      </div>
+      <WriteBox flow={flow} title={scored ? "评分预览" : "进度更新预览"} confirmLabel={scored ? "确认评分" : "确认更新"} onConfirm={confirm} onRepreview={preview} onReread={reread}>
+        {(pv) => {
+          const to = pv.node, me = pv.effects.find((e) => e.id === n.id), others = pv.effects.filter((e) => e.id !== n.id);
+          const opens = others.filter((e) => e.to === "doing"), closes = others.filter((e) => e.to === "locked");
+          const waits = to.status === "done" && n.status !== "done" ? downstream(path, n, pass).filter((d) => d.c.status === "locked" && d.need.length && !opens.some((e) => e.id === d.c.id)) : [];
+          const old = Object.fromEntries(n.rubric.map((x) => [x.name, x.score]));
+          return <dl className="kv">
+            <dt>写到哪里</dt><dd>工作台本地 · {name}的培养路径 · {n.id} {n.title}</dd>
+            <dt>日期</dt><dd className="tnum">{clock.today}（今天）· {pv.scored ? `评分人 ${reviewer}` : "只更新进度，不算一次评分"}</dd>
+            {pv.scored && <><dt>各项</dt><dd className="m7-pv-items">{to.rubric.map((x) => <span key={x.name}>{x.name.split("：")[0]}　{old[x.name] != null && old[x.name] !== x.score && <><code className="diff-old">{old[x.name]}</code> → </>}<code className="diff-new">{x.score ?? "—"}</code> / {x.weight}{x.note && <span className="muted"> · {x.note}</span>}</span>)}</dd>
+              <dt>总分</dt><dd className="tnum">{n.score != null && n.score !== to.score && <><code className="diff-old">{n.score}</code> → </>}<code className="diff-new">{scoreText(to)}</code>{to.score != null && ` · ${stars(to.score, pass)} 星`}</dd></>}
+            <dt>关卡</dt><dd>{me ? <><span className="diff-old">{STATUS[me.from][0]}</span> → <b>{STATUS[me.to][0]}</b></> : STATUS[n.status][0]}
+              {opens.length > 0 && <>，解锁 {opens.map((e) => `${e.id} ${e.title}`).join("、")}</>}
+              {waits.map((d) => <span key={d.c.id} className="muted">；{d.c.id} 还要等 {d.need.join("、")}</span>)}
+              {closes.length > 0 && <span className="warn-text">，{closes.map((e) => e.id).join("、")} 会变回未解锁</span>}</dd>
+            <dt>要做的事</dt><dd className="tnum">{n.todoDone !== to.todoDone && <><span className="diff-old">{n.todoDone}</span> → </>}{to.todoDone}/{n.todo.length}</dd>
+            <dt>产出物</dt><dd>{n.output.map((o, i) => `${o}${to.outLinks[i] ? "（有链接）" : "（未交）"}`).join("、")}</dd>
+          </dl>;
+        }}
+      </WriteBox>
     </div>
   );
 }
@@ -425,7 +542,7 @@ function SummitLog({ path, clock, season }) {
     <div className="m7-raw">
       <div className="m7-camp"><CampHead ico={<PixelSprite rows={SPRITES.flag} cell={4} color={SIGNAL} />} title={`山顶 · 结业（${season.next}）`} sub={`W${clock.weeks} · ${clock.weekStart(clock.weeks)} 至 ${clock.weekEnd(clock.weeks)} · 还有 ${clock.weeks - clock.week} 周`} /></div>
       <section className="m7-sec"><span className="label">登顶条件 · 两条线的最后一关都达到 {season.pass} 分</span>
-        <ul className="m7-list">{last.map((n) => <li key={n.id}><Tagged id={n.id} /><span><b>{n.title}</b><br /><span className="small muted">{n.status === "locked" ? `未解锁 · 需 ${unlockText(path, n.id, season.pass)}` : `${n.score} 分`}</span></span></li>)}</ul></section>
+        <ul className="m7-list">{last.map((n) => <li key={n.id}><Tagged id={n.id} /><span><b>{n.title}</b><br /><span className="small muted">{n.status === "locked" ? `未解锁 · 需 ${unlockText(path, n.id, season.pass)}` : scoreText(n)}</span></span></li>)}</ul></section>
       <section className="m7-sec"><span className="label">到目前为止 · 已通关 / 均分 / 星</span>
         <table className="m7-rubric"><tbody>
           {KEYS.map((k) => <tr key={k}><td>{MOUNT[k]} · {LNAME[k]}</td><td className="tnum muted">{doneCount(lines[k])}/{lines[k].nodes.length}</td><td className="tnum">{avgScore(lines[k])}</td><td className="tnum">★{lineStars(lines[k], season.pass)}</td></tr>)}

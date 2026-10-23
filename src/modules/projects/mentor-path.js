@@ -46,7 +46,8 @@ export function shortUnlock(path, id) {
   return `需 ${[prev && `${prev.id} 达标`, ...feeds.map((k) => `${k.from} 产出`)].filter(Boolean).join(" + ")}`;
 }
 // 待评分：正在爬、已经交了产出的关
-export const pendingReviews = (path) => path.lines.reduce((s, l) => s + l.nodes.filter((n) => n.status === "doing" && n.outDone > 0).length, 0);
+// 待评分由后端按记录给（进行中、交了产出、产出在最近一次评分之后又更新过或还没评过）
+export const pendingReviews = (path) => path.lines.reduce((s, l) => s + l.nodes.filter((n) => n.review).length, 0);
 
 /* ---------- 山形 ---------- */
 export const LEDGE = 14;   // 营地平台半宽：图标立在这段平路上，不压线
