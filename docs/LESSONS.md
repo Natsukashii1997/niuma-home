@@ -12,7 +12,7 @@
 
 - 同类坑第 2 次出现：把正确做法写进 AGENTS.md 或 docs/STYLE-GUIDE.md，条目的「升级」改成写到了哪里。
 - 能用机器判定的：写成测试或脚本（如 `tests/style-rules.test.mjs`、`scripts/verify-release.sh`），条目注明。
-- 条目超过约 30 条时整理一次：已升级、且之后没再犯的，归档到 `docs/history/`。
+- 条目超过约 30 条时整理一次：已升级、且之后没再犯的，归档到 `docs/history/`。每周五的定时整理提案（见 AGENTS.md「发布」）会提醒漏记、该升级和该归档的条目。
 
 ---
 

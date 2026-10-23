@@ -82,6 +82,7 @@ fixtures/            验收样例（飞书复制的方案原文）
 - 发布后回读：`release-app.sh` 末尾会自动跑 `scripts/verify-release.sh`（只读，可随时单独再跑），核对 launchd 与运行中进程指向新快照、只监听 127.0.0.1、首页与全部构建文件逐字节一致、快照源码与提交一致、错误日志为空、版本号正确；本轮相关接口与页面仍须人工实看。
 - 回滚：`bash scripts/release-app.sh --use <上一份快照名>`，在交接里写明。
 - 每日巡检：launchd 任务 `cn.niuma-home.health` 每天 08:30 跑 `scripts/health-check.sh`（只读、不调用模型）：发布回读 7 项 + 数据库完整性 + 磁盘余量 + 7 天内有无数据库备份；结果追加到 `~/Library/Application Support/NiumaHome/evidence/health/<年-月>.log`，未通过才弹本机通知。在主工作区执行 `bash scripts/health-check.sh --install` / `--uninstall` 安装或卸载；任务借服务外壳 `NiumaHomeServer.app` 的 node 启动（[LESSONS](docs/LESSONS.md) L-08）。
+- 每周整理：桌面应用定时任务「【每周五】牛马之家说明书整理提案」（`niuma-weekly-review`，每周五 18:00 后几分钟）读 LESSONS / AGENTS / CURRENT 与巡检日志，**只出提案、不改文件**；用户回复采纳哪几条，再按上面的规矩动手。应用关着时到点不跑，下次打开时补跑。提示词在 `~/.claude/scheduled-tasks/niuma-weekly-review/SKILL.md`。
 
 ## 交接格式
 
