@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { PixelIcon, frames, prefersReducedMotion } from "../../ui/bitmap.jsx";
-import { countDocs, currentDirectory, locate } from "./kb-canvas.js";
+import { ROOT, countDocs, currentDirectory, locate } from "./kb-canvas.js";
 import { breakColumns, cleanName, isRecent, packRows, piles, shelfItems, spineName, splitNumber, todayOf, tokenize, wordStarts } from "./kb-shelf.js";
 
 // 知识库书架（用户 2026-10-23 从三轮设计稿里选定「V4 书架精修」，稿件 docs/design-drafts/kb/v4-2.html，本地不入库）：
@@ -11,6 +11,8 @@ import { breakColumns, cleanName, isRecent, packRows, piles, shelfItems, spineNa
 // - 根目录下没进分组的文档横放在柜顶「待上架」，三本一摞。
 // - 悬停或聚焦一本书：按帧抽出两格，再弹一张卡（全名、类型、更新、摘要、位置）。⌘K 打开某篇时开盒、抽出这本。
 // - 搜索：没命中的层收成一行，含命中的盒子自动打开，没命中的书退成灰线。
+// - 拖放（写飞书由 KbCanvas 的队列做）：书、整个盒子拖到层 / 盒 / 柜顶 = 移动；拖层名到另一层 = 排到它前面（只存本机）。
+//   拿起的书原位留灰色虚线空位，落点出现橙色虚线「放这里」，写入中的书标「同步中」，落定后那一层的层名反色闪两下。
 
 const H = 188, LID = 32, IH = H - 4 - LID - 6; // 层里的书高；盒盖；敞口盒里的书高
 const COLW = 17, PADX = 7, TOP = 16, TAIL = 26, GAP = 8, SGAP = 4; // 竖排一列宽；书脊两侧留白；书名上下留白；书间距；系列和盒里的书间距
@@ -106,9 +108,13 @@ function Tip({ ref, describe }) {
 }
 
 // model：canvasModel 的 { groups, loose }；q：搜索词；focus：⌘K 打开的那篇（开盒、抽出、弹卡）。
-export default function KbShelf({ model, docs, q = "", focus = "" }) {
-  const root = useRef(null), tip = useRef(null), justOpened = useRef(null), focusing = useRef(focus);
+// busy：写入中的节点 id；landed：最近落定的 { id: 目标目录 id }；disabled：锁住或同步中，不能拖、不能改名。
+// naming / nameInput：正在改名的节点（"new" = 新建分组）和输入框；onRename(节点)、onMove(id, 目录 id)、onReorder(分组 id, 排到谁前面)。
+export default function KbShelf({ model, docs, q = "", focus = "", busy, landed = null, disabled = false, naming = null, nameInput, onRename, onMove, onReorder }) {
+  const root = useRef(null), tip = useRef(null), justOpened = useRef(null), focusing = useRef(focus), dragRef = useRef(null);
   const roots = useMemo(() => [...model.groups, ...model.loose], [model]);
+  const [drag, setDrag] = useState(null); // 正在拖的 { kind: "item" | "group", id }：只管显示，判断用 dragRef（拖影截完才变空位）
+  const [over, setOver] = useState(null); // 落点：in:<目录 id>（柜顶是 in:）| before:<分组 id>
   const [width, setWidth] = useState(0);
   const [fonts, setFonts] = useState(0); // 字体每加载完一次 +1：清空实测，重新断列
   // 打开的档案盒：盒 id → 在盒里逐层进入的子盒 id。⌘K 打开的那篇在盒里时，先把盒子打开到它那一层。
@@ -153,6 +159,16 @@ export default function KbShelf({ model, docs, q = "", focus = "" }) {
     el.querySelector("a, button")?.focus({ preventScroll: true });
     show(el);
   }, [fonts]);
+  // 落定：所在那一层的层名（放回柜顶时是「待上架」）反色闪两下。
+  useEffect(() => {
+    if (!landed || prefersReducedMotion()) return undefined;
+    const top = landed.id === ROOT ? null : trailTo(roots, landed.id)?.[0];
+    const sel = landed.id === ROOT ? ".kbs-top-head strong" : top && model.groups.includes(top) ? `[data-layer="${CSS.escape(top.id)}"] .kbs-bay-head strong` : "";
+    const el = sel && root.current?.querySelector(sel);
+    if (!el) return undefined;
+    const stop = frames((f) => { el.classList.toggle("is-blink", f % 2 === 1); return f < 4; });
+    return () => { stop(); el.classList.remove("is-blink"); };
+  }, [landed]);
 
   const today = todayOf();
   const ql = q.trim().toLowerCase();
@@ -180,7 +196,7 @@ export default function KbShelf({ model, docs, q = "", focus = "" }) {
   // ---- 悬停 / 聚焦：两帧抽出，第二帧弹卡；敞口盒只在盒盖上弹卡，盒里的书各自抽出 ----
   const slotOf = (el) => el?.closest?.("[data-slot]");
   const target = (e) => { const s = slotOf(e.target); return s && (s.dataset.slot !== "obox" || e.target.closest(".kbs-obox-lid")) ? s : null; };
-  const show = (s) => (s.dataset.slot === "obox" ? tip.current?.show(s) : pull(s, 2, () => tip.current?.show(s)));
+  const show = (s) => { if (dragRef.current) return; if (s.dataset.slot === "obox") tip.current?.show(s); else pull(s, 2, () => tip.current?.show(s)); };
   const hide = (s) => { tip.current?.hide(); if (s.dataset.slot !== "obox") pull(s, 0); };
   const hover = {
     onMouseOver: (e) => { const s = target(e); if (s && !s.contains(e.relatedTarget)) show(s); },
@@ -188,6 +204,56 @@ export default function KbShelf({ model, docs, q = "", focus = "" }) {
     onFocus: (e) => { const s = slotOf(e.target); if (s) show(s); },
     onBlur: (e) => { const s = slotOf(e.target); if (s) hide(s); },
   };
+
+  // ---- 拖放 ----
+  const finish = () => { dragRef.current = null; setDrag(null); setOver(null); };
+  const source = (kind, id) => (disabled ? {} : {
+    draggable: true,
+    onDragStart: (e) => {
+      e.stopPropagation();
+      e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", id);
+      dragRef.current = { kind, id };
+      tip.current?.hide();
+      const s = slotOf(e.target); if (s) pull(s, 0);
+      requestAnimationFrame(() => { if (dragRef.current?.id === id) setDrag({ kind, id }); }); // 浏览器先截好拖影，下一帧原位才变空位
+    },
+    onDragEnd: finish,
+  });
+  // 能不能放进 parentId：放回原处不算，盒子不能放进自己或自己里面的盒子。
+  const canDrop = (id, parentId) => {
+    const here = locate(roots, id);
+    return !!here && here.parentId !== parentId && id !== parentId && !(here.node.kids && locate(here.node.kids, parentId));
+  };
+  // keyOf(拖的东西) → 落点名，null = 这里不能放。claims：放不了也拦住，不让外层（比如书所在的层）接走。
+  const zone = (keyOf, act, claims = (d) => d.kind === "item") => ({
+    onDragOver: (e) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const key = keyOf(d);
+      if (key) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
+      if (key || claims(d)) { e.stopPropagation(); setOver(key); }
+    },
+    onDragLeave: (e) => {
+      const d = dragRef.current, key = d && keyOf(d);
+      if (key && !e.currentTarget.contains(e.relatedTarget)) setOver((o) => (o === key ? null : o));
+    },
+    onDrop: (e) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const key = keyOf(d);
+      if (key || claims(d)) e.stopPropagation();
+      if (!key) return;
+      e.preventDefault(); finish(); act(d);
+    },
+  });
+  const into = (id) => zone((d) => (d.kind === "item" && canDrop(d.id, id) ? `in:${id}` : null), (d) => onMove?.(d.id, id));
+  const layerZone = (g) => zone(
+    (d) => (d.kind === "group" ? (d.id !== g.id ? `before:${g.id}` : null) : canDrop(d.id, g.id) ? `in:${g.id}` : null),
+    (d) => (d.kind === "group" ? onReorder?.(d.id, g.id) : onMove?.(d.id, g.id)),
+    () => true,
+  );
+  const slotCls = (n, dim) => `kbs-slot${dim ? " is-dim" : ""}${drag?.id === n.id ? " is-dragging" : ""}${busy?.has(n.id) ? " is-busy" : ""}`;
+  const busyTag = (n) => busy?.has(n.id) && <span className="kbs-busy">同步中</span>;
 
   const where = (id) => (trailTo(roots, id) || []).slice(0, -1).map((n) => cleanName(n.name).replace(/[｜|丨]/, " ")).join(" › ") || "待上架";
   const describe = (id) => {
@@ -217,44 +283,58 @@ export default function KbShelf({ model, docs, q = "", focus = "" }) {
   const book = (n, h, label) => {
     const d = docs[n.id] || {}, s = spine(label, h, false), w = 4 + PADX * 2 + s.cols.length * COLW;
     return { w, el: (
-      <span key={n.id} className={`kbs-slot${ql && !hit(n) ? " is-dim" : ""}`} data-slot="book" data-id={n.id}>
+      <span key={n.id} className={slotCls(n, ql && !hit(n))} data-slot="book" data-id={n.id} {...source("item", n.id)}>
         <a className={`kbs-bk${tailOf(d.type)}`} style={{ height: h, width: w }} href={d.url || undefined} tabIndex={d.url ? undefined : 0} target="_blank" rel="noreferrer"
           aria-label={`${cleanName(n.name)}${d.url ? "，点击打开飞书原文" : ""}`}>
           <Spine s={s} /><span className="kbs-tail" />{isRecent(d.updated, today) && <i className="kbs-rb" />}
         </a>
+        {busyTag(n)}
       </span>) };
   };
   const box = (n, h, label, onClick) => {
     const s = spine(label, h, true), w = 4 + 20 + Math.max(2, s.cols.length) * COLW;
     return { w, el: (
-      <span key={n.id} className={`kbs-slot${ql && !hits(n) ? " is-dim" : ""}`} data-slot="box" data-id={n.id}>
+      <span key={n.id} className={`${slotCls(n, ql && !hits(n))}${over === `in:${n.id}` ? " is-over" : ""}`} data-slot="box" data-id={n.id} {...source("item", n.id)} {...into(n.id)}>
         <button type="button" className="kbs-bk is-box" style={{ height: h, width: w }} onClick={onClick} aria-label={`档案盒 ${cleanName(n.name)}，${countDocs(n)} 篇，点击打开`}>
           <Spine s={s} /><span className="kbs-tail">{countDocs(n)}</span>
         </button>
+        {busyTag(n)}
       </span>) };
   };
+  // 敞口盒：盒盖写名字（进了盒中盒就写路径）、篇数，右边改名、本页正文、收起；拖到盒里 = 放进当前这一层盒子。
   const obox = (n) => {
-    const { dir, trail } = currentDirectory(n, open.get(n.id) || []), at = trail.slice(1).map((x) => x.id);
+    const { dir, trail } = currentDirectory(n, open.get(n.id) || []), at = trail.slice(1).map((x) => x.id), url = docs[dir.id]?.url;
+    const editing = naming?.id === dir.id;
     const inner = shelfItems(dir.kids || [], { series: false }).map(({ node, label }) => (node.kids ? box(node, IH, label, () => goInto(n.id, [...at, node.id])) : book(node, IH, label)));
     const innerW = inner.reduce((s, it) => s + it.w, 0) + SGAP * Math.max(0, inner.length - 1);
-    const lidW = textWidth(`${trail.map((f) => cleanName(f.name)).join(" ")} ${countDocs(dir)} 篇 收起`, 600, 12) + 60 + 18 * (trail.length - 1);
+    const lidW = textWidth(`${trail.map((f) => cleanName(f.name)).join(" ")} ${countDocs(dir)} 篇 收起`, 600, 12) + 84 + 18 * (trail.length - 1) + (url ? 24 : 0);
     const w = Math.min(avail, Math.max(4 + 16 + innerW, lidW));
-    const lid = trail.length === 1
-      ? <button type="button" className="kbs-obox-lid" onClick={() => toggleBox(n)} aria-expanded="true">{cleanName(n.name)}<span className="tnum">{countDocs(n)} 篇</span><span className="close"><PixelIcon name="up" />收起</span></button>
-      : <div className="kbs-obox-lid">
-        {trail.map((f, k) => <Fragment key={f.id}>{k > 0 && <PixelIcon name="right" />}{k < trail.length - 1 ? <button type="button" className="kbs-crumb" onClick={() => goInto(n.id, at.slice(0, k))}>{cleanName(f.name)}</button> : <span>{cleanName(f.name)}</span>}</Fragment>)}
+    const lid = (
+      <div className="kbs-obox-lid">
+        {trail.map((f, k) => <Fragment key={f.id}>{k > 0 && <PixelIcon name="right" />}{
+          k < trail.length - 1 ? <button type="button" className="kbs-crumb" onClick={() => goInto(n.id, at.slice(0, k))}>{cleanName(f.name)}</button>
+            : editing ? nameInput(`盒子名称：${trail.map((x) => cleanName(x.name)).join(" / ")}`)
+              : k === 0 ? <button type="button" className="kbs-lid-name" onClick={() => toggleBox(n)} aria-expanded="true" title="收起">{cleanName(f.name)}</button>
+                : <span className="kbs-lid-name">{cleanName(f.name)}</span>
+        }</Fragment>)}
         <span className="tnum">{countDocs(dir)} 篇</span>
-        <button type="button" className="close" onClick={() => toggleBox(n)}><PixelIcon name="up" />收起</button>
-      </div>;
+        <span className="kbs-lid-acts">
+          {!editing && <button type="button" className="kbs-lid-btn" disabled={disabled} onClick={() => onRename?.(dir)} title="改名（写入飞书）" aria-label={`改名：${cleanName(dir.name)}`}><PixelIcon name="edit" /></button>}
+          {url && <a className="kbs-lid-btn" href={url} target="_blank" rel="noreferrer" title="打开本页正文" aria-label={`打开本页正文：${cleanName(dir.name)}`}><PixelIcon name="external" /></a>}
+          <button type="button" className="close" onClick={() => toggleBox(n)}><PixelIcon name="up" />收起</button>
+        </span>
+      </div>
+    );
     return { w, el: (
-      <span key={`o${n.id}`} className="kbs-slot" data-slot="obox" data-id={n.id}>
-        <span className="kbs-obox" style={{ minHeight: H, width: w }}>
+      <span key={`o${n.id}`} className={slotCls(n, false)} data-slot="obox" data-id={n.id} {...(editing ? {} : source("item", n.id))}>
+        <span className={`kbs-obox${over === `in:${dir.id}` ? " is-over" : ""}`} style={{ minHeight: H, width: w }} {...into(dir.id)}>
           {lid}
           <span className="kbs-obox-in">{inner.length ? inner.map((it) => it.el) : <span className="kbs-empty">空盒子，把书拖进来</span>}</span>
         </span>
+        {busyTag(n) || busyTag(dir)}
       </span>) };
   };
-  const one = (n, label) => (!n.kids ? book(n, H, label) : isOpen(n) ? obox(n) : box(n, H, label, () => toggleBox(n)));
+  const one =(n, label) => (!n.kids ? book(n, H, label) : isOpen(n) ? obox(n) : box(n, H, label, () => toggleBox(n)));
 
   // ---- 一层：档案盒在前、系列挨着 → 按宽度装行（放不下就加一块层板）→ 系列名只占到下一组之前 ----
   const layer = (g, cls) => {
@@ -264,12 +344,18 @@ export default function KbShelf({ model, docs, q = "", focus = "" }) {
       return { key: `s${it.members[0].node.id}`, cap: it.label, w: ms.reduce((s, m) => s + m.w, 0) + SGAP * (ms.length - 1), els: ms.map((m) => m.el) };
     });
     const rows = packRows(its.map((it) => it.w), avail, GAP);
-    const [no, name] = splitNumber(cleanName(g.name)), n = g.kids ? countDocs(g) : 0, h = ql ? hits(g) : 0;
+    const [no, name] = splitNumber(cleanName(g.name)), n = g.kids ? countDocs(g) : 0, h = ql ? hits(g) : 0, url = docs[g.id]?.url, editing = naming?.id === g.id;
+    const state = `${ql && !h ? " is-dim" : ""}${over === `in:${g.id}` ? " is-over" : ""}${over === `before:${g.id}` ? " is-before" : ""}${drag?.id === g.id ? " is-dragging" : ""}`;
     return (
-      <section key={g.id} className={`kbs-bay${cls}${ql && !h ? " is-dim" : ""}`} data-layer={g.id}>
-        <header className="kbs-bay-head">
-          <span className="kbs-no">{no}</span><strong>{name}</strong>
-          <span className="kbs-meta">{ql && !h ? "没有命中" : n ? `${n} 篇 · 更新 ${mmdd(latest(g))}` : "空"}{ql && h ? ` · 命中 ${h}` : ""}</span>
+      <section key={g.id} className={`kbs-bay${cls}${state}`} data-layer={g.id} {...layerZone(g)}>
+        {/* 层名可拖：拖到另一层上 = 排到它前面。改名、本页正文平时藏着，悬停这一层时换掉右侧的篇数和更新。 */}
+        <header className="kbs-bay-head" title={disabled || editing ? undefined : "拖动层名排序"} {...(editing ? {} : source("group", g.id))}>
+          {editing ? nameInput("分组名称") : <><span className="kbs-no">{no}</span><strong>{name}</strong></>}
+          <span className="kbs-meta">{busy?.has(g.id) ? <span className="kbs-busy-text">同步中</span> : ql && !h ? "没有命中" : n ? `${n} 篇 · 更新 ${mmdd(latest(g))}` : "空"}{ql && h ? ` · 命中 ${h}` : ""}</span>
+          {!editing && <span className="kbs-act">
+            <button type="button" disabled={disabled} onClick={() => onRename?.(g)} title="改名（写入飞书）"><PixelIcon name="edit" />改名</button>
+            {url && <a href={url} target="_blank" rel="noreferrer"><PixelIcon name="external" />本页正文</a>}
+          </span>}
         </header>
         <div className="kbs-rows">
           {rows.length ? rows.map((row, r) => (
@@ -293,21 +379,30 @@ export default function KbShelf({ model, docs, q = "", focus = "" }) {
   const flat = (n) => {
     const d = docs[n.id] || {}, [no, nm] = splitNumber(spineName(n.name));
     return (
-      <span key={n.id} className={`kbs-slot${ql && !hit(n) ? " is-dim" : ""}`} data-slot="flat" data-id={n.id}>
+      <span key={n.id} className={slotCls(n, ql && !hit(n))} data-slot="flat" data-id={n.id} {...source("item", n.id)}>
         <a className={`kbs-flat${tailOf(d.type)}`} href={d.url || undefined} tabIndex={d.url ? undefined : 0} target="_blank" rel="noreferrer" aria-label={`${cleanName(n.name)}${d.url ? "，点击打开飞书原文" : ""}`}>
           <span className="hd">{no}</span><span className="nm">{nm}</span><span className="tl" />{isRecent(d.updated, today) && <i className="kbs-rb" />}
         </a>
+        {busyTag(n)}
       </span>
     );
   };
 
-  const { groups, loose } = model, lastStart = groups.length - (groups.length % bays || bays);
-  const cells = groups.map((g, i) => layer(g, `${bays > 1 && i % bays < bays - 1 ? " is-left" : ""}${i >= lastStart ? " is-last" : ""}`));
-  if (groups.length % bays) cells.push(<section key="filler" className="kbs-bay is-filler is-last" />);
+  // 新建分组：书柜末尾先放一层空的，层名处输入，回车后在飞书根目录新建这个目录。
+  const fresh = (cls) => (
+    <section key="new" className={`kbs-bay${cls}`}>
+      <header className="kbs-bay-head">{nameInput("新分组名称")}</header>
+      <div className="kbs-rows"><div className="kbs-row"><span className="kbs-slot"><span className="kbs-bk is-ghost" style={{ height: H, width: 35 }}><Spine s={spine("空书架", H, false)} /></span></span><span className="kbs-empty">回车后在飞书根目录新建这个目录</span></div></div>
+    </section>
+  );
+
+  const { groups, loose } = model, list = naming?.id === "new" ? [...groups, null] : groups, lastStart = list.length - (list.length % bays || bays);
+  const cells = list.map((g, i) => { const cls = `${bays > 1 && i % bays < bays - 1 ? " is-left" : ""}${i >= lastStart ? " is-last" : ""}`; return g ? layer(g, cls) : fresh(cls); });
+  if (list.length % bays) cells.push(<section key="filler" className="kbs-bay is-filler is-last" />);
 
   return (
     <div ref={root} className="kbs" {...hover}>
-      <div className="kbs-top">
+      <div className={`kbs-top${over === `in:${ROOT}` ? " is-over" : ""}`} {...into(ROOT)}>
         <div className="kbs-top-head">
           <strong>待上架</strong><span className="kbs-count">{loose.length}</span>
           <span className="kbs-hint">{loose.length ? "收藏时归类不明确的书先放柜顶，拖到任一层即上架（在飞书里移动）" : "书都上架了"}</span>

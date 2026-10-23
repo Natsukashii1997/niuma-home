@@ -41,11 +41,13 @@ function Canvas({ kb: initialKb, focus, initialOrder, ruleIds, reload, onSpace }
   const [order, setOrder] = useState(initialOrder);
   const [q, setQ] = useState("");
   const [naming, setNaming] = useState(null);           // { id | "new", value }
+  const [landed, setLanded] = useState(null);           // 最近落定的一项：{ id: 目标目录 id }，书柜让那一层的层名闪两下
   const [recentOpen, setRecentOpen] = useState(false);
   const recent = useApi("/api/v3/kb/collect/recent");
   const ops = useMemo(() => [...(running ? [running] : []), ...queue].map((x) => x.op), [running, queue]);
   const shown = useMemo(() => applyOps(base, ops), [base, ops]);
   const model = useMemo(() => canvasModel(shown, { ruleIds, order }), [shown, ruleIds, order]);
+  const busyIds = useMemo(() => new Set(ops.map((o) => o.id)), [ops]);
   const unknownCount = (recent.data?.items || []).filter((x) => x.status === "unknown").length;
 
   // 队列：一次只写一项；写完回读，以飞书为准再写下一项。
@@ -63,6 +65,7 @@ function Canvas({ kb: initialKb, focus, initialOrder, ruleIds, reload, onSpace }
           setOrder((o) => { const next = o.map((id) => r.created[id] || id); saveOrder(next); return next; });
         }
         setNote({ tone: "ok", text: `${item.label}：已写入飞书，回读一致` });
+        setLanded({ id: item.op.type === "move" ? item.op.parentId : r.created?.[item.op.id] || item.op.id });
       } catch (e) {
         // 结果不明（后端带操作编号，或请求中断没有回应）：锁住，只读核对。其余是没有执行：本地退回。
         if (e.code === "KB_RESULT_UNKNOWN" || !e.status || e.status >= 500) {
@@ -148,7 +151,7 @@ function Canvas({ kb: initialKb, focus, initialOrder, ruleIds, reload, onSpace }
       {/* 一行：搜索、新建分组，右侧上次同步时间、同步飞书、最近收藏。同步只读取飞书，不改原文。 */}
       <div className="kbs-tools">
         <label className="search-box kbs-search"><PixelIcon name="search" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`搜 ${total} 篇的标题或摘要`} aria-label="搜索知识库" />{q && <button type="button" className="icon-btn" onClick={() => setQ("")} aria-label="清除搜索"><PixelIcon name="close" /></button>}</label>
-        <button type="button" className="btn kbs-new" disabled><PixelIcon name="plus" />新建分组</button>
+        <button type="button" className="btn kbs-new" disabled={!!lock || !!naming || syncing} onClick={() => setNaming({ id: "new", value: "" })}><PixelIcon name="plus" />新建分组</button>
         <span className="spacer" />
         <span className="kbs-sync-at">上次同步飞书 {kb.readAt || "—"}</span>
         <Button disabled={!!lock || pending > 0 || !!naming || syncing} onClick={syncFromFeishu} title={`上次同步飞书 ${kb.readAt || "—"}。重新读取飞书的最新目录、文档名称和详情；完成后更新当前页面`}><PixelIcon name="refresh" />{syncing ? "同步中…" : "同步飞书"}</Button>
@@ -164,7 +167,9 @@ function Canvas({ kb: initialKb, focus, initialOrder, ruleIds, reload, onSpace }
       {note?.tone === "ok" && !lock && <SuccessNotice className="kbf-note is-ok" identity={note} onClose={() => setNote(null)}><PixelIcon name="check" />{note.text}</SuccessNotice>}
       {note && note.tone !== "ok" && !lock && <p className={`kbf-note is-${note.tone}`} role="status"><PixelIcon name={note.tone === "ok" ? "check" : "alert"} />{note.text}<button type="button" className="icon-btn" aria-label="关闭" onClick={() => setNote(null)}><PixelIcon name="close" /></button></p>}
 
-      <KbShelf model={model} docs={docs} q={q} focus={focus} />
+      <KbShelf model={model} docs={docs} q={q} focus={focus} busy={busyIds} landed={landed} disabled={!!lock || syncing}
+        naming={naming} nameInput={nameInput} onRename={(n) => { if (!lock && !syncing && !naming) setNaming({ id: n.id, value: n.name }); }}
+        onMove={move} onReorder={reorderGroups} />
 
       <Modal open={recentOpen} onClose={() => setRecentOpen(false)} icon="clock" title="最近收藏">
         <CollectRecent bare onVerified={() => { recent.reload(); syncFromFeishu(); }} />
