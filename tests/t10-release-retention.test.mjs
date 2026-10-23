@@ -168,8 +168,11 @@ test('T10 日志复制失败不会清空原日志，明确失败而不是假报�
 
 // 执行原脚本的真实停服→维护→启动→回读控制流；只替换外部命令边界。
 // 不执行前面的构建、应用复制或 plist 写入，也不会调用真实 launchctl。
-function releaseControlFlow(t, failedPhase, badReadback = false, locale) {
+function releaseControlFlow(t, failedPhase, badReadback = false, locale, badVerify = false) {
   const context = scenario(t), events = path.join(context.root, 'shell-events.txt');
+  // 完整回读脚本也是外部边界：只记下收到的任务名与快照名，按需合成失败
+  fs.mkdirSync(path.join(context.root, 'scripts'));
+  fs.writeFileSync(path.join(context.root, 'scripts/verify-release.sh'), 'printf \'verify:%s:%s\\n\' "$NIUMA_LABEL" "$1" >> "$T10_EVENTS"\n[ "$T10_BAD_VERIFY" != 1 ]\n');
   const releaseScript = fs.readFileSync(new URL('../scripts/release-app.sh', import.meta.url), 'utf8');
   const start = releaseScript.indexOf('launchctl bootout "gui/$(id -u)/$LABEL"');
   assert.ok(start >= 0, '真实发布脚本须包含服务切换控制流');
@@ -209,16 +212,17 @@ t10_retention() {
 }
 `;
   const result = spawnSync('/bin/bash', ['-c', setup + releaseScript.slice(start)], {
-    encoding: 'utf8', env: { ...process.env, ...(locale ? { LANG: locale, LC_ALL: locale } : {}), T10_STAGE_ROOT: context.root, T10_EVENTS: events, T10_FAIL_PHASE: failedPhase, T10_BAD_READBACK: badReadback ? '1' : '0' },
+    encoding: 'utf8', env: { ...process.env, ...(locale ? { LANG: locale, LC_ALL: locale } : {}), T10_STAGE_ROOT: context.root, T10_EVENTS: events, T10_FAIL_PHASE: failedPhase, T10_BAD_READBACK: badReadback ? '1' : '0', T10_BAD_VERIFY: badVerify ? '1' : '0' },
   });
   return { ...result, events: fs.existsSync(events) ? fs.readFileSync(events, 'utf8').trim().split('\n') : [] };
 }
+const VERIFY = `verify:cn.niuma-home.synthetic-test:${releaseName(1)}`;
 
 for (const phase of ['logs', 'artifacts']) {
   test(`T10 发布控制流 ${phase} 维护失败仍启动并回读服务，最后明确报告维护未完成`, t => {
     const result = releaseControlFlow(t, phase);
     t.diagnostic(JSON.stringify({ phase, status: result.status, events: result.events, stderr: result.stderr }));
-    assert.deepEqual(result.events, ['launchctl:bootout', 'maintenance:logs', 'launchctl:bootstrap', 'curl:ready', 'curl:readback', 'maintenance:artifacts']);
+    assert.deepEqual(result.events, ['launchctl:bootout', 'maintenance:logs', 'launchctl:bootstrap', 'curl:ready', 'curl:readback', VERIFY, 'maintenance:artifacts']);
     assert.equal(result.status, 1, '服务切换成功但维护失败须非零退出');
     assert.match(result.stderr, new RegExp(`T10 合成维护失败：${phase} EACCES`));
     assert.match(result.stderr, /退出码 7/);
@@ -226,11 +230,19 @@ for (const phase of ['logs', 'artifacts']) {
   });
 }
 
+test('发布控制流完整回读不过则停下，不清理旧快照', t => {
+  const result = releaseControlFlow(t, '', false, undefined, true);
+  t.diagnostic(JSON.stringify({ status: result.status, events: result.events, stderr: result.stderr }));
+  assert.deepEqual(result.events, ['launchctl:bootout', 'maintenance:logs', 'launchctl:bootstrap', 'curl:ready', 'curl:readback', VERIFY]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /完整回读未通过.*未清理旧快照/);
+});
+
 for (const phase of ['', 'logs']) {
   test(`T11 UTF-8发布尾段${phase ? '维护失败' : '成功'}输出完整中文且无变量展开错误`, t => {
     const result = releaseControlFlow(t, phase, false, 'en_US.UTF-8');
     t.diagnostic(JSON.stringify({ locale: 'en_US.UTF-8', phase, status: result.status, stdout: result.stdout, stderr: result.stderr }));
-    assert.deepEqual(result.events, ['launchctl:bootout', 'maintenance:logs', 'launchctl:bootstrap', 'curl:ready', 'curl:readback', 'maintenance:artifacts']);
+    assert.deepEqual(result.events, ['launchctl:bootout', 'maintenance:logs', 'launchctl:bootstrap', 'curl:ready', 'curl:readback', VERIFY, 'maintenance:artifacts']);
     assert.equal(result.status, phase ? 1 : 0);
     assert.doesNotMatch(result.stdout + result.stderr, /unbound variable/);
     if (phase) assert.ok(result.stderr.includes(`服务已切换但保留策略未完成：${releaseName(1)}；http://127.0.0.1:5299（launchd cn.niuma-home.synthetic-test）。`));
