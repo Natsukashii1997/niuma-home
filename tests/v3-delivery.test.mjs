@@ -7,6 +7,8 @@ import { getRecord, putRecord, fingerprint } from '../server/local-records.mjs';
 import { deliveryRoutes, deliveryView } from '../server/routes/delivery.mjs';
 import { generatedBrief } from '../server/briefs.mjs';
 import { match } from '../server/http.mjs';
+import { saveSnapshot } from '../server/v3-common.mjs';
+import { NAS_DEFAULT_ROOT } from '../server/nas-materials.mjs';
 
 function setup(t) {
   assert.ok(process.env.WORKDESK_DATA_DIR, '必须使用隔离数据');
@@ -18,7 +20,7 @@ const empty = { needs: [] };
 const step = (view, key) => view.steps.find(s => s.key === key);
 const matrix = () => ({ sku: 'uni-lite', line: '大学辅导', name: '灵活学Lite', unitOrig: 990, tiers: [5], schemes: [{ id: 'official', name: '已核对价格', kind: '常规', status: '生效中', from: '2026-11-01', to: '2026-11-30', prices: [6000], gifts: [0] }] });
 
-test('交付月接口返回四环节（主线需求已去掉，方案录入由前端补），方案录入不重复；未配置不伪装done，NAS待接入', async t => {
+test('交付月接口返回四环节（主线需求已去掉，方案录入由前端补），方案录入不重复；未配置不伪装done，未扫描NAS时物料为todo', async t => {
   const db = setup(t), calls = [];
   const routes = deliveryRoutes({ list: async month => { calls.push(month); return empty; } }, db);
   const found = match(routes, 'GET', '/api/v3/months/2026-11');
@@ -26,7 +28,7 @@ test('交付月接口返回四环节（主线需求已去掉，方案录入由�
   await found.handler({}, { writeHead: s => status = s, end: body => result = JSON.parse(body) }, { params: found.params });
   assert.equal(status, 200); assert.deepEqual(calls, ['2026-11']);
   assert.deepEqual(result.steps.map(s => s.key), ['prices', 'materials', 'brief', 'campaign']);
-  assert.equal(result.campaign, null); assert.ok(result.steps.every(s => s.state !== 'done')); assert.equal(step(result, 'materials').state, 'pending');
+  assert.equal(result.campaign, null); assert.ok(result.steps.every(s => s.state !== 'done')); assert.equal(step(result, 'materials').state, 'todo'); assert.equal(step(result, 'materials').meta, '尚未扫描 NAS');
   const invalid = match(routes, 'GET', '/api/v3/months/2026-13');
   await invalid.handler({}, { writeHead: s => status = s, end: body => result = JSON.parse(body) }, { params: invalid.params });
   assert.equal(status, 400); assert.equal(calls.length, 1);
@@ -53,6 +55,22 @@ test('活动价格关联需求失效、结构不完整不计完成', t => {
   let view = deliveryView(db, '2026-11', data); assert.equal(step(view, 'prices').state, 'done');
   data.needs[0].status = '待复核'; view = deliveryView(db, '2026-11', data); assert.equal(step(view, 'prices').state, 'part');
   data.needs[0].status = '已采纳'; value.schemes[0].gifts = []; putRecord(db, 'price-schemes', 'uni-lite', value); assert.equal(step(deliveryView(db, '2026-11', data), 'prices').state, 'part');
+});
+
+test('物料交付只读NAS快照：固定物料齐即done，活动海报只计数，缺月与换根目录不误报', t => {
+  const db = setup(t), items = n => Array.from({ length: n }, (_, i) => ({ id: `x${i}` }));
+  const nas = (cells, months = ['2026-11'], root = NAS_DEFAULT_ROOT) => saveSnapshot(db, 'nas', { root, scannedAt: Date.parse('2026-10-23T10:27:00+08:00'), months, lines: {
+    大学辅导: { cells: Object.fromEntries(Object.entries(cells.uni || {}).map(([k, n]) => [`2026-11|${k}`, items(n)])) },
+    国际课程: { cells: Object.fromEntries(Object.entries(cells.intl || {}).map(([k, n]) => [`2026-11|${k}`, items(n)])) },
+  } }, new Date().toISOString());
+  const m = () => step(deliveryView(db, '2026-11', empty), 'materials');
+  nas({}, ['2026-10']); assert.deepEqual([m().state, m().meta, m().note], ['todo', 'NAS 暂无 11 月物料', '按 NAS 扫描 10-23 10:27']);
+  nas({ uni: { 价格图: 1 }, intl: { 活动海报: 2 } }); assert.equal(m().state, 'part'); assert.equal(m().meta, '固定物料 1/4 · 活动海报 2 张');
+  assert.equal(m().note, '缺 大学辅导选课指导、大学辅导试听海报、国际课程价格图 · 按 NAS 扫描 10-23 10:27');
+  nas({ uni: { 价格图: 1, 选课指导: 1, 试听海报: 1 }, intl: { 价格图: 1 } }); assert.equal(m().state, 'done'); assert.equal(m().meta, '固定物料 4/4 · 活动海报 0 张');
+  nas({ uni: { 活动海报: 3 } }); assert.equal(m().state, 'todo');
+  nas({ uni: { 价格图: 1, 选课指导: 1, 试听海报: 1 }, intl: { 价格图: 1 } }, ['2026-11'], '/Volumes/别的目录'); assert.equal(m().meta, '尚未扫描 NAS');
+  saveSetting(db, 'nas_root', '/Volumes/别的目录'); assert.equal(m().state, 'done');
 });
 
 test('brief只有实际保存且七节完成、来源指纹未变才算done', t => {

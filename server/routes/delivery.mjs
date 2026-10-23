@@ -1,11 +1,12 @@
 import { route } from '../http.mjs';
-import { requireMonth } from '../v3-common.mjs';
+import { beijingText, requireMonth } from '../v3-common.mjs';
 import { handleV3 } from './user.mjs';
 import { getSettings } from '../db.mjs';
 import { getRecord, fingerprint } from '../local-records.mjs';
 import { availablePriceMatrices, priceSettings } from '../price.mjs';
 import { createBriefService, generatedBrief } from '../briefs.mjs';
 import { isDay } from '../campaigns.mjs';
+import { NAS_DEFAULT_ROOT, NAS_LINES } from '../nas-materials.mjs';
 
 function priceStep(db, month, needs) {
   const result = { key: 'prices', label: '价格方案', state: 'todo', meta: '尚无已保存的有效方案', href: '#/marketing/prices' };
@@ -34,6 +35,29 @@ function priceStep(db, month, needs) {
   return { ...result, state: active && !blocked ? 'done' : active || drafts || blocked ? 'part' : 'todo', meta: `${active} 套有效方案${drafts ? ` · ${drafts} 套草稿` : ''}${blocked ? ` · ${blocked} 套待复核` : ''}` };
 }
 
+// 物料交付（用户 2026-10-23）：只读 NAS 上次扫描的快照，不在这里扫 NAS。交付月各业务线的固定物料都识别到即完成；
+// 活动海报（many）只计张数，不作为必须项。新物料放进 NAS 后要在「物料沉淀」页扫描一次，这里才会更新。
+function materialsStep(db, month) {
+  const result = { key: 'materials', label: '物料交付', state: 'todo', meta: '尚未扫描 NAS', href: '#/marketing/materials' };
+  if (!db) return result;
+  const row = db.prepare('SELECT payload FROM v3_snapshots WHERE kind=?').get('nas');
+  const payload = row && JSON.parse(row.payload);
+  if (!payload || payload.root !== (getSettings(db).nas_root || NAS_DEFAULT_ROOT)) return result;
+  const scanned = `按 NAS 扫描 ${beijingText(payload.scannedAt).slice(5)}`;
+  const mm = Number(month.slice(5));
+  if (!payload.months?.includes(month)) return { ...result, meta: `NAS 暂无 ${mm} 月物料`, note: scanned };
+  const cell = (line, type) => payload.lines?.[line]?.cells?.[`${month}|${type}`]?.length || 0;
+  const fixed = Object.entries(NAS_LINES).flatMap(([line, types]) => types.filter(t => !t.many).map(t => [line, t.key]));
+  const missing = fixed.filter(([line, type]) => !cell(line, type));
+  const posters = Object.entries(NAS_LINES).reduce((sum, [line, types]) => sum + types.filter(t => t.many).reduce((n, t) => n + cell(line, t.key), 0), 0);
+  const have = fixed.length - missing.length;
+  return {
+    ...result, state: !missing.length ? 'done' : have ? 'part' : 'todo',
+    meta: `固定物料 ${have}/${fixed.length} · 活动海报 ${posters} 张`,
+    note: [missing.length && `缺 ${missing.map(([line, type]) => `${line}${type}`).join('、')}`, scanned].filter(Boolean).join(' · '),
+  };
+}
+
 function briefStep(db, month) {
   const result = { key: 'brief', label: '设计 brief', state: 'todo', meta: '尚未保存', href: '#/marketing/brief' };
   if (!db) return result;
@@ -56,7 +80,7 @@ export function deliveryView(db, month, data) {
   const completed = [...nodes.values()].filter(Boolean).length;
   return { month, campaign: instance ? { id: instance.id, name: instance.name, start: instance.start, end: instance.end } : null, steps: [
     priceStep(db, month, data.needs),
-    { key: 'materials', label: '物料交付', state: 'pending', meta: '', note: 'NAS 尚未接入', href: '#/marketing/materials' },
+    materialsStep(db, month),
     briefStep(db, month),
     { key: 'campaign', label: '营销战役', state: instance && nodes.size && completed === nodes.size ? 'done' : instance ? 'part' : 'todo', meta: instance ? `${completed}/${nodes.size} 节点完成` : '该月尚未创建战役', href: '#/projects/campaign' },
   ] };
