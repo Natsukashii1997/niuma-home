@@ -71,3 +71,19 @@
 - 正确做法：并行的会话各开独立 worktree；做不到时，测试记录里写明「工作区含他人未提交改动」，提交时用 `git commit -- <自己的文件>`，不碰别人的改动。
 - 证据：CURRENT.md「常驻提示可关闭」一节与本轮交接的测试记录。
 - 升级：未升级。
+
+## L-08 launchd 里用 /bin/bash 读不了「文稿」下的脚本（2026-10-23）
+
+- 现象：巡检任务装进 launchd 后一跑就退出码 126，日志只有一行 `Operation not permitted`；同一个脚本在终端里跑正常。
+- 根因：macOS 隐私保护拦住了 launchd 直接启动的 `/bin/bash` 读取 `~/Documents`；终端和 Claude 会话有文稿访问权限，所以手动跑看不出来。
+- 正确做法：launchd 任务要读仓库或 `data/` 的，借服务外壳 `NiumaHomeServer.app` 里的 node 启动（它已能读文稿，`release-app.sh` 也是这样跑服务的）；装好后一定用 `launchctl kickstart` 真实触发一次再看日志，不能只在终端里试。
+- 证据：`scripts/health-check.sh` 的 `--install`；`~/Library/Application Support/NiumaHome/evidence/每日巡检-20261023/`。
+- 升级：已写进 `health-check.sh --install`。
+
+## L-09 PlistBuddy 找不到文件时把提示打到标准输出（2026-10-23）
+
+- 现象：被巡检的服务配置不存在时，数据目录被读成「File Doesn't Exist, Will Create: …」这串文字，后面的检查跟着报错。
+- 根因：`PlistBuddy -c "Print …"` 遇到不存在的文件不报错退出，而是往标准输出打提示，`2>/dev/null` 挡不住。
+- 正确做法：先 `[ -f "$plist" ]` 再读。
+- 证据：`scripts/health-check.sh` 读数据目录那几行；`verify-release.sh` 开头已先判断文件存在。
+- 升级：未升级。

@@ -51,6 +51,7 @@ scripts/
   release-app.sh     发布 / 回滚正式 5280（launchd 常驻 + 固定快照）
   verify-release.sh  发布回读（只读；release-app.sh 末尾自动跑，也可单独跑）
   check-style.mjs    样式与监听硬规则检查（npm run check:style；npm test 里也跑）
+  health-check.sh    每日巡检（只读；--install 装成 launchd 任务）
 docs/
   LESSONS.md         开发实录与坑（排障、发布、改样式或脚本前先搜）
   API.md             接口约定
@@ -80,6 +81,7 @@ fixtures/            验收样例（飞书复制的方案原文）
 - 脚本要求工作区干净。主工作区有别人留下的未跟踪文件时，不要删改它们，只对这一次运行忽略未跟踪文件：`GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=status.showUntrackedFiles GIT_CONFIG_VALUE_0=no bash scripts/release-app.sh`。
 - 发布后回读：`release-app.sh` 末尾会自动跑 `scripts/verify-release.sh`（只读，可随时单独再跑），核对 launchd 与运行中进程指向新快照、只监听 127.0.0.1、首页与全部构建文件逐字节一致、快照源码与提交一致、错误日志为空、版本号正确；本轮相关接口与页面仍须人工实看。
 - 回滚：`bash scripts/release-app.sh --use <上一份快照名>`，在交接里写明。
+- 每日巡检：launchd 任务 `cn.niuma-home.health` 每天 08:30 跑 `scripts/health-check.sh`（只读、不调用模型）：发布回读 7 项 + 数据库完整性 + 磁盘余量 + 7 天内有无数据库备份；结果追加到 `~/Library/Application Support/NiumaHome/evidence/health/<年-月>.log`，未通过才弹本机通知。在主工作区执行 `bash scripts/health-check.sh --install` / `--uninstall` 安装或卸载；任务借服务外壳 `NiumaHomeServer.app` 的 node 启动（[LESSONS](docs/LESSONS.md) L-08）。
 
 ## 交接格式
 

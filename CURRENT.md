@@ -2,6 +2,22 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 每日巡检（Loop 第 4 批，2026-10-23，Claude，用户同意第二批计划与 3 项推荐做法，确认后提交；正式巡检任务在提交、快进 main 后安装；不涉及快照，无需发布）
+
+- 时间：开工时没有用 `date` 记时刻（没做到「报告与验收」第 2 条）；按日志：第一次手动巡检 22:30，真实环境巡检 22:32，隔离 launchd 三轮 22:34–22:35。
+- `scripts/health-check.sh`（新）：只读、不调用模型；发布回读 7 项 + 数据库 `PRAGMA quick_check` + 磁盘余量（低于 5 GB 报）+ 7 天内有无数据库备份；每次追加一行到 `evidence/health/<年-月>.log`，未通过时逐条记下并弹本机通知；`--install` / `--uninstall` 装卸 launchd 任务 `cn.niuma-home.health`（每天 08:30，借服务外壳的 node 启动，见 L-08）。
+- `tests/health-check.test.mjs`（新）2 项：临时 HOME / base 里跑真实脚本，桩掉回读、sqlite3、df、osascript；全过时不弹通知，4 项不过时日志逐条记、只弹一次通知。
+- `AGENTS.md`：「发布」加每日巡检一条，结构图加 `health-check.sh`。`docs/LESSONS.md`：加 L-08、L-09。
+- 测试：`npm test` 原样结果 `ℹ pass 718` / `ℹ fail 0`（工作区含另一个会话未提交的 MentorPath 改动）；`npm run check:style` 通过；`bash -n`、`git diff --check` 通过。
+- 验证：
+  - 真实环境手动跑：10 项全 ✓、退出码 0，真实日志记 `2026-10-23 22:32  通过`。
+  - 隔离 launchd 任务 `cn.niuma-home.health-test`：① 直接用 `/bin/bash` 启动 → 退出码 126、`Operation not permitted`（L-08）；② 借外壳 node、指向不存在的服务 → 4 项 ✗、退出码 1；③ 借外壳 node、巡检真实服务 → 回读 7 项、数据库、磁盘全 ✓（备份项 ✗ 是测试时把备份目录做成了符号链接，`find` 不跟进，22:32 的真实运行该项通过）。测完已卸载，plist 已删。
+  - 通知：`osascript` 正常退出；横幅是否真的显示取决于系统通知设置，本机读不到，未核实，待用户确认。
+  - 证据：`~/Library/Application Support/NiumaHome/evidence/每日巡检-20261023/隔离launchd正常一轮.log`。
+- 截图：无界面改动，无截图。
+- 本轮新坑：L-08、L-09。
+- 遗留：正式任务未安装；第 5 批每周整理未做。
+
 ## 规矩改成工具：样式检查、发布回读脚本、LESSONS.md（2026-10-23，Claude，用户同意 3 批计划与 3 项推荐做法；三批均经用户确认后提交：`7c85fbf` / `b5c212d` / 本节所在提交；不涉及运行代码，无需发布）
 
 来由：用户收集的开发分享《长出来的 Skill》（Skill / Loop / RSI）。本轮只做其中两件：靠自觉的规矩写成检查，踩过的坑统一回写到仓库。
