@@ -119,6 +119,8 @@ launchctl bootstrap "gui/$(id -u)" "$PLIST"
 # 回读：服务返回的首页必须和快照里的 dist/index.html 逐字节一致
 for _ in $(seq 30); do curl -sf "$URL/" -o /dev/null && break; sleep 0.5; done
 curl -sf "$URL/" | cmp -s - "$REL/dist/index.html" || fail "$URL 返回的首页和快照不一致，查看 $DATA_DIR/daemon-logs/server.stderr.log"
+# 完整回读：进程与端口、全部构建文件、快照与提交、错误日志、版本号
+NIUMA_LABEL="$LABEL" bash "$ROOT/scripts/verify-release.sh" "$NAME" || fail "服务已切换到 ${NAME}，但完整回读未通过（见上方 ✗），未清理旧快照；需要时用 --use <上一份快照名> 回滚"
 # 只有目标版本通过运行回读，才清理历史产物；REL 是本次已确认在用的快照。
 if "$NODE" "$ROOT/scripts/release-retention.mjs" --base "$BASE" --data-dir "$DATA_DIR" --current-release "$REL" --scope artifacts --apply; then
   :

@@ -74,7 +74,7 @@ fixtures/            验收样例（飞书复制的方案原文）
 - 正式环境是 launchd 常驻服务 `cn.niuma-home.server`（端口 5280），运行 `~/Library/Application Support/NiumaHome/releases/` 下的固定快照，数据目录是主工作区的 `data/`。
 - 只在用户同意后发布：在主工作区（`main`）执行 `bash scripts/release-app.sh`。脚本会先备份数据库，再生成快照、切换服务，并按保留策略清理旧快照。
 - 脚本要求工作区干净。主工作区有别人留下的未跟踪文件时，不要删改它们，只对这一次运行忽略未跟踪文件：`GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=status.showUntrackedFiles GIT_CONFIG_VALUE_0=no bash scripts/release-app.sh`。
-- 发布后回读：launchd 指向新快照；首页、JS、CSS 与快照逐字节一致；快照 `server/` 与提交一致；错误日志为空；本轮相关接口与页面实看；页脚版本号正确。
+- 发布后回读：`release-app.sh` 末尾会自动跑 `scripts/verify-release.sh`（只读，可随时单独再跑），核对 launchd 与运行中进程指向新快照、只监听 127.0.0.1、首页与全部构建文件逐字节一致、快照源码与提交一致、错误日志为空、版本号正确；本轮相关接口与页面仍须人工实看。
 - 回滚：`bash scripts/release-app.sh --use <上一份快照名>`，在交接里写明。
 
 ## 交接格式
