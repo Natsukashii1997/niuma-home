@@ -1,0 +1,305 @@
+{
+  "date": "2026-10-23",
+  "codeCommit": "0b61cd038760849223eb2935f096c585ad1fe7bc",
+  "fullTests": {
+    "passed": 664,
+    "failed": 0,
+    "skipped": 0
+  },
+  "sampleChecks": [
+    {
+      "line": "大学辅导",
+      "id": "b06762dd978dfd34d815",
+      "thumbBytes": 8999,
+      "originalSha256Matched": true
+    },
+    {
+      "line": "国际课程",
+      "id": "da2b1d8c074dfe8bf588",
+      "thumbBytes": 8999,
+      "originalSha256Matched": true
+    }
+  ],
+  "cleanupChecks": {
+    "repeatScanNoDuplicates": true,
+    "cleanedSnapshotMatchesBaseline": true,
+    "testThumbsAndOriginalRoutes404": true,
+    "originalNasFilesUnchanged": 1211,
+    "originalNasDirectoryEntriesUnchangedIncludingRoot": 196,
+    "manifestComparisonNote": "Initial comparison omitted root dot in after-list; normalized same scope, all file sizes and modification times identical."
+  },
+  "runtimeChecks": {
+    "release": "nm-20261023-102725-0b61cd0",
+    "httpIndexMatchesRelease": true,
+    "serverFilesMatchCommit": 72,
+    "dataDirCorrect": true,
+    "digitalWorldDirCorrect": true
+  },
+  "formalScanChecks": {
+    "formalScanTime": "2026-10-23 10:27",
+    "reachable": true,
+    "items": 22,
+    "all22ThumbsReadable": true,
+    "maxThumbBytes": 88395,
+    "sourceMonths": [
+      "2026-08",
+      "2026-09",
+      "2026-10"
+    ],
+    "matchesOriginalItems": true,
+    "testMarkerAbsent": true
+  },
+  "dataPreservation": {
+    "checkedAt": "2026-10-23T02:29:05.671669+00:00",
+    "baseline": "/tmp/niuma-nas-20261023/pre-release.db",
+    "database": "/Users/nat/Documents/ChatGPT/个人/work/work-desk/data/work-desk.db",
+    "readOnly": true,
+    "tables": [
+      {
+        "table": "assistants",
+        "beforeRows": 5,
+        "afterRows": 5,
+        "equal": true,
+        "beforeDigest": "4833bc8688bdb21546e981935c650a3a653dea6e65d6969dc4f3a8bd55825c50",
+        "afterDigest": "4833bc8688bdb21546e981935c650a3a653dea6e65d6969dc4f3a8bd55825c50"
+      },
+      {
+        "table": "codex_push",
+        "beforeRows": 0,
+        "afterRows": 0,
+        "equal": true,
+        "beforeDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "afterDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "table": "material_images",
+        "beforeRows": 0,
+        "afterRows": 0,
+        "equal": true,
+        "beforeDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "afterDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "table": "materials",
+        "beforeRows": 0,
+        "afterRows": 0,
+        "equal": true,
+        "beforeDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "afterDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "table": "plans",
+        "beforeRows": 3,
+        "afterRows": 3,
+        "equal": true,
+        "beforeDigest": "40d7a550650c11538382d511762d27eb7441f1be0aa1771a119de0e0368c9a35",
+        "afterDigest": "40d7a550650c11538382d511762d27eb7441f1be0aa1771a119de0e0368c9a35"
+      },
+      {
+        "table": "promos",
+        "beforeRows": 24,
+        "afterRows": 24,
+        "equal": true,
+        "beforeDigest": "764bab38a704305aaf071f34026ef237dec183c03bcbc7e2180a6b4745e09e21",
+        "afterDigest": "764bab38a704305aaf071f34026ef237dec183c03bcbc7e2180a6b4745e09e21"
+      },
+      {
+        "table": "settings",
+        "beforeRows": 6,
+        "afterRows": 6,
+        "equal": true,
+        "beforeDigest": "7c02365cb03f1bd7ae346cf3ed96559a93a1ce436c01520aa69620ed12b6a10c",
+        "afterDigest": "7c02365cb03f1bd7ae346cf3ed96559a93a1ce436c01520aa69620ed12b6a10c"
+      },
+      {
+        "table": "sku_aliases",
+        "beforeRows": 2,
+        "afterRows": 2,
+        "equal": true,
+        "beforeDigest": "575d3589b657e45bb4a9a1ceece41b26f58e7fdc087985aa022cf8c4267cb7f2",
+        "afterDigest": "575d3589b657e45bb4a9a1ceece41b26f58e7fdc087985aa022cf8c4267cb7f2"
+      },
+      {
+        "table": "v3_documents",
+        "beforeRows": 58,
+        "afterRows": 58,
+        "equal": true,
+        "beforeDigest": "3917f35ccd44a282201f46100033ccdb3df2beeb44d2fe42ff8d3b0b0abe7c5a",
+        "afterDigest": "3917f35ccd44a282201f46100033ccdb3df2beeb44d2fe42ff8d3b0b0abe7c5a"
+      },
+      {
+        "table": "v3_needs",
+        "beforeRows": 12,
+        "afterRows": 12,
+        "equal": true,
+        "beforeDigest": "6fe8e137bad21e46ae4d6a762751cb5c8ad6472d0d92a102e5f7852a250ebf71",
+        "afterDigest": "6fe8e137bad21e46ae4d6a762751cb5c8ad6472d0d92a102e5f7852a250ebf71"
+      },
+      {
+        "table": "v3_snapshots",
+        "beforeRows": 9,
+        "afterRows": 9,
+        "equal": false,
+        "beforeDigest": "93d37600a8cfe0fbedf04b119b89af21fc39478217b7373d6a406de3858c5328",
+        "afterDigest": "d65a607e0f90c9b8e077686f20cf9c51fce1d45fd0c5b78f33e8ec3fc60c5653"
+      },
+      {
+        "table": "v3_source_status",
+        "beforeRows": 6,
+        "afterRows": 6,
+        "equal": false,
+        "beforeDigest": "61d425d0b14ec2b60901a2d84c3455f67fffa54e20b5aa3544664120d23c43c0",
+        "afterDigest": "8759229a23b98aa9669c07a6060222ba287e6657cb4c59194c1410a753e004a3"
+      }
+    ],
+    "snapshotChanges": [
+      {
+        "kind": "nas",
+        "changedFields": [
+          "payload.scannedAt",
+          "updated_at"
+        ]
+      },
+      {
+        "kind": "selftalk",
+        "changedFields": [
+          "payload.coverage.end",
+          "payload.coverage.start",
+          "payload.pulledAt",
+          "payload.rows.length",
+          "updated_at"
+        ]
+      }
+    ],
+    "sourceStatusChanges": [
+      {
+        "kind": "nas",
+        "changedFields": [
+          "attempt_at",
+          "success_at"
+        ]
+      },
+      {
+        "kind": "selftalk",
+        "changedFields": [
+          "attempt_at",
+          "success_at"
+        ]
+      }
+    ],
+    "markers": {
+      "NM20261023": {
+        "matchingRowsByTable": {},
+        "totalMatchingRows": 0
+      },
+      "NM20261023临时验收": {
+        "matchingRowsByTable": {},
+        "totalMatchingRows": 0
+      }
+    },
+    "pendingWrites": {
+      "feishu-export": {
+        "count": 10,
+        "states": {
+          "success": 10
+        }
+      },
+      "kb-operation": {
+        "count": 12,
+        "states": {
+          "verified": 10,
+          "aborted": 2
+        }
+      },
+      "mentor-reply": {
+        "count": 0,
+        "states": {}
+      },
+      "kb-write-lock": {
+        "count": 0,
+        "states": {}
+      },
+      "brief-sync-conflict": {
+        "count": 0,
+        "states": {}
+      },
+      "brief-sync-recovery": {
+        "count": 1,
+        "states": {
+          "rejected": 1
+        }
+      },
+      "legacy-write-receipt": {
+        "count": 0,
+        "states": {}
+      }
+    },
+    "briefBindings": [
+      {
+        "month": "2026-10",
+        "boundDocumentPresent": true,
+        "currentOperationFound": true,
+        "currentOperationStatus": "success",
+        "localSyncStatus": "unchanged"
+      }
+    ],
+    "timelineSnapshotEqual": true,
+    "nas": {
+      "before": {
+        "scannedAt": 1792721874574,
+        "months": [
+          "2026-08",
+          "2026-09",
+          "2026-10"
+        ],
+        "cardCount": 22,
+        "uniqueCardCount": 22,
+        "root": "/Volumes/跨部门综合资料/8.月度物料"
+      },
+      "after": {
+        "scannedAt": 1792722474552,
+        "months": [
+          "2026-08",
+          "2026-09",
+          "2026-10"
+        ],
+        "cardCount": 22,
+        "uniqueCardCount": 22,
+        "root": "/Volumes/跨部门综合资料/8.月度物料"
+      },
+      "inventoryEqual": true
+    },
+    "businessTablesUnchanged": true,
+    "changeInterpretation": {
+      "business": "No business row differences found",
+      "nas": "Official NAS refresh changed scan metadata; inspect card inventory comparison separately",
+      "timeline": "Verified date snapshot preserved",
+      "selftalk": "Expected ten-day rolling source-cache refresh: start advanced from 2026-10-13 to 2026-10-14; four expired rows dropped, remaining 48 rows unchanged. No manual business records were changed."
+    },
+    "selftalkRefresh": {
+      "beforeCoverage": {
+        "start": "2026-10-13T00:00:00+08:00",
+        "end": "2026-10-22T13:53:27.264Z"
+      },
+      "afterCoverage": {
+        "start": "2026-10-14T00:00:00+08:00",
+        "end": "2026-10-23T02:27:49.748Z"
+      },
+      "beforeRows": 52,
+      "afterRows": 48,
+      "rowKeys": [
+        "id",
+        "createdAt",
+        "text",
+        "type",
+        "link"
+      ],
+      "removedRowCount": 4,
+      "addedRowCount": 0,
+      "commonRowCount": 48,
+      "commonRowsIdentical": true,
+      "removedRowsAllBeforeNewWindow": true,
+      "removedRowsCount": 4
+    }
+  }
+}
