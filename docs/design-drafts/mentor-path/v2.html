@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V2 闯关塔 · 培养路径</title>
+<link rel="stylesheet" href="../../../src/styles.css">
+<link rel="stylesheet" href="../../../src/styles-v3.css">
+<link rel="stylesheet" href="../../../src/styles-layout.css">
+<link rel="stylesheet" href="_shared/draft.css">
+<style>
+/* V2 纵向闯关塔：两座塔并排，一层一关，从底层往上爬；右侧固定显示选中楼层的详情 */
+.v2-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 3fr) minmax(0, 6fr); gap: var(--gap); align-items: stretch; }
+.v2-tower { display: flex; flex-direction: column; }
+.v2-tower .card-body { display: flex; flex-direction: column; justify-content: flex-end; padding: var(--s4) var(--s4) 0; background-color: var(--bg); background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1.2px); background-size: 24px 24px; }
+/* 塔顶：三级像素台阶 */
+.v2-roof { display: flex; flex-direction: column; align-items: center; }
+.v2-roof i { display: block; height: 8px; background: var(--text); }
+.v2-roof i:nth-child(1) { width: 24%; } .v2-roof i:nth-child(2) { width: 52%; } .v2-roof i:nth-child(3) { width: 80%; }
+.v2-roof.is-locked i { background: var(--dither-ink-2); }
+.v2-floors { display: flex; flex-direction: column-reverse; border: 2px solid var(--text); border-bottom: 0; background: var(--panel); }
+.v2-floor { position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: var(--s2); min-height: 64px; padding: var(--s2) var(--s3) var(--s2) 0; border: 0; border-top: 2px solid var(--text); background: var(--panel); font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+.v2-floors .v2-floor:last-child { border-top: 0; }
+.v2-floor .v2-no { align-self: stretch; display: grid; place-items: center; border-right: 2px solid var(--text); font-family: var(--font-pixel); font-size: 18px; }
+.v2-floor .v2-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.v2-floor .v2-name strong { font-size: 13px; line-height: 1.35; }
+.v2-floor .v2-name span { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.v2-floor .v2-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-family: var(--font-mono); font-size: 11px; }
+.v2-floor.is-done .v2-no { background: var(--text); color: var(--panel); }
+.v2-floor.is-doing { background: var(--orange-soft); }
+.v2-floor.is-doing .v2-no { background: var(--signal); color: var(--panel); }
+.v2-floor.is-locked { background: var(--panel-soft); color: var(--muted); }
+.v2-floor.is-locked .v2-no { color: var(--muted); }
+.v2-floor.is-sel { outline: 3px solid var(--text); outline-offset: -3px; z-index: 1; }
+.v2-floor.is-doing.is-sel { outline-color: var(--signal); }
+.v2-here { position: absolute; right: var(--s3); top: -10px; z-index: 2; display: flex; align-items: center; gap: 4px; padding: 0 var(--s1); background: var(--signal); color: var(--panel); font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+.v2-ground { display: flex; justify-content: space-between; padding: var(--s2) 0; border-top: 4px solid var(--text); font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.v2-climb { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3) var(--s4); border-top: 1px solid var(--line); }
+.v2-detail { position: sticky; top: var(--s4); }
+.v2-detail .card-body { padding: var(--s5); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { LINES, SEASON, byId, current, doneCount, lineStars, PASS } from "./_shared/data.js";
+import { mountShell, icon, detailHTML, statStrip, starRow, blinkCurrent, lightCells } from "./_shared/draft.js";
+
+const page = mountShell({
+  version: "V2 闯关塔",
+  subtitle: "一条线一座塔，一层一关，从底层往上爬，塔顶是 BOSS 关。橙色那层是正在打的；点任意一层，右侧看目标、要做的事、产出和评分。",
+  actions: `<span class="mp-legend"><span><i class="done"></i>已通关</span><span><i class="doing"></i>进行中</span><span><i class="locked"></i>未解锁</span></span>`,
+});
+
+const [biz, ai] = LINES;
+const floorNo = (i) => String(i + 1).padStart(2, "0") + "F";
+const tower = (l) => {
+  const cur = current(l);
+  const pct = Math.round((doneCount(l) / l.nodes.length) * 20);
+  return `<section class="card v2-tower">
+    <div class="card-head"><h2>${icon(l.key === "biz" ? "business" : "spark")}${l.name}</h2><span class="small muted">${doneCount(l)} / ${l.nodes.length} 层 · ${icon("star")} ${lineStars(l)}</span></div>
+    <div class="card-body">
+      <div class="v2-roof ${l.nodes.at(-1).status === "locked" ? "is-locked" : ""}"><i></i><i></i><i></i></div>
+      <div class="v2-floors">${l.nodes.map((n, i) => `
+        <button type="button" class="v2-floor is-${n.status}${n.boss ? " is-boss" : ""}" data-id="${n.id}">
+          <span class="v2-no">${floorNo(i)}</span>
+          <span class="v2-name"><span>${n.id} · ${n.stage}</span><strong>${n.boss ? icon("crown") + " " : ""}${n.title}</strong></span>
+          <span class="v2-right">${n.status === "locked" ? icon("lock") : `<b class="${n.status === "doing" ? "signal" : ""}">${n.score}</b>`}${n.status === "done" ? starRow(n) : n.status === "doing" ? `<span class="warn-text">差 ${PASS - n.score}</span>` : `<span>W${n.week[0]}</span>`}</span>
+          ${n.status === "doing" ? `<span class="v2-here"><i class="mp-blink is-current-blink" style="background:var(--panel)"></i>在这层</span>` : ""}
+        </button>`).join("")}</div>
+      <div class="v2-ground"><span>入职 09-01</span><span>塔高 ${l.nodes.length} 层</span></div>
+    </div>
+    <div class="v2-climb"><span class="label">爬塔进度 · 当前 ${cur.id}</span><span class="mp-cells">${Array.from({ length: 20 }, (_, k) => `<i data-on class="${k === pct ? "is-sig" : ""}" ${k <= pct ? "" : "data-off"}></i>`).join("")}</span></div>
+  </section>`;
+};
+
+page.innerHTML = `
+  ${statStrip([
+    { label: "业务塔", value: `${doneCount(biz)}`, unit: ` / ${biz.nodes.length} 层`, foot: `正在 ${current(biz).id} · ${current(biz).title}` },
+    { label: "AI 塔", value: `${doneCount(ai)}`, unit: ` / ${ai.nodes.length} 层`, foot: `正在 ${current(ai).id} · ${current(ai).title}` },
+    { label: "累计星数", value: `${lineStars(biz) + lineStars(ai)}`, unit: ` / ${(biz.nodes.length + ai.nodes.length) * 3}`, foot: "≥70 一星 · ≥80 两星 · ≥90 三星" },
+    { label: "待评分", value: "2", unit: " 份", tone: "warn", foot: "B4 初稿 10-21 · A3 清单 10-18" },
+    { label: "赛季", value: `${SEASON.week}`, unit: ` / ${SEASON.weeks} 周`, foot: SEASON.rank },
+  ])}
+  <div class="v2-grid">
+    ${tower(biz)}
+    ${tower(ai)}
+    <section class="card v2-detail"><div class="card-head"><h2>${icon("flag")}楼层详情</h2><span class="small muted" id="selHint"></span></div><div class="card-body" id="detail"></div></section>
+  </div>`;
+
+// 进度格：只点亮已爬的格子
+document.querySelectorAll(".mp-cells i[data-off]").forEach((i) => i.removeAttribute("data-on"));
+
+function select(id) {
+  document.querySelectorAll(".v2-floor").forEach((f) => f.classList.toggle("is-sel", f.dataset.id === id));
+  const n = byId(id);
+  document.getElementById("detail").innerHTML = detailHTML(n, { cols: true });
+  document.getElementById("selHint").textContent = `${n.lineName} · ${floorNo(LINES.find((l) => l.key === n.line).nodes.indexOf(LINES.find((l) => l.key === n.line).nodes.find((x) => x.id === id)))}`;
+}
+document.querySelectorAll(".v2-floor").forEach((f) => (f.onclick = () => select(f.dataset.id)));
+select("B4");
+blinkCurrent();
+lightCells();
+</script>
+</body>
+</html>

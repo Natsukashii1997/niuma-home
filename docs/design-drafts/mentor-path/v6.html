@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V6 地铁线路图 · 培养路径</title>
+<link rel="stylesheet" href="../../../src/styles.css">
+<link rel="stylesheet" href="../../../src/styles-v3.css">
+<link rel="stylesheet" href="../../../src/styles-layout.css">
+<link rel="stylesheet" href="_shared/draft.css">
+<link rel="stylesheet" href="_shared/stage.css">
+<style>
+/* V6 地铁线路图：两条线按真实周次铺满整屏，站点 = 关卡；走过的线是实色，没走到的是空心轨道；
+   橙色竖线是今天，落在今天左边还没通关的站就是超期；两条线之间的虚线是换乘（跨线依赖），终点站是结业。 */
+.m6 { position: absolute; inset: 0; background: var(--panel); }
+.m6 .stg-head { background: var(--panel); border-bottom: 1px solid var(--line); }
+.m6-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.m6-svg .hit { cursor: pointer; }
+.m6-labels { position: absolute; inset: 0; pointer-events: none; }
+.m6-lab { position: absolute; width: 176px; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 6px; background: var(--panel); text-align: center; pointer-events: auto; cursor: pointer; }
+.m6-lab .meta { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.m6-lab strong { font-size: 15px; line-height: 1.35; }
+.m6-lab .sc { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.m6-lab.is-doing strong { color: var(--text); }
+.m6-lab.is-doing .sc { color: var(--signal); font-weight: 600; }
+.m6-lab.is-late .sc { color: var(--risk); }
+.m6-lab.is-locked strong { color: var(--text-2); font-weight: 500; }
+.m6-lab.is-locked .sc { color: var(--muted); }
+.m6-lab:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+.m6-lab.is-sel { outline: 2px solid var(--text); }
+.m6-bul { display: inline-grid; place-items: center; min-width: 24px; height: 16px; padding: 0 3px; font-style: normal; font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--panel); background: var(--text); }
+.m6-bul.is-ai { background: #2563EB; }
+.m6-line { position: absolute; left: var(--s5); display: flex; align-items: center; gap: var(--s2); }
+.m6-line .disc { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: var(--panel); font-family: var(--font-mono); font-size: 15px; font-weight: 600; }
+.m6-line strong { display: block; font-size: 15px; }
+.m6-line span span { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.m6-plate { position: absolute; padding: 0 4px; background: var(--panel); font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.m6-term { position: absolute; width: 150px; text-align: right; }
+.m6-term strong { display: block; font-size: 15px; }
+.m6-term span { font-size: 12px; color: var(--muted); }
+.m6-foot { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; display: flex; align-items: center; gap: var(--s3); padding: 0 var(--s5); background: var(--panel); border-top: 1px solid var(--line); }
+.m6-now { display: inline-flex; align-items: center; gap: var(--s2); height: 36px; padding: 0 var(--s3); border: 2px solid var(--line); background: var(--panel); font: inherit; font-size: 13px; color: var(--text); cursor: pointer; }
+.m6-now:hover { border-color: var(--text); }
+.m6-now b { font-family: var(--font-mono); color: var(--signal); }
+.m6-now em { font-style: normal; font-size: 12px; color: var(--muted); }
+.m6-now em.risk { color: var(--risk); }
+.m6-legend { display: flex; align-items: center; gap: var(--s4); font-size: 12px; color: var(--muted); }
+.m6-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.m6-legend svg { flex: none; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { LINES, LINKS, SEASON, byId, doneCount, lineStars } from "./_shared/data.js";
+import { icon, starRow } from "./_shared/draft.js";
+import { mountStage, stageHead, makeDrawer, NOW_W, MONTH_MARKS, LINE_COLOR, TODAY, md, midOf, isLate, lateWeeks, linkNote, scoreLine } from "./_shared/stage.js";
+
+const stage = mountStage({ version: "V6 地铁线路图" });
+stage.innerHTML = `<div class="m6" id="m6">${stageHead()}<svg class="m6-svg" id="svg"></svg><div class="m6-labels" id="labels"></div><div class="m6-foot" id="foot"></div></div>`;
+const root = document.getElementById("m6");
+const bul = (id) => `<i class="m6-bul ${id[0] === "A" ? "is-ai" : ""}">${id}</i>`;
+const drawer = makeDrawer(root, { head: (n) => `${bul(n.id)}${n.stage} 站 · ${n.week[0] === n.week[1] ? `W${n.week[0]}` : `W${n.week[0]}–${n.week[1]}`}` });
+root.addEventListener("drawer", (e) => document.querySelectorAll(".m6-lab").forEach((l) => l.classList.toggle("is-sel", l.dataset.id === e.detail)));
+
+// 像素图标放进 SVG 里
+const pix = (name, x, y, size, color) => icon(name, size).replace(/<svg class="pixel-icon" width="\d+" height="\d+"/, `<svg x="${x}" y="${y}" width="${size}" height="${size}"`).replace('fill="currentColor"', `fill="${color}"`);
+const PANEL = "#FBFBFC", SIGNAL = "#FF4F1F", MUTED = "#686D76";
+
+function layout() {
+  const W = root.clientWidth, H = root.clientHeight;
+  const HEAD = 64, FOOT = 56, RULER = 40;
+  const top = HEAD + 48, bottom = H - FOOT - RULER - 8;
+  const yB = Math.round(top + (bottom - top) * 0.30), yA = Math.round(top + (bottom - top) * 0.74);
+  const yM = (yA + yB) / 2, DX = (yA - yB) / 2;
+  const X1 = 188, X2 = W - 96 - DX;
+  const xw = (w) => X1 + (w / 24) * (X2 - X1);
+  const xNow = xw(NOW_W);
+  const Y = { biz: yB, ai: yA };
+  let s = "";
+
+  // 月份底色 + 周格线
+  MONTH_MARKS.forEach((m, i) => {
+    const a = xw(m.w), b = xw(MONTH_MARKS[i + 1]?.w ?? 24);
+    if (b <= a) return;
+    s += `<rect x="${a}" y="${top - 30}" width="${b - a}" height="${bottom - top + 38}" fill="${i % 2 ? "#F4F5F7" : PANEL}"/>`;
+    s += `<text x="${a + 8}" y="${top - 12}" font-family="Geist Mono" font-size="11" fill="${MUTED}">${m.name}</text>`;
+  });
+  for (let w = 0; w <= 24; w++) s += `<line x1="${xw(w)}" y1="${top - 30}" x2="${xw(w)}" y2="${bottom + 8}" stroke="#E6E8EC" stroke-width="1"/>`;
+
+  // 周标尺
+  const ry = bottom + 8;
+  for (let w = 1; w <= 24; w++) {
+    const a = xw(w - 1), b = xw(w), cur = w === SEASON.week;
+    if (cur) s += `<rect x="${a}" y="${ry}" width="${b - a}" height="${RULER}" fill="${SIGNAL}"/>`;
+    s += `<text x="${(a + b) / 2}" y="${ry + 24}" text-anchor="middle" font-family="Geist Mono" font-size="10" fill="${cur ? PANEL : MUTED}">W${w}</text>`;
+  }
+  s += `<line x1="${xw(0)}" y1="${ry}" x2="${xw(24)}" y2="${ry}" stroke="#0D0E10" stroke-width="2"/>`;
+
+  // 今天
+  s += `<line x1="${xNow}" y1="${top - 30}" x2="${xNow}" y2="${ry}" stroke="${SIGNAL}" stroke-width="2"/>`;
+  s += `<rect x="${xNow - 58}" y="${top - 30}" width="116" height="20" fill="${SIGNAL}"/><text x="${xNow}" y="${top - 16}" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="${PANEL}">今天 ${md(TODAY)} · W${SEASON.week}</text>`;
+
+  // 线路：走过的实色，没走到的空心
+  LINES.forEach((l) => {
+    const y = Y[l.key], c = LINE_COLOR[l.key], xs = X1 - 32;
+    const tail = `M${xNow} ${y}H${X2}L${X2 + DX} ${yM}`;
+    s += `<path d="M${xs} ${y}H${xNow}" stroke="${c}" stroke-width="12" fill="none"/>`;
+    s += `<path d="${tail}" stroke="${c}" stroke-width="12" fill="none" stroke-linejoin="round"/><path d="${tail}" stroke="${PANEL}" stroke-width="6" fill="none" stroke-linejoin="round"/>`;
+    s += `<rect x="${xs - 4}" y="${y - 16}" width="8" height="32" fill="${c}"/>`;
+  });
+
+  // 站名标签（先摆，换乘线要避开它们）
+  const labels = [];
+  const boxes = [];
+  LINES.forEach((l) => l.nodes.forEach((n, i) => {
+    const x = xw(midOf(n)), y = Y[l.key];
+    const above = l.key === "biz" ? i % 2 === 0 : i % 2 === 1;
+    labels.push({ n, x, y, above, line: l.key });
+  }));
+  document.getElementById("labels").innerHTML = labels.map(({ n, x, y, above }) => {
+    const late = isLate(n);
+    const sc = n.status === "done" ? `${n.score} 分 ${starRow(n)} ${n.at} 通关` : late ? `${n.score} 分 · 超期 ${lateWeeks(n)} 周` : scoreLine(n);
+    return `<div class="m6-lab is-${n.status}${late ? " is-late" : ""}" data-id="${n.id}" data-x="${x}" data-y="${y}" data-above="${above ? 1 : ""}">
+      <span class="meta">${bul(n.id)}${n.stage} · W${n.week[0]}–${n.week[1]}</span>
+      <strong>${n.boss ? icon("crown") + " " : ""}${n.title}</strong><span class="sc">${n.status === "locked" ? icon("lock") : ""}${sc}</span></div>`;
+  }).join("");
+  document.querySelectorAll(".m6-lab").forEach((el) => {
+    const x = +el.dataset.x, y = +el.dataset.y, h = el.offsetHeight, w = el.offsetWidth;
+    const left = Math.max(X1 - 24, Math.min(W - w - 16, x - w / 2));
+    const t = el.dataset.above ? y - 22 - h : y + 22;
+    el.style.left = `${left}px`; el.style.top = `${t}px`;
+    boxes.push({ l: left, r: left + w, t, b: t + h });
+    el.onclick = () => drawer.open(byId(el.dataset.id));
+  });
+
+  // 换乘：从前置站所在线竖向接到后一条线，落点尽量贴近目标站且避开标签
+  const plates = [];
+  LINKS.forEach(([from, to]) => {
+    const a = byId(from), b = byId(to);
+    const ya = Y[a.line], yb = Y[b.line], xa = xw(midOf(a)), xb = xw(midOf(b));
+    const [lo, hi] = [Math.min(ya, yb), Math.max(ya, yb)];
+    const free = (x) => !boxes.some((q) => x > q.l - 10 && x < q.r + 10 && q.b > lo + 10 && q.t < hi - 10);
+    let x = xb - 34;
+    while (x > xa && !free(x)) x -= 2;
+    if (!free(x)) x = xa;
+    const dir = yb > ya ? 1 : -1;
+    s += `<line x1="${x}" y1="${ya + dir * 10}" x2="${x}" y2="${yb - dir * 16}" stroke="#0D0E10" stroke-width="2" stroke-dasharray="6 4"/><rect x="${x - 4}" y="${ya - 3}" width="8" height="6" fill="#0D0E10"/>`;
+    s += `<path d="M${x - 6} ${yb - dir * 18}L${x + 6} ${yb - dir * 18}L${x} ${yb - dir * 8}Z" fill="#0D0E10"/>`;
+    plates.push({ x, y: (ya + yb) / 2, text: `换乘 · ${from} ${linkNote(from, to)} → ${to}` });
+  });
+
+  // 站点
+  LINES.forEach((l) => l.nodes.forEach((n) => {
+    const x = xw(midOf(n)), y = Y[l.key], c = LINE_COLOR[l.key];
+    let g = "";
+    if (n.boss) {
+      const done = n.status === "done";
+      g = `<rect x="${x - 16}" y="${y - 16}" width="32" height="32" rx="6" fill="${done ? c : PANEL}" stroke="${n.status === "doing" ? SIGNAL : c}" stroke-width="4"/>${pix("crown", x - 7, y - 7, 14, done ? PANEL : c)}`;
+    } else if (n.status === "done") {
+      g = `<circle cx="${x}" cy="${y}" r="13" fill="${c}" stroke="${PANEL}" stroke-width="3"/>${pix("check", x - 7, y - 7, 14, PANEL)}`;
+    } else if (n.status === "doing") {
+      g = `<circle cx="${x}" cy="${y}" r="24" fill="none" stroke="${SIGNAL}" stroke-width="2" stroke-dasharray="3 3"/><circle cx="${x}" cy="${y}" r="15" fill="${PANEL}" stroke="${SIGNAL}" stroke-width="5"/><circle class="is-current-blink m6-dot" cx="${x}" cy="${y}" r="5" fill="${SIGNAL}"/>`;
+    } else {
+      g = `<circle cx="${x}" cy="${y}" r="10" fill="${PANEL}" stroke="${c}" stroke-width="4"/>`;
+    }
+    s += `<g class="hit" data-id="${n.id}">${g}<circle cx="${x}" cy="${y}" r="26" fill="transparent"/></g>`;
+  }));
+
+  // 今天落在两站之间时，线上放一节橙色「车厢」
+  LINES.forEach((l) => {
+    const y = Y[l.key];
+    if (l.nodes.some((n) => Math.abs(xw(midOf(n)) - xNow) < 30)) return;
+    s += `<rect x="${xNow - 13}" y="${y - 8}" width="26" height="16" rx="3" fill="${SIGNAL}" stroke="${PANEL}" stroke-width="2"/>`;
+  });
+
+  // 终点站：结业
+  const tx = X2 + DX, ty = yM;
+  s += `<circle cx="${tx}" cy="${ty}" r="28" fill="${PANEL}" stroke="#0D0E10" stroke-width="6"/>${pix("crown", tx - 14, ty - 14, 28, "#0D0E10")}`;
+
+  const svg = document.getElementById("svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+  svg.querySelectorAll(".hit").forEach((g) => (g.onclick = () => drawer.open(byId(g.dataset.id))));
+
+  // 线路名、换乘说明、终点站名
+  const lab = document.getElementById("labels");
+  LINES.forEach((l) => lab.insertAdjacentHTML("beforeend", `<div class="m6-line" style="top:${Y[l.key] - 20}px"><i class="disc" style="background:${LINE_COLOR[l.key]}">${l.code}</i><span><strong>${l.name}</strong><span>${doneCount(l)}/${l.nodes.length} 站 · ★${lineStars(l)}</span></span></div>`));
+  plates.forEach((p) => lab.insertAdjacentHTML("beforeend", `<span class="m6-plate" style="left:${p.x + 10}px;top:${p.y - 10}px">${p.text}</span>`));
+  lab.insertAdjacentHTML("beforeend", `<div class="m6-term" style="left:${tx - 52 - 150}px;top:${ty - 22}px"><strong>结业 · 项目助理</strong><span>B7 与 A6 通关后到站</span></div>`);
+}
+
+// 底部：本周在跑的两站 + 图例
+const doing = LINES.flatMap((l) => l.nodes.filter((n) => n.status === "doing"));
+const lg = (shape) => `<svg width="28" height="16" viewBox="0 0 28 16">${shape}</svg>`;
+document.getElementById("foot").innerHTML = `
+  <span class="label">本周在跑</span>
+  ${doing.map((n) => `<button type="button" class="m6-now" data-id="${n.id}">${bul(n.id)}${n.title}<b>${n.score}</b><em class="${isLate(n) ? "risk" : ""}">${isLate(n) ? `超期 ${lateWeeks(n)} 周` : `W${n.week[1]} 截止 · 差 ${70 - n.score} 分`}</em></button>`).join("")}
+  <span class="spacer"></span>
+  <div class="m6-legend">
+    <span>${lg(`<rect x="0" y="5" width="28" height="6" fill="#0D0E10"/>`)}走过</span>
+    <span>${lg(`<rect x="0" y="4" width="28" height="8" fill="#0D0E10"/><rect x="0" y="6" width="28" height="4" fill="#FBFBFC"/>`)}未走到</span>
+    <span>${lg(`<circle cx="14" cy="8" r="6" fill="#0D0E10"/>`)}已通关</span>
+    <span>${lg(`<circle cx="14" cy="8" r="6" fill="#FBFBFC" stroke="#FF4F1F" stroke-width="3"/>`)}进行中</span>
+    <span>${lg(`<circle cx="14" cy="8" r="5" fill="#FBFBFC" stroke="#0D0E10" stroke-width="3"/>`)}未解锁</span>
+    <span>${lg(`<line x1="14" y1="0" x2="14" y2="16" stroke="#0D0E10" stroke-width="2" stroke-dasharray="4 3"/>`)}换乘</span>
+  </div>`;
+document.querySelectorAll(".m6-now").forEach((b) => (b.onclick = () => drawer.open(byId(b.dataset.id))));
+
+// 当前站中心点按帧闪（两帧亮两帧灭）
+let on = true, f = 0;
+setInterval(() => { if (++f % 4 === 0) { on = !on; document.querySelectorAll(".m6-dot").forEach((d) => d.setAttribute("fill", on ? SIGNAL : PANEL)); } }, 1000 / 15);
+
+if (document.readyState === "complete") layout(); else addEventListener("load", layout);
+addEventListener("resize", layout);
+if (location.hash.startsWith("#open=")) addEventListener("load", () => drawer.open(byId(location.hash.slice(6))));
+</script>
+</body>
+</html>

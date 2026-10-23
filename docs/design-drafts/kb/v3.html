@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>知识库 · V3 分组格 + 总表</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* V3 分组格 + 总表：上面一排分组格（每格是一个文件夹：编号、名称、篇数、占比网点条），既是跳转也是落点；
+   下面一张总表按分组分段，每段的段头吸顶，全部篇名一行一篇；「待归类」是第一格、第一段。 */
+.v3-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 0; margin-bottom: var(--s4); border: var(--border) solid var(--text); border-right: 0; border-bottom: 0; background: var(--panel); }
+.v3-tile { position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 0; height: 84px; padding: 10px var(--s3); border: 0; border-right: var(--border) solid var(--text); border-bottom: var(--border) solid var(--text); background: var(--panel); text-align: left; cursor: pointer; }
+.v3-tile-top { display: flex; align-items: center; gap: var(--s2); }
+.v3-tile-top .no { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--muted); }
+.v3-tile-top i { margin-left: auto; font-style: normal; font-family: var(--font-pixel); font-size: 18px; line-height: 1; }
+.v3-tile strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.v3-bar { display: block; height: 8px; margin-top: auto; border: 1px solid var(--line); background-image: var(--dither-1); }
+.v3-bar b { display: block; height: 100%; background-image: var(--dither-ink-3); }
+.v3-tile.is-inbox { background: var(--text); color: var(--panel); }
+.v3-tile.is-inbox .no { color: var(--line); }
+.v3-tile.is-inbox i { color: var(--signal); }
+.v3-tile.is-inbox .v3-bar { border-color: var(--text-2); background-image: none; }
+.v3-tile.is-inbox .v3-bar b { background: var(--signal); }
+.v3-tile.is-empty strong { color: var(--muted); }
+.v3-tile.is-dim { opacity: 0.4; }
+.v3-tile.is-fill { cursor: default; background: var(--panel-soft); }
+.v3-tile.is-fill:empty { display: none; }
+.v3-tiles-note { display: flex; align-items: center; gap: 6px; margin: calc(-1 * var(--s2)) 0 var(--s4); font-size: 12px; color: var(--muted); }
+
+.v3-sheet { border: var(--border) solid var(--line); background: var(--panel); }
+.v3-cols, .v3-row { display: grid; grid-template-columns: 22px 42px minmax(0, 1.25fr) minmax(0, 1fr) 52px 28px; align-items: center; column-gap: var(--s3); padding: 0 var(--s3); }
+.v3-cols { position: sticky; top: 34px; z-index: 3; height: 32px; border-bottom: var(--border) solid var(--text); background: var(--panel); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.v3-cols span:nth-child(5) { text-align: right; }
+.v3-sec-head { position: sticky; top: 68px; z-index: 2; display: flex; align-items: center; gap: var(--s2); height: 40px; padding: 0 var(--s3); border-bottom: 1px solid var(--line); background: var(--panel-soft); cursor: pointer; }
+.v3-sec-head .tog { display: grid; place-items: center; width: 22px; color: var(--muted); }
+.v3-sec-head .no { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--muted); }
+.v3-sec-head strong { font-size: 14px; }
+.v3-sec-head .meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.v3-sec-head a, .v3-sec-head .edit { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-2); }
+.v3-sec-head a:hover { color: var(--signal); }
+.v3-sec-head .edit { padding: 0; border: 0; background: none; cursor: pointer; visibility: hidden; }
+.v3-sec-head:hover .edit { visibility: visible; }
+.v3-sec.is-inbox .v3-sec-head { border-left: 4px solid var(--signal); padding-left: 8px; background: var(--panel); }
+.v3-sec.is-inbox .v3-sec-head .hint { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+.v3-sec.is-inbox { border-bottom: var(--border) solid var(--text); }
+.v3-sec + .v3-sec { border-top: 1px solid var(--line); }
+.v3-row { min-height: 36px; padding-top: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--panel-soft); }
+.v3-row .grip { display: grid; place-items: center; color: var(--line); }
+.v3-row:hover .grip { color: var(--text); }
+.v3-row:hover .ext { visibility: visible; }
+.v3-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.v3-name a, .v3-name > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-name a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.v3-ex { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.v3-row .date { text-align: right; }
+.v3-row.is-dir { cursor: pointer; }
+.v3-row.is-dir .v3-name > span { font-weight: 600; }
+.v3-row.is-dir .v3-ex { color: var(--text-2); }
+.v3-row.lv2 .v3-name { padding-left: 20px; position: relative; }
+.v3-row.lv2 .v3-name::before { content: ""; position: absolute; left: 6px; top: -8px; bottom: -8px; border-left: 2px solid var(--text); }
+.v3-row.lv3 .v3-name { padding-left: 40px; }
+.v3-row.is-dim { opacity: 0.35; }
+.v3-empty { margin: 0; padding: var(--s3) var(--s3) var(--s3) 52px; font-size: 12px; color: var(--muted); }
+
+@media (max-width: 1200px) {
+  .v3-cols, .v3-row { grid-template-columns: 22px 42px minmax(0, 1fr) 52px 28px; }
+  .v3-cols span:nth-child(4), .v3-ex { display: none; }
+}
+</style>
+</head>
+<body>
+<main id="page">
+  <div class="v3-tiles" id="tiles"></div>
+  <p class="v3-tiles-note">点格子跳到下面那一段；把任一行拖到格子上 = 在飞书里移动到那个目录</p>
+  <p id="kb-note" class="kb-note" hidden></p>
+  <section class="v3-sheet" id="sheet"></section>
+</main>
+<script src="icons7.js"></script>
+<script src="kb-data.js"></script>
+<script src="common.js"></script>
+<script>
+const { icon, esc, model, count, latest, mmdd, ty, sc, date, ext, hit, hits, docs, state, TYPE_ZH } = NB;
+const folded = new Set(), openDir = new Set();
+const q = () => state.q.trim();
+const split = (name) => { const m = /^(\d+)｜(.*)$/.exec(name); return m ? [m[1], m[2]] : ["", name]; };
+
+function tiles(m) {
+  const max = Math.max(m.loose.length, ...m.groups.map(count));
+  const tile = (id, no, name, n, extra = "") => `<button class="v3-tile drop${extra}" data-drop="${id}" onclick="jump('${id}')" data-dither>
+      <span class="v3-tile-top"><span class="no">${no}</span><i>${n}</i></span><strong title="${esc(name)}">${esc(name)}</strong><span class="v3-bar"><b style="width:${max ? Math.round((n / max) * 100) : 0}%"></b></span></button>`;
+  return tile("", "INBOX", "待归类", m.loose.length, " is-inbox")
+    + m.groups.map((g) => { const [no, name] = split(g.name); return tile(g.id, no || "—", name, count(g), `${count(g) ? "" : " is-empty"}${q() && !hits(g) ? " is-dim" : ""}`); }).join("");
+}
+
+function rows(kids, lv = 1) {
+  return [...kids.filter((k) => k.kids), ...kids.filter((k) => !k.kids)].map((k) => {
+    const d = docs[k.id] || {};
+    if (k.kids) {
+      const open = openDir.has(k.id) || (q() && hits(k) > 0);
+      return `<div class="v3-row is-dir lv${lv} drop${q() && !hits(k) ? " is-dim" : ""}" data-doc="${k.id}" data-drop="${k.id}" draggable="true" data-dither onclick="toggleDir(event,'${k.id}')">
+          <span class="grip">${icon("drag")}</span>${ty(k)}<span class="v3-name"><span>${esc(k.name)}</span>${icon(open ? "down" : "right")}</span>
+          <span class="v3-ex">子文件夹 · ${count(k)} 篇${open ? "" : ` · ${esc(k.kids.slice(0, 2).map((x) => x.name).join("、"))}${k.kids.length > 2 ? "…" : ""}`}</span>${date(k)}<span></span></div>
+        ${open ? rows(k.kids, Math.min(lv + 1, 3)) : ""}`;
+    }
+    return `<div class="v3-row lv${lv}${q() && !hit(k) ? " is-dim" : ""}" data-doc="${k.id}" draggable="true" data-dither>
+        <span class="grip">${icon("drag")}</span>${ty(k)}<span class="v3-name">${sc(k)}<a href="${esc(d.url || "#")}" target="_blank" rel="noreferrer" draggable="false" title="${esc(k.name)}">${esc(k.name)}</a></span>
+        <span class="v3-ex">${esc((d.excerpt || "").replace(k.name, "").trim() || (d.excerpt ? d.excerpt : `${TYPE_ZH[d.type] || "文档"} · 暂不读取摘要`))}</span>${date(k)}${ext(k)}</div>`;
+  }).join("");
+}
+
+function section(id, title, kids, opts = {}) {
+  const [no, name] = split(title), open = !folded.has(id);
+  const url = id && docs[id]?.url;
+  return `<div class="v3-sec${opts.inbox ? " is-inbox" : ""}" id="sec-${id || "inbox"}">
+    <div class="v3-sec-head drop" data-drop="${id}" onclick="fold('${id}')"><span class="tog">${icon(open ? "down" : "right")}</span>${no ? `<span class="no">${no}</span>` : ""}<strong>${esc(name)}</strong>
+      <span class="meta">${opts.n} 篇${opts.n ? ` · 更新 ${mmdd(opts.latest)}` : ""}${q() && opts.hits ? ` · 命中 ${opts.hits}` : ""}</span>
+      ${opts.inbox && kids.length ? `<span class="hint">${icon("up")}收藏时归类不明确的放这里，拖到上面的格子即归类</span>` : ""}<span class="spacer"></span>
+      ${url ? `<a href="${esc(url)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation()">本页正文 ${icon("external")}</a>` : ""}${opts.inbox ? "" : `<button class="edit" onclick="event.stopPropagation()">${icon("edit")}改名</button>`}</div>
+    ${open ? (kids.length ? rows(kids) : `<p class="v3-empty">${opts.inbox ? "没有待归类的文档" : "空文件夹 · 把文档拖到这一段的段头或上面的格子"}</p>`) : ""}</div>`;
+}
+
+function render() {
+  const m = model();
+  const tl = document.getElementById("tiles");
+  tl.innerHTML = tiles(m);
+  // 补齐最后一行的空格，保持外框完整
+  const per = Math.max(1, Math.floor((tl.clientWidth + 0) / 164)), n = m.groups.length + 1;
+  tl.insertAdjacentHTML("beforeend", Array.from({ length: (per - (n % per)) % per }, () => `<span class="v3-tile is-fill"> </span>`).join(""));
+  document.getElementById("sheet").innerHTML = `<div class="v3-cols"><span></span><span>类型</span><span>标题</span><span>摘要</span><span>更新</span><span></span></div>`
+    + section("", "待归类", m.loose, { inbox: true, n: m.loose.length, latest: m.loose.map((x) => docs[x.id]?.updated || "").sort().pop() })
+    + m.groups.map((g) => section(g.id, g.name, g.kids, { n: count(g), latest: latest(g), hits: hits(g) })).join("");
+}
+function fold(id) { folded.has(id) ? folded.delete(id) : folded.add(id); NB.render(); }
+function toggleDir(e, id) { openDir.has(id) ? openDir.delete(id) : openDir.add(id); NB.render(); }
+function jump(id) { folded.delete(id); NB.render(); const el = document.getElementById(`sec-${id || "inbox"}`); window.scrollTo({ top: el.getBoundingClientRect().top + scrollY - 70 }); }
+let lastW = 0;
+new ResizeObserver(() => { const w = document.getElementById("tiles").clientWidth; if (w !== lastW) { lastW = w; NB.render(); } }).observe(document.getElementById("tiles"));
+NB.start("V3 分组格 + 总表", render);
+</script>
+</body>
+</html>

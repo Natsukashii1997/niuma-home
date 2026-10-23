@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V5 赛季通行证 · 培养路径</title>
+<link rel="stylesheet" href="../../../src/styles.css">
+<link rel="stylesheet" href="../../../src/styles-v3.css">
+<link rel="stylesheet" href="../../../src/styles-layout.css">
+<link rel="stylesheet" href="_shared/draft.css">
+<style>
+/* V5 赛季通行证：24 周是一个赛季，两条线是通行证上的两排等级，每格的「奖励」就是这一关的产出物；下面是本周任务和评分记录 */
+.v5-hero { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); margin-bottom: var(--gap); background: var(--text); color: var(--panel); }
+.v5-hero-l { display: flex; flex-direction: column; justify-content: space-between; gap: var(--s3); padding: var(--s4) var(--s5); border-right: 2px solid #3D4047; }
+.v5-hero .label { color: #9CA0A8; }
+.v5-hero h2 { font-size: 18px; }
+.v5-week { display: flex; align-items: flex-end; gap: var(--s2); }
+.v5-week .num { font-size: 56px; line-height: 0.85; color: var(--signal); }
+.v5-week span:last-child { font-family: var(--font-mono); font-size: 13px; color: #9CA0A8; }
+.v5-hero-r { display: flex; flex-direction: column; justify-content: center; gap: var(--s3); padding: var(--s4) var(--s5); }
+.v5-rank { display: flex; align-items: center; gap: var(--s3); }
+.v5-rank strong { font-size: 14px; }
+.v5-rank .arrow { color: #9CA0A8; font-family: var(--font-mono); }
+.v5-season { --n: 24; }
+.v5-season i { height: 14px; background: #3D4047; border-color: #3D4047; }
+.v5-season i.on { background: var(--panel); border-color: var(--panel); }
+.v5-season i.on.is-sig { background: var(--signal); border-color: var(--signal); }
+.v5-ticks { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 2px; font-family: var(--font-mono); font-size: 10px; color: #9CA0A8; }
+.v5-ticks span:nth-child(4n+1) { color: var(--panel); }
+.v5-kpis { display: flex; gap: var(--s6); font-size: 12px; color: #9CA0A8; }
+.v5-kpis b { display: block; font-size: 18px; color: var(--panel); font-family: var(--font-mono); font-weight: 600; }
+
+.v5-pass { overflow: hidden; }
+.v5-grid { display: grid; grid-template-columns: 120px repeat(7, minmax(0, 1fr)); }
+.v5-tier { display: flex; justify-content: space-between; align-items: center; padding: var(--s2) var(--s3); border-left: 1px solid var(--line); border-bottom: 2px solid var(--text); font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.v5-tier b { color: var(--text); font-size: 12px; }
+.v5-tier.is-now { background: var(--text); color: #9CA0A8; } .v5-tier.is-now b { color: var(--signal); }
+.v5-rowname { display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: var(--s3); border-bottom: 1px solid var(--line); }
+.v5-rowname strong { font-size: 14px; }
+.v5-cell { position: relative; display: flex; flex-direction: column; gap: 6px; min-height: 196px; padding: var(--s3); border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--panel); font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+.v5-cell .v5-top { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.v5-cell strong { font-size: 13px; line-height: 1.35; }
+.v5-reward { display: flex; flex-direction: column; gap: 2px; margin-top: auto; padding: var(--s2); border: 1px solid var(--line); font-size: 12px; }
+.v5-reward .label { font-size: 10px; }
+.v5-reward span:not(.label) { display: flex; align-items: center; gap: 6px; }
+.v5-crit { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.v5-cell.is-done .v5-reward { border-color: var(--text); background: var(--text); color: var(--panel); }
+.v5-cell.is-done .v5-reward .label { color: #9CA0A8; }
+.v5-cell.is-doing { outline: 3px solid var(--signal); outline-offset: -3px; z-index: 1; }
+.v5-cell.is-doing .v5-reward { border: 1px dashed var(--signal); }
+.v5-cell.is-locked { background: var(--panel-soft); color: var(--muted); }
+.v5-cell.is-locked strong { color: var(--text-2); }
+.v5-cell.is-empty { cursor: default; background: var(--panel-soft); }
+.v5-cell .v5-claim { position: absolute; right: var(--s3); top: var(--s3); }
+.v5-cell .mp-cells { --n: 10; }
+.v5-cell .mp-cells i { height: 6px; }
+.v5-boss { display: inline-flex; align-items: center; gap: 4px; color: var(--signal); }
+.v5-bottom { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--gap); margin-top: var(--gap); align-items: stretch; }
+.v5-quest { list-style: none; margin: 0; padding: 0; }
+.v5-quest li { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; align-items: start; gap: var(--s3); padding: var(--s2) 0; border-bottom: 1px solid var(--line); }
+.v5-quest li:last-child { border-bottom: 0; }
+.v5-quest li.done { color: var(--muted); }
+.v5-quest li .small { display: block; color: var(--muted); }
+.v5-log { list-style: none; margin: 0; padding: 0; }
+.v5-log li { display: grid; grid-template-columns: 44px 36px minmax(0, 1fr) auto; gap: var(--s3); padding: var(--s2) 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+.v5-log li:last-child { border-bottom: 0; }
+/* 弹窗：墨色网点遮罩 + 2px 墨框 */
+.v5-modal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background-image: var(--dither-ink-1); }
+.v5-modal.open { display: grid; }
+.v5-modal .card { width: 760px; max-height: calc(100vh - 80px); overflow: auto; border-color: var(--text); }
+.v5-modal .card-body { padding: var(--s5); }
+.v5-close { border: 0; background: none; cursor: pointer; color: var(--text); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { LINES, LOG, SEASON, byId, current, doneCount, lineStars, PASS } from "./_shared/data.js";
+import { mountShell, icon, detailHTML, starRow, tag, blinkCurrent, lightCells } from "./_shared/draft.js";
+
+const page = mountShell({
+  version: "V5 赛季通行证",
+  subtitle: "24 周是一个赛季。两条线是通行证上的两排等级，每格写这一关要达成什么、怎么评分，「奖励」就是要交的产出物；评分过 70 分领取，格子变黑。点一格看完整评分标准。",
+  actions: `<button class="btn">${icon("edit")}本周评分</button>`,
+});
+
+const [biz, ai] = LINES;
+const allStars = lineStars(biz) + lineStars(ai);
+const TIERS = [[1, 2], [3, 4], [5, 7], [7, 9], [10, 14], [15, 18], [19, 24]];
+// AI 线 6 关放进 7 档：A6 占最后两档
+const aiCells = [...ai.nodes.slice(0, 5), ai.nodes[5]];
+
+const cell = (n, span = 1) => {
+  if (!n) return `<div class="v5-cell is-empty"></div>`;
+  const crit = n.rubric.map((x) => `${x.name.split("：")[0].split("，")[0]} ${x.weight}`).join(" · ");
+  const claim = n.status === "done" ? `<span class="v5-claim">${icon("check")}</span>` : n.status === "locked" ? `<span class="v5-claim">${icon("lock")}</span>` : `<i class="mp-blink is-current-blink v5-claim"></i>`;
+  const pct = n.status === "locked" ? 0 : Math.round(n.score / 10);
+  return `<button type="button" class="v5-cell is-${n.status}" data-id="${n.id}" style="grid-column: span ${span}">
+    <span class="v5-top"><span>${n.id} · ${n.stage}</span></span>${claim}
+    <strong>${n.boss ? `<span class="v5-boss">${icon("crown")}BOSS</span><br>` : ""}${n.title}</strong>
+    <span class="v5-crit">评分：${crit}</span>
+    ${n.status === "locked" ? `<span class="small">W${n.week[0]}–${n.week[1]} 解锁</span>` : `<span class="row" style="gap:6px"><span class="mp-cells" style="flex:1">${Array.from({ length: 10 }, (_, k) => `<i ${k < pct ? "data-on" : ""} class="${k === 6 ? "" : ""}"></i>`).join("")}</span><b class="mono small ${n.status === "doing" ? "signal" : ""}">${n.score}</b></span>${n.status === "done" ? starRow(n) : `<span class="small warn-text">还差 ${PASS - n.score} 分领取</span>`}`}
+    <span class="v5-reward"><span class="label">${n.status === "done" ? "已领取" : "奖励 · 产出物"}</span>${n.output.map((o) => `<span>${icon("file")}${o}</span>`).join("")}</span>
+  </button>`;
+};
+
+const quests = [...biz.nodes, ...ai.nodes].filter((n) => n.status === "doing").flatMap((n) => n.todo.map((t, i) => ({ n, t, done: i < (n.todoDone ?? 0), w: n.rubric[i]?.weight })));
+
+page.innerHTML = `
+  <section class="v5-hero">
+    <div class="v5-hero-l">
+      <span class="label">SEASON · ${SEASON.name}</span>
+      <div class="v5-week"><span class="num">0${SEASON.week}</span><span>/ ${SEASON.weeks} 周 · 剩 ${SEASON.weeks - SEASON.week} 周</span></div>
+      <div class="v5-kpis"><span><b>${doneCount(biz) + doneCount(ai)} / ${biz.nodes.length + ai.nodes.length}</b>已通关</span><span><b>${allStars} / ${(biz.nodes.length + ai.nodes.length) * 3}</b>星</span><span><b>2</b>待评分</span></div>
+    </div>
+    <div class="v5-hero-r">
+      <div class="v5-rank">${icon("crown")}<span class="label">当前段位</span><strong>${SEASON.rank}</strong><span class="arrow">→</span><span class="label">赛季目标</span><strong>${SEASON.next}</strong><span class="spacer"></span><span class="small" style="color:#9CA0A8">B7 + A6 通关即晋级</span></div>
+      <span class="mp-cells v5-season">${Array.from({ length: 24 }, (_, k) => `<i ${k < SEASON.week ? "data-on" : ""} class="${k === SEASON.week - 1 ? "is-sig" : ""}"></i>`).join("")}</span>
+      <div class="v5-ticks">${Array.from({ length: 24 }, (_, k) => `<span>W${k + 1}</span>`).join("")}</div>
+    </div>
+  </section>
+  <section class="card v5-pass">
+    <div class="card-head"><h2>${icon("star")}通行证</h2><span class="small muted">每档写计划周次 · 本周在 LV4</span></div>
+    <div class="v5-grid">
+      <div class="v5-tier" style="border-left:0"><span>等级</span></div>
+      ${TIERS.map(([a, b], i) => `<div class="v5-tier ${i === 3 ? "is-now" : ""}"><b>LV${i + 1}</b><span>W${a}–${b}</span></div>`).join("")}
+      <div class="v5-rowname"><span class="label">B LINE</span><strong>业务线</strong><span class="small muted">${doneCount(biz)}/${biz.nodes.length} · ${icon("star")} ${lineStars(biz)}</span></div>
+      ${biz.nodes.map((n) => cell(n)).join("")}
+      <div class="v5-rowname"><span class="label">A LINE</span><strong>AI 线</strong><span class="small muted">${doneCount(ai)}/${ai.nodes.length} · ${icon("star")} ${lineStars(ai)}</span></div>
+      ${aiCells.map((n, i) => cell(n, i === 5 ? 2 : 1)).join("")}
+    </div>
+  </section>
+  <div class="v5-bottom">
+    <section class="card"><div class="card-head"><h2>${icon("target")}本周任务</h2><span class="small muted">来自进行中的 B4、A3 · 做完一项去对应关卡交产出</span></div>
+      <div class="card-body"><ul class="v5-quest">${quests.map((q) => `<li class="${q.done ? "done" : ""}"><i class="mp-box">${q.done ? icon("tick") : ""}</i><span>${q.t}<span class="small">${q.n.id} ${q.n.title}</span></span>${tag(q.done ? "已完成" : `评分项 ${q.w}`, q.done ? "green" : "neutral")}</li>`).join("")}</ul></div></section>
+    <section class="card"><div class="card-head"><h2>${icon("clock")}评分记录</h2><span class="small muted">评分人 常浩</span></div>
+      <div class="card-body"><ul class="v5-log">${LOG.map((x) => `<li><span class="mono muted">${x.at}</span>${tag(x.id, "frame")}<span>${x.text}</span><span class="mono">${x.score}</span></li>`).join("")}</ul></div></section>
+  </div>
+  <div class="v5-modal" id="modal"><section class="card"><div class="card-head"><h2>${icon("flag")}关卡详情</h2><button class="v5-close" id="close" aria-label="关闭">${icon("close")}</button></div><div class="card-body" id="detail"></div></section></div>`;
+
+const modal = document.getElementById("modal");
+document.querySelectorAll(".v5-cell[data-id]").forEach((c) => (c.onclick = () => { document.getElementById("detail").innerHTML = detailHTML(byId(c.dataset.id), { cols: true }); modal.classList.add("open"); }));
+document.getElementById("close").onclick = () => modal.classList.remove("open");
+modal.onclick = (e) => { if (e.target === modal) modal.classList.remove("open"); };
+if (location.hash.startsWith("#open=")) document.querySelector(`.v5-cell[data-id="${location.hash.slice(6)}"]`)?.click();
+blinkCurrent();
+lightCells();
+</script>
+</body>
+</html>

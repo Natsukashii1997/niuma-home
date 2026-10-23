@@ -1,0 +1,100 @@
+/* 知识库页重设计 · 三版共用：设计变量、外框、工具栏、文档条目的公共件。
+   变量照抄 src/styles.css / styles-layout.css；网点由 common.js 按 bitmap.jsx 的 Bayer 规则注入。不写 CSS transition。 */
+@font-face { font-family: "Geist"; src: url("../../../src/assets/fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Geist Mono"; src: url("../../../src/assets/fonts/GeistMono-Variable.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Geist Pixel"; src: url("../../../src/assets/fonts/GeistPixel-Square.woff2") format("woff2"); }
+
+:root {
+  --bg: #EDEEF1; --grid-dot: #C9CCD3; --panel: #FBFBFC; --panel-soft: #F3F4F6;
+  --text: #0D0E10; --text-2: #3D4047; --muted: #686D76; --line: #D5D8DE; --signal: #FF4F1F; --orange-soft: #FFEDE6;
+  --ok: #1E8E4E; --ok-soft: #E3F4EA; --warn: #B26B00; --warn-soft: #FDF2DC;
+  --border: 2px; --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+  --font-sans: "Geist", "PingFang SC", "Source Han Sans SC", -apple-system, sans-serif;
+  --font-mono: "Geist Mono", "PingFang SC", ui-monospace, monospace;
+  --font-pixel: "Geist Pixel", "Geist Mono", ui-monospace, monospace;
+  font-family: var(--font-sans); font-size: 13px; line-height: 1.55; color: var(--text); -webkit-font-smoothing: antialiased;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background-color: var(--bg); background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1.2px); background-size: 24px 24px; background-position: 12px 12px; }
+a { color: inherit; text-decoration: none; }
+h1, h2, h3, h4, b, strong { margin: 0; font-weight: 600; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.pixel-icon { flex-shrink: 0; display: inline-block; vertical-align: -2px; }
+.tnum { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.px { font-family: var(--font-pixel); font-weight: 400; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.spacer { flex: 1; }
+
+/* 抖动网点悬停（common.js 逐帧切 data-level） */
+[data-dither] { position: relative; isolation: isolate; }
+[data-dither]::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+[data-dither][data-level="1"]::before { background-image: var(--dither-1); }
+[data-dither][data-level="2"]::before { background-image: var(--dither-2); }
+[data-dither][data-level="3"]::before { background-image: var(--dither-3); }
+[data-dither][data-level="4"]::before { background-image: var(--dither-4); }
+
+/* 外框：窗口条 + 侧栏 + 主区（宽度与正式页一致：侧栏 208，主区左右 32） */
+.chrome { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: var(--s4); height: 34px; padding: 0 var(--s3); background: var(--panel); border-bottom: var(--border) solid var(--line); font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.chrome-dots { display: flex; gap: var(--s1); }
+.chrome-dots i { width: 8px; height: 8px; background: var(--line); }
+.chrome-dots i:first-child { background: var(--text); }
+.chrome-path { flex: 1; text-align: center; letter-spacing: 0.04em; }
+.chrome-path b { color: var(--text); font-weight: 500; }
+.layout { display: flex; min-height: calc(100vh - 34px); }
+.sidebar { width: 208px; flex-shrink: 0; position: sticky; top: 34px; align-self: flex-start; height: calc(100vh - 34px); background: var(--panel); border-right: var(--border) solid var(--line); padding: var(--s4) var(--s3); display: flex; flex-direction: column; gap: 2px; }
+.brand { display: flex; align-items: center; gap: var(--s2); padding: 2px var(--s1) var(--s4); }
+.brand i { width: 28px; height: 28px; background: var(--text); }
+.brand strong { font-size: 15px; }
+.sidebar a { position: relative; display: flex; align-items: center; gap: var(--s2); padding: var(--s2); color: var(--text-2); }
+.sidebar a.active { background: var(--text); color: var(--panel); font-weight: 500; }
+.sidebar a.active::after { content: ""; position: absolute; right: 10px; top: 50%; width: 6px; height: 6px; margin-top: -3px; background: var(--signal); }
+.main { position: relative; flex: 1; min-width: 0; padding: 28px var(--s6) 56px; }
+.page-header { margin-bottom: var(--s4); }
+.page-header h1 { font-size: 24px; letter-spacing: -0.01em; }
+.page-subtitle { margin: var(--s1) 0 0; font-size: 12px; color: var(--muted); }
+
+/* 按钮、搜索框、标签 */
+.btn { display: inline-flex; align-items: center; gap: var(--s2); height: 32px; padding: 0 var(--s3); border: var(--border) solid var(--text); background: var(--panel); color: var(--text); font-size: 13px; cursor: pointer; white-space: nowrap; }
+.btn:hover { background: var(--text); color: var(--panel); }
+.btn.is-sm { height: 28px; padding: 0 10px; font-size: 12px; }
+.btn.is-ghost { border-color: var(--line); }
+.btn.is-dashed { border-style: dashed; border-color: var(--line); color: var(--muted); }
+.badge { padding: 0 5px; background: var(--signal); color: var(--panel); font-family: var(--font-pixel); }
+.search { display: inline-flex; align-items: center; gap: var(--s2); height: 32px; padding: 0 var(--s2); border: var(--border) solid var(--line); background: var(--panel); }
+.search:focus-within { border-color: var(--text); }
+.search input { width: 100%; min-width: 0; border: 0; outline: 0; background: none; font: inherit; color: var(--text); }
+.icon-btn { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer; }
+.icon-btn:hover { color: var(--text); }
+
+/* 统一工具栏：一行。搜索 + 新建分组在左，同步状态和两个按钮在右 */
+.kb-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2) var(--s3); margin-bottom: var(--s3); }
+.kb-toolbar .search { flex: 0 1 260px; min-width: 160px; }
+@media (max-width: 1200px) { .kb-sync-at { display: none; } }
+.kb-sync-at { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+
+/* 文档条目公共件：类型字块、快捷、日期、外链、同步中 */
+.ty { flex: none; display: inline-grid; place-items: center; width: 34px; height: 18px; border: 1px solid var(--line); background: var(--panel); font-family: var(--font-pixel); font-size: 11px; line-height: 1; color: var(--text-2); }
+.ty.is-sht { border-color: var(--text-2); }
+.ty.is-base { background: var(--text); border-color: var(--text); color: var(--panel); }
+.ty.is-file { border-style: dashed; }
+.ty.is-dir { background: var(--text); border-color: var(--text); color: var(--signal); }
+.sc { flex: none; display: inline-flex; align-items: center; height: 16px; padding: 0 4px; background: var(--text); color: var(--panel); font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em; }
+.date { flex: none; font-family: var(--font-mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.date.is-new { color: var(--signal); }
+.ext { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; color: var(--muted); visibility: hidden; }
+.ext:hover { color: var(--signal); }
+.busy { flex: none; font-family: var(--font-mono); font-size: 10px; color: var(--signal); }
+[draggable="true"] { cursor: grab; }
+.is-dragging { opacity: 0.4; }
+.is-busy { outline: 2px dashed var(--signal); outline-offset: -2px; }
+.drop.is-over { outline: 2px dashed var(--signal) !important; outline-offset: -2px; background-image: var(--dither-1) !important; }
+
+/* 稿件角标 */
+.draft-mark { position: fixed; left: 64px; top: 6px; z-index: 50; padding: 4px 8px; border: 1px dashed var(--signal); background: var(--panel); font-family: var(--font-mono); font-size: 11px; color: var(--signal); }
+
+/* 结果提示（拖放示意后出现，带 ×，不常驻） */
+.kb-note { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s3); padding: var(--s2) var(--s3); border: 1px solid var(--line); border-left: 4px solid var(--ok); background: var(--panel); font-size: 12px; }
+.kb-note .icon-btn { margin-left: auto; }

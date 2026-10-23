@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>业务页改版三稿</title>
+<link rel="stylesheet" href="assets/base.css">
+<style>
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 32px; }
+  .lead { max-width: 860px; margin: 8px 0 24px; color: var(--text-2); }
+  .lead li { margin: 2px 0; }
+  .opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .opt .shot { display: block; height: 360px; overflow: hidden; border-bottom: 1px solid var(--line); background: var(--panel-soft); }
+  .opt .shot img { display: block; width: 100%; }
+  .opt h3 { font-size: 14px; }
+  .opt dl { margin: 0; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 6px 8px; font-size: 12px; }
+  .opt dt { color: var(--muted); font-family: var(--font-mono); font-size: 11px; padding-top: 1px; }
+  .opt dd { margin: 0; color: var(--text-2); }
+  .opt .links { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; }
+  .before { margin-top: 24px; }
+  @media (max-width: 1100px) { .opts { grid-template-columns: 1fr; } .opt .shot { height: 280px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-header"><div><h1>业务页 · 营收与转化趋势改版（三稿）</h1><p class="page-subtitle">2026-10-23 · 只出设计稿，未改应用代码 · 数据为当天只读读取的正式数据（charts-data.json）</p></div></div>
+  <ul class="lead">
+    <li>三稿共同点：扇形全部取消，占比项的<b>名字、占比、金额直接写在图形上或同一行</b>；当月未过完统一用空心点 / 空心柱 + 「至今」，并给出「按日均推算」（橙色虚线，标「示意」）。</li>
+    <li>上方「业务营收完成度」卡沿用现有，不在本次重做范围；业务线配色沿用完成度进度条（大学红、国课绿、申诉蓝），2025 年一律灰色或网点。</li>
+    <li>每稿都可直接打开交互：悬停数据点看精确值；V3 上方可切换业务线。截图在 <code>shots/</code>，含 1440 与 1024 两个宽度。</li>
+  </ul>
+  <div class="opts" id="opts"></div>
+  <p class="note before"><b>需要你定的两件事</b>　① 「按日均推算月底」是新加的推算口径（简单按 已过天数 线性外推，不含月底冲量），要不要保留；② 地区里「中国香港 / 中国(香港)」「澳洲 / 澳大利亚」是同一地区的两种写法，「美国 / 美西 / 美中」粒度不一；是在页面上合并显示，还是回源表清洗。</p>
+</div>
+<script>
+const OPTS = [
+  { id: "v1", name: "V1 简报式 · 先结论、后证据", file: "v1.html", shot: "shots/v1-1440.png",
+    idea: "页顶一排 4 条要点（本月节奏、累计同比、转化率、要留意的业务线），数字和结论都由数据算出。下面依次是总营收大图（每点标值 + 推算 + 同比一行）、三条业务线和转化率 2×2 小图、每条业务线一张「地区 / SKU / 学校」排行条。",
+    fit: "每天打开扫一眼「现在怎么样、哪里要留意」；最接近现在的页面顺序，改动成本最低。",
+    cost: "页面最长；三条业务线的小图各自刻度，跨线比大小要看数字。" },
+  { id: "v2", name: "V2 对比表 · 数字优先", file: "v2.html", shot: "shots/v2-1440.png",
+    idea: "一句话总结 + 一张「逐月对比表」（5 个指标 × 12 个月，每格今年值、同比、去年值）。再用每月两根堆叠柱（去年网点、今年实色、按业务线分色）看增量来自谁。分布按维度分组、三条业务线上下对齐的 100% 堆叠条，名字和占比写在条里。",
+    fit: "要拿精确数字、做周会 / 月会汇报，或比较三条线结构差异（如申诉英澳两国占 74%）。",
+    cost: "信息密度最高，第一眼不如 V1 / V3 好读；1024 宽时表格在卡内横向滚动（首列固定）。" },
+  { id: "v3", name: "V3 聚焦式 · 一次看一条线", file: "v3.html", shot: "shots/v3-uni-1440.png",
+    idea: "趋势区顶部一个切换（总营收 / 大学 / 国课 / 申诉），整块跟着换：左边大趋势图（每点标值、推算、同比），右边读数栏（至今、推算、累计同比、今年最高）。选业务线后，下面是 SKU 和地区的面积块（名字、占比、金额写在块里）+ 学校前 10。",
+    fit: "专门研究某一条业务线；屏幕上同时只有 3–4 张图，最清爽。",
+    cost: "三条线不能同屏比较（总营收视图里有一条三线占比条兜底）；切换后才看得到构成。" },
+];
+document.getElementById("opts").innerHTML = OPTS.map(o => `<section class="card opt"><a class="shot" href="${o.file}"><img src="${o.shot}" alt="${o.name} 1440 宽截图"></a>
+  <div class="card-head"><h3>${o.name}</h3></div>
+  <div class="card-body"><dl><dt>思路</dt><dd>${o.idea}</dd><dt>适合</dt><dd>${o.fit}</dd><dt>代价</dt><dd>${o.cost}</dd></dl>
+  <div class="links"><a class="link" href="${o.file}">打开 ${o.id.toUpperCase()}</a>${o.id === "v3" ? `<a class="link" href="v3.html#intl">国课视图</a>` : ""}<a class="link" href="shots/${o.id}-1024.png">1024 截图</a></div></div></section>`).join("");
+</script>
+</body>
+</html>

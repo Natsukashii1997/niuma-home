@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>业务页 V1 简报式</title>
+<link rel="stylesheet" href="assets/base.css">
+<style>
+  /* V1：结论 → 证据。先给 4 条要点，再给趋势，最后给排行。 */
+  .brief { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--panel); border: var(--border) solid var(--line); margin-bottom: var(--s4); }
+  .brief > div { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4); border-left: 1px solid var(--line); min-width: 0; }
+  .brief > div:first-child { border-left: 0; }
+  .brief .k { display: flex; align-items: center; gap: 6px; }
+  .brief .k i { width: 6px; height: 6px; background: currentColor; }
+  .brief .v { font-family: var(--font-pixel); font-size: 32px; line-height: 1; }
+  .brief .v small { margin-left: var(--s1); font: 400 13px var(--font-sans); color: var(--muted); }
+  .brief p { font-size: 12px; color: var(--text-2); }
+  .brief p b { color: var(--text); }
+  .is-ok .k { color: var(--ok); } .is-risk .k { color: var(--risk); } .is-info .k { color: var(--info); }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
+  .mini-foot { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); margin-top: var(--s2); padding-top: var(--s2); border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  .mini-foot b { color: var(--text); font-family: var(--font-mono); font-weight: 500; }
+  .share-card + .share-card { margin-top: var(--s4); }
+  .share-card .card-head h3 i { width: 10px; height: 10px; }
+  .ranks { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--s4) var(--s5); }
+  .rank-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s2); padding-bottom: var(--s2); border-bottom: 1px solid var(--text); }
+  .rank-head b { font-size: 13px; }
+  .rank-list { list-style: none; margin: 0; padding: 0; }
+  .rank-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 2px var(--s3); align-items: baseline; padding: 6px 0 var(--s2); border-bottom: 1px solid var(--line); }
+  .rank-list .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank-list .p { font-family: var(--font-mono); font-weight: 600; text-align: right; min-width: 48px; }
+  .rank-list .a { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: right; min-width: 56px; }
+  .rank-list .bar { grid-column: 1 / -1; height: 6px; background: var(--accent-soft); }
+  .rank-list .bar i { display: block; height: 100%; background: currentColor; }
+  .rank-list li.other .nm { color: var(--muted); }
+  .rank-list li.other .bar i { background-image: var(--dither-ink-2); background-color: transparent; }
+  details.src { margin-top: var(--s3); }
+  details.src summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+  .t { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: var(--s2); }
+  .t td, .t th { padding: 4px var(--s2); border-bottom: 1px solid var(--line); text-align: left; }
+  .t td.r { text-align: right; font-family: var(--font-mono); }
+  @media (max-width: 1180px) { .brief { grid-template-columns: repeat(2, minmax(0, 1fr)); } .brief > div:nth-child(3) { border-left: 0; } .brief > div:nth-child(n+3) { border-top: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="page-header">
+    <div><h1>业务</h1><p class="page-subtitle">营收完成度、月度趋势与当月营收分布 · 来源：飞书「当月策略盘」</p></div>
+    <div class="row" style="display:flex;gap:12px;align-items:center"><span class="small muted" id="upd"></span><button class="btn">重新读取</button><a class="link">在飞书查看 ↗</a></div>
+  </div>
+  <div class="brief" id="brief"></div>
+  <div id="rev"></div>
+
+  <div class="section-head"><h2>营收趋势</h2><span class="tag" id="ytdTag"></span><span class="spacer"></span><span class="small muted">实线今年 · 虚线去年 · 灰网点列为当月（未过完）</span></div>
+  <section class="card"><div class="card-head"><h3>总营收</h3><span class="small muted">每点标今年金额（万元）；下排为同比，当月按日均推算</span></div><div class="card-body"><div class="chart-host" id="total"></div></div></section>
+  <div class="grid-2" style="margin-top:16px" id="lines"></div>
+
+  <div class="section-head"><h2>当月营收分布</h2><span class="tag" id="period"></span><span class="spacer"></span><span class="small muted">按实收金额排序 · 条长 = 占本业务线当月实收的比例</span></div>
+  <p class="small muted" style="margin:-8px 0 16px">按原图的实收金额、业务分组和本月收款日期筛选；与上方营收进度的汇总来源不同。</p>
+  <div id="shares"></div>
+  <p class="note"><b>稿件说明</b>　扇形改为排行条：名称、占比、金额都在同一行读出，不用再对照图例。前 6 名 + 其他（学校前 8 名）；完整明细仍在「数据口径与完整数值」里。地区里有「中国香港 / 中国(香港)」「澳洲 / 澳大利亚」两种写法，稿件按原样显示，是否合并由你定。</p>
+</div>
+<script src="assets/data.js"></script>
+<script src="assets/kit.js"></script>
+<script>
+const { LINES, trend, share, topN, nf, pct, money, signed, esc, mount, lineChart, revenueCard, frame, BIZ, year, month, day, daysInMonth } = K;
+frame("V1 简报式");
+document.getElementById("upd").textContent = `更新 ${BIZ.updatedAt}`;
+document.getElementById("period").textContent = BIZ.period;
+document.getElementById("rev").innerHTML = revenueCard();
+
+const T = { total: trend("total"), uni: trend("uni"), intl: trend("intl"), appeal: trend("appeal"), conv: trend("conv") };
+// 四条要点：全部由数据算出，不手写数字
+const gain = T.total.ytd - T.total.ytdLast, intlGain = T.intl.ytd - T.intl.ytdLast;
+const lag = ["uni", "intl", "appeal"].filter(k => T[k].pace < T[k].lastSame);
+const conv = T.conv, cv = conv.now[conv.partial], cvPrev = conv.now[conv.partial - 1], cvMax = Math.max(...conv.now.filter(v => v != null));
+document.getElementById("brief").innerHTML = [
+  { tone: "ok", k: `${month} 月节奏 · 第 ${day}/${daysInMonth} 天`, v: nf(T.total.cur / 1e4), u: "万 至今",
+    p: `按日均推算月底约 <b>${money(T.total.pace)}</b>，比去年 ${month} 月（${money(T.total.lastSame)}）${T.total.pace >= T.total.lastSame ? "高" : "低"} <b>${signed(T.total.pace / T.total.lastSame - 1)}</b>。推算只是示意，不是目标。` },
+  { tone: "ok", k: `1–${month - 1} 月累计`, v: nf(T.total.ytd / 1e8, 2), u: "亿",
+    p: `同比 <b>${signed(T.total.ytdYoY)}</b>，多出 ${money(gain)}；其中 <b>${pct(intlGain / gain, 0)}</b> 来自国际课程（${signed(T.intl.ytdYoY, 0)}）。` },
+  { tone: "info", k: "总转化率", v: (cv * 100).toFixed(1), u: "%",
+    p: `${cv >= cvMax ? "<b>今年最高</b>，" : ""}比上月 ${K.pts(cv - cvPrev)}，比去年同月 ${K.pts(cv - conv.last[conv.partial])}。` },
+  { tone: lag.length ? "risk" : "ok", k: "要留意", v: lag.length, u: "条业务线",
+    p: lag.length ? lag.map(k => `<b>${LINES[k].name}</b> 推算 ${money(T[k].pace)}，低于去年同月 ${money(T[k].lastSame)}`).join("；") + "。" : "三条业务线推算都不低于去年同月。" },
+].map(c => `<div class="is-${c.tone}"><span class="k label"><i></i>${c.k}</span><span class="v">${c.v}<small>${c.u}</small></span><p>${c.p}</p></div>`).join("");
+document.getElementById("ytdTag").textContent = `1–${month - 1} 月同比 ${signed(T.total.ytdYoY)}`;
+
+mount(document.getElementById("total"), w => lineChart(w, T.total, { h: 300, labels: true, projection: true, yoy: true }));
+
+const linesHost = document.getElementById("lines");
+const minis = [
+  ...["uni", "intl", "appeal"].map(k => ({ id: k, t: T[k], title: LINES[k].name, color: LINES[k].color,
+    tag: `1–${month - 1} 月同比 ${signed(T[k].ytdYoY)}`, tone: T[k].ytdYoY >= 0 ? "up" : "down",
+    foot: `${month} 月至今 <b>${nf(T[k].cur / 1e4)}</b> 万 · 推算 <b>${nf(T[k].pace / 1e4)}</b> 万 · 去年同月 <b>${nf(T[k].lastSame / 1e4)}</b> 万` })),
+  { id: "conv", t: T.conv, title: "总转化率", color: "var(--text)", tag: `今年均值 ${pct(T.conv.ytd / (month - 1))} · 去年 ${pct(T.conv.ytdLast / (month - 1))}`, tone: "up",
+    foot: `${month} 月至今 <b>${pct(cv)}</b> · 上月 <b>${pct(cvPrev)}</b> · 去年同月 <b>${pct(conv.last[conv.partial])}</b>` },
+];
+linesHost.innerHTML = minis.map(m => `<section class="card"><div class="card-head"><h3>${m.id === "conv" ? "" : `<i style="width:10px;height:10px;background:${m.color}"></i>`}${m.title}</h3><span class="tag ${m.tone}">${m.tag}</span></div><div class="card-body"><div class="chart-host" id="m-${m.id}"></div><div class="mini-foot">${m.foot}</div></div></section>`).join("");
+minis.forEach(m => mount(document.getElementById(`m-${m.id}`), w => lineChart(w, m.t, { h: 210, color: m.color, labels: false, yoy: true })));
+
+// 当月分布：每条业务线一张卡，三列排行
+const DIMS = { uni: ["地区", "SKU", "学校"], intl: ["地区", "SKU", "科目一级"], appeal: ["地区", "SKU", "学校"] };
+document.getElementById("shares").innerHTML = ["uni", "intl", "appeal"].map(k => {
+  const L = LINES[k], lists = DIMS[k].map(d => share(k, d));
+  const total = lists[0].total;
+  const rank = s => {
+    if (s.onlyBlank) return `<div><div class="rank-head"><b>${s.dim}</b><span class="small muted">暂无反写</span></div><div class="empty" style="margin-top:8px">源表「${s.dim}」还没有反写<br>当月 ${money(s.total)} 全部计为「未填写」</div></div>`;
+    const n = s.dim === "学校" ? 8 : 6, rows = topN(s, n);
+    const top3 = s.items.slice(0, 3).reduce((a, i) => a + i.share, 0);
+    return `<div><div class="rank-head"><b>${s.dim} <span class="small muted" style="font-weight:400">· ${s.count} 项</span></b><span class="small muted">前 3 占 ${pct(top3, 0)}${top3 < 0.3 ? " · 长尾" : ""}</span></div>
+      <ol class="rank-list" style="color:${L.color}">${rows.map(i => `<li class="${i.other ? "other" : ""}" title="${esc(i.label)} · ${nf(i.value, 2)} 元"><span class="nm" style="color:var(--text)">${esc(i.label)}</span><span class="p" style="color:var(--text)">${pct(i.share)}</span><span class="a">${nf(i.value / 1e4, 1)} 万</span><span class="bar"><i style="width:${Math.max(0.6, i.share * 100)}%"></i></span></li>`).join("")}</ol></div>`;
+  };
+  return `<section class="card share-card"><div class="card-head"><h3><i style="background:${L.color}"></i>${L.name}</h3><span class="small muted">当月实收 <b class="tnum" style="color:var(--text)">${nf(total, 2)}</b> 元</span></div>
+    <div class="card-body"><div class="ranks">${lists.map(rank).join("")}</div>
+    <details class="src"><summary>数据口径与完整数值</summary><table class="t"><tr><th>${lists[1].dim}</th><th>实收金额</th><th>占比</th></tr>${lists[1].items.map(i => `<tr><td>${esc(i.label)}</td><td class="r">${nf(i.value, 2)}</td><td class="r">${pct(i.share, 2)}</td></tr>`).join("")}</table></details></div></section>`;
+}).join("");
+</script>
+</body>
+</html>

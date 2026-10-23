@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>知识库页 · 书架精修</title>
+<link rel="stylesheet" href="common.css">
+<style>
+.wrap { max-width: 1240px; margin: 0 auto; padding: 40px var(--s6) 64px; }
+.wrap h1 { font-size: 24px; }
+.label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lead { max-width: 860px; margin: var(--s2) 0 var(--s4); color: var(--text-2); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s5); }
+.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s4); margin-bottom: var(--s5); }
+.box { padding: var(--s4); border: var(--border) solid var(--line); background: var(--panel); }
+.box h2 { display: flex; align-items: baseline; gap: var(--s2); margin-bottom: var(--s2); font-size: 14px; }
+.box h2 .px { font-size: 18px; color: var(--signal); }
+.box ul { margin: 0; padding-left: 18px; }
+.box li { margin: 4px 0; }
+.box li b { font-weight: 600; }
+figure { margin: 0 0 var(--s5); }
+figure img { display: block; max-width: 100%; border: var(--border) solid var(--text); background: var(--panel); }
+figcaption { margin-top: var(--s2); font-size: 12px; color: var(--muted); }
+.shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s4); margin-bottom: var(--s5); }
+.shot { display: flex; flex-direction: column; border: var(--border) solid var(--text); background: var(--panel); }
+.shot .thumb { display: block; height: 220px; overflow: hidden; border-bottom: var(--border) solid var(--text); background: var(--panel-soft); }
+.shot .thumb img { display: block; width: 100%; }
+.shot p { margin: 0; padding: var(--s3) var(--s4); font-size: 12px; color: var(--text-2); }
+.shot p b { display: block; margin-bottom: 2px; font-size: 13px; color: var(--text); }
+.prev { font-size: 12px; color: var(--muted); }
+.prev a { font-family: var(--font-mono); text-decoration: underline; text-underline-offset: 3px; color: var(--text-2); }
+.prev a:hover { color: var(--signal); }
+@media (max-width: 1100px) { .cols, .shots { grid-template-columns: 1fr; } .shot .thumb { height: 320px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="label">设计稿 · 2026-10-23 · 第三轮 · 只做稿，不改应用</span>
+  <h1>飞书知识库页 · V4 书架精修</h1>
+  <p class="lead">按你选的 V4 书架往下精修，解决「竖排没对齐」「堆得太满」两件事，顺带把细节过了一遍。数据仍是正式服务 10-23 15:26 的只读快照（<code>kb-data.json</code>）；配色、字体、网点、像素图标照仓库原样，动效全部按帧，没有 CSS transition。页面能直接试：悬停书脊、点档案盒、拖书换层、搜索（只改页面里的副本，不连接口）。</p>
+  <div class="actions"><a class="btn" href="v4-2.html">打开精修版</a><a class="btn is-ghost" href="v4-2.html?box=Brief&amp;hover=路觅营销战役">打开档案盒 + 悬停卡</a><a class="btn is-ghost" href="v4-2.html?q=营销">搜索「营销」</a><a class="btn is-ghost" href="v4.html">对照原 V4</a></div>
+
+  <figure><img src="shots/v4-2-compare-05.png" alt="05 营销战役推进 新旧对比"><figcaption>你圈出来的那一层：左边是原 V4，右边是精修版（同为 1440 宽，1:1）。</figcaption></figure>
+
+  <div class="cols">
+    <section class="box"><h2><span class="px">1</span>竖排对齐</h2><ul>
+      <li><b>书一律等高</b>，书名从同一条线起排，书头线、书尾线在一层里连成两条横线。</li>
+      <li><b>按实测字宽断列</b>：一列放得下就一列；放不下才分两三列，各列尽量等长，不留单字孤列（原来的「册」「表」）。</li>
+      <li><b>断在词边界上</b>：优先在「-」「丨」、空格处断开并去掉符号，其次是括号前后、中英文交界、词与词之间（浏览器自带中文分词，再补「路觅教育」「工作流」「全链路」等不该拆的词）。例：路觅教育 / 新员工入职指南、2026 / 路觅教育品牌手册、用户链路重塑方法论 / V1.32。</li>
+      <li><b>数字和英文按竖排习惯</b>：7月、T1、AI 横排压成一格；2025、FAQ 逐字竖立、和汉字同宽；Brief、V1.3 侧转。</li>
+      <li>彩色 emoji（🈷️ ✅ ☑️）和「.pdf」不上书脊，悬停卡里看全名。</li>
+    </ul></section>
+    <section class="box"><h2><span class="px">2</span>更干净</h2><ul>
+      <li><b>一整个书柜</b>代替 12 个各自带框的小书架：外框、柜顶、层板、中间一块隔板，左右两格同一层的层板对齐。</li>
+      <li><b>去掉</b>每本书底部的类型字、每层的网点读数条、黑色页签；层名改成一行普通文字，改名和本页正文只在悬停这一层时出现。</li>
+      <li><b>类型只看书尾</b>：白 = 文档，网点 = 表格，墨 = 多维表，虚线框 = 文件；柜顶有一行图例。</li>
+      <li><b>橙色只剩几处</b>：待上架篇数、近 3 天更新的书签、打开的盒盖、拖放落点。</li>
+      <li>待归类改叫「待上架」，书横放成摞，就摆在柜顶上，和书柜是一个整体。</li>
+    </ul></section>
+    <section class="box"><h2><span class="px">3</span>细节</h2><ul>
+      <li><b>系列书靠在一起</b>：04 的四本 T1、10 的三本标准模版、05 的营销节奏日历、99 的两份策略文档，上方一道细括号写系列名，书脊只写区分的那半截。</li>
+      <li><b>档案盒</b>有盒盖、标签窗，盒尾写篇数；点开变成敞口盒，盖子变橙，书逐帧一本本取出。</li>
+      <li><b>悬停书脊</b>两帧抽出，弹出一张卡：全名、类型、更新、摘要、所在位置、打开原文；键盘聚焦也一样。</li>
+      <li><b>拖放</b>：拿起的书留下灰色虚线空位，落点出现橙色虚线的「放这里」；放好后层名反色闪两下，书标「同步中」。</li>
+      <li><b>搜索</b>：没命中的层收成一行，命中的层顶上来，含命中的盒子自动打开，没命中的书退成灰线（不用透明度）。</li>
+    </ul></section>
+  </div>
+
+  <div class="shots">
+    <article class="shot"><a class="thumb" href="shots/v4-2-1440.png"><img src="shots/v4-2-1440.png" alt=""></a><p><b>1440 全页</b>两格书柜，6 层，柜顶 7 本待上架</p></article>
+    <article class="shot"><a class="thumb" href="shots/v4-2-1440-open.png"><img src="shots/v4-2-1440-open.png" alt=""></a><p><b>打开档案盒 + 悬停卡</b>05 层打开「营销对接Brief」，悬停「路觅营销战役总纲」</p></article>
+    <article class="shot"><a class="thumb" href="shots/v4-2-1440-state.png"><img src="shots/v4-2-1440-state.png" alt=""></a><p><b>拖放状态</b>拿起「知识库使用说明」，落点 02 层；01 层一本同步中</p></article>
+    <article class="shot"><a class="thumb" href="shots/v4-2-1440-search.png"><img src="shots/v4-2-1440-search.png" alt=""></a><p><b>搜索「营销」</b>没命中的层收起，命中 9 本</p></article>
+    <article class="shot"><a class="thumb" href="shots/v4-2-1024.png"><img src="shots/v4-2-1024.png" alt=""></a><p><b>1024 全页</b>仍是两格；放不下的层自动多加一块层板</p></article>
+    <article class="shot"><a class="thumb" href="shots/v4-2-compare-05.png"><img src="shots/v4-2-compare-05.png" alt=""></a><p><b>新旧对比</b>05 营销战役推进</p></article>
+  </div>
+
+  <p class="prev">前几轮：第二轮 <a href="v1.html">V1 文件夹墙</a> · <a href="v4.html">V4 书架（原）</a> · <a href="v5.html">V5 1-bit 桌面</a>；第一轮 <a href="v2.html">V2 目录 + 阅读台</a> · <a href="v3.html">V3 分组格 + 总表</a></p>
+</div>
+<script>
+// 只注入网点变量（这页不套外框）
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+const tile = (t, c) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" fill="${c}">${BAYER.map((v, i) => (v < t ? `<rect x="${(i % 4) * 2}" y="${Math.floor(i / 4) * 2}" width="2" height="2"/>` : "")).join("")}</svg>`)}")`;
+[2, 4, 6, 8].forEach((t, i) => document.documentElement.style.setProperty(`--dither-${i + 1}`, tile(t, "#C9CCD3")));
+</script>
+</body>
+</html>

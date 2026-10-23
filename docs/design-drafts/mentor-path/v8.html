@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V8 关卡长卷 · 培养路径</title>
+<link rel="stylesheet" href="../../../src/styles.css">
+<link rel="stylesheet" href="../../../src/styles-v3.css">
+<link rel="stylesheet" href="../../../src/styles-layout.css">
+<link rel="stylesheet" href="_shared/draft.css">
+<link rel="stylesheet" href="_shared/stage.css">
+<style>
+/* V8 关卡长卷：24 周横向铺开，一周 150px，一关一张大卡，卡宽等于计划周期；卡上直接写全目标、任务、产出、评分，
+   不用点开也能查。拖动或滚轮左右走，底部小地图看全程、拖框跳转。 */
+.m8 { position: absolute; inset: 0; background: var(--bg); }
+.m8 .stg-head { background: var(--panel); border-bottom: 2px solid var(--line); }
+.m8-scroll { position: absolute; left: 0; right: 0; top: 64px; bottom: 88px; overflow-x: auto; overflow-y: hidden; cursor: grab; scrollbar-width: none; }
+.m8-scroll::-webkit-scrollbar { display: none; }
+.m8-scroll.is-drag { cursor: grabbing; user-select: none; }
+.m8-canvas { position: relative; height: 100%; }
+.m8-week { position: absolute; top: 0; bottom: 0; border-left: 1px solid #DCDFE4; }
+.m8-week.is-alt { background: #E7E9ED; }
+.m8-week.is-now { background: var(--orange-soft); border-left-color: var(--signal); }
+.m8-ruler { position: absolute; left: 0; right: 0; top: 0; height: 48px; background: var(--panel); border-bottom: 2px solid var(--text); }
+.m8-month { position: absolute; top: 4px; padding-left: 8px; border-left: 2px solid var(--text); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+.m8-wk { position: absolute; top: 24px; display: flex; justify-content: space-between; padding: 0 8px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.m8-wk b { color: var(--text); font-weight: 600; }
+.m8-wk.is-now { color: var(--panel); background: var(--signal); }
+.m8-wk.is-now b { color: var(--panel); }
+.m8-today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--signal); }
+.m8-today span { position: absolute; top: 50px; left: 4px; padding: 0 6px; background: var(--signal); color: var(--panel); font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+.m8-arrow { position: absolute; width: 28px; display: grid; place-items: center; color: var(--text); }
+.m8-arrow.is-todo { color: #9CA0A8; }
+.m8-dep { position: absolute; border-left: 2px dashed var(--text); }
+.m8-dep-h { position: absolute; border-top: 2px dashed var(--text); }
+.m8-dep-label { position: absolute; padding: 0 6px; background: var(--panel); border: 1px solid var(--line); font-family: var(--font-mono); font-size: 11px; color: var(--text-2); white-space: nowrap; }
+
+.m8-card { position: absolute; display: flex; flex-direction: column; background: var(--panel); border: 2px solid var(--text); cursor: pointer; }
+.m8-card:hover { outline: 2px solid var(--text); outline-offset: 2px; }
+.m8-ch { flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; height: 56px; padding: 0 12px; border-bottom: 2px solid var(--text); }
+.m8-no { font-family: var(--font-pixel); font-size: 36px; line-height: 1; }
+.m8-ct { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.m8-ct .label { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m8-ct strong { font-size: 15px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m8-st { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+.m8-st b { font-family: var(--font-pixel); font-size: 22px; font-weight: 400; line-height: 1; }
+.m8-cb { flex: 1; min-height: 0; display: grid; gap: 10px 16px; padding: 10px 12px; overflow: hidden; }
+.m8-card.w-s .m8-cb { grid-template-columns: minmax(0, 1fr); align-content: start; gap: 8px; padding: 8px 12px; }
+.m8-card.w-s .r { display: none; }
+.m8-card.w-s .m8-out ul { flex-direction: row; flex-wrap: wrap; gap: 2px 12px; }
+.m8-card.w-s .m8-out li em { display: none; }
+.m8-rbline { font-family: var(--font-mono); font-size: 11px; color: var(--text-2); white-space: nowrap; }
+.m8-card.w-m .m8-cb { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-areas: "g o" "t r"; }
+.m8-card.w-l .m8-cb { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr) minmax(0, 1fr); grid-template-areas: "g o r" "t o r"; grid-template-rows: auto 1fr; }
+.m8-card.w-m .g, .m8-card.w-l .g { grid-area: g; } .m8-card.w-m .t, .m8-card.w-l .t { grid-area: t; }
+.m8-card.w-m .o, .m8-card.w-l .o { grid-area: o; } .m8-card.w-m .r, .m8-card.w-l .r { grid-area: r; }
+.m8-sec { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 12px; line-height: 1.45; }
+.m8-sec > .label { font-size: 10px; }
+.m8-sec p { margin: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.m8-sec ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.m8-sec li { display: flex; gap: 6px; align-items: flex-start; min-width: 0; }
+.m8-sec li > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.m8-card.w-l .m8-sec li > span, .m8-card.w-m .m8-sec li > span { white-space: normal; }
+.m8-box { flex: none; width: 10px; height: 10px; margin-top: 3px; border: 2px solid var(--text); }
+.m8-box.on { background: var(--text); }
+.m8-out li .pixel-icon { margin-top: 2px; }
+.m8-out li em { margin-left: auto; padding-left: 4px; font-style: normal; font-family: var(--font-mono); font-size: 10px; white-space: nowrap; }
+.m8-rb li { display: grid; grid-template-columns: minmax(0, 1fr) 54px 34px; gap: 6px; align-items: center; }
+.m8-card .m8-rb li > span:first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.m8-rb .bar { position: relative; height: 8px; background: var(--dither-1); border: 1px solid var(--line); }
+.m8-rb .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--text); }
+.m8-rb .n { text-align: right; font-family: var(--font-mono); font-size: 11px; }
+.m8-cf { flex: none; display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-top: 1px solid var(--line); font-size: 12px; }
+.m8-cf .dither-bar { flex: 1; }
+.m8-cf .btn { height: 26px; padding: 0 8px; font-size: 12px; }
+/* 状态 */
+.m8-card.is-done .m8-ch { background: var(--text); color: var(--panel); }
+.m8-card.is-done .m8-ch .label { color: #9CA0A8; }
+.m8-card.is-doing { border: 3px solid var(--signal); }
+.m8-card.is-doing .m8-ch { background: var(--signal); color: var(--panel); border-bottom-color: var(--signal); }
+.m8-card.is-doing .m8-ch .label { color: #FFE2D8; }
+.m8-card.is-locked { border: 2px dashed #9CA0A8; background: var(--panel-soft); color: var(--text-2); }
+.m8-card.is-locked .m8-ch { border-bottom: 1px dashed #9CA0A8; }
+.m8-card.is-locked .m8-no { color: #9CA0A8; }
+.m8-card.is-locked .m8-box { border-color: #9CA0A8; }
+.m8-card.is-sel { outline: 3px solid var(--signal); outline-offset: 3px; }
+.m8-late { color: var(--risk); font-weight: 600; }
+.mp-stars.is-light { color: #3D4047; } .mp-stars.is-light i.on { color: var(--panel); }
+.m8-boss { display: inline-flex; align-items: center; gap: 3px; padding: 0 4px; background: var(--text); color: var(--panel); font-family: var(--font-mono); font-size: 10px; }
+
+/* 左侧线名（固定，不随卷轴走） */
+.m8-names { position: absolute; left: 0; top: 64px; bottom: 88px; width: 116px; pointer-events: none; }
+.m8-name { position: absolute; left: 0; width: 116px; display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 0 14px; background: var(--panel); border-right: 2px solid var(--text); pointer-events: auto; }
+.m8-name .disc { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; color: var(--panel); font-family: var(--font-mono); font-weight: 600; }
+.m8-name strong { font-size: 15px; }
+.m8-name span { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.m8-names .m8-corner { position: absolute; left: 0; top: 0; width: 116px; height: 48px; background: var(--panel); border-right: 2px solid var(--text); border-bottom: 2px solid var(--text); display: grid; place-items: center; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+
+/* 底部全程小地图 */
+.m8-mini { position: absolute; left: 0; right: 0; bottom: 0; height: 88px; display: grid; grid-template-columns: 116px minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 0 20px 0 0; background: var(--panel); border-top: 2px solid var(--text); }
+.m8-mini > .label { padding-left: 14px; line-height: 1.5; }
+.m8-track { position: relative; height: 60px; cursor: pointer; }
+.m8-track .row { position: absolute; left: 0; right: 0; height: 18px; }
+.m8-track .blk { position: absolute; top: 0; bottom: 0; border: 1px solid var(--text); background: var(--panel); }
+.m8-track .blk.is-done { background: var(--text); }
+.m8-track .blk.is-doing { background: var(--signal); border-color: var(--signal); }
+.m8-track .blk.is-locked { border-style: dashed; border-color: #9CA0A8; background: var(--dither-1); }
+.m8-track .ticks { position: absolute; left: 0; right: 0; bottom: 0; height: 12px; font-family: var(--font-mono); font-size: 9px; color: var(--muted); }
+.m8-track .ticks span { position: absolute; transform: translateX(-50%); }
+.m8-track .now { position: absolute; top: -4px; bottom: 10px; width: 2px; background: var(--signal); }
+.m8-view { position: absolute; top: -6px; bottom: 8px; border: 2px solid var(--text); background-image: var(--dither-ink-1); cursor: grab; }
+.m8-nav { display: flex; gap: 6px; }
+.m8-nav .btn { height: 32px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { LINES, LINKS, SEASON, byId, doneCount, lineStars, PASS } from "./_shared/data.js";
+import { icon, starRow, ditherBar } from "./_shared/draft.js";
+import { mountStage, stageHead, makeDrawer, NOW_W, MONTH_MARKS, TODAY, md, weekStart, isLate, lateWeeks, linkNote, shortUnlock, LINE_COLOR } from "./_shared/stage.js";
+
+const stage = mountStage({ version: "V8 关卡长卷" });
+stage.innerHTML = `<div class="m8" id="m8">${stageHead()}
+  <div class="m8-scroll" id="scroll"><div class="m8-canvas" id="canvas"></div></div>
+  <div class="m8-names" id="names"></div>
+  <div class="m8-mini" id="mini"></div></div>`;
+const root = document.getElementById("m8");
+const drawer = makeDrawer(root, { head: (n) => `${n.id} · ${n.stage} · W${n.week[0]}–${n.week[1]}` });
+root.addEventListener("drawer", (e) => document.querySelectorAll(".m8-card").forEach((c) => c.classList.toggle("is-sel", c.dataset.id === e.detail)));
+
+const WK = 160, X0 = 132, GAP = 30;
+const scroll = document.getElementById("scroll"), canvas = document.getElementById("canvas");
+const xw = (w) => X0 + w * WK;                  // 连续周数 → 画布横坐标
+const RULER = 48;
+
+function card(n) {
+  const span = n.week[1] - n.week[0] + 1;
+  const width = span * WK - GAP;
+  const size = width >= 560 ? "w-l" : width >= 400 ? "w-m" : "w-s";
+  const td = n.todoDone ?? (n.status === "done" ? n.todo.length : 0);
+  const od = n.outDone ?? (n.status === "done" ? n.output.length : 0);
+  const late = isLate(n);
+  const no = n.id.slice(1).padStart(2, "0");
+  const st = n.status === "done" ? `<b>${n.score}</b>${starRow(n, "is-light")}` : n.status === "doing" ? `<b>${n.score}</b><span>/ 100</span>` : `${icon("lock")}<span>未解锁</span>`;
+  const rb = n.rubric.map((x) => `<li><span title="${x.name}">${x.name.split("：")[0].split("，")[0]}</span><span class="bar"><i style="width:${x.score != null ? (x.score / x.weight) * 100 : 0}%"></i></span><span class="n">${x.score ?? "—"}/${x.weight}</span></li>`).join("");
+  const rbLine = n.rubric.map((x) => `${x.score ?? "—"}/${x.weight}`).join(" · ");
+  const foot = size === "w-s" && n.status === "done"
+    ? `<span class="m8-rbline" title="${n.rubric.map((x) => x.name).join(" / ")}">评分 ${rbLine}</span><span class="spacer"></span><span class="ok-text">${n.at} 通关</span>`
+    : n.status === "locked"
+    ? `${icon("lock")}<span class="muted">${shortUnlock(n)} · ${weekStart(n.week[0])} 开始</span>`
+    : `${ditherBar(n.score)}<span class="${late ? "m8-late" : n.status === "doing" ? "signal" : "ok-text"}">${n.status === "done" ? `${n.at} 通关` : late ? `超期 ${lateWeeks(n)} 周 · 差 ${PASS - n.score} 分` : `差 ${PASS - n.score} 分 · W${n.week[1]} 截止`}</span>${n.status === "doing" ? `<button class="btn btn-primary">${icon("edit")}评分</button>` : ""}`;
+  return `<article class="m8-card is-${n.status} ${size}" data-id="${n.id}" data-line="${n.line}" style="left:${xw(n.week[0] - 1) + GAP / 2}px;width:${width}px">
+    <header class="m8-ch"><span class="m8-no">${no}</span>
+      <span class="m8-ct"><span class="label">${n.id} · ${n.stage} · W${n.week[0]}–${n.week[1]}</span><strong>${n.boss ? `<span class="m8-boss">${icon("crown")}BOSS</span> ` : ""}${n.title}</strong></span>
+      <span class="m8-st">${st}</span></header>
+    <div class="m8-cb">
+      <section class="m8-sec g"><span class="label">目标</span><p>${n.goal}</p></section>
+      <section class="m8-sec t"><span class="label">要做的事 · ${td}/${n.todo.length}</span><ul>${n.todo.map((t, i) => `<li><i class="m8-box ${i < td ? "on" : ""}"></i><span>${t}</span></li>`).join("")}</ul></section>
+      <section class="m8-sec o m8-out"><span class="label">产出物</span><ul>${n.output.map((o, i) => `<li>${icon("file")}<span>${o}</span><em class="${i < od ? (n.status === "done" ? "ok-text" : "warn-text") : "muted"}">${i < od ? (n.status === "done" ? "已交" : "初稿") : n.status === "locked" ? "" : "未交"}</em></li>`).join("")}</ul></section>
+      <section class="m8-sec r m8-rb"><span class="label">评分 · ${PASS} 分通关</span><ul>${rb}</ul></section>
+    </div>
+    <footer class="m8-cf">${foot}</footer>
+  </article>`;
+}
+
+function layout() {
+  const H = scroll.clientHeight;
+  const ROWGAP = 38;
+  const RH = Math.floor((H - RULER - 14 - ROWGAP - 12) / 2);
+  const top = { biz: RULER + 14, ai: RULER + 14 + RH + ROWGAP };
+  const width = xw(24) + 80;
+  canvas.style.width = `${width}px`;
+  let h = "";
+  // 周底纹 + 标尺
+  for (let w = 1; w <= 24; w++) h += `<div class="m8-week${w % 2 ? "" : " is-alt"}${w === SEASON.week ? " is-now" : ""}" style="left:${xw(w - 1)}px;width:${WK}px"></div>`;
+  h += `<div class="m8-ruler"></div>`;
+  MONTH_MARKS.forEach((m) => { if (m.w < 24) h += `<span class="m8-month" style="left:${xw(m.w)}px">${m.name}</span>`; });
+  for (let w = 1; w <= 24; w++) h += `<span class="m8-wk${w === SEASON.week ? " is-now" : ""}" style="left:${xw(w - 1)}px;width:${WK}px"><b>W${w}</b><span>${weekStart(w)}</span></span>`;
+  h += `<div class="m8-today" style="left:${xw(NOW_W)}px;top:${RULER}px"></div>`;
+  // 卡片与同线箭头
+  LINES.forEach((l) => {
+    l.nodes.forEach((n, i) => {
+      h += card({ ...n, line: l.key }).replace('style="left:', `style="top:${top[l.key]}px;height:${RH}px;left:`);
+      if (i) {
+        const prev = l.nodes[i - 1];
+        h += `<span class="m8-arrow ${prev.status === "done" ? "" : "is-todo"}" style="left:${xw(n.week[0] - 1) - GAP / 2}px;top:${top[l.key] + RH / 2 - 7}px">${icon("right")}</span>`;
+      }
+    });
+  });
+  // 跨线依赖：在两行之间的空档里走线
+  const gy = top.ai - ROWGAP / 2;
+  LINKS.forEach(([from, to]) => {
+    const a = byId(from), b = byId(to);
+    const oa = [a.week[0] - 1, a.week[1]], ob = [b.week[0] - 1, b.week[1]];
+    const lo = Math.max(oa[0], ob[0]), hi = Math.min(oa[1], ob[1]);
+    const ya = a.line === "biz" ? top.biz + RH : top.ai, yb = b.line === "biz" ? top.biz + RH : top.ai;
+    if (hi > lo) {
+      const x = xw(hi) - 60;
+      h += `<span class="m8-dep" style="left:${x}px;top:${Math.min(ya, yb)}px;height:${Math.abs(yb - ya)}px"></span>`;
+      h += `<span class="m8-dep-label" style="left:${x + 8}px;top:${gy - 10}px">${from} ${linkNote(from, to)} → ${to}</span>`;
+    } else {
+      const x1 = xw(a.week[1]) - 60, x2 = xw(b.week[0] - 1) + 60;
+      h += `<span class="m8-dep" style="left:${x1}px;top:${ya}px;height:${gy - ya}px"></span><span class="m8-dep-h" style="left:${x1}px;top:${gy}px;width:${x2 - x1}px"></span><span class="m8-dep" style="left:${x2}px;top:${gy}px;height:${yb - gy}px"></span>`;
+      h += `<span class="m8-dep-label" style="left:${(x1 + x2) / 2 - 80}px;top:${gy - 10}px">${from} ${linkNote(from, to)} → ${to}</span>`;
+    }
+  });
+  canvas.innerHTML = h;
+  canvas.querySelectorAll(".m8-card").forEach((c) => (c.onclick = () => { if (!dragged) drawer.open(byId(c.dataset.id)); }));
+  // 线名
+  document.getElementById("names").innerHTML = `<span class="m8-corner">周 · 起始日</span>` + LINES.map((l) => `<div class="m8-name" style="top:${top[l.key]}px;height:${RH}px"><i class="disc" style="background:${LINE_COLOR[l.key]}">${l.code}</i><strong>${l.name}</strong><span>${doneCount(l)}/${l.nodes.length} 通关</span><span>★ ${lineStars(l)}</span></div>`).join("");
+  mini();
+}
+
+// 底部小地图：全程 24 周、每关一个色块、当前视窗是一个可拖的框
+function mini() {
+  const el = document.getElementById("mini");
+  el.innerHTML = `<span class="label">全程<br>24 周</span><div class="m8-track" id="track">
+    ${LINES.map((l, k) => `<div class="row" style="top:${k * 22}px">${l.nodes.map((n) => `<span class="blk is-${n.status}" style="left:${((n.week[0] - 1) / 24) * 100}%;width:calc(${((n.week[1] - n.week[0] + 1) / 24) * 100}% - 3px)"></span>`).join("")}</div>`).join("")}
+    <div class="ticks">${[1, 5, 9, 13, 17, 21].map((w) => `<span style="left:${((w - 0.5) / 24) * 100}%">W${w}</span>`).join("")}</div>
+    <span class="now" style="left:${(NOW_W / 24) * 100}%"></span><span class="m8-view" id="view"></span></div>
+    <div class="m8-nav"><button class="btn" id="prev">${icon("left")}</button><button class="btn" id="home">${icon("target")}回到本周</button><button class="btn" id="next">${icon("right")}</button></div>`;
+  const track = document.getElementById("track"), view = document.getElementById("view");
+  const sync = () => {
+    const tw = track.clientWidth, cw = xw(24) - X0;
+    view.style.left = `${Math.max(0, ((scroll.scrollLeft) / cw) * tw)}px`;
+    view.style.width = `${Math.min(tw, ((scroll.clientWidth - X0) / cw) * tw)}px`;
+  };
+  scroll.onscroll = sync; sync();
+  const jump = (clientX) => { const r = track.getBoundingClientRect(); const w = ((clientX - r.left) / r.width) * 24; scroll.scrollLeft = xw(w) - X0 - (scroll.clientWidth - X0) / 2; };
+  let dragView = false;
+  track.onpointerdown = (e) => { dragView = true; track.setPointerCapture(e.pointerId); jump(e.clientX); };
+  track.onpointermove = (e) => { if (dragView) jump(e.clientX); };
+  track.onpointerup = () => (dragView = false);
+  document.getElementById("prev").onclick = () => (scroll.scrollLeft -= WK * 4);
+  document.getElementById("next").onclick = () => (scroll.scrollLeft += WK * 4);
+  document.getElementById("home").onclick = goNow;
+}
+const goNow = () => (scroll.scrollLeft = xw(NOW_W) - X0 - (scroll.clientWidth - X0) * 0.42);
+
+// 拖动卷轴；滚轮上下也能左右走
+let down = null, dragged = false;
+scroll.addEventListener("pointerdown", (e) => { down = { x: e.clientX, left: scroll.scrollLeft }; dragged = false; });
+addEventListener("pointermove", (e) => { if (!down) return; const dx = e.clientX - down.x; if (Math.abs(dx) > 4) { dragged = true; scroll.classList.add("is-drag"); } if (dragged) scroll.scrollLeft = down.left - dx; });
+addEventListener("pointerup", () => { down = null; scroll.classList.remove("is-drag"); setTimeout(() => (dragged = false), 0); });
+scroll.addEventListener("wheel", (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { scroll.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
+
+function init() { layout(); goNow(); }
+if (document.readyState === "complete") init(); else addEventListener("load", init);
+addEventListener("resize", layout);
+if (location.hash.startsWith("#open=")) addEventListener("load", () => drawer.open(byId(location.hash.slice(6))));
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+/* 第二轮（V6–V9）共用外框：页面撑满视口，侧栏收成 56px 图标条，路线图占满主区。在 draft.css 之后加载。 */
+html, body { height: 100%; }
+body { overflow: hidden; }
+.stg-app { display: grid; grid-template-rows: 34px minmax(0, 1fr) 26px; height: 100vh; }
+.stg-app > .chrome { position: relative; }
+.stg-body { display: grid; grid-template-columns: 56px minmax(0, 1fr); min-height: 0; }
+.stg-rail { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--s3) 0; background: var(--panel); border-right: 2px solid var(--line); }
+.stg-rail .mp-brand { display: grid; place-items: center; width: 32px; height: 32px; margin-bottom: var(--s3); }
+.stg-rail a { position: relative; display: grid; place-items: center; width: 36px; height: 34px; color: var(--text-2); cursor: default; }
+.stg-rail a:hover { background: var(--panel-soft); color: var(--text); }
+.stg-rail a.active { background: var(--text); color: var(--panel); }
+.stg-rail a.active::before { content: ""; position: absolute; left: -10px; top: 0; bottom: 0; width: 4px; background: var(--signal); }
+.stg { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.stg-status { display: flex; align-items: center; gap: var(--s4); padding: 0 var(--s3); background: var(--panel); border-top: 1px solid var(--line); font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.stg-status .dot { display: inline-block; width: 6px; height: 6px; margin-right: 6px; background: var(--ok); vertical-align: 1px; }
+.stg-status .dot.is-off { background: none; border: 1px solid var(--muted); }
+
+/* 紧凑页头 */
+.stg-head { position: absolute; left: 0; right: 0; top: 0; z-index: 10; display: flex; align-items: center; gap: var(--s5); height: 64px; padding: 0 var(--s5); }
+.stg-crumb { display: flex; align-items: center; gap: var(--s4); }
+.stg-crumb h1 { font-size: 20px; line-height: 1; }
+.stg-tabs { display: inline-flex; border: 2px solid var(--text); background: var(--panel); }
+.stg-tabs a { height: 28px; padding: 0 var(--s3); line-height: 28px; font-size: 12px; color: var(--text-2); cursor: default; }
+.stg-tabs a.on { background: var(--text); color: var(--panel); }
+.stg-people { display: inline-flex; border: 2px solid var(--line); background: var(--panel); }
+.stg-people button { display: inline-flex; align-items: baseline; gap: 6px; height: 28px; padding: 0 var(--s3); border: 0; background: none; font: inherit; font-size: 13px; color: var(--text-2); cursor: pointer; }
+.stg-people button + button { border-left: 1px solid var(--line); }
+.stg-people button small { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.stg-people button.on { background: var(--panel-soft); color: var(--text); font-weight: 600; box-shadow: inset 0 -3px 0 var(--signal); }
+.stg-kpis { display: flex; align-items: baseline; gap: var(--s5); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.stg-kpis b { margin-right: 4px; font-family: var(--font-mono); font-size: 18px; font-weight: 600; color: var(--text); }
+.stg-kpis .is-warn b { color: var(--warn); }
+
+/* 关卡详情抽屉 */
+.stg-drawer { position: absolute; top: 0; right: 0; bottom: 0; z-index: 40; width: 500px; display: flex; flex-direction: column; background: var(--panel); border-left: 2px solid var(--text); }
+.stg-drawer[hidden] { display: none; }
+.stg-drawer-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--s3); height: 56px; padding: 0 var(--s4) 0 var(--s5); border-bottom: 1px solid var(--line); }
+.stg-drawer-title { display: flex; align-items: center; gap: var(--s2); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; color: var(--muted); }
+.stg-drawer-body { flex: 1; min-height: 0; overflow: auto; padding: var(--s5); }
+.stg-x { display: grid; place-items: center; width: 32px; height: 32px; border: 2px solid var(--text); background: var(--panel); color: var(--text); cursor: pointer; }
+.stg-x:hover { background: var(--text); color: var(--panel); }
+.stg-note { display: flex; align-items: flex-start; gap: var(--s2); margin-bottom: var(--s4); padding: var(--s2) var(--s3); border: 1px dashed var(--muted); font-size: 12px; line-height: 1.6; color: var(--text-2); }
+.stg-note .pixel-icon { margin-top: 3px; }
+.stg-note.is-link { border-style: solid; border-color: var(--info-soft); background: var(--info-soft); color: var(--text); }

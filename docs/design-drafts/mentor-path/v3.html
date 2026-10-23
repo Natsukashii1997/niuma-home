@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V3 双轨路线 · 培养路径</title>
+<link rel="stylesheet" href="../../../src/styles.css">
+<link rel="stylesheet" href="../../../src/styles-v3.css">
+<link rel="stylesheet" href="../../../src/styles-layout.css">
+<link rel="stylesheet" href="_shared/draft.css">
+<style>
+/* V3 双轨路线：上面按周排的两条轨道（像地铁线 + 甘特），能看出谁超期、两条线怎么互相依赖；下面一张全量明细表，不点也能查 */
+.v3-track { --label: 120px; position: relative; padding: 0 var(--s4) var(--s4); }
+.v3-axis, .v3-lane { display: grid; grid-template-columns: var(--label) repeat(24, minmax(0, 1fr)); }
+.v3-months { display: grid; grid-template-columns: var(--label) repeat(24, minmax(0, 1fr)); height: 28px; align-items: end; }
+.v3-months span { font-family: var(--font-mono); font-size: 11px; color: var(--text); border-left: 2px solid var(--text); padding-left: var(--s1); }
+.v3-axis { height: 24px; border-bottom: 2px solid var(--text); }
+.v3-axis span { font-family: var(--font-mono); font-size: 10px; color: var(--muted); text-align: center; line-height: 24px; border-left: 1px solid var(--line); }
+.v3-axis span.is-now { background: var(--signal); color: var(--panel); }
+.v3-lane { position: relative; height: 128px; border-bottom: 1px solid var(--line); background-image: linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: calc((100% - var(--label)) / 24) 100%; background-position: var(--label) 0; background-repeat: repeat-x; }
+.v3-lane-name { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding-right: var(--s3); background: var(--panel); }
+.v3-lane-name strong { font-size: 14px; }
+.v3-bar { position: relative; grid-row: 1; align-self: center; display: flex; flex-direction: column; gap: 2px; min-width: 0; height: 52px; margin: 0 2px; padding: var(--s1) var(--s2); border: 2px solid var(--text); background: var(--panel); font-size: 12px; line-height: 1.3; cursor: pointer; }
+.v3-bar.up { align-self: start; margin-top: 22px; } .v3-bar.down { align-self: end; margin-bottom: 10px; }
+.v3-bar b { display: flex; justify-content: space-between; gap: var(--s1); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+.v3-bar span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.v3-bar.is-done { background: var(--text); color: var(--panel); }
+.v3-bar.is-doing { border-color: var(--signal); background: var(--orange-soft); }
+.v3-bar.is-locked { border-color: var(--muted); border-style: dashed; color: var(--muted); background: var(--panel-soft); }
+.v3-bar .v3-station { position: absolute; right: -7px; top: 50%; margin-top: -6px; width: 12px; height: 12px; border: 2px solid var(--text); background: var(--panel); }
+.v3-bar.is-done .v3-station { background: var(--text); border-color: var(--panel); }
+.v3-bar.is-doing .v3-station { background: var(--signal); border-color: var(--signal); }
+.v3-bar.is-doing .v3-station.off { background: var(--panel); }
+.v3-late { position: absolute; left: -2px; bottom: 100%; margin-bottom: 2px; padding: 0 var(--s1); background: var(--risk-soft); color: var(--risk); font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+.v3-now { position: absolute; top: 28px; bottom: var(--s4); width: 2px; background: var(--signal); pointer-events: none; }
+.v3-now span { position: absolute; bottom: -18px; left: -24px; padding: 0 var(--s1); background: var(--signal); color: var(--panel); font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+.v3-dep { position: absolute; width: 0; border-left: 2px dashed var(--muted); pointer-events: none; }
+.v3-dep-label { position: absolute; padding: 0 var(--s1); background: var(--panel); font-family: var(--font-mono); font-size: 10px; color: var(--muted); white-space: nowrap; }
+/* 明细表 */
+.v3-table { width: 100%; border-collapse: collapse; }
+.v3-table th { position: sticky; top: 0; padding: var(--s2) var(--s3); background: var(--panel-soft); border-bottom: 2px solid var(--text); font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.06em; color: var(--muted); text-align: left; white-space: nowrap; }
+.v3-table td { padding: var(--s3); border-bottom: 1px solid var(--line); vertical-align: top; font-size: 12px; line-height: 1.55; }
+.v3-table tr.is-group td { padding: var(--s2) var(--s3); background: var(--panel-soft); border-bottom: 1px solid var(--line); font-size: 13px; }
+.v3-table tr.is-doing td:first-child { box-shadow: none; border-left: 4px solid var(--signal); }
+.v3-table tr.is-locked td { color: var(--muted); }
+.v3-table td.c-id { width: 150px; }
+.v3-table td.c-id strong { display: block; margin-top: var(--s1); font-size: 13px; color: var(--text); }
+.v3-table td.c-goal { width: 210px; }
+.v3-table td.c-score { width: 120px; text-align: right; }
+.v3-table td.c-score .num { font-size: 22px; line-height: 1; }
+.v3-table ul { list-style: none; margin: 0; padding: 0; }
+.v3-table li { display: flex; gap: 6px; }
+.v3-table li + li { margin-top: 2px; }
+.v3-table li i { flex: none; width: 8px; height: 8px; margin-top: 5px; border: 1px solid var(--text); }
+.v3-table li i.on { background: var(--text); }
+.v3-table .rb { display: grid; grid-template-columns: minmax(0, 1fr) 28px 28px; gap: var(--s2); }
+.v3-table .rb span:nth-child(n+2) { text-align: right; font-family: var(--font-mono); }
+.v3-table .rb span:nth-child(2) { color: var(--muted); }
+.v3-filter { display: flex; align-items: center; gap: var(--s2); }
+.v3-filter .segmented { height: var(--ctl-sm); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { LINES, LINKS, SEASON, byId, current, doneCount, lineStars, PASS, STATUS_TEXT } from "./_shared/data.js";
+import { mountShell, icon, statStrip, starRow, statusTag, tag, blinkCurrent } from "./_shared/draft.js";
+
+const page = mountShell({
+  version: "V3 双轨路线",
+  subtitle: "按周排的两条轨道：每段是一关的计划周期，段尾的方块是通关站。橙线是本周，越过橙线还没通关的会标「超期」。下面的明细表把每关的目标、要做的事、产出和评分一次列全。",
+  actions: `<span class="mp-legend"><span><i class="done"></i>已通关</span><span><i class="doing"></i>进行中</span><span><i class="locked"></i>未解锁</span></span>`,
+});
+
+const [biz, ai] = LINES;
+const NOW = SEASON.week;
+const MONTHS = [["9 月", 1, 4], ["10 月", 5, 9], ["11 月", 10, 13], ["12 月", 14, 18], ["1 月", 19, 22], ["2 月", 23, 24]];
+const late = (n) => n.status !== "done" && n.status !== "locked" && n.week[1] < NOW;
+
+const lane = (l) => `<div class="v3-lane" data-line="${l.key}">
+  <div class="v3-lane-name"><span class="label">${l.code} LINE</span><strong>${l.name}</strong><span class="small muted">${doneCount(l)} / ${l.nodes.length} 通关 · ${icon("star")} ${lineStars(l)}</span></div>
+  ${l.nodes.map((n, i) => `<div class="v3-bar is-${n.status} ${i % 2 ? "down" : "up"}" data-id="${n.id}" title="${n.id} ${n.stage} · ${n.title}" style="grid-column:${n.week[0] + 1} / ${n.week[1] + 2}">
+    <b><span>${n.boss ? icon("crown") + " " : ""}${n.id}${n.week[1] - n.week[0] > 2 ? ` · ${n.stage}` : ""}</span><span>${n.status === "locked" ? "" : n.score}</span></b><span>${n.title}</span>
+    <i class="v3-station ${n.status === "doing" ? "is-current-blink" : ""}"></i>
+    ${late(n) ? `<em class="v3-late">超期 ${NOW - n.week[1]} 周</em>` : ""}
+  </div>`).join("")}
+</div>`;
+
+const rubricCell = (n) => n.rubric.map((x) => `<div class="rb"><span>${x.name}</span><span>${x.weight}</span><span>${x.score ?? "—"}</span></div>`).join("");
+const row = (n) => {
+  const td = n.todoDone ?? (n.status === "done" ? n.todo.length : 0);
+  const od = n.outDone ?? (n.status === "done" ? n.output.length : 0);
+  return `<tr class="is-${n.status}">
+    <td class="c-id">${tag(n.id, "frame")} <span class="mono small muted">W${n.week[0]}–${n.week[1]}</span><strong>${n.boss ? icon("crown") + " " : ""}${n.title}</strong><span class="small muted">${n.stage}</span></td>
+    <td class="c-goal">${n.goal}</td>
+    <td><ul>${n.todo.map((t, i) => `<li><i class="${i < td ? "on" : ""}"></i><span>${t}</span></li>`).join("")}</ul></td>
+    <td><ul>${n.output.map((o, i) => `<li>${icon("file")}<span>${o}${i < od ? (n.status === "done" ? " · <span class='ok-text'>已交</span>" : " · <span class='warn-text'>初稿</span>") : ""}</span></li>`).join("")}</ul></td>
+    <td style="width:250px">${rubricCell(n)}</td>
+    <td class="c-score">${n.status === "locked" ? `<span class="muted">${icon("lock")} 未解锁</span>` : `<span class="num ${n.status === "doing" ? "signal" : ""}">${n.score}</span><br>${n.status === "done" ? starRow(n) : `<span class="small warn-text">差 ${PASS - n.score} 分</span>`}<br>${statusTag(n)}`}${late(n) ? `<br><span class="tag tag-red">超期 ${NOW - n.week[1]} 周</span>` : ""}</td>
+  </tr>`;
+};
+
+page.innerHTML = `
+  ${statStrip([
+    { label: "业务线", value: `${doneCount(biz)}`, unit: ` / ${biz.nodes.length}`, foot: `${current(biz).id} 计划 W${current(biz).week[0]}–${current(biz).week[1]}，进度正常` },
+    { label: "AI 线", value: `${doneCount(ai)}`, unit: ` / ${ai.nodes.length}`, tone: "risk", foot: `${current(ai).id} 计划 W7 结束，已超期 1 周` },
+    { label: "本周", value: `W${NOW}`, foot: "10-20 至 10-26" },
+    { label: "待评分", value: "2", unit: " 份", tone: "warn", foot: "B4 方案初稿 · A3 核对清单" },
+    { label: "跨线依赖", value: `${LINKS.length}`, unit: " 处", foot: "B3→A3 · A4→B5 · B5→A6" },
+  ])}
+  <section class="card">
+    <div class="card-head"><h2>${icon("timeline")}双轨路线</h2><span class="small muted">胡贵兰 · 入职 09-01 · 24 周培养期</span></div>
+    <div class="v3-track" id="track">
+      <div class="v3-months"><span style="border:0"></span>${MONTHS.map(([m, a, b]) => `<span style="grid-column:${a + 1} / ${b + 2}">${m}</span>`).join("")}</div>
+      <div class="v3-axis"><span style="border:0"></span>${Array.from({ length: 24 }, (_, i) => `<span class="${i + 1 === NOW ? "is-now" : ""}">W${i + 1}</span>`).join("")}</div>
+      ${lane(biz)}${lane(ai)}
+    </div>
+  </section>
+  <section class="card" style="margin-top:var(--gap)">
+    <div class="card-head"><h2>${icon("grid")}关卡明细</h2>
+      <div class="v3-filter"><div class="segmented"><button class="active">全部 13</button><button>业务线 7</button><button>AI 线 6</button><button>进行中 2</button></div></div></div>
+    <table class="v3-table"><thead><tr><th>关卡</th><th>阶段目标</th><th>要做的事</th><th>产出物</th><th>评分标准 · 权重 · 得分</th><th style="text-align:right">得分 / 状态</th></tr></thead>
+      <tbody>${LINES.map((l) => `<tr class="is-group"><td colspan="6"><b>${l.name}</b> <span class="small muted">· ${l.desc}</span></td></tr>${l.nodes.map(row).join("")}`).join("")}</tbody></table>
+  </section>`;
+
+// 本周竖线与跨线依赖（量好格宽后画）
+function overlay() {
+  const track = document.getElementById("track");
+  track.querySelectorAll(".v3-now,.v3-dep,.v3-dep-label").forEach((e) => e.remove());
+  const ax = track.querySelector(".v3-axis");
+  const cells = ax.querySelectorAll("span");
+  const nowCell = cells[NOW];
+  const base = track.getBoundingClientRect();
+  const r = nowCell.getBoundingClientRect();
+  const line = document.createElement("div");
+  line.className = "v3-now"; line.style.left = `${r.left - base.left + r.width / 2 - 1}px`;
+  line.innerHTML = `<span>本周 W${NOW}</span>`;
+  track.appendChild(line);
+  LINKS.forEach(([from, to]) => {
+    const a = track.querySelector(`[data-id="${from}"]`).getBoundingClientRect();
+    const b = track.querySelector(`[data-id="${to}"]`).getBoundingClientRect();
+    const x = Math.round(Math.min(a.right, b.right) - 20 - base.left);
+    const [y1, y2] = a.top < b.top ? [a.bottom, b.top] : [b.bottom, a.top];
+    const d = document.createElement("div");
+    d.className = "v3-dep"; d.style.cssText = `left:${x}px;top:${y1 - base.top}px;height:${y2 - y1}px`;
+    track.appendChild(d);
+    const t = document.createElement("span");
+    t.className = "v3-dep-label"; t.textContent = `${from}→${to}`;
+    t.style.left = `${x + 4}px`; t.style.top = `${(y1 + y2) / 2 - base.top - 8}px`;
+    track.appendChild(t);
+  });
+}
+if (document.readyState === "complete") overlay(); else addEventListener("load", overlay);
+addEventListener("resize", overlay);
+blinkCurrent();
+</script>
+</body>
+</html>

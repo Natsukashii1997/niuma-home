@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V4 技能树 · 培养路径</title>
+<link rel="stylesheet" href="../../../src/styles.css">
+<link rel="stylesheet" href="../../../src/styles-v3.css">
+<link rel="stylesheet" href="../../../src/styles-layout.css">
+<link rel="stylesheet" href="_shared/draft.css">
+<style>
+/* V4 技能树：从人出发分出两支，一个技能点一关；中间的虚线是跨线前置，两支在底部汇合成结业 */
+.v4-attrs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin-bottom: var(--gap); background: var(--panel); border: 2px solid var(--line); }
+.v4-attr { display: flex; flex-direction: column; gap: 6px; padding: var(--s3) var(--s4); border-left: 1px solid var(--line); }
+.v4-attr:first-child { border-left: 0; }
+.v4-attr .row { justify-content: space-between; align-items: baseline; gap: var(--s2); white-space: nowrap; }
+.v4-attr .num { font-size: 20px; line-height: 1; }
+.v4-attr .mp-cells { --n: 10; }
+.v4-attr .mp-cells i { height: 8px; }
+.v4-attr .small { color: var(--muted); }
+.v4-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--gap); align-items: stretch; }
+.v4-tree { position: relative; height: 940px; background-color: var(--bg); background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1.2px); background-size: 24px 24px; }
+.v4-tree > svg { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.v4-node { position: absolute; width: 64px; height: 64px; margin: -32px 0 0 -32px; display: grid; place-items: center; border: 2px solid var(--text); background: var(--panel); color: var(--text); font: inherit; cursor: pointer; }
+.v4-node .v4-code { position: absolute; left: 3px; top: 1px; font-family: var(--font-mono); font-size: 10px; }
+.v4-node.is-done { background: var(--text); color: var(--panel); }
+.v4-node.is-doing { border: 3px solid var(--signal); color: var(--signal); background: var(--panel); }
+.v4-node.is-locked { border-style: dashed; border-color: var(--muted); color: var(--muted); background: var(--panel-soft); }
+.v4-node.is-boss { width: 76px; height: 76px; margin: -38px 0 0 -38px; }
+.v4-node.is-sel { outline: 2px solid var(--text); outline-offset: 4px; }
+.v4-node.is-doing.is-sel { outline-color: var(--signal); }
+.v4-node .v4-lock { position: absolute; right: 2px; bottom: 2px; }
+.v4-node .mp-blink { position: absolute; right: -6px; top: -6px; }
+.v4-label { position: absolute; width: 196px; margin-top: -24px; display: flex; flex-direction: column; gap: 2px; }
+.v4-label.is-left { text-align: right; align-items: flex-end; }
+.v4-label strong { font-size: 13px; line-height: 1.35; }
+.v4-label .meta { display: flex; gap: 6px; align-items: center; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.v4-root { position: absolute; left: 50%; top: 24px; transform: translateX(-50%); display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); background: var(--text); color: var(--panel); }
+.v4-root .label { color: #9CA0A8; }
+.v4-avatar { display: grid; grid-template-columns: repeat(7, 4px); background: var(--panel); }
+.v4-avatar i { width: 4px; height: 4px; }
+.v4-avatar i.on { background: var(--text); }
+.v4-final { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--s2) var(--s4); border: 2px dashed var(--muted); background: var(--panel-soft); color: var(--muted); text-align: center; }
+.v4-final strong { color: var(--text); }
+.v4-branch { position: absolute; top: 100px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; padding: 0 var(--s1); background: var(--bg); }
+.v4-dep { position: absolute; padding: 0 var(--s1); background: var(--bg); font-family: var(--font-mono); font-size: 10px; color: var(--muted); white-space: nowrap; transform: translate(-50%, -50%); }
+.v4-detail .card-body { padding: var(--s5); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { LINES, LINKS, byId, current, doneCount, lineStars } from "./_shared/data.js";
+import { mountShell, icon, detailHTML, starRow, blinkCurrent, lightCells } from "./_shared/draft.js";
+
+const page = mountShell({
+  version: "V4 技能树",
+  subtitle: "从人出发分成业务、AI 两支，一个技能点就是一关；点亮的是已通关，橙框是正在练的。中间的虚线是跨线前置。上面一排能力值由已评分的关卡折算。",
+  actions: `<span class="mp-legend"><span><i class="done"></i>已点亮</span><span><i class="doing"></i>正在练</span><span><i class="locked"></i>未解锁</span></span>`,
+});
+
+const ICON = { B1: "route", B2: "target", B3: "search", B4: "filter", B5: "send", B6: "trend", B7: "crown", A1: "chat", A2: "edit", A3: "kb", A4: "bolt", A5: "agent", A6: "spark" };
+// 能力值：示例，由已评分关卡的评分项折算（10 格满）
+const ATTRS = [["业务理解", 7, "B1 · B3"], ["结构化思考", 6, "B2 · B4"], ["调研取证", 5, "B3 · A3"], ["推进协作", 1, "B5 未解锁"], ["AI 工具", 7, "A1 · A2"], ["自动化", 0, "A4 未解锁"]];
+
+page.innerHTML = `
+  <div class="v4-attrs">${ATTRS.map(([n, v, src]) => `<div class="v4-attr"><span class="row"><span class="label">${n}</span><span class="num">${v}<span class="small mono">/10</span></span></span>
+    <span class="mp-cells">${Array.from({ length: 10 }, (_, k) => `<i ${k < v ? "data-on" : ""}></i>`).join("")}</span><span class="small">来自 ${src}</span></div>`).join("")}</div>
+  <div class="v4-grid">
+    <section class="card"><div class="card-head"><h2>${icon("mentor")}技能树</h2><span class="small muted">业务 ${doneCount(LINES[0])}/${LINES[0].nodes.length} · AI ${doneCount(LINES[1])}/${LINES[1].nodes.length} · ${icon("star")} ${lineStars(LINES[0]) + lineStars(LINES[1])}</span></div>
+      <div class="v4-tree" id="tree"><svg id="wires"></svg></div></section>
+    <section class="card v4-detail"><div class="card-head"><h2>${icon("flag")}技能点详情</h2><span class="small muted" id="selHint"></span></div><div class="card-body" id="detail"></div></section>
+  </div>`;
+
+// 5×5 对称 1-bit 头像（BitAvatar 同算法的简化版），外留一格
+function avatar(name) {
+  let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const cells = [];
+  for (let y = 0; y < 7; y++) for (let x = 0; x < 7; x++) {
+    const inner = x > 0 && x < 6 && y > 0 && y < 6;
+    const cx = x <= 3 ? x : 6 - x;
+    cells.push(inner && (h >> ((y * 3 + cx) % 30)) & 1);
+  }
+  return `<span class="v4-avatar">${cells.map((on) => `<i class="${on ? "on" : ""}"></i>`).join("")}</span>`;
+}
+
+const tree = document.getElementById("tree");
+const pos = {};
+function build() {
+  tree.querySelectorAll(".v4-node,.v4-label,.v4-root,.v4-final,.v4-branch,.v4-dep").forEach((e) => e.remove());
+  const W = tree.clientWidth;
+  const COLX = { biz: Math.round(W * 0.36), ai: Math.round(W * 0.64) };
+  const Y0 = 170, DY = 108;
+  tree.insertAdjacentHTML("beforeend", `<div class="v4-root">${avatar("胡贵兰")}<span><strong>胡贵兰</strong><br><span class="label">LV.5 · 见习项目助理</span></span></div>
+    <span class="v4-branch" style="left:${COLX.biz - 40}px">BIZ 业务</span><span class="v4-branch" style="left:${COLX.ai - 24}px">AI 线</span>
+    <div class="v4-final">${icon("lock")}<strong>结业 · 项目助理</strong><span class="small">B7 与 A6 都通关后解锁</span></div>`);
+  LINES.forEach((l) => l.nodes.forEach((n, i) => {
+    const x = COLX[l.key], y = Y0 + i * DY + (l.key === "ai" && n.boss ? DY : 0);
+    pos[n.id] = { x, y };
+    const b = document.createElement("button");
+    b.type = "button"; b.className = `v4-node is-${n.status}${n.boss ? " is-boss" : ""}`; b.dataset.id = n.id;
+    b.style.left = `${x}px`; b.style.top = `${y}px`;
+    b.innerHTML = `<span class="v4-code">${n.id}</span>${icon(ICON[n.id], 28)}${n.status === "locked" ? `<span class="v4-lock">${icon("lock")}</span>` : ""}${n.status === "doing" ? `<i class="mp-blink is-current-blink"></i>` : ""}`;
+    b.onclick = () => select(n.id);
+    tree.appendChild(b);
+    const left = l.key === "biz";
+    const lab = document.createElement("div");
+    lab.className = `v4-label ${left ? "is-left" : ""}`;
+    lab.style.left = left ? `${x - 50 - 196}px` : `${x + 50}px`; lab.style.top = `${y}px`;
+    lab.innerHTML = `<span class="label">${n.stage}</span><strong>${n.title}</strong><span class="meta">${n.status === "locked" ? `W${n.week[0]}–${n.week[1]} · 未解锁` : `${n.status === "done" ? starRow(n) : `<span class="signal">练习中</span>`}<span>${n.score} 分</span>`}</span>`;
+    tree.appendChild(lab);
+  }));
+  // 连线：主干实线（已通关段墨色，其余灰虚线），跨线前置为细虚线
+  const seg = (d, done) => `<path d="${d}" fill="none" stroke="${done ? "#0D0E10" : "#9CA0A8"}" stroke-width="4" ${done ? "" : 'stroke-dasharray="4 4"'} shape-rendering="crispEdges"/>`;
+  const rootY = 64, mid = Math.round(W / 2);
+  let d = seg(`M${mid} ${rootY}V${rootY + 40}H${COLX.biz}V${pos.B1.y - 32}`, true) + seg(`M${mid} ${rootY + 40}H${COLX.ai}V${pos.A1.y - 32}`, true);
+  LINES.forEach((l) => l.nodes.slice(1).forEach((n, i) => {
+    const a = l.nodes[i], pa = pos[a.id], pb = pos[n.id];
+    d += seg(`M${pa.x} ${pa.y + (a.boss ? 38 : 32)}V${pb.y - (n.boss ? 38 : 32)}`, a.status === "done");
+  }));
+  const fy = tree.clientHeight - 56;
+  d += seg(`M${COLX.biz} ${pos.B7.y + 38}V${fy}H${mid - 90}`, false) + seg(`M${COLX.ai} ${pos.A6.y + 38}V${fy}H${mid + 90}`, false);
+  LINKS.forEach(([from, to]) => {
+    const a = pos[from], b = pos[to];
+    const sx = a.x + (a.x < b.x ? 34 : -34), ex = b.x + (a.x < b.x ? -34 : 34), my = Math.round((a.y + b.y) / 2);
+    d += `<path d="M${sx} ${a.y}H${Math.round((sx + ex) / 2)}V${b.y}H${ex}" fill="none" stroke="#686D76" stroke-width="2" stroke-dasharray="2 4" shape-rendering="crispEdges"/><rect x="${ex - (a.x < b.x ? 6 : 0)}" y="${b.y - 4}" width="6" height="8" fill="#686D76"/>`;
+    tree.insertAdjacentHTML("beforeend", `<span class="v4-dep" style="left:${Math.round((sx + ex) / 2)}px;top:${my}px">${from} 前置</span>`);
+  });
+  document.getElementById("wires").innerHTML = d;
+}
+function select(id) {
+  tree.querySelectorAll(".v4-node").forEach((b) => b.classList.toggle("is-sel", b.dataset.id === id));
+  const n = byId(id);
+  document.getElementById("detail").innerHTML = detailHTML(n);
+  document.getElementById("selHint").textContent = n.lineName;
+}
+function init() { build(); select("B4"); }
+if (document.readyState === "complete") init(); else addEventListener("load", init);
+addEventListener("resize", init);
+blinkCurrent();
+lightCells();
+</script>
+</body>
+</html>

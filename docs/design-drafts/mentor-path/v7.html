@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V7 远征登山 · 培养路径</title>
+<link rel="stylesheet" href="../../../src/styles.css">
+<link rel="stylesheet" href="../../../src/styles-v3.css">
+<link rel="stylesheet" href="../../../src/styles-layout.css">
+<link rel="stylesheet" href="_shared/draft.css">
+<link rel="stylesheet" href="_shared/stage.css">
+<style>
+/* V7 远征登山：横向全景，前山是业务线、后山是 AI 线；一关是一段坡，坡顶的营地是通关点，越往右越高；
+   两条路在山顶汇合（结业）。太阳就是今天，橙色虚线从太阳垂到地面；登山者站在现在的位置；绳桥是跨线依赖。
+   橙色只表示「现在」：太阳、登山者、正在爬的营地与标牌。 */
+.m7 { position: absolute; inset: 0; background: var(--panel); }
+.m7 .stg-head { background: transparent; }
+.m7-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.m7-svg .hit { cursor: pointer; }
+.m7-svg .rope { stroke: #AEB3BB; stroke-width: 1.5; }
+.m7-svg .rope.on { stroke: var(--text); stroke-width: 2.5; }
+.m7-labels { position: absolute; inset: 0; pointer-events: none; }
+/* 营地标牌：已通关细边、正在爬橙色粗边、未解锁灰虚线；位置由 placePlates 算，引线（::after）从营地竖直连过来 */
+.m7-plate { position: absolute; width: 184px; display: flex; flex-direction: column; padding: 4px 8px 5px; background: var(--panel); border: 1px solid var(--text); pointer-events: auto; cursor: pointer; }
+.m7-plate .meta { display: flex; align-items: center; gap: 6px; height: 15px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em; color: var(--muted); white-space: nowrap; }
+.m7-plate .m7-tag { height: 14px; }
+.m7-plate strong { font-size: 14px; line-height: 1.3; }
+.m7-plate .sc { display: flex; align-items: center; gap: 4px; height: 16px; font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.m7-plate .sc .mp-stars { margin-right: 2px; }
+.m7-plate .sc .pixel-icon { width: 12px; height: 12px; }
+.m7-plate.is-ai { border-color: #2563EB; }
+.m7-plate.is-doing { border: 2px solid var(--signal); padding: 3px 7px 4px; }
+.m7-plate.is-doing .sc { color: var(--signal); font-weight: 600; }
+.m7-plate.is-late .sc { color: var(--risk); }
+.m7-plate.is-locked { border: 1px dashed #9CA0A8; }
+.m7-plate.is-locked strong { font-weight: 500; color: var(--text-2); }
+.m7-plate.is-locked .sc { color: var(--muted); }
+.m7-plate.is-hl { outline: 2px solid var(--signal); outline-offset: 2px; }
+.m7-plate::after { content: ""; position: absolute; left: var(--lx, 8px); width: 2px; height: var(--lh, 10px); background: var(--text); }
+.m7-plate.is-down::after { top: var(--lt, -11px); }
+.m7-plate.is-up::after { bottom: var(--lt, -11px); }
+.m7-plate.is-ai::after { background: #2563EB; }
+.m7-plate.is-doing::after { background: var(--signal); }
+.m7-plate.is-locked::after { background: #9CA0A8; }
+/* 小牌：完整标牌放不下时只留编号、阶段和星；悬停或打开时展开成完整标牌（is-peek） */
+.m7-plate .mini { display: none; }
+.m7-plate.is-mini { width: auto; padding: 2px 6px 2px 2px; }
+.m7-plate.is-mini > :not(.mini) { display: none; }
+.m7-plate.is-mini .mini { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.m7-plate.is-mini .mini .pixel-icon { width: 10px; height: 10px; }
+.m7-plate.is-locked .mini { font-weight: 500; color: var(--text-2); }
+.m7-plate.is-peek { z-index: 3; }
+.m7-tag { display: inline-flex; align-items: center; height: 16px; padding: 0 4px; font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--panel); background: var(--text); }
+.m7-tag.is-ai { background: #2563EB; }
+.m7-ridge { position: absolute; padding: 2px 8px; background: var(--panel); border: 1px solid var(--text); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.m7-ridge.is-ai { border-color: #2563EB; color: #2563EB; }
+.m7-summit { position: absolute; padding: 7px 10px; background: var(--text); color: var(--panel); pointer-events: auto; cursor: pointer; }
+.m7-summit strong { display: block; font-size: 14px; }
+.m7-summit span { font-size: 11px; color: #9CA0A8; }
+.m7-summit.is-hl { outline: 2px solid var(--signal); outline-offset: 2px; }
+.m7-today { position: absolute; display: flex; flex-direction: column; font-family: var(--font-mono); font-size: 11px; line-height: 1.35; color: var(--signal); white-space: nowrap; }
+.m7-today b { font-size: 12px; }
+.m7-late { position: absolute; padding: 1px 6px; background: var(--risk); color: var(--panel); font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+.m7-rope-label { position: absolute; display: none; padding: 1px 6px; background: var(--text); color: var(--panel); font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+.m7-rope-label.on { display: block; }
+/* 右下：本周攀登 */
+.m7-week { position: absolute; width: 440px; display: flex; flex-direction: column; background: var(--panel); border: 2px solid var(--text); pointer-events: auto; }
+.m7-week-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 34px; padding: 0 12px; border-bottom: 1px solid var(--line); }
+.m7-week-head b { font-size: 13px; }
+.m7-week-head span { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.m7-row { display: grid; grid-template-columns: 4px minmax(0, 1fr); gap: 10px; padding: 8px 12px; border: 0; border-bottom: 1px solid var(--line); background: var(--panel); font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+.m7-row:hover { background: var(--panel-soft); }
+.m7-row > i { align-self: stretch; }
+.m7-row .l1 { display: flex; align-items: baseline; gap: 8px; font-size: 13px; }
+.m7-row .l1 strong { font-size: 13px; }
+.m7-row .l1 span { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.m7-row .l2 { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 12px; color: var(--text-2); }
+.m7-row .l2 .spacer { flex: 1; }
+.m7-row .l2 b { color: var(--signal); }
+.m7-row .l2 .risk { color: var(--risk); font-weight: 600; }
+.m7-row .meter { display: inline-grid; grid-template-columns: repeat(10, 6px); gap: 1px; }
+.m7-row .meter i { height: 8px; border: 1px solid var(--text); }
+.m7-row .meter i.on { background: var(--text); }
+.m7-row .meter.is-late i.on { background: var(--risk); border-color: var(--risk); }
+.m7-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 7px 12px; font-size: 11px; color: var(--muted); }
+.m7-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.m7-legend svg { flex: none; }
+/* 营地日志抽屉 */
+.m7-camp { margin-bottom: var(--s4); padding: 12px 14px; background: var(--bg); border: 1px solid var(--line); }
+.m7-camp-top { display: flex; align-items: center; gap: 10px; }
+.m7-camp-ico { flex: none; display: grid; place-items: center; width: 40px; height: 40px; background: var(--panel); border: 1px solid var(--line); }
+.m7-camp-name { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.m7-camp-name b { font-size: 14px; }
+.m7-camp-name span { font-size: 12px; color: var(--muted); }
+.m7-nav { height: 28px; padding: 0 8px; gap: 4px; font-size: 12px; }
+.m7-slope { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+.m7-slope .cells, .m7-slope .wk { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 3px; }
+.m7-slope .cells i { position: relative; height: 14px; border: 1px solid var(--text); background: var(--panel); }
+.m7-slope .cells i.past { background: var(--text); }
+.m7-slope .cells i.now { background: var(--signal); border-color: var(--signal); }
+.m7-slope .cells i.late { background: var(--risk); border-color: var(--risk); }
+.m7-slope .wk span { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.m7-slope .txt { font-size: 12px; color: var(--text-2); }
+.m7-slope .txt b { color: var(--signal); }
+.m7-slope .txt .risk { color: var(--risk); font-weight: 600; }
+.m7-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.m7-list li { display: flex; align-items: flex-start; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13px; line-height: 1.55; }
+.m7-list li:last-child { border-bottom: 0; }
+.m7-list li .pixel-icon { margin-top: 3px; }
+.m7-raw { display: flex; flex-direction: column; gap: var(--s4); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { LINES, LINKS, SEASON, PASS, byId, doneCount, lineStars } from "./_shared/data.js";
+import { icon, starRow } from "./_shared/draft.js";
+import { mountStage, stageHead, makeDrawer, NOW_W, MONTH_MARKS, TODAY, START, md, weekStart, isLate, lateWeeks, linkNote, scoreLine, unlockText, lineOf } from "./_shared/stage.js";
+
+const stage = mountStage({ version: "V7 远征登山" });
+stage.innerHTML = `<div class="m7" id="m7"><svg class="m7-svg" id="svg"></svg><div class="m7-labels" id="labels"></div>${stageHead()}</div>`;
+const root = document.getElementById("m7");
+
+const INK = "#0D0E10", PANEL = "#FBFBFC", SIGNAL = "#FF4F1F", BLUE = "#2563EB", GRAY = "#C9CCD3", MUTED = "#686D76";
+const MOUNT = { biz: "前山", ai: "后山" }, LNAME = { biz: "业务线", ai: "AI 线" }, LCOLOR = { biz: INK, ai: BLUE };
+const tagOf = (id) => `<i class="m7-tag ${id[0] === "A" ? "is-ai" : ""}">${id}</i>`;
+const weekEnd = (w) => md(new Date(START.getTime() + (w * 7 - 1) * 864e5));
+const avg = (l) => { const d = l.nodes.filter((n) => n.status === "done"); return d.length ? (d.reduce((s, n) => s + n.score, 0) / d.length).toFixed(1) : "—"; };
+
+/* ---------- 像素图与网点 ---------- */
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+const pattern = (id, thr, color, px = 2) => `<pattern id="${id}" width="${px * 4}" height="${px * 4}" patternUnits="userSpaceOnUse">${BAYER.map((v, i) => (v < thr ? `<rect x="${(i % 4) * px}" y="${Math.floor(i / 4) * px}" width="${px}" height="${px}" fill="${color}"/>` : "")).join("")}</pattern>`;
+const sprite = (rows, x, y, cell, color) => rows.flatMap((r, j) => [...r].map((c, i) => (c === "#" ? `<rect x="${x + i * cell}" y="${y + j * cell}" width="${cell}" height="${cell}" fill="${color}"/>` : ""))).join("");
+// 贴纸：先画一圈 2px 白边再画像素图，压在线和网点上也看得清
+const stamp = (rows, x, y, cell, color) => [[-2, 0], [2, 0], [0, -2], [0, 2], [-2, -2], [2, -2], [-2, 2], [2, 2]].map(([dx, dy]) => sprite(rows, x + dx, y + dy, cell, PANEL)).join("") + sprite(rows, x, y, cell, color);
+const LEDGE = 14;      // 营地平台半宽：图标立在这段平路上，不压线
+const spriteSvg = (rows, cell, color) => `<svg width="${rows[0].length * cell}" height="${rows.length * cell}" viewBox="0 0 ${rows[0].length * cell} ${rows.length * cell}" shape-rendering="crispEdges">${sprite(rows, 0, 0, cell, color)}</svg>`;
+const FLAG = ["#......", "#####..", "######.", "#####..", "#......", "#......", "#......"];
+const TENT = ["...#...", "..###..", "..#.#..", ".#...#.", ".#.#.#.", "#..#..#", "#######"];
+const KEEP = ["#..#..#", "##.#.##", "#######", "#######", ".#####.", ".......", "......."];
+const PINE = ["..#..", ".###.", "..#..", ".###.", "#####", "..#..", "..#.."];
+const CLIMB = [
+  ["...##..", "...##..", ".#####.", "#.###.#", "..###..", "..###..", "..#.#..", ".##.##.", ".#...#."],
+  ["...##.#", "...##.#", ".######", "#.###..", "..###..", "..###..", "..#.#..", ".#..##.", ".#...#."],
+];
+const CLOUD = ["......####......", "....########....", "..############..", ".##############.", "################"];
+const cloud = (x, y, cell) => {
+  const on = (i, j) => CLOUD[j]?.[i] === "#";
+  let s = "";
+  for (let j = 0; j < CLOUD.length; j++) for (let i = 0; i < CLOUD[0].length; i++) if (on(i, j)) {
+    const edge = !on(i - 1, j) || !on(i + 1, j) || !on(i, j - 1) || j === CLOUD.length - 1;
+    s += `<rect x="${x + i * cell}" y="${y + j * cell}" width="${cell}" height="${cell}" fill="${edge ? INK : PANEL}"/>`;
+  }
+  return s;
+};
+
+/* ---------- 山形 ---------- */
+let seed = 7;
+const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+function crest(points, { min = 60, amp = 1 } = {}) {
+  // 控制点之间插两处起伏（间距大于 min 才插，amp 控制幅度），营地仍在山脊线上
+  const out = [points[0]];
+  for (let k = 1; k < points.length; k++) {
+    const [ax, ay] = points[k - 1], [bx, by] = points[k], dx = bx - ax;
+    if (dx > min) {
+      out.push([ax + dx * 0.32, ay + (by - ay) * 0.32 - (10 + rnd() * 26) * amp]);
+      out.push([ax + dx * 0.66, ay + (by - ay) * 0.66 + (4 + rnd() * 14) * amp]);
+    }
+    out.push([bx, by]);
+  }
+  return out;
+}
+const yAt = (pts, x) => { for (let k = 1; k < pts.length; k++) if (x <= pts[k][0]) { const [ax, ay] = pts[k - 1], [bx, by] = pts[k]; return ay + ((x - ax) / (bx - ax || 1)) * (by - ay); } return pts.at(-1)[1]; };
+const poly = (pts) => pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join("");
+const clip = (pts, x0, x1) => { const r = [[x0, yAt(pts, x0)]]; pts.forEach((p) => { if (p[0] > x0 && p[0] < x1) r.push(p); }); r.push([x1, yAt(pts, x1)]); return r; };
+
+let G = null;          // 当前布局（高亮要用）
+let selected = null;   // 抽屉里打开的营地
+let pinned = null;     // 地址 #hover= 指定的高亮（截图用），重排后保留
+
+/* ---------- 标牌自动摆放 ---------- */
+// 标牌挂在自己的营地上：业务线默认在营地右下、AI 线默认在左上（1440×900 时都放得下）。放不下时依次试：
+// 左右滑（营地始终在标牌宽度内）→ 往外推（引线变长）→ 换到营地另一侧 → 收成一行小牌（悬停或打开时展开）。正在爬的两关不收。
+// 要避开别的标牌和引线、右下卡片、太阳和旁边的字、山顶牌、营地、登山者、两条路。先按优先级逐块摆，再整体复查几轮。
+const hit = (a, b, m = 0) => a.l < b.r + m && a.r > b.l - m && a.t < b.b + m && a.b > b.t - m;
+function placePlates(lab, { W, yg, list, base, ridge, sun, summit, me, XS }) {
+  const box = (el) => ({ l: el.offsetLeft, t: el.offsetTop, r: el.offsetLeft + el.offsetWidth, b: el.offsetTop + el.offsetHeight });
+  const fixed = [
+    ...[...lab.querySelectorAll(".m7-ridge, .m7-today, .m7-summit, .m7-late, .m7-week")].map((el) => ({ ...box(el), m: 6 })),
+    { l: sun[0] - 42, t: sun[1] - 42, r: sun[0] + 42, b: sun[1] + 42, m: 0 },
+    { l: summit[0] - 12, t: summit[1] - 50, r: summit[0] + 42, b: summit[1] + 6, m: 2 },
+    ...["biz", "ai"].map((k) => ({ l: base[k][0] - 18, t: base[k][1] - 36, r: base[k][0] + 18, b: base[k][1] + 2, m: 2 })),
+    ...["biz", "ai"].map((k) => { const y = yAt(ridge[k], me[k].x); return { l: me[k].x - 16, t: y - 43, r: me[k].x + 16, b: y, m: 2 }; }),
+    ...list.map((c) => ({ l: c.x - 18, t: c.y - 36, r: c.x + 18, b: c.y + 5, m: 2, id: c.n.id })),
+  ];
+  const road = [];
+  ["biz", "ai"].forEach((k) => { for (let x = base[k][0]; x <= XS; x += 5) road.push([x, yAt(ridge[k], x), k]); });
+  const plates = list.map((c) => {
+    const el = lab.querySelector(`.m7-plate[data-id="${c.n.id}"]`);
+    const size = () => ({ w: el.offsetWidth, h: el.offsetHeight, bw: el.clientLeft });
+    const full = size(); el.classList.add("is-mini"); const mini = size(); el.classList.remove("is-mini");
+    // 先摆正在爬的，再摆下一关、刚通关的，离现在越远越后
+    const d = LINES.find((l) => l.key === c.line).nodes.findIndex((x) => x.status === "doing");
+    const prio = c.i === d ? 0 : c.i === d + 1 ? 1 : c.i < d ? 1 + d - c.i : 2 + c.i - d;
+    return { el, id: c.n.id, c, full, mini, prio, side0: c.line === "ai" ? "up" : "down", canMini: c.n.status !== "doing", at: null };
+  }).sort((a, b) => a.prio - b.prio);
+  // 一个候选位置：标牌矩形 r + 引线 lead（营地到标牌的竖线）
+  const spot = (p, side, mini, l, dy, cost) => {
+    const { w, h } = mini ? p.mini : p.full, { x, y } = p.c;
+    const t = side === "down" ? y + 12 + dy : y - 45 - h - dy;
+    return { side, mini, l, t, w, h, cost, r: { l, t, r: l + w, b: t + h }, lead: side === "down" ? { l: x - 1, r: x + 1, t: y + 3, b: t } : { l: x - 1, r: x + 1, t: t + h, b: y - 37 } };
+  };
+  const spots = (p) => {
+    const out = [];
+    for (const mini of p.canMini ? [false, true] : [false]) for (const side of [p.side0, p.side0 === "up" ? "down" : "up"]) {
+      const w = (mini ? p.mini : p.full).w, lo = p.c.x - w + 10, hi = p.c.x - 10;
+      for (let dy = 0; dy <= 56; dy += 8) for (let k = 0; ; k++) {
+        const l = side === "down" ? hi - 8 * k : lo + 8 * k;
+        if (l < lo || l > hi) break;
+        out.push(spot(p, side, mini, l, dy, 8 * k + 2 * dy + (side === p.side0 ? 0 : 90) + (mini ? (p.prio === 1 ? 360 : 160) : 0)));
+      }
+    }
+    return out;
+  };
+  const score = (p, s, others) => {
+    const { r, lead } = s;
+    if (r.l < 8 || r.r > W - 8 || r.t < 70 || r.b > yg - 8) return Infinity;
+    let bad = fixed.filter((o) => o.id !== p.id && (hit(r, o, o.m) || hit(lead, o))).length;
+    if (road.some(([x, y, k]) => !(k === p.c.line && Math.abs(x - p.c.x) < 22) && x > r.l - 5 && x < r.r + 5 && y > r.t - 5 && y < r.b + 5)) bad++;
+    others.forEach((q) => { if (hit(r, q.at.r, 4) || hit(lead, q.at.r, 1) || hit(r, q.at.lead, 1)) bad++; });
+    return s.cost + bad * 1000;
+  };
+  for (let round = 0; round < 5; round++) {
+    let moved = false;
+    plates.forEach((p) => {
+      const others = plates.filter((q) => q !== p && q.at);
+      let best = p.at, bs = p.at ? score(p, p.at, others) : Infinity;
+      spots(p).forEach((s) => { const v = score(p, s, others); if (v < bs) { bs = v; best = s; } });
+      if (!best) best = spot(p, p.side0, false, p.side0 === "down" ? p.c.x - 10 : p.c.x + 10 - p.full.w, 0, 0);
+      if (best !== p.at) { p.at = best; moved = true; }
+    });
+    if (!moved) break;
+  }
+  plates.forEach((p) => {
+    const a = p.at, f = p.full;
+    p.peek = a.mini ? { ...a, mini: false, w: f.w, h: f.h, l: Math.min(a.l, W - 8 - f.w), t: a.side === "down" ? a.t : a.t + a.h - f.h } : a;
+    putPlate(p, a);
+  });
+  // 绳桥说明（悬停才出现）：沿弧线从中点往两头试，避开标牌、营地、登山者和别的字；都不行就挑压得最少的
+  const busy = [...fixed, ...plates.map((p) => p.at.r)];
+  lab.querySelectorAll(".m7-rope-label").forEach((el) => {
+    el.classList.add("on");
+    const w = el.offsetWidth, h = el.offsetHeight;
+    el.classList.remove("on");
+    const opts = el.dataset.pts.split(";").map((s) => s.split(",").map(Number))
+      .flatMap(([x, y]) => [[x - w / 2, y + 6], [x - w / 2, y - h - 6], [x + 12, y - h / 2], [x - w - 12, y - h / 2]])
+      .map(([l, t]) => ({ l, t, r: l + w, b: t + h })).filter((o) => o.l >= 8 && o.r <= W - 8 && o.t >= 70 && o.b <= yg - 4);
+    const cost = (o) => busy.filter((q) => hit(o, q, 3)).length;
+    const r = opts.find((o) => !cost(o)) || opts.reduce((a, b) => (cost(b) < cost(a) ? b : a));
+    el.style.left = `${r.l}px`;
+    el.style.top = `${r.t}px`;
+  });
+  return plates;
+}
+// 把标牌放到某个位置：引线从营地竖直连到标牌边上（--lx 横向位置，--lh 长度）
+function putPlate(p, a) {
+  const { el, c } = p, bw = (a.mini ? p.mini : p.full).bw;
+  const lh = a.side === "down" ? a.t - (c.y + 3) : c.y - 37 - (a.t + a.h);
+  el.classList.toggle("is-mini", a.mini);
+  el.classList.toggle("is-up", a.side === "up");
+  el.classList.toggle("is-down", a.side === "down");
+  el.style.left = `${a.l}px`;
+  el.style.top = `${a.t}px`;
+  el.style.setProperty("--lx", `${c.x - a.l - bw - 1}px`);
+  el.style.setProperty("--lh", `${lh}px`);
+  el.style.setProperty("--lt", `${-(bw + lh)}px`);
+}
+
+function layout() {
+  seed = 7;
+  const W = root.clientWidth, H = root.clientHeight;
+  const RB = 46, yg = H - RB;
+  const X1 = 170, XS = W - 156, X24 = XS - 92;
+  const xw = (w) => X1 + (w / 24) * (X24 - X1);
+  const [biz, ai] = LINES;
+  // 营地高度：1440×900 时相邻营地上下差约 65px，完整标牌刚好错开
+  const yF = (i) => yg - 104 - i * ((yg - 104 - 290) / (biz.nodes.length - 1));
+  const yB = (i) => yg - 280 - i * ((yg - 280 - 190) / (ai.nodes.length - 1));
+  const summit = [XS, 118];
+  const camps = {
+    biz: biz.nodes.map((n, i) => ({ n, i, x: xw(n.week[1]), y: yF(i), line: "biz" })),
+    ai: ai.nodes.map((n, i) => ({ n, i, x: xw(n.week[1]), y: yB(i), line: "ai" })),
+  };
+  const base = { biz: [X1 - 24, yg - 62], ai: [X1 - 24, yg - 250] };
+  // 山脊 = 山脚 + 路线 + 山顶另一侧。路线在大本营和每个营地处走一段平台，平台之间只在宽坡上加缓起伏
+  const flat = ([x, y], w) => [[x - w, y], [x + w, y]];
+  const ridgeOf = (k, foot, tail) => {
+    const trail = [...flat(base[k], 16), ...camps[k].flatMap((c) => flat([c.x, c.y], LEDGE)), summit];
+    return [...crest([foot, trail[0]]).slice(0, -1), ...crest(trail, { min: 100, amp: 0.45 }), ...crest([summit, ...tail]).slice(1)];
+  };
+  const ridge = { biz: ridgeOf("biz", [0, yg - 28], [[XS + 70, 250], [W, 330]]), ai: ridgeOf("ai", [0, yg - 220], [[XS + 60, 190], [W, 250]]) };
+  const XE = XS - 22;   // 路线画到雪线为止，山顶只留旗子和雪
+  const far = crest([[0, 330], [W * 0.18, 250], [W * 0.36, 300], [W * 0.55, 220], [W * 0.74, 280], [W, 230]]);
+  const xNow = xw(NOW_W);
+  const sun = [xNow, 132];
+  // 现在在哪：在途的关按今天在计划周期里的位置；超期的停在营地前
+  const me = {};
+  ["biz", "ai"].forEach((k) => {
+    const c = camps[k].find((x) => x.n.status === "doing");
+    me[k] = { c, x: isLate(c.n) ? c.x - 34 : Math.min(c.x - 34, xNow) };
+  });
+  G = { W, H, yg, xw, camps, base, ridge, XS, XE, summit };
+
+  let s = `<defs>${pattern("pFar", 3, GRAY)}${[1, 2, 4, 6].map((t, k) => pattern(`pB${k + 1}`, t, "#AEB3BB")).join("")}${[1, 2, 3, 4, 6].map((t, k) => pattern(`pF${k + 1}`, t, INK)).join("")}${pattern("pSun", 5, SIGNAL, 2)}</defs>`;
+
+  // 天空：太阳（= 今天）、云、鸟
+  s += `<circle cx="${sun[0]}" cy="${sun[1]}" r="40" fill="url(#pSun)"/><circle cx="${sun[0]}" cy="${sun[1]}" r="22" fill="${SIGNAL}"/>`;
+  s += cloud(xw(1.2), 112, 4) + cloud(xw(11.6), 96, 4) + cloud(xw(16.2), 128, 3);
+  [[xNow - 92, 104], [xNow - 74, 116], [xw(13.6), 160]].forEach(([x, y]) => (s += sprite(["#...#", ".#.#."], x, y, 3, INK)));
+  // 山：远山 → 后山（AI）→ 前山（业务），越往下网点越密
+  s += `<path d="${poly(far)}L${W} ${yg}L0 ${yg}Z" fill="url(#pFar)"/>`;
+  const bands = (id, pts, ids) => {
+    let g = `<clipPath id="c${id}"><path d="${poly(pts)}L${W} ${yg}L0 ${yg}Z"/></clipPath><path d="${poly(pts)}L${W} ${yg}L0 ${yg}Z" fill="${PANEL}"/><g clip-path="url(#c${id})">`;
+    const h = (yg - 120) / ids.length;
+    ids.forEach((pid, k) => (g += `<rect x="0" y="${120 + k * h}" width="${W}" height="${h + 1}" fill="url(#${pid})"/>`));
+    return g + "</g>";
+  };
+  s += bands("B", ridge.ai, ["pB1", "pB2", "pB3", "pB4"]) + `<path d="${poly(ridge.ai)}" fill="none" stroke="${MUTED}" stroke-width="1.5"/>`;
+  s += bands("F", ridge.biz, ["pF1", "pF2", "pF3", "pF4", "pF5"]) + `<path d="${poly(ridge.biz)}" fill="none" stroke="${INK}" stroke-width="2"/>`;
+  // 山顶积雪：沿山顶轮廓往下 16px，下沿锯齿
+  const top = (x) => Math.min(yAt(ridge.biz, x), yAt(ridge.ai, x));
+  const snowTop = [], snowBot = [];
+  for (let x = XS - 34; x <= XS + 30; x += 2) {
+    const t = top(x), d = Math.max(0, 16 * (1 - Math.abs(x - XS) / 34)) + ((x / 2) % 3 === 0 ? 3 : 0);
+    snowTop.push([x, t]); snowBot.unshift([x, t + d]);
+  }
+  s += `<path d="${poly([...snowTop, ...snowBot])}Z" fill="${PANEL}" stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/>`;
+  // 山脚松树：标牌摆好后再种
+  s += `<g id="pines"></g>`;
+
+  // 路：已爬过的实线，没爬的虚线（终点都是山顶）
+  ["ai", "biz"].forEach((k) => {
+    const pts = ridge[k], c = LCOLOR[k];
+    s += `<path d="${poly(clip(pts, me[k].x, XE))}" fill="none" stroke="${c}" stroke-width="3" stroke-dasharray="7 6"/><path d="${poly(clip(pts, base[k][0], me[k].x))}" fill="none" stroke="${c}" stroke-width="5" stroke-linejoin="round"/>`;
+  });
+  // 高亮层（悬停或打开的那一段坡）
+  s += `<g id="hl"></g>`;
+
+  // 今天：从太阳垂到地面
+  s += `<line x1="${xNow}" y1="${sun[1] + 26}" x2="${xNow}" y2="${yg}" stroke="${SIGNAL}" stroke-width="2" stroke-dasharray="2 5"/>`;
+
+  // 绳桥（跨线依赖）：平时淡，悬停相关营地时加深；从平台边上、线的下方出发，弧度挑一个不穿过别的营地的
+  const campOf = (id) => [...camps.biz, ...camps.ai].find((c) => c.n.id === id);
+  const campBoxes = [...camps.biz, ...camps.ai].map((c) => ({ id: c.n.id, l: c.x - 18, t: c.y - 38, r: c.x + 18, b: c.y + 4 }));
+  const ropeLabels = [];
+  LINKS.forEach(([from, to]) => {
+    const a = campOf(from), b = campOf(to), d = Math.sign(b.x - a.x) || 1;
+    const ax = a.x + d * (LEDGE + 2), ay = a.y + 4, bx = b.x - d * (LEDGE + 2), by = b.y + 4, mx = (ax + bx) / 2;
+    const at = (my, t) => [(1 - t) ** 2 * ax + 2 * (1 - t) * t * mx + t * t * bx, (1 - t) ** 2 * ay + 2 * (1 - t) * t * my + t * t * by];
+    const clear = (my) => !campBoxes.some((o) => o.id !== from && o.id !== to && Array.from({ length: 41 }, (_, i) => at(my, i / 40)).some(([x, y]) => x > o.l && x < o.r && y > o.t && y < o.b));
+    const my = [36, 60, 84, 12, -12].map((k) => (ay + by) / 2 + k).find(clear) ?? (ay + by) / 2 + 36;
+    s += `<path class="rope" data-a="${from}" data-b="${to}" d="M${ax} ${ay}Q${mx} ${my} ${bx} ${by}" fill="none" stroke-dasharray="1 4" stroke-linecap="round"/>`;
+    ropeLabels.push({ from, to, pts: [0.5, 0.35, 0.65, 0.2, 0.8].map((t) => at(my, t).map(Math.round)) });
+  });
+
+  // 营地
+  const drawCamp = ({ n, x, y, line }) => {
+    const color = LCOLOR[line];
+    let g;
+    // 图标立在平台上：底边离线 5px，带白边
+    if (n.status === "done") g = stamp(FLAG, x - 12, y - 33, 4, color);
+    else if (n.status === "doing") g = `<rect x="${x - 15}" y="${y - 33}" width="30" height="28" fill="${PANEL}" stroke="${SIGNAL}" stroke-width="2" stroke-dasharray="4 3"/>` + sprite(TENT, x - 10.5, y - 29, 3, SIGNAL);
+    else g = n.boss ? stamp(KEEP, x - 10.5, y - 20, 3, INK) : stamp(TENT, x - 10.5, y - 26, 3, "#9CA0A8");
+    s += `<g class="hit camp" data-id="${n.id}">${g}<rect x="${x - 18}" y="${y - 36}" width="36" height="41" fill="transparent"/></g>`;
+  };
+  camps.ai.forEach(drawCamp);
+  camps.biz.forEach(drawCamp);
+  // 大本营（两座山各一顶）、山顶旗
+  ["biz", "ai"].forEach((k) => (s += `<g class="hit" data-raw="base">${stamp(TENT, base[k][0] - 14, base[k][1] - 33, 4, k === "biz" ? INK : BLUE)}<rect x="${base[k][0] - 18}" y="${base[k][1] - 36}" width="36" height="36" fill="transparent"/></g>`));
+  s += `<g class="hit" data-raw="summit">${sprite(FLAG, summit[0] - 2, summit[1] - 46, 6, SIGNAL)}<rect x="${summit[0] - 10}" y="${summit[1] - 4}" width="20" height="6" fill="${INK}"/><rect x="${summit[0] - 12}" y="${summit[1] - 50}" width="54" height="56" fill="transparent"/></g>`;
+  // 登山者（按帧挥手）
+  ["biz", "ai"].forEach((k) => { const y = yAt(ridge[k], me[k].x); s += `<g class="m7-climber" data-x="${me[k].x}" data-y="${y}">${stamp(CLIMB[0], me[k].x - 14, y - 41, 4, SIGNAL)}</g>`; });
+
+  // 地平线：月份、周次、营地刻度
+  s += `<rect x="0" y="${yg}" width="${W}" height="${RB}" fill="${INK}"/>`;
+  MONTH_MARKS.forEach((m) => { const x = xw(m.w); if (x < X24 + 1) s += `<line x1="${x}" y1="${yg}" x2="${x}" y2="${yg + 16}" stroke="${PANEL}" stroke-width="2"/><text x="${x + 6}" y="${yg + 14}" font-family="Geist Mono" font-size="10" fill="#9CA0A8">${m.name}</text>`; });
+  for (let w = 1; w <= 24; w++) {
+    const a = xw(w - 1), b = xw(w), cur = w === SEASON.week;
+    if (cur) s += `<rect x="${a}" y="${yg + 20}" width="${b - a}" height="${RB - 20}" fill="${SIGNAL}"/>`;
+    s += `<text x="${(a + b) / 2}" y="${yg + 37}" text-anchor="middle" font-family="Geist Mono" font-size="10" fill="${cur ? PANEL : "#C9CCD3"}">W${w}</text>`;
+  }
+  [...camps.biz, ...camps.ai].forEach(({ x, line }) => (s += `<path d="M${x - 5} ${yg + 1}L${x + 5} ${yg + 1}L${x} ${yg + 8}Z" fill="${line === "biz" ? PANEL : "#7FA4F5"}"/>`));
+
+  const svg = document.getElementById("svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+
+  /* ---------- 叠在图上的文字：先排版量尺寸，再摆位置 ---------- */
+  const lab = document.getElementById("labels");
+  lab.innerHTML = [...camps.biz, ...camps.ai].map(({ n, line }) => {
+    const late = isLate(n);
+    const sc = n.status === "done" ? `${n.score} 分 ${starRow(n)}· ${n.at} 通关` : late ? `${n.score} 分 · 超期 ${lateWeeks(n)} 周` : n.status === "doing" ? `${n.score} 分 · 差 ${PASS - n.score} 分通关` : scoreLine(n);
+    return `<div class="m7-plate is-${n.status}${line === "ai" ? " is-ai" : ""}${late ? " is-late" : ""}" data-id="${n.id}">
+      <span class="meta">${tagOf(n.id)}${n.stage} · W${n.week[0]}–${n.week[1]}</span><strong>${n.boss ? icon("crown") + " " : ""}${n.title}</strong><span class="sc">${n.status === "locked" ? icon("lock") : ""}${sc}</span>
+      <span class="mini">${tagOf(n.id)}${n.boss ? icon("crown") : n.status === "locked" ? icon("lock") : ""}${n.stage}${n.status === "done" ? starRow(n) : ""}</span></div>`;
+  }).join("");
+  const doing = { biz: me.biz.c.n, ai: me.ai.c.n };
+  const pct = (n) => Math.max(0, Math.min(1, (NOW_W - (n.week[0] - 1)) / (n.week[1] - n.week[0] + 1)));
+  const meter = (n) => { const k = isLate(n) ? 10 : Math.round(pct(n) * 10); return `<span class="meter ${isLate(n) ? "is-late" : ""}">${Array.from({ length: 10 }, (_, j) => `<i class="${j < k ? "on" : ""}"></i>`).join("")}</span>`; };
+  const legendItem = (svgInner, w, h, text) => `<span><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges">${svgInner}</svg>${text}</span>`;
+  lab.insertAdjacentHTML("beforeend", `
+    <span class="m7-ridge" style="left:24px;top:${base.biz[1] - 22}px">前山 · 业务线</span>
+    <span class="m7-ridge is-ai" style="left:24px;top:${base.ai[1] - 22}px">后山 · AI 线</span>
+    <div class="m7-today" style="left:${sun[0] + 48}px;top:${sun[1] - 16}px"><b>今天 ${md(TODAY)}</b><span>第 ${SEASON.week} 周 · 太阳走到哪，就是哪一周</span></div>
+    <div class="m7-summit" data-raw="summit" style="left:${summit[0] + 24}px;top:${summit[1] + 10}px"><strong>山顶 · 结业</strong><span>B7 + A6 通关后</span></div>
+    ${["biz", "ai"].filter((k) => isLate(doing[k])).map((k) => `<span class="m7-late" data-k="${k}">超期 ${lateWeeks(doing[k])} 周</span>`).join("")}
+    ${ropeLabels.map((r) => `<span class="m7-rope-label" data-a="${r.from}" data-b="${r.to}" data-pts="${r.pts.join(";")}">绳桥 ${r.from} ${linkNote(r.from, r.to)} → ${r.to}</span>`).join("")}
+    <div class="m7-week">
+      <div class="m7-week-head"><b>本周攀登</b><span>W${SEASON.week} · ${weekStart(SEASON.week)} 至 ${weekEnd(SEASON.week)} · 距山顶 ${SEASON.weeks - SEASON.week} 周</span></div>
+      ${["biz", "ai"].map((k) => { const n = doing[k], l = LINES.find((x) => x.key === k), late = isLate(n);
+        return `<button type="button" class="m7-row" data-id="${n.id}"><i style="background:${LCOLOR[k]}"></i><span>
+          <span class="l1"><strong>${MOUNT[k]} · ${LNAME[k]}</strong><span>${doneCount(l)}/${l.nodes.length} 营地 · ★${lineStars(l)}</span></span>
+          <span class="l2">${late ? `卡在营地 ${l.nodes.indexOf(n) + 1} 前` : `正在爬第 ${l.nodes.indexOf(n) + 1} 段坡`} · ${n.title}<span class="spacer"></span>${meter(n)}</span>
+          <span class="l2"><b>${n.score} 分</b>差 ${PASS - n.score} 分通关 · ${late ? `<span class="risk">计划 W${n.week[1]} 结束，已超期 ${lateWeeks(n)} 周</span>` : `坡上 ${Math.round(pct(n) * 100)}% · W${n.week[1]} 截止`}</span></span></button>`; }).join("")}
+      <div class="m7-legend">
+        ${legendItem(sprite(FLAG, 0, 0, 2, INK), 14, 14, "已通关")}
+        ${legendItem(sprite(TENT, 0, 0, 2, SIGNAL), 14, 14, "正在爬")}
+        ${legendItem(sprite(TENT, 0, 0, 2, "#9CA0A8"), 14, 14, "未解锁")}
+        ${legendItem(sprite(KEEP, 0, 0, 2, INK), 14, 14, "BOSS 关")}
+        ${legendItem(`<line x1="0" y1="7" x2="22" y2="7" stroke="${INK}" stroke-width="2" stroke-dasharray="1 4" stroke-linecap="round"/>`, 22, 14, "绳桥 = 跨线依赖")}
+      </div>
+    </div>`);
+  // 「本周攀登」卡按实际高度摆：底边离地平线 14px，不压时间轴
+  const week = lab.querySelector(".m7-week");
+  const cardX = W - 24 - week.offsetWidth;
+  week.style.left = `${cardX}px`;
+  week.style.top = `${yg - 14 - week.offsetHeight}px`;
+  // 超期小牌挂在登山者脚下（线的下方），不压营地
+  lab.querySelectorAll(".m7-late").forEach((el) => {
+    const k = el.dataset.k, l = me[k].x - 10;
+    let low = 0;
+    for (let x = l; x <= l + el.offsetWidth; x += 4) low = Math.max(low, yAt(ridge[k], x));
+    el.style.left = `${l}px`;
+    el.style.top = `${low + 7}px`;
+  });
+  G.plates = placePlates(lab, { W, yg, list: [...camps.biz, ...camps.ai], base, ridge, sun, summit, me, XS });
+  let pines = "";
+  for (let x = 18; x < W - 16; x += 30 + Math.round(rnd() * 22)) {
+    const bad = G.plates.some(({ at: { r } }) => x + 15 > r.l && x < r.r && r.b > yg - 24) || x + 15 > cardX - 6 || Math.abs(x - base.biz[0]) < 30;
+    if (!bad) pines += sprite(PINE, x, yg - 21, 3, INK);
+  }
+  document.getElementById("pines").innerHTML = pines;
+
+  // 交互：点开、悬停高亮
+  const bind = (el, id) => { el.onmouseenter = () => highlight(id); el.onmouseleave = () => highlight(selected); };
+  lab.querySelectorAll(".m7-plate, .m7-row").forEach((el) => { el.onclick = () => drawer.open(byId(el.dataset.id)); bind(el, el.dataset.id); });
+  svg.querySelectorAll(".camp").forEach((g) => { g.onclick = () => drawer.open(byId(g.dataset.id)); bind(g, g.dataset.id); });
+  [...svg.querySelectorAll("[data-raw]"), ...lab.querySelectorAll("[data-raw]")].forEach((el) => { el.onclick = () => openRaw(el.dataset.raw); bind(el, el.dataset.raw); });
+  highlight(selected ?? pinned);
+}
+
+// 高亮一段坡（上一营地 → 这一营地）和与它相关的绳桥
+function highlight(id) {
+  if (!G) return;
+  const hl = document.getElementById("hl");
+  let s = "";
+  document.querySelectorAll(".m7-plate, .m7-summit").forEach((p) => p.classList.toggle("is-hl", !!id && (p.dataset.id === id || p.dataset.raw === id)));
+  // 小牌：悬停或打开时展开成完整标牌
+  G.plates.forEach((p) => {
+    const on = p.at.mini && p.id === id;
+    if (on === p.el.classList.contains("is-peek")) return;
+    p.el.classList.toggle("is-peek", on);
+    putPlate(p, on ? p.peek : p.at);
+  });
+  if (id === "summit") {
+    ["biz", "ai"].forEach((k) => { const last = G.camps[k].at(-1); const seg = poly(clip(G.ridge[k], last.x, G.XE)); s += `<path d="${seg}" fill="none" stroke="${PANEL}" stroke-width="11" stroke-linecap="round"/><path d="${seg}" fill="none" stroke="${SIGNAL}" stroke-width="4" stroke-linecap="round"/>`; });
+  } else if (id && id !== "base") {
+    const c = [...G.camps.biz, ...G.camps.ai].find((x) => x.n.id === id);
+    const x0 = c.i ? G.camps[c.line][c.i - 1].x : G.base[c.line][0];
+    const seg = poly(clip(G.ridge[c.line], x0, c.x));
+    s += `<path d="${seg}" fill="none" stroke="${PANEL}" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/><path d="${seg}" fill="none" stroke="${SIGNAL}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  hl.innerHTML = s;
+  document.querySelectorAll(".rope, .m7-rope-label").forEach((r) => r.classList.toggle("on", !!id && (r.dataset.a === id || r.dataset.b === id)));
+}
+
+/* ---------- 营地日志（抽屉） ---------- */
+function campBlock(n) {
+  const l = lineOf(n), i = l.nodes.findIndex((x) => x.id === n.id), prev = l.nodes[i - 1], next = l.nodes[i + 1];
+  const weeks = Array.from({ length: n.week[1] - n.week[0] + 1 }, (_, k) => n.week[0] + k);
+  const late = isLate(n);
+  const pct = Math.round(Math.max(0, Math.min(1, (NOW_W - (n.week[0] - 1)) / weeks.length)) * 100);
+  const cell = (w) => n.status === "done" ? "past" : n.status === "locked" ? "" : late ? "late" : w < SEASON.week ? "past" : w === SEASON.week ? "now" : "";
+  const txt = n.status === "done" ? `${n.at} 通关 · 这段坡已经爬完` : late ? `<span class="risk">计划 W${n.week[1]} 结束，已超期 ${lateWeeks(n)} 周</span>，还差 ${PASS - n.score} 分` : n.status === "doing" ? `今天走到这段坡的 <b>${pct}%</b>，还差 ${PASS - n.score} 分，W${n.week[1]} 截止` : `还没到 · W${n.week[0]} 开始`;
+  const ico = n.status === "done" ? spriteSvg(FLAG, 4, l.key === "biz" ? INK : BLUE) : spriteSvg(n.boss ? KEEP : TENT, 4, n.status === "doing" ? SIGNAL : n.boss ? INK : "#9CA0A8");
+  return `<div class="m7-camp">
+    <div class="m7-camp-top"><span class="m7-camp-ico">${ico}</span><span class="m7-camp-name"><b>营地 ${i + 1} / ${l.nodes.length} · ${n.stage}</b><span>${MOUNT[l.key]}（${LNAME[l.key]}）· 第 ${i + 1} 段坡</span></span><span class="spacer"></span>
+      <button type="button" class="btn m7-nav" data-go="${prev?.id ?? ""}" ${prev ? "" : "disabled"} title="上一营地（←）">${icon("left")}${prev ? `营地 ${i}` : "起点"}</button>
+      <button type="button" class="btn m7-nav" data-go="${next?.id ?? ""}" ${next ? "" : "disabled"} title="下一营地（→）">${next ? `营地 ${i + 2}` : "山顶"}${icon("right")}</button></div>
+    <div class="m7-slope" style="--n:${weeks.length}">
+      <div class="cells">${weeks.map((w) => `<i class="${cell(w)}"></i>`).join("")}</div>
+      <div class="wk">${weeks.map((w) => `<span>W${w}</span>`).join("")}</div>
+      <div class="txt">${weekStart(n.week[0])} 至 ${weekEnd(n.week[1])} · ${txt}</div>
+    </div></div>`;
+}
+const drawer = makeDrawer(root, { head: (n) => `${icon("flag")}营地日志 · ${tagOf(n.id)} ${n.stage}`, extra: campBlock });
+drawer.el.addEventListener("click", (e) => { const b = e.target.closest(".m7-nav"); if (b && b.dataset.go) drawer.open(byId(b.dataset.go)); });
+root.addEventListener("drawer", (e) => { selected = e.detail; highlight(selected); });
+addEventListener("keydown", (e) => {
+  if (!drawer.isOpen() || !selected || selected === "summit" || selected === "base") return;
+  const n = byId(selected), l = lineOf(n), i = l.nodes.findIndex((x) => x.id === n.id);
+  const to = e.key === "ArrowLeft" ? l.nodes[i - 1] : e.key === "ArrowRight" ? l.nodes[i + 1] : null;
+  if (to) drawer.open(byId(to.id));
+});
+
+function openRaw(kind) {
+  const [biz, ai] = LINES;
+  if (kind === "summit") {
+    const req = (n) => `<li>${tagOf(n.id)}<span><b>${n.title}</b><br><span class="small muted">${n.status === "locked" ? `未解锁 · 需 ${unlockText(n)}` : `${n.score} 分`}</span></span></li>`;
+    drawer.openRaw(`${icon("flag")}山顶 · 结业`, `<div class="m7-raw">
+      <div class="m7-camp"><div class="m7-camp-top"><span class="m7-camp-ico">${spriteSvg(FLAG, 4, SIGNAL)}</span><span class="m7-camp-name"><b>山顶 · 结业（项目助理）</b><span>W24 · ${weekStart(24)} 至 ${weekEnd(24)} · 还有 ${SEASON.weeks - SEASON.week} 周</span></span></div></div>
+      <section class="mp-sec"><span class="label">登顶条件 · 两条线的最后一关都达到 ${PASS} 分</span><ul class="m7-list">${req(biz.nodes.at(-1))}${req(ai.nodes.at(-1))}</ul></section>
+      <section class="mp-sec"><span class="label">到目前为止 · 已通关 / 均分 / 星</span><table class="mp-rubric"><tbody>
+        <tr><td>前山 · 业务线</td><td class="tnum muted">${doneCount(biz)}/${biz.nodes.length}</td><td class="tnum">${avg(biz)}</td><td class="tnum">★${lineStars(biz)}</td></tr>
+        <tr><td>后山 · AI 线</td><td class="tnum muted">${doneCount(ai)}/${ai.nodes.length}</td><td class="tnum">${avg(ai)}</td><td class="tnum">★${lineStars(ai)}</td></tr>
+      </tbody><tfoot><tr><td>合计</td><td class="tnum muted">${doneCount(biz) + doneCount(ai)}/${biz.nodes.length + ai.nodes.length}</td><td class="tnum"></td><td class="tnum">★${lineStars(biz) + lineStars(ai)}</td></tr></tfoot></table></section>
+      <section class="mp-sec"><span class="label">结业时看什么（示例，可改）</span><p>两条线的营地均分与星数，加上 B7、A6 的复盘文档；由常浩评定是否晋级「项目助理」。</p></section></div>`, "summit");
+  } else {
+    drawer.openRaw(`${icon("flag")}大本营 · 规则`, `<div class="m7-raw">
+      <div class="m7-camp"><div class="m7-camp-top"><span class="m7-camp-ico">${spriteSvg(TENT, 4, INK)}</span><span class="m7-camp-name"><b>大本营 · 09-01 入职</b><span>两条线同时出发 · 24 周 · 评分人 常浩</span></span></div></div>
+      <section class="mp-sec"><span class="label">怎么通关</span><ul class="m7-list">
+        <li>${icon("check")}<span>每关 3 项加权评分，满分 100，<b>${PASS} 分通关</b>；≥80 两星、≥90 三星。</span></li>
+        <li>${icon("lock")}<span>上一关通关后解锁下一关；有跨线依赖的，还要拿到另一条线那一关的产出。</span></li>
+        <li>${icon("edit")}<span>评分人是常浩；管培生交产出后在营地日志里评分，初稿可以先给暂评。</span></li></ul></section>
+      <section class="mp-sec"><span class="label">怎么看这张图</span><ul class="m7-list">
+        <li>${icon("route")}<span>一段坡 = 一关，坡顶的营地 = 通关点；越往右越高 = 越难。</span></li>
+        <li>${icon("clock")}<span>太阳 = 今天，橙色虚线从太阳垂到地面；营地的位置 = 那一关计划结束的周。</span></li>
+        <li>${icon("flag")}<span>登山者 = 现在在哪；太阳已经过了营地、人还在营地前 = 超期。</span></li>
+        <li>${icon("link")}<span>绳桥 = 跨线依赖：B3 访谈纪要 → A3；A4 进度自动化表 → B5；B5 上线的项目 → A6。</span></li></ul></section></div>`, "base");
+  }
+}
+
+// 登山者两帧交替（约 2 次/秒）
+let frame = 0;
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setInterval(() => {
+  frame = (frame + 1) % 2;
+  document.querySelectorAll(".m7-climber").forEach((g) => { const x = +g.dataset.x, y = +g.dataset.y; g.innerHTML = stamp(CLIMB[frame], x - 14, y - 41, 4, SIGNAL); });
+}, 1000 / 15 * 7);
+
+function start() {
+  layout();
+  const h = location.hash.slice(1);
+  if (h.startsWith("open=")) { const k = h.slice(5); if (k === "summit" || k === "base") openRaw(k); else drawer.open(byId(k)); }
+  if (h.startsWith("hover=")) highlight((pinned = h.slice(6)));
+}
+if (document.readyState === "complete") start(); else addEventListener("load", start);
+addEventListener("resize", layout);
+</script>
+</body>
+</html>

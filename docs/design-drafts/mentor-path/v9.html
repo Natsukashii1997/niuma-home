@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V9 1-bit 世界地图 · 培养路径</title>
+<link rel="stylesheet" href="../../../src/styles.css">
+<link rel="stylesheet" href="../../../src/styles-v3.css">
+<link rel="stylesheet" href="../../../src/styles-layout.css">
+<link rel="stylesheet" href="_shared/draft.css">
+<link rel="stylesheet" href="_shared/stage.css">
+<style>
+/* V9 1-bit 世界地图：像掌机游戏的大地图。上面是业务大陆（森林、群山），下面是 AI 大陆（电路田），中间一条河；
+   关卡是路上的圆点，BOSS 关是城堡；跨线依赖是过河的桥；今天以后的地方盖着迷雾。地图按 1/4 分辨率画、放大 4 倍，只用墨色 + 一点橙。 */
+.m9 { position: absolute; inset: 0; background: var(--panel); }
+.m9-world { position: absolute; left: 0; top: 0; image-rendering: pixelated; }
+.m9-sprite { position: absolute; image-rendering: pixelated; pointer-events: none; }
+.m9 .stg-head { background: transparent; pointer-events: none; }
+.m9 .stg-head > * { pointer-events: auto; }
+.m9 .stg-crumb, .m9 .stg-kpis { padding: 6px 12px; background: var(--panel); border: 2px solid var(--text); }
+.m9 .stg-people { border: 2px solid var(--text); }
+.m9-hit { position: absolute; width: 56px; height: 56px; margin: -28px 0 0 -28px; cursor: pointer; }
+.m9-plate { position: absolute; width: 172px; display: flex; flex-direction: column; gap: 1px; padding: 5px 9px 6px; background: var(--panel); border: 2px solid var(--text); cursor: pointer;
+  clip-path: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px)); }
+.m9-plate .meta { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em; color: var(--muted); white-space: nowrap; }
+.m9-plate strong { font-size: 14px; line-height: 1.3; }
+.m9-plate .sc { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.m9-plate.is-doing { background: var(--text); color: var(--panel); }
+.m9-plate.is-doing .meta { color: #9CA0A8; }
+.m9-plate.is-doing .sc { color: var(--signal); font-weight: 600; }
+.m9-plate.is-late .sc { color: #FF8A6B; }
+.m9-plate.is-locked { border-style: dashed; }
+.m9-plate.is-locked strong { font-weight: 500; color: var(--text-2); }
+.m9-plate.is-locked .sc { color: var(--muted); }
+.m9-plate.is-sel { outline: 3px solid var(--signal); outline-offset: 2px; }
+.m9-code { display: inline-flex; align-items: center; height: 16px; padding: 0 4px; font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--panel); background: var(--text); }
+.m9-plate.is-doing .m9-code { background: var(--signal); }
+.m9-tag { position: absolute; padding: 0 5px; background: var(--panel); border: 2px solid var(--text); font-family: var(--font-mono); font-size: 10px; white-space: nowrap; }
+.m9-tag.is-risk { background: var(--risk); border-color: var(--risk); color: var(--panel); font-weight: 600; }
+.m9-land { position: absolute; padding: 2px 8px; background: var(--text); color: var(--panel); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; }
+/* 底部周次条（和地图的横坐标对齐） */
+.m9-time { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: var(--panel); border-top: 2px solid var(--text); }
+.m9-time .wk { position: absolute; top: 22px; height: 14px; border: 1px solid var(--text); background: var(--panel); }
+.m9-time .wk.is-past { background: var(--text); }
+.m9-time .wk.is-now { background: var(--signal); border-color: var(--signal); }
+.m9-time .lb { position: absolute; top: 38px; font-family: var(--font-mono); font-size: 10px; color: var(--muted); transform: translateX(-50%); }
+.m9-time .mo { position: absolute; top: 4px; font-family: var(--font-mono); font-size: 10px; color: var(--text); }
+.m9-time .big { position: absolute; left: 16px; top: 8px; display: flex; flex-direction: column; line-height: 1; }
+.m9-time .big b { font-family: var(--font-pixel); font-size: 26px; font-weight: 400; }
+.m9-time .big span { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.m9-legend { position: absolute; right: 24px; top: 72px; display: flex; gap: 14px; padding: 5px 10px; background: var(--panel); border: 2px solid var(--text); font-size: 12px; color: var(--text-2); }
+.m9-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.m9-legend canvas { image-rendering: pixelated; }
+/* 关卡对话框（像游戏里的文字框） */
+.m9-dialog { position: absolute; left: 16px; right: 16px; bottom: 16px; z-index: 30; height: 318px; display: flex; flex-direction: column; background: var(--panel); border: 4px solid var(--text);
+  clip-path: polygon(0 8px, 8px 8px, 8px 0, calc(100% - 8px) 0, calc(100% - 8px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 8px calc(100% - 8px), 0 calc(100% - 8px)); }
+.m9-dialog[hidden] { display: none; }
+.m9-dialog-head { flex: none; display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 12px 0 18px; background: var(--text); color: var(--panel); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; }
+.m9-dialog-head .stg-x { border-color: var(--panel); background: var(--text); color: var(--panel); width: 28px; height: 28px; }
+.m9-dialog-body { flex: 1; min-height: 0; overflow: auto; padding: 16px 20px; }
+.m9-dialog .mp-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 0.9fr) minmax(0, 1.2fr); gap: 0 24px; align-items: start; }
+.m9-dialog .mp-detail-head { grid-column: 1 / -1; margin-bottom: 12px; padding-bottom: 12px; }
+.m9-dialog .mp-sec-pair { display: contents; }
+.m9-dialog .mp-actions { grid-column: 1 / -1; margin-top: 12px; padding-top: 12px; }
+.m9-dialog .stg-note { grid-column: 1 / -1; }
+.m9-dialog .mp-sec p .cur { display: inline-block; width: 8px; height: 14px; margin-left: 2px; vertical-align: -2px; background: var(--text); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { LINES, LINKS, SEASON, byId, doneCount, lineStars } from "./_shared/data.js";
+import { icon, starRow, detailHTML, frames } from "./_shared/draft.js";
+import { mountStage, stageHead, NOW_W, MONTH_MARKS, isLate, lateWeeks, linkNote, scoreLine, unlockText, prereqs } from "./_shared/stage.js";
+
+const stage = mountStage({ version: "V9 1-bit 世界地图" });
+stage.innerHTML = `<div class="m9" id="m9"><canvas class="m9-world" id="world"></canvas><div id="over"></div>${stageHead()}
+  <div class="m9-time" id="time"></div><div class="m9-legend" id="legend"></div>
+  <section class="m9-dialog" id="dialog" hidden><div class="m9-dialog-head"><span id="dlgTitle"></span><button type="button" class="stg-x" id="dlgX" aria-label="关闭">${icon("close")}</button></div><div class="m9-dialog-body" id="dlgBody"></div></section></div>`;
+const root = document.getElementById("m9");
+const S = 4; // 每个画布像素放大 4 倍
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+const bayer = (x, y) => BAYER[(y % 4) * 4 + (x % 4)];
+const hash = (x, y) => { let h = (x * 374761393 + y * 668265263) ^ 0x5bd1e995; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+
+// 像素小图：# 墨、o 白（挖空）、x 橙
+const SPR = {
+  dot: ["....####....", "..########..", ".##########.", ".##########.", "############", "############", "############", "############", ".##########.", ".##########.", "..########..", "....####...."],
+  star: ["..#..", ".###.", "#####", ".###.", ".#.#."],
+  ring: ["....####....", "..##....##..", ".#........#.", ".#........#.", "#..........#", "#..........#", "#..........#", "#..........#", ".#........#.", ".#........#.", "..##....##..", "....####...."],
+  tree: ["..###..", ".#####.", "##o####", "#####o#", ".#####.", "..###..", "...#...", "...#..."],
+  pine: ["...#...", "..###..", ".##o##.", "..###..", ".#####.", "###o###", "...#...", "...#..."],
+  mount: [".......#.......", "......###......", ".....##o##.....", "....##ooo##....", "...##o#o#o##...", "..##o#o#o#o##..", ".##o#o#o#o#o##.", "###############"],
+  chip: [".#.#.#.", "#######", "#ooooo#", "##o#o##", "#ooooo#", "#######", ".#.#.#."],
+  cloud: ["....####....", "..##oooo##..", ".#oooooooo#.", "#oooooooooo#", ".##########."],
+  village: ["...#......#.........", "..###....###........", ".#####..#####...#...", "##o#o#.##o#o#..###..", "#######.#####.#####.", "#o###o#.#o#o#.#o#o#.", "#######.#####.#####.", "####################"],
+  castle: ["#.#.......#.#.......", "###.......###...xx..", "###.#.#.#.###...x...", "###########.#.#.#...", "#o#########.......#.", "#o###oo####.#.#.#.#.", "#####oo####.#######.", "#####oo####.#o###o#.", "###########.#######.", "####################"],
+  tower: ["#.#.#", "#####", "#o#o#", "#####", ".###.", ".#o#.", ".###.", ".###.", "#####"],
+  keep: ["#.#.#.#", "#######", "#o###o#", "#######", "##ooo##", "##ooo##", "#######"],
+  lock: [".###.", "#...#", "#####", "##.##", "#####"],
+  bridge: ["#.....#", "#######", "#.....#", "#######", "#.....#", "#######", "#.....#", "#######", "#.....#", "#######", "#.....#", "#######", "#.....#", "#######"],
+};
+const PLAYER = [
+  ["..####..", ".######.", ".#o##o#.", ".######.", "..####..", ".xxxxxx.", "#.####.#", "#.####.#", "..####..", "..#..#..", "..#..#..", ".##..##."],
+  ["..####..", ".######.", ".#o##o#.", ".######.", "..####..", ".xxxxxxx", "#.####..", "#.####.#", "..####.#", "..#..#..", ".#...#..", ".##..##."],
+];
+const COLORS = { 0: [251, 251, 252], 1: [13, 14, 16], 2: [255, 79, 31] };
+
+let AW, AH, base, water, fogX;
+const W2 = () => root.clientWidth, H2 = () => root.clientHeight;
+const set = (b, x, y, v) => { x |= 0; y |= 0; if (x >= 0 && y >= 0 && x < AW && y < AH) b[y * AW + x] = v; };
+const get = (b, x, y) => (x < 0 || y < 0 || x >= AW || y >= AH ? 0 : b[(y | 0) * AW + (x | 0)]);
+const spr = (b, rows, x, y) => rows.forEach((r, j) => [...r].forEach((c, i) => { if (c === "#") set(b, x + i, y + j, 1); else if (c === "o") set(b, x + i, y + j, 0); else if (c === "x") set(b, x + i, y + j, 2); }));
+const cubic = (p0, p1, p2, p3, t) => { const u = 1 - t; return [u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0], u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1]]; };
+
+let nodesXY = {}, plates = [], players = [];
+function build() {
+  const W = W2(), H = H2();
+  AW = Math.floor(W / S); AH = Math.floor(H / S);
+  const RB = 66, RY = 108, RA = 146;           // 业务路、河、AI 路（画布坐标）
+  const X0 = 40, X1 = AW - 50;
+  const XA = (w) => X0 + (w / 24) * (X1 - X0);
+  fogX = Math.round(XA(NOW_W)) + 6;
+  base = new Uint8Array(AW * AH); water = new Uint8Array(AW * AH);
+  const reserve = new Uint8Array(AW * AH);   // 不长树的地方：路、关卡、标牌
+  const mark = (x0, y0, x1, y1) => { for (let y = Math.max(0, y0 | 0); y < Math.min(AH, y1); y++) for (let x = Math.max(0, x0 | 0); x < Math.min(AW, x1); x++) reserve[y * AW + x] = 1; };
+  const riverTop = (x) => RY - 7 + Math.round(2 * Math.sin(x / 16));
+  const riverBot = (x) => RY + 7 + Math.round(2 * Math.sin(x / 13 + 1));
+
+  // 关卡位置
+  const OFF = { biz: [4, -4, 5, -5, 3, -4, 0], ai: [-4, 4, -3, 5, -4, 0] };
+  nodesXY = {};
+  LINES.forEach((l) => l.nodes.forEach((n, i) => (nodesXY[n.id] = { x: Math.round(XA((n.week[0] - 1 + n.week[1]) / 2)), y: (l.key === "biz" ? RB : RA) + OFF[l.key][i], n, line: l.key, i })));
+  const V = [14, RY], C = [AW - 24, RY];
+
+  // 标牌先排（画布上要给它们让地方）
+  plates = [];
+  LINES.forEach((l) => {
+    let lastRight = -1e9, tier = 0;
+    l.nodes.forEach((n) => {
+      const p = nodesXY[n.id], sx = p.x * S, sy = p.y * S;
+      const w = 172, h = 62;
+      const left = Math.max(8, Math.min(W - w - 8, sx - w / 2));
+      tier = left < lastRight + 8 ? 1 - tier : 0;
+      lastRight = left + w;
+      const top = l.key === "biz" ? sy - 36 - h - tier * 66 : sy + 36 + tier * 66;
+      plates.push({ n, left, top, w, h });
+      mark(left / S - 2, top / S - 2, (left + w) / S + 2, (top + h) / S + 2);
+    });
+  });
+
+  // 路：已走过的实线（2 像素），没走到的点线
+  const roadPts = { biz: [], ai: [] };
+  const road = (p0, p3, solid, line, horiz = true) => {
+    const dx = p3[0] - p0[0];
+    const p1 = horiz ? [p0[0] + dx / 2, p0[1]] : [p0[0], p3[1]], p2 = horiz ? [p3[0] - dx / 2, p3[1]] : [p3[0] - 8, p3[1]];
+    const len = Math.hypot(dx, p3[1] - p0[1]) * 2 + 4;
+    for (let k = 0; k <= len; k++) {
+      const [x, y] = cubic(p0, p1, p2, p3, k / len);
+      mark(x - 3, y - 3, x + 4, y + 4);
+      if (line) roadPts[line].push([x, y, solid]);
+    }
+  };
+  LINES.forEach((l) => {
+    const y0 = l.key === "biz" ? RB : RA;
+    const cur = l.nodes.findIndex((n) => n.status === "doing");
+    road([V[0] + 4, V[1] + (l.key === "biz" ? -6 : 6)], [nodesXY[l.nodes[0].id].x, nodesXY[l.nodes[0].id].y], true, l.key, false);
+    l.nodes.slice(1).forEach((n, i) => road([nodesXY[l.nodes[i].id].x, nodesXY[l.nodes[i].id].y], [nodesXY[n.id].x, nodesXY[n.id].y], i + 1 <= cur, l.key));
+    const last = nodesXY[l.nodes.at(-1).id];
+    road([last.x, last.y], [C[0] - 6, C[1] + (l.key === "biz" ? -8 : 8)], false, l.key);
+  });
+  // 跨线依赖：过河的小路 + 桥
+  const bridges = [];
+  LINKS.forEach(([from, to]) => {
+    const a = nodesXY[from], b = nodesXY[to];
+    const p0 = [a.x, a.y], p3 = [b.x, b.y], p1 = [a.x, RY], p2 = [b.x, RY];
+    const len = Math.hypot(b.x - a.x, b.y - a.y) * 2;
+    for (let k = 0; k <= len; k++) { const [x, y] = cubic(p0, p1, p2, p3, k / len); mark(x - 2, y - 2, x + 3, y + 3); if (k % 4 < 2) set(base, x, y, 1); }
+    const [bx] = cubic(p0, p1, p2, p3, 0.5);
+    bridges.push({ x: Math.round(bx), from, to });
+  });
+
+  // 地面：草点、群山、森林（上）、电路田（下）
+  for (let y = 0; y < AH; y++) for (let x = 0; x < AW; x++) if (hash(x, y) < 0.022 && !reserve[y * AW + x]) set(base, x, y, 1);
+  for (let x = -6; x < AW; x += 15) spr(base, SPR.mount, x + Math.round(hash(x, 3) * 4), 14 + Math.round(hash(x, 9) * 6));
+  for (let y = 24; y < RY - 10; y += 9) for (let x = 2; x < AW - 6; x += 8) {
+    const nx = x + Math.round(hash(x, y) * 4), ny = y + Math.round(hash(y, x) * 3);
+    const dense = Math.sin(x / 23) + Math.cos(y / 11 + x / 40) > 0.35;
+    if (!dense || hash(nx, ny) < 0.25) continue;
+    let ok = true;
+    for (let j = -1; j < 9 && ok; j++) for (let i = -1; i < 8; i++) if (get(reserve, nx + i, ny + j)) { ok = false; break; }
+    if (ok && ny + 8 < riverTop(nx) - 1) spr(base, hash(nx, ny) > 0.6 ? SPR.pine : SPR.tree, nx, ny);
+  }
+  for (let y = RY + 12; y < AH - 18; y += 11) for (let x = 4; x < AW - 8; x += 13) {
+    const nx = x + Math.round(hash(x, y) * 5), ny = y + Math.round(hash(y, x) * 4);
+    if (Math.cos(x / 19) + Math.sin(y / 9 + x / 31) < 0.4 || hash(nx, ny) < 0.3) continue;
+    let ok = true;
+    for (let j = -2; j < 9 && ok; j++) for (let i = -2; i < 16; i++) if (get(reserve, nx + i, ny + j)) { ok = false; break; }
+    if (!ok || ny - 2 < riverBot(nx)) continue;
+    spr(base, SPR.chip, nx, ny);
+    for (let i = 7; i < 15; i += 2) set(base, nx + i, ny + 3, 1);   // 引出的走线
+    set(base, nx + 15, ny + 2, 1); set(base, nx + 15, ny + 3, 1); set(base, nx + 15, ny + 4, 1);
+  }
+  // 河：先清空河道，再记下水纹位置（水纹按帧流动）
+  for (let x = 30; x < AW - 34; x++) {
+    const t = riverTop(x), b = riverBot(x);
+    for (let y = t; y <= b; y++) { set(base, x, y, 0); water[y * AW + x] = y === t || y === b ? 2 : 1; }
+  }
+  // 迷雾：今天以后的地面变淡，飘几朵云
+  for (let y = 0; y < AH; y++) for (let x = fogX; x < AW; x++) if (base[y * AW + x] === 1 && !reserve[y * AW + x] && bayer(x, y) > 4) base[y * AW + x] = 0;
+  [[fogX + 22, 40], [fogX + 90, 86], [fogX + 150, 34], [fogX + 60, 132], [fogX + 170, 176], [fogX + 120, 160]].forEach(([x, y]) => { if (x < AW - 30) spr(base, SPR.cloud, x, y); });
+
+  // 路面
+  ["biz", "ai"].forEach((k) => roadPts[k].forEach(([x, y, solid], i) => {
+    if (solid) { set(base, x, y, 1); set(base, x + 1, y, 1); set(base, x, y + 1, 1); set(base, x + 1, y + 1, 1); }
+    else if (i % 5 < 2) { set(base, x, y, 1); set(base, x + 1, y, 1); set(base, x, y + 1, 1); set(base, x + 1, y + 1, 1); }
+  }));
+  // 桥
+  bridges.forEach((b) => { for (let y = riverTop(b.x) - 2; y <= riverBot(b.x) + 2; y++) for (let x = b.x - 3; x <= b.x + 3; x++) { set(base, x, y, 0); water[y * AW + x] = 0; } spr(base, SPR.bridge.slice(0, riverBot(b.x) - riverTop(b.x) + 5), b.x - 3, riverTop(b.x) - 2); });
+  // 起点小镇、终点城堡
+  for (let y = V[1] - 10; y < V[1] + 10; y++) for (let x = 2; x < 32; x++) { set(base, x, y, 0); water[y * AW + x] = 0; }
+  spr(base, SPR.village, 4, V[1] - 6);
+  for (let y = C[1] - 14; y < C[1] + 12; y++) for (let x = AW - 40; x < AW; x++) { set(base, x, y, 0); water[y * AW + x] = 0; }
+  spr(base, SPR.castle, AW - 30, C[1] - 6);
+  // 关卡
+  Object.values(nodesXY).forEach(({ n, x, y, line }) => {
+    const ox = x - 6, oy = y - 6;
+    for (let j = -1; j < 13; j++) for (let i = -1; i < 13; i++) set(base, ox + i, oy + j, 0);
+    if (n.boss) { spr(base, line === "biz" ? SPR.keep : SPR.tower, x - (line === "biz" ? 3 : 2), y - 5); if (n.status === "locked") spr(base, SPR.lock, x + 3, y + 3); return; }
+    if (n.status === "done") { spr(base, SPR.dot, ox, oy); spr(base, SPR.star.map((r) => r.replace(/#/g, "o")), x - 2, y - 2); }
+    else if (n.status === "doing") { spr(base, SPR.ring, ox, oy); spr(base, SPR.dot.map((r) => r.replace(/#/g, "x")).slice(3, 9).map((r) => r.slice(3, 9)), x - 3, y - 3); }
+    else { spr(base, SPR.ring, ox, oy); for (let j = 1; j < 11; j++) for (let i = 1; i < 11; i++) if (SPR.dot[j][i] === "#" && SPR.ring[j][i] !== "#" && bayer(ox + i, oy + j) < 4) set(base, ox + i, oy + j, 1); }
+  });
+
+  // 画布尺寸
+  const cv = document.getElementById("world");
+  cv.width = AW; cv.height = AH; cv.style.width = `${AW * S}px`; cv.style.height = `${AH * S}px`;
+
+  // 叠在地图上的东西：标牌、点击区、地名、桥牌、玩家
+  const over = document.getElementById("over");
+  let h = "";
+  plates.forEach(({ n, left, top }) => {
+    const late = isLate(n);
+    const sc = n.status === "done" ? `${n.score} 分 ${starRow(n)}` : late ? `${n.score} 分 · 超期 ${lateWeeks(n)} 周` : scoreLine(n);
+    h += `<div class="m9-plate is-${n.status}${late ? " is-late" : ""}" data-id="${n.id}" style="left:${left}px;top:${top}px"><span class="meta"><i class="m9-code">${n.id}</i>${n.stage} · W${n.week[0]}–${n.week[1]}</span><strong>${n.boss ? icon("crown") + " " : ""}${n.title}</strong><span class="sc">${n.status === "locked" ? icon("lock") : ""}${sc}</span></div>`;
+  });
+  Object.values(nodesXY).forEach(({ n, x, y }) => (h += `<span class="m9-hit" data-id="${n.id}" style="left:${x * S + 2}px;top:${y * S + 2}px" title="${n.id} ${n.title}"></span>`));
+  h += `<span class="m9-land" style="left:16px;top:${24 * S}px">业务大陆 · ${doneCount(LINES[0])}/${LINES[0].nodes.length} ★${lineStars(LINES[0])}</span>`;
+  h += `<span class="m9-land" style="left:16px;top:${(RY + 14) * S}px">AI 大陆 · ${doneCount(LINES[1])}/${LINES[1].nodes.length} ★${lineStars(LINES[1])}</span>`;
+  h += `<span class="m9-tag" style="left:${4 * S}px;top:${(V[1] + 4) * S}px">起点 · 09-01 入职</span>`;
+  h += `<span class="m9-tag" style="left:${(AW - 46) * S}px;top:${(C[1] + 7) * S}px">结业 · 项目助理</span>`;
+  bridges.forEach((b) => (h += `<span class="m9-tag" style="left:${(b.x + 5) * S}px;top:${(RY - 3) * S}px">桥 ${b.from}→${b.to} · ${linkNote(b.from, b.to)}</span>`));
+  h += `<span class="m9-tag" style="left:${fogX * S + 8}px;top:${(RY - 22) * S}px">迷雾 · 还没走到的周</span>`;
+  players = [];
+  LINES.forEach((l) => {
+    const n = l.nodes.find((x) => x.status === "doing");
+    const p = nodesXY[n.id];
+    const px = (p.x - 15) * S, py = (p.y - 13) * S;
+    players.push({ px, py });
+    h += `<canvas class="m9-sprite m9-player" width="8" height="12" style="left:${px}px;top:${py}px;width:32px;height:48px"></canvas>`;
+    if (isLate(n)) h += `<span class="m9-tag is-risk" style="left:${px - 10}px;top:${py - 22}px">！超期 ${lateWeeks(n)} 周</span>`;
+  });
+  over.innerHTML = h;
+  over.querySelectorAll("[data-id]").forEach((el) => (el.onclick = () => openDialog(byId(el.dataset.id))));
+  drawPlayers(0);
+
+  // 底部周次条：和地图横坐标对齐
+  const time = document.getElementById("time");
+  let t = `<div class="big"><b>W${String(SEASON.week).padStart(2, "0")}</b><span>/ 24 周</span></div>`;
+  for (let w = 1; w <= 24; w++) {
+    const a = XA(w - 1) * S, b = XA(w) * S;
+    t += `<span class="wk ${w < SEASON.week ? "is-past" : w === SEASON.week ? "is-now" : ""}" style="left:${a + 1}px;width:${b - a - 2}px"></span>`;
+    if (w % 4 === 0 || w === 1 || w === SEASON.week) t += `<span class="lb" style="left:${(a + b) / 2}px">W${w}</span>`;
+  }
+  MONTH_MARKS.forEach((m) => { if (m.w < 24) t += `<span class="mo" style="left:${XA(m.w) * S + 2}px">${m.name}</span>`; });
+  time.innerHTML = t;
+  paint(0);
+}
+
+function paint(phase) {
+  const cv = document.getElementById("world"), ctx = cv.getContext("2d");
+  const img = ctx.createImageData(AW, AH), d = img.data;
+  for (let k = 0; k < AW * AH; k++) {
+    let v = base[k];
+    const w = water[k];
+    if (w === 2) v = 1;
+    else if (w === 1) { const x = k % AW, y = (k / AW) | 0; v = y % 3 === 0 && (x + phase * 2 + (y % 6 === 0 ? 3 : 0)) % 8 < 3 ? 1 : 0; if (x >= fogX && bayer(x, y) > 6) v = 0; }
+    const c = COLORS[v];
+    d[k * 4] = c[0]; d[k * 4 + 1] = c[1]; d[k * 4 + 2] = c[2]; d[k * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+function drawPlayers(f) {
+  document.querySelectorAll(".m9-player").forEach((cv) => {
+    const ctx = cv.getContext("2d"); ctx.clearRect(0, 0, 8, 12);
+    PLAYER[f].forEach((r, j) => [...r].forEach((c, i) => { if (c === ".") return; ctx.fillStyle = c === "#" ? "#0D0E10" : c === "x" ? "#FF4F1F" : "#FBFBFC"; ctx.fillRect(i, j, 1, 1); }));
+  });
+}
+
+// 关卡对话框：目标逐字打出（方块光标）
+const dialog = document.getElementById("dialog");
+function openDialog(n) {
+  const { feeds } = prereqs(n);
+  document.getElementById("dlgTitle").textContent = `▶ ${n.id} · ${n.stage} · ${n.title}`;
+  document.getElementById("dlgBody").innerHTML = detailHTML(n, { cols: true })
+    .replace('<section class="mp-sec">', (n.status === "locked" ? `<div class="stg-note">${icon("lock")}<span><b>解锁条件</b>　${unlockText(n)}</span></div>` : feeds.length ? `<div class="stg-note is-link">${icon("link")}<span><b>跨线</b>　用到 ${feeds.map((f) => `${f.id} 的${linkNote(f.id, n.id)}`).join("、")}</span></div>` : "") + '<section class="mp-sec">');
+  dialog.hidden = false;
+  document.querySelectorAll(".m9-plate").forEach((p) => p.classList.toggle("is-sel", p.dataset.id === n.id));
+  const p = dialog.querySelector(".mp-sec p");
+  const text = p.textContent; let k = 0;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  p.innerHTML = '<i class="cur"></i>';
+  frames(() => { k = Math.min(text.length, k + 2); p.innerHTML = text.slice(0, k) + (k < text.length ? '<i class="cur"></i>' : ""); return k < text.length; });
+}
+document.getElementById("dlgX").onclick = () => { dialog.hidden = true; document.querySelectorAll(".m9-plate").forEach((p) => p.classList.remove("is-sel")); };
+addEventListener("keydown", (e) => { if (e.key === "Escape") document.getElementById("dlgX").click(); });
+
+// 图例
+const mini = (rows) => { const c = document.createElement("canvas"); c.width = rows[0].length; c.height = rows.length; const x = c.getContext("2d"); rows.forEach((r, j) => [...r].forEach((ch, i) => { if (ch === ".") return; x.fillStyle = ch === "#" ? "#0D0E10" : ch === "x" ? "#FF4F1F" : "#FBFBFC"; x.fillRect(i, j, 1, 1); })); c.style.width = `${c.width * 2}px`; c.style.height = `${c.height * 2}px`; return c.outerHTML; };
+document.getElementById("legend").innerHTML = `
+  <span>${mini(SPR.dot.map((r) => r))}已通关</span>
+  <span>${mini(SPR.ring.map((r, j) => (j > 2 && j < 9 ? r.slice(0, 3) + "xxxxxx" + r.slice(9) : r)))}正在打</span>
+  <span>${mini(SPR.ring)}未解锁</span>
+  <span>${mini(SPR.keep)}BOSS</span>
+  <span>${mini(SPR.bridge.slice(0, 8))}桥 = 跨线依赖</span>`;
+// 图例里的 canvas 是序列化出来的，需要重新画
+document.querySelectorAll("#legend canvas").forEach((c, i) => {
+  const rows = [SPR.dot, SPR.ring.map((r, j) => (j > 2 && j < 9 ? r.slice(0, 3) + "xxxxxx" + r.slice(9) : r)), SPR.ring, SPR.keep, SPR.bridge.slice(0, 8)][i];
+  const x = c.getContext("2d"); rows.forEach((r, j) => [...r].forEach((ch, k) => { if (ch === ".") return; x.fillStyle = ch === "#" ? "#0D0E10" : ch === "x" ? "#FF4F1F" : "#FBFBFC"; x.fillRect(k, j, 1, 1); }));
+});
+
+// 按帧：水纹每 6 帧流动一格，玩家每 7 帧换一帧
+let tick = 0;
+setInterval(() => { tick++; if (tick % 6 === 0) paint(tick / 6); if (tick % 7 === 0) drawPlayers((tick / 7) % 2); }, 1000 / 15);
+
+if (document.readyState === "complete") build(); else addEventListener("load", build);
+addEventListener("resize", build);
+if (location.hash.startsWith("#open=")) addEventListener("load", () => openDialog(byId(location.hash.slice(6))));
+</script>
+</body>
+</html>

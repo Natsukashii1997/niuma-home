@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>知识库 · V4 书架</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* V4 书架：每个文件夹是一层书架，每篇是一本竖写书名的书（书脊样式区分类型：文档白封、表格网点封、多维表墨封、文件虚线）；
+   子文件夹是档案盒，点开后盒里的书夹在两块书立中间。待归类是最上面「待上架」的书堆，横放着，拖到书架上就是归类。
+   悬停书脊：按帧往上抽出两格，书架底下的读数行显示这本书的完整信息；点书脊打开飞书原文。 */
+.v4-room { display: flex; flex-direction: column; gap: 40px; padding: var(--s5); border: var(--border) solid var(--line); background-color: var(--panel-soft); background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1.3px); background-size: 16px 16px; }
+
+/* 待上架：横放的书堆在一块推车板上 */
+.v4-cart { position: relative; padding: 30px 0 0; }
+.v4-tab { position: absolute; left: 0; top: 0; z-index: 2; display: flex; align-items: center; gap: var(--s2); height: 32px; padding: 0 12px; background: var(--text); color: var(--panel); font-size: 13px; font-weight: 600; }
+.v4-tab i { font-style: normal; font-family: var(--font-pixel); font-size: 14px; font-weight: 400; color: var(--signal); }
+.v4-cart .v4-tab { background: var(--panel); color: var(--text); box-shadow: inset 0 0 0 2px var(--text); }
+.v4-cart-body { padding: var(--s3) var(--s4) 0; border: 2px dashed var(--text); background: var(--panel); }
+.v4-cart-head { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); font-size: 12px; color: var(--muted); }
+.v4-cart-head .hint { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--text-2); }
+.v4-piles { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s4) var(--s6); padding: var(--s4) var(--s2) 0; border-bottom: 6px solid var(--text); }
+.v4-pile { display: flex; flex-direction: column-reverse; align-items: flex-start; }
+.v4-flat { position: relative; display: flex; align-items: center; gap: var(--s2); height: 30px; max-width: 300px; margin-top: -2px; padding: 0 var(--s3) 0 6px; border: 2px solid var(--text); background: var(--panel); font-size: 12px; white-space: nowrap; }
+.v4-flat > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; }
+.v4-flat .ty { width: 30px; height: 16px; font-size: 10px; }
+.v4-flat.t-bitable { background: var(--text); color: var(--panel); }
+.v4-flat.t-bitable .ty { background: var(--panel); color: var(--text); }
+.v4-flat.t-sheet { background-image: var(--dither-1); }
+.v4-flat:hover { z-index: 1; border-color: var(--signal); }
+.v4-cart.is-clear .v4-piles { padding: var(--s3) var(--s2); font-size: 12px; color: var(--muted); }
+
+/* 书架 */
+.v4-shelves { display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); gap: 40px var(--s5); align-items: start; }
+.v4-shelf { min-width: 0; }
+.v4-tip { display: flex; align-items: center; gap: 6px; margin: -24px 0 -16px; font-size: 12px; color: var(--muted); }
+.v4-shelf-head { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s2); }
+.v4-shelf-head .v4-tab { position: static; }
+.v4-shelf-head .v4-tab.is-blink { background: var(--signal); }
+.v4-shelf-head .v4-tab.is-blink i { color: var(--panel); }
+.v4-shelf-head .meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.v4-shelf-head a, .v4-shelf-head .edit { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; font-size: 12px; color: var(--text-2); cursor: pointer; }
+.v4-shelf-head .edit { visibility: hidden; }
+.v4-shelf:hover .v4-shelf-head .edit { visibility: visible; }
+.v4-shelf-head a:hover { color: var(--signal); }
+/* 书一排排立在板上：每排固定 236 高，底部 6px 墨色板 */
+.v4-books { display: flex; flex-wrap: wrap; align-items: flex-end; align-content: flex-start; column-gap: 3px; padding: 0 var(--s2); background-color: var(--panel); background-image: linear-gradient(to top, var(--text) 0 6px, transparent 6px); background-size: 100% 236px; border: var(--border) solid var(--text); border-bottom: 0; }
+.v4-slot { display: flex; align-items: flex-end; height: 236px; padding: 12px 0 6px; }
+.v4-book { position: relative; display: flex; flex-direction: column; align-items: stretch; flex: none; padding: 10px 0 6px; border: 2px solid var(--text); background: var(--panel); color: var(--text); cursor: pointer; }
+.v4-book[data-pull="1"] { transform: translateY(-5px); }
+.v4-book[data-pull="2"] { transform: translateY(-10px); border-color: var(--signal); }
+.v4-book::before, .v4-book::after { content: ""; position: absolute; left: 3px; right: 3px; height: 2px; background: var(--text); }
+.v4-book::before { top: 4px; }
+.v4-book::after { bottom: 28px; }
+.v4-title { flex: 1; min-height: 0; overflow: hidden; padding: 0 2px; writing-mode: vertical-rl; font-size: 13px; line-height: 17px; letter-spacing: 0.04em; overflow-wrap: anywhere; }
+.v4-book .px { flex: none; align-self: center; margin-top: 8px; font-size: 10px; color: var(--text-2); }
+.v4-book.t-sheet { background-image: var(--dither-1); }
+.v4-book.t-sheet .v4-title { background: var(--panel); }
+.v4-book.t-bitable { background: var(--text); color: var(--panel); }
+.v4-book.t-bitable::before, .v4-book.t-bitable::after { background: var(--panel); }
+.v4-book.t-bitable .px { color: var(--line); }
+.v4-book.t-file { border-style: dashed; }
+.v4-book.is-new .px { color: var(--signal); }
+.v4-book.is-dim { opacity: 0.3; }
+.v4-book .busy { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+/* 档案盒 = 子文件夹 */
+.v4-book.is-box { background: var(--text); color: var(--panel); border-width: 3px; }
+.v4-book.is-box::before { top: 4px; height: 12px; left: 8px; right: 8px; background: var(--panel); }
+.v4-book.is-box::after { display: none; }
+.v4-book.is-box .px { color: var(--signal); font-size: 12px; }
+.v4-book.is-box .v4-title { margin-top: 12px; font-weight: 600; }
+.v4-box-open { display: flex; align-items: flex-end; gap: 3px; height: 236px; padding: 12px 6px 6px; }
+.v4-box-open::before, .v4-box-open::after { content: ""; flex: none; align-self: flex-end; width: 6px; height: 64px; background: var(--signal); }
+.v4-empty { display: flex; align-items: flex-end; height: 120px; padding: 0 var(--s2) 18px; font-size: 12px; color: var(--muted); }
+/* 读数行：悬停哪本，这里写哪本 */
+.v4-readout { display: flex; align-items: center; gap: var(--s2); min-height: 36px; padding: 0 var(--s3); border: var(--border) solid var(--text); border-top: 0; background-color: var(--panel-soft); background-image: var(--dither-1); font-size: 12px; color: var(--text-2); }
+.v4-readout b { overflow: hidden; color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
+.v4-readout .tnum { flex: none; font-size: 11px; }
+.v4-readout .go { flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: 4px; color: var(--text); }
+.v4-shelf.drop.is-over { outline-offset: 4px !important; background-image: none !important; }
+.v4-shelf.is-over .v4-books { background-color: var(--orange-soft); }
+</style>
+</head>
+<body>
+<main id="page">
+  <p id="kb-note" class="kb-note" hidden></p>
+  <section class="v4-room" id="board"></section>
+</main>
+<script src="icons7.js"></script>
+<script src="kb-data.js"></script>
+<script src="common.js"></script>
+<script>
+const { icon, esc, model, count, latest, mmdd, isNew, hit, hits, docs, state, TYPE, TYPE_ZH, hash, frames } = NB;
+const openBox = new Set();
+const board = document.getElementById("board");
+const q = () => state.q.trim();
+const colsOf = () => { const w = board.clientWidth - 52; return w >= 1040 ? 3 : w >= 620 ? 2 : 1; };
+const len = (s) => [...s].reduce((n, ch) => n + (/[\x00-\xff]/.test(ch) ? 0.55 : 1), 0);
+
+function book(n) {
+  const d = docs[n.id] || {};
+  const h = 176 + (hash(n.id) % 5) * 11;                      // 书高按 id 定，刷新不跳
+  if (n.kids) {
+    const open = openBox.has(n.id) || (q() && hits(n) > 0);
+    const box = `<span class="v4-slot"><span class="v4-book is-box drop${q() && !hits(n) ? " is-dim" : ""}" data-doc="${n.id}" data-drop="${n.id}" draggable="true" style="height:${h + 8}px;width:${Math.max(48, 16 + Math.ceil(len(n.name) / Math.floor((h - 80) / 14.5)) * 17)}px" onclick="toggleBox('${n.id}')" onmouseenter="pull(this,'${n.id}')" onmouseleave="push(this)"><span class="v4-title">${esc(n.name)}</span><span class="px">${count(n)}</span></span></span>`;
+    return box + (open ? `<span class="v4-box-open">${n.kids.map((k) => book(k).replace(/^<span class="v4-slot">|<\/span>$/g, "")).join("")}</span>` : "");
+  }
+  const cap = Math.floor((h - 66) / 14.5), cols = Math.min(4, Math.max(1, Math.ceil(len(n.name) / cap))); // 每列放得下几个字按书高算
+  const cls = `v4-book t-${d.type || "docx"}${isNew(d.updated) ? " is-new" : ""}${q() && !hit(n) ? " is-dim" : ""}`;
+  return `<span class="v4-slot"><a class="${cls}" data-doc="${n.id}" draggable="true" href="${esc(d.url || "#")}" target="_blank" rel="noreferrer" style="height:${h}px;width:${14 + cols * 17}px" onmouseenter="pull(this,'${n.id}')" onmouseleave="push(this)"><span class="v4-title">${esc(n.name)}</span><span class="px">${TYPE[d.type] || "DOC"}</span></a></span>`;
+}
+
+function shelf(g) {
+  const kids = [...g.kids.filter((k) => k.kids), ...g.kids.filter((k) => !k.kids)];
+  const url = docs[g.id]?.url;
+  return `<article class="v4-shelf drop" data-drop="${g.id}" id="s-${g.id}">
+    <div class="v4-shelf-head"><span class="v4-tab">${esc(g.name)}<i>${count(g)}</i></span>${q() && hits(g) ? `<span class="meta">命中 ${hits(g)}</span>` : ""}<span class="spacer"></span>
+      <button class="edit">${icon("edit")}改名</button>${url ? `<a href="${esc(url)}" target="_blank" rel="noreferrer">本页正文 ${icon("external")}</a>` : ""}</div>
+    <div class="v4-books">${kids.length ? kids.map(book).join("") : `<span class="v4-empty">空书架 · 把书拖上来</span>`}</div>
+    <div class="v4-readout" data-for="${g.id}">${readoutIdle(g)}</div>
+  </article>`;
+}
+const readoutIdle = (g) => `<span class="tnum">${count(g)} 本${g.kids.some((k) => k.kids) ? ` · ${g.kids.filter((k) => k.kids).length} 个档案盒` : ""} · 更新 ${mmdd(latest(g))}</span>`;
+
+function flat(n) {
+  const d = docs[n.id] || {};
+  return `<a class="v4-flat t-${d.type || "docx"}${q() && !hit(n) ? " is-dim" : ""}" data-doc="${n.id}" draggable="true" href="${esc(d.url || "#")}" target="_blank" rel="noreferrer" title="${esc(n.name)}" style="margin-left:${(hash(n.id) % 4) * 6}px"><span class="ty">${TYPE[d.type] || "DOC"}</span><span>${esc(n.name)}</span><span class="date${isNew(d.updated) ? " is-new" : ""}">${mmdd(d.updated)}</span></a>`;
+}
+
+function render() {
+  const m = model(), cols = colsOf();
+  const piles = []; m.loose.forEach((n, i) => { (piles[Math.floor(i / 3)] ||= []).push(n); });
+  board.innerHTML = `<article class="v4-cart drop${m.loose.length ? "" : " is-clear"}" data-drop="">
+      <span class="v4-tab">待上架<i>${m.loose.length}</i></span>
+      <div class="v4-cart-body">${m.loose.length ? `<div class="v4-cart-head"><span>收藏时归类不明确的书先堆在这里；书架上的书也能拖回来</span><span class="hint">${icon("down")}拖到下面任一层书架 = 在飞书里移动</span></div>
+        <div class="v4-piles">${piles.map((p) => `<div class="v4-pile">${p.map(flat).join("")}</div>`).join("")}</div>` : `<div class="v4-piles">没有待上架的书，都在书架上</div>`}</div></article>
+    <p class="v4-tip">${icon("drag")}悬停书脊：书往上抽出，书架底下显示书名和更新；点书脊打开飞书原文；黑色的是档案盒（子文件夹），点开后盒里的书夹在橙色书立中间</p>
+    <div class="v4-shelves" style="--cols:${cols}">${m.groups.map(shelf).join("")}</div>`;
+}
+
+// 悬停：两帧抽出，读数行改成这本书
+function pull(el, id) {
+  const n = NB.locate(id)?.node, d = docs[id] || {}, ro = el.closest(".v4-shelf")?.querySelector(".v4-readout");
+  let f = 0; clearInterval(el._p); el._p = setInterval(() => { el.dataset.pull = String(++f); if (f >= 2) clearInterval(el._p); }, 66.7);
+  if (ro && n) ro.innerHTML = n.kids
+    ? `<span class="ty is-dir">DIR</span><b>${esc(n.name)}</b><span class="tnum">${count(n)} 篇 · 更新 ${mmdd(latest(n))}</span><span class="go">${openBox.has(id) ? "点盒子合上" : "点盒子打开"}</span>`
+    : `<span class="ty">${TYPE[d.type] || "DOC"}</span><b>${esc(n.name)}</b><span class="tnum">${TYPE_ZH[d.type] || "文档"} · 更新 ${mmdd(d.updated)}</span><span class="go">打开飞书原文 ${icon("external")}</span>`;
+}
+function push(el) {
+  let f = Number(el.dataset.pull || 0); clearInterval(el._p);
+  el._p = setInterval(() => { el.dataset.pull = String(--f); if (f <= 0) { clearInterval(el._p); delete el.dataset.pull; } }, 66.7);
+  const sh = el.closest(".v4-shelf"); if (sh) { const g = model().groups.find((x) => x.id === sh.dataset.drop); if (g) sh.querySelector(".v4-readout").innerHTML = readoutIdle(g); }
+}
+function toggleBox(id) { openBox.has(id) ? openBox.delete(id) : openBox.add(id); NB.render(); }
+// 落定：目标书架的牌子闪两下（按帧）
+NB.onLanded = (pid) => { const t = document.querySelector(`#s-${CSS.escape(pid)} .v4-tab`); if (t) frames(4, (f) => t.classList.toggle("is-blink", f % 2 === 1)); };
+let lastCols = 0;
+new ResizeObserver(() => { const c = colsOf(); if (c !== lastCols) { lastCols = c; NB.render(); } }).observe(board);
+if (NB.params.has("box")) model().groups.forEach((g) => g.kids.filter((k) => k.kids).forEach((k) => k.name.includes(NB.params.get("box")) && openBox.add(k.id)));
+NB.start("V4 书架", render);
+</script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>答疑右侧填充 · 设计稿</title>
+<link rel="stylesheet" href="../../../src/styles.css">
+<link rel="stylesheet" href="../../../src/styles-v3.css">
+<link rel="stylesheet" href="../../../src/styles-layout.css">
+<link rel="stylesheet" href="_shared/draft.css">
+<style>
+/* 答疑页右侧：没选中提问时不再空着，显示这个人近 30 天的答疑概况；点任一条或主题直接回到左侧 */
+.qa-over .card-body { display: flex; flex-direction: column; gap: var(--s5); }
+.qa-over .stat-strip { margin: 0; border-width: 1px; }
+.qa-over .stat:first-child { border-left: 0; }
+.qa-over .stat-value.num { font-family: var(--font-pixel); font-weight: 400; font-size: 32px; line-height: 1; }
+.qa-sec { display: flex; flex-direction: column; gap: var(--s2); }
+.qa-sec-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s2); }
+.qa-days { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 3px; align-items: end; height: 34px; }
+.qa-days span { display: flex; flex-direction: column-reverse; gap: 3px; }
+.qa-days i { display: block; height: 8px; background: var(--text); }
+.qa-days i.none { height: 4px; background: var(--line); }
+.qa-days i.is-wait { background: var(--signal); }
+.qa-days-axis { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.qa-topics { list-style: none; margin: 0; padding: 0; }
+.qa-topics li > button { display: grid; grid-template-columns: 88px minmax(0, 1fr) 24px 64px; align-items: center; gap: var(--s3); width: 100%; padding: 6px var(--s2); border: 0; border-bottom: 1px solid var(--line); background: none; font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+.qa-topics li:last-child > button { border-bottom: 0; }
+.qa-topics .dither-bar { height: 12px; }
+.qa-topics .tnum { text-align: right; font-family: var(--font-mono); }
+.qa-topics .qa-wait { font-family: var(--font-mono); font-size: 11px; color: var(--warn); text-align: right; }
+.qa-list { list-style: none; margin: 0; padding: 0; }
+.qa-list li { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: start; gap: var(--s3); padding: var(--s2) 0; border-bottom: 1px solid var(--line); }
+.qa-list li:last-child { border-bottom: 0; }
+.qa-list .qa-q { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 13px; line-height: 1.5; }
+.qa-list .qa-a { display: block; margin-top: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; color: var(--muted); }
+.qa-list .btn { height: var(--ctl-sm); padding: 0 var(--s2); font-size: 12px; }
+.qa-hint { display: flex; align-items: center; gap: 6px; padding-top: var(--s3); border-top: 1px dashed var(--line); font-size: 12px; color: var(--muted); }
+.mq-topic { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { mountShell, icon, tag, ditherBar } from "./_shared/draft.js";
+
+const page = mountShell({
+  version: "答疑右侧填充",
+  tab: "qa",
+  counts: [12, 7],
+  subtitle: "管培生近 30 天日志里的提问：在右侧回复或让机械邪龙兽回答，确认后作为评论挂回飞书原话",
+  actions: `<span class="small muted">最近 30 天 · 飞书日志</span><button class="btn">${icon("refresh")}刷新日志</button>`,
+});
+
+// 示例：胡贵兰近 30 天 12 条提问，3 条待回复
+const Q = [
+  { d: "10-22", log: "10.22 方案对比", topic: "项目收敛", t: "三个方案都各有道理，收敛的时候到底先看成本，还是先看对北极星指标的影响？" },
+  { d: "10-21", log: "10.21 排期", topic: "推进与排期", t: "排期里研发给不了明确时间，我是先空着，还是按经验先估一个？" },
+  { d: "10-20", log: "10.20 访谈整理", topic: "AI 工具", t: "用 AI 汇总访谈纪要时，它会把两个人的观点合并成一句，怎么让它保留差异？", r: ["机械邪龙兽", "10-20 19:42", "先让它逐人列观点再合并，提示词里写明「不同意见分开列」。"] },
+  { d: "10-18", log: "10.18 竞品资料", topic: "调研方法", t: "竞品资料里有些数据查不到来源，能不能先用着、标个待核？" },
+  { d: "10-17", log: "10.17 周复盘", topic: "北极星指标", t: "北极星指标定成到课率，但老板更关心续费，这两个要怎么挂上钩？", r: ["常浩", "10-17 21:05", "到课率是续费的先行指标，先拿历史数据看两者相关性，再决定要不要加一层。"] },
+  { d: "10-15", log: "10.15 问题树", topic: "业务思考", t: "问题树第三层拆到什么程度算够？", r: ["常浩", "10-15 22:10", "拆到每个叶子都能对应一个具体动作和负责人就够了。"] },
+  { d: "10-14", log: "10.14 访谈", topic: "调研方法", t: "访谈 5 个人够不够下结论？", r: ["机械邪龙兽", "10-14 20:31", "5 个够发现问题，不够定比例；比例要靠数据补。"] },
+  { d: "10-10", log: "10.10 方案", topic: "项目收敛", t: "方案收敛时要不要把被否掉的方案也写进文档？", r: ["常浩", "10-10 21:48", "要，写清楚为什么否，评审时能省很多解释。"] },
+  { d: "10-08", log: "10.08 排期", topic: "推进与排期", t: "任务拆到多细才算可执行？", r: ["常浩", "10-08 22:02", "一个人一到两天能做完、做完能验收，就是合适的颗粒度。"] },
+  { d: "10-02", log: "10.02 指标", topic: "北极星指标", t: "北极星指标可以有两个吗？", r: ["机械邪龙兽", "10-02 18:20", "只留一个；另一个放进护栏指标。"] },
+  { d: "09-28", log: "09.28 调研", topic: "调研方法", t: "问卷和访谈先做哪个？", r: ["常浩", "09-28 21:15", "先访谈找问题，再用问卷量大小。"] },
+  { d: "09-25", log: "09.25 方案", topic: "项目收敛", t: "老板的意见和数据结论冲突时怎么写？", r: ["常浩", "09-25 22:30", "两样都写，数据放前面，再写你建议怎么验证。"] },
+].map((q, i) => ({ ...q, id: i, wait: !q.r }));
+const waiting = Q.filter((q) => q.wait);
+const replied = Q.filter((q) => !q.wait);
+const ago = (d) => { const [m, day] = d.split("-").map(Number); return Math.round((new Date(2026, 9, 23) - new Date(2026, m - 1, day)) / 864e5); };
+
+const TOPICS = Object.entries(Q.reduce((m, q) => ((m[q.topic] ??= { n: 0, w: 0 }), m[q.topic].n++, q.wait && m[q.topic].w++, m), {})).sort((a, b) => b[1].n - a[1].n);
+const max = TOPICS[0][1].n;
+
+// 近 30 天每天的提问（09-24 至 10-23）
+const days = Array.from({ length: 30 }, (_, k) => { const dt = new Date(2026, 8, 24 + k); return `${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`; });
+
+page.innerHTML = `
+  <div class="mentor-v4">
+    <section class="card mq-list">
+      <div class="card-head"><h2>${icon("reports")}胡贵兰 · 提问</h2><span class="small muted">${Q.length} 条提问</span></div>
+      <ol class="mq-items">${Q.map((q) => `<li class="mq-item"><button type="button">
+        <span class="mq-meta">${tag("提问", "blue")}<span class="tnum">${q.d}</span><span class="mq-log">${q.log}</span><span class="mq-topic"># ${q.topic}</span>
+          ${q.r ? `<span class="mq-replied">${icon("check")}已回复 · ${q.r[0]}</span>` : ""}</span>
+        <span class="mq-text">${q.t}</span></button><a class="mq-src">原文${icon("link")}</a></li>`).join("")}</ol>
+    </section>
+    <section class="card mq-feedback qa-over">
+      <div class="card-head"><h2>${icon("mentor")}答疑概况</h2><span class="small muted">胡贵兰 · 近 30 天 · 未选中提问时显示</span></div>
+      <div class="card-body">
+        <div class="stat-strip">
+          <div class="stat is-signal"><span class="stat-label">待回复</span><span class="stat-value num">${waiting.length}</span><span class="stat-foot">最早一条等了 ${ago(waiting.at(-1).d)} 天</span></div>
+          <div class="stat"><span class="stat-label">近 30 天提问</span><span class="stat-value">${Q.length}<small> 条</small></span><span class="stat-foot">前 30 天 9 条</span></div>
+          <div class="stat"><span class="stat-label">已回复</span><span class="stat-value">${replied.length}<small> 条</small></span><span class="stat-foot">常浩 ${replied.filter((q) => q.r[0] === "常浩").length} · 机械邪龙兽 ${replied.filter((q) => q.r[0] !== "常浩").length}</span></div>
+        </div>
+        <section class="qa-sec">
+          <div class="qa-sec-head"><span class="label">每天提问 · 橙色为还没回复</span><span class="small muted">09-24 — 10-23</span></div>
+          <div class="qa-days">${days.map((d) => { const qs = Q.filter((q) => q.d === d); return `<span title="${d} · ${qs.length} 条">${qs.length ? qs.map((q) => `<i class="${q.wait ? "is-wait" : ""}"></i>`).join("") : `<i class="none"></i>`}</span>`; }).join("")}</div>
+        </section>
+        <section class="qa-sec">
+          <div class="qa-sec-head"><span class="label">提问主题</span><span class="small muted">机械邪龙兽按提问归类 · 点主题筛左侧</span></div>
+          <ul class="qa-topics">${TOPICS.map(([name, v]) => `<li><button type="button"><span>${name}</span>${ditherBar(Math.round((v.n / max) * 100), "qa-bar")}<span class="tnum">${v.n}</span><span class="qa-wait">${v.w ? `${v.w} 待回复` : ""}</span></button></li>`).join("")}</ul>
+        </section>
+        <section class="qa-sec">
+          <div class="qa-sec-head"><span class="label">等得最久</span><span class="small muted">按提问日期从早到晚</span></div>
+          <ul class="qa-list">${[...waiting].reverse().map((q) => `<li><span>${tag(`${ago(q.d)} 天`, ago(q.d) >= 3 ? "red" : "amber")}</span><span class="qa-q">${q.t}<span class="qa-a">${q.d} · ${q.log} · # ${q.topic}</span></span><button class="btn">${icon("send")}回复</button></li>`).join("")}</ul>
+        </section>
+        <section class="qa-sec">
+          <div class="qa-sec-head"><span class="label">最近已回复</span><span class="small muted">挂在飞书原话旁的评论</span></div>
+          <ul class="qa-list">${replied.slice(0, 3).map((q) => `<li><span class="mono small muted">${q.r[1].slice(0, 5)}</span><span class="qa-q">${q.t}<span class="qa-a">${q.r[0]}：${q.r[2]}</span></span><a class="link">原文</a></li>`).join("")}</ul>
+        </section>
+        <div class="qa-hint">${icon("left")}点左侧一条提问开始回复，或让机械邪龙兽先回答</div>
+      </div>
+    </section>
+  </div>`;
+// 待回复的线条：每条 .dither-bar 的通关线在这里不需要
+document.querySelectorAll(".qa-topics .mp-passline").forEach((e) => e.remove());
+</script>
+</body>
+</html>

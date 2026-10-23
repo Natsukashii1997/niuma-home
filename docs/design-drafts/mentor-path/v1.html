@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V1 横向地图 · 培养路径</title>
+<link rel="stylesheet" href="../../../src/styles.css">
+<link rel="stylesheet" href="../../../src/styles-v3.css">
+<link rel="stylesheet" href="../../../src/styles-layout.css">
+<link rel="stylesheet" href="_shared/draft.css">
+<style>
+/* V1 横向地图：两条线是地图上的两条路，关卡是路上的格子，点一格看下面的详情 */
+.v1-map { position: relative; padding: var(--s5) var(--s4) var(--s4); background-color: var(--bg); background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1.2px); background-size: 24px 24px; background-position: 12px 12px; }
+.v1-lane { position: relative; height: 196px; }
+.v1-lane + .v1-lane { margin-top: var(--s2); border-top: 2px dashed var(--line); }
+.v1-lane-name { position: absolute; left: 0; top: var(--s4); display: flex; flex-direction: column; gap: 2px; width: 112px; }
+.v1-lane-name strong { font-size: 14px; }
+.v1-road { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.v1-tile { position: absolute; width: 124px; padding: var(--s2); display: flex; flex-direction: column; gap: 2px; background: var(--panel); border: 2px solid var(--text); font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+.v1-tile .v1-code { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 11px; }
+.v1-tile strong { font-size: 13px; line-height: 1.35; min-height: 35px; }
+.v1-tile .v1-foot { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.v1-tile.is-done .v1-code { color: var(--muted); }
+.v1-tile.is-done { border-color: var(--text); }
+.v1-tile.is-done .v1-badge { background: var(--text); color: var(--panel); }
+.v1-tile.is-doing { border-color: var(--signal); }
+.v1-tile.is-locked { border-color: var(--muted); border-style: dashed; background: var(--panel-soft); color: var(--muted); }
+.v1-tile.is-boss { width: 148px; border-width: 3px; }
+.v1-tile.is-sel { outline: 2px solid var(--text); outline-offset: 3px; }
+.v1-badge { display: inline-grid; place-items: center; width: 18px; height: 18px; border: 1px solid currentColor; }
+.v1-flag { position: absolute; display: flex; align-items: center; gap: 6px; padding: 2px var(--s2); background: var(--signal); color: var(--panel); font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+.v1-flag::after { content: ""; position: absolute; left: 10px; bottom: -8px; width: 2px; height: 8px; background: var(--signal); }
+.v1-link-label { position: absolute; padding: 0 var(--s1); background: var(--bg); font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.v1-below { display: grid; grid-template-columns: minmax(0, 9fr) minmax(0, 3fr); gap: var(--gap); margin-top: var(--gap); align-items: stretch; }
+.v1-side .card-body { display: flex; flex-direction: column; gap: var(--s4); }
+.v1-log { list-style: none; margin: 0; padding: 0; }
+.v1-log li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 2px var(--s2); padding: var(--s2) 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+.v1-log li:last-child { border-bottom: 0; }
+.v1-log .mono { color: var(--muted); }
+.v1-next { padding: var(--s3); border: 2px dashed var(--line); display: flex; flex-direction: column; gap: var(--s1); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { LINES, LINKS, LOG, SEASON, byId, current, doneCount, lineStars } from "./_shared/data.js";
+import { mountShell, icon, detailHTML, statStrip, starRow, blinkCurrent } from "./_shared/draft.js";
+
+const page = mountShell({
+  version: "V1 横向地图",
+  subtitle: "两条线各是一条路：走过的路是墨色，脚下这一格插着橙旗，后面的格子没解锁。点任意一格，下面看这一关要做什么、交什么、怎么评分。",
+  actions: `<span class="mp-legend"><span><i class="done"></i>已通关</span><span><i class="doing"></i>进行中</span><span><i class="locked"></i>未解锁</span></span>`,
+});
+
+const [biz, ai] = LINES;
+page.innerHTML = `
+  ${statStrip([
+    { label: "业务线", value: `${doneCount(biz)}`, unit: ` / ${biz.nodes.length} 关`, foot: `${icon("star")} ${lineStars(biz)} 星 · 当前 ${current(biz).id} ${current(biz).stage}` },
+    { label: "AI 线", value: `${doneCount(ai)}`, unit: ` / ${ai.nodes.length} 关`, foot: `${icon("star")} ${lineStars(ai)} 星 · 当前 ${current(ai).id} ${current(ai).stage}` },
+    { label: "待评分", value: "2", unit: " 份", tone: "warn", foot: "B4 方案初稿、A3 核对清单" },
+    { label: "赛季", value: `${SEASON.week}`, unit: ` / ${SEASON.weeks} 周`, foot: `${SEASON.name} · ${SEASON.rank}` },
+  ])}
+  <section class="card">
+    <div class="card-head"><h2>${icon("route")}培养地图</h2><span class="small muted">胡贵兰 · 入职 09-01 · 每格写计划周次</span></div>
+    <div class="v1-map" id="map">${LINES.map((l) => `<div class="v1-lane" data-line="${l.key}">
+      <div class="v1-lane-name"><span class="label">${l.code} LINE</span><strong>${l.name}</strong><span class="small muted">${l.desc}</span></div>
+      <svg class="v1-road"></svg></div>`).join("")}</div>
+  </section>
+  <div class="v1-below">
+    <section class="card"><div class="card-head"><h2>${icon("flag")}关卡详情</h2><span class="small muted" id="selHint"></span></div><div class="card-body" id="detail"></div></section>
+    <aside class="card v1-side"><div class="card-head"><h2>${icon("clock")}最近评分</h2></div><div class="card-body">
+      <ul class="v1-log">${LOG.map((x) => `<li><span class="mono">${x.at}</span><span><b>${x.id}</b> ${x.text}</span><span></span><span class="mono small">${x.score}</span></li>`).join("")}</ul>
+      <div class="v1-next"><span class="label">下一关预告</span><strong>${byId("B5").id} ${byId("B5").title}</strong><span class="small muted">B4 达到 70 分解锁；需要先完成 A4 自动化里的一张进度表。</span></div>
+    </div></aside>
+  </div>`;
+
+// 摆放关卡：7 列等分，相邻关卡上下错开，路用直角台阶连起来
+const map = document.getElementById("map");
+const COLS = 7, LEFT = 128, TILE = 124;
+function layout() {
+  map.querySelectorAll(".v1-link-label").forEach((e) => e.remove());
+  document.querySelectorAll(".v1-lane").forEach((lane) => {
+    lane.querySelectorAll(".v1-tile,.v1-flag,.v1-link-label").forEach((e) => e.remove());
+    const line = LINES.find((l) => l.key === lane.dataset.line);
+    const w = lane.clientWidth - LEFT;
+    const step = (w - TILE) / (COLS - 1);
+    const pts = line.nodes.map((n, i) => {
+      const col = line.key === "ai" && n.boss ? 5.5 : i;
+      const x = LEFT + col * step - (n.boss ? 12 : 0);
+      const y = 40 + (i % 2 ? 56 : 0);
+      const b = document.createElement("button");
+      b.type = "button"; b.dataset.id = n.id;
+      b.className = `v1-tile is-${n.status}${n.boss ? " is-boss" : ""}`;
+      b.style.left = `${x}px`; b.style.top = `${y}px`;
+      const mark = n.status === "done" ? icon("check") : n.status === "locked" ? icon("lock") : `<i class="mp-blink is-current-blink"></i>`;
+      b.innerHTML = `<span class="v1-code"><span>${n.id} · ${n.stage}</span><span class="v1-badge">${mark}</span></span>
+        <strong>${n.boss ? icon("crown") + " " : ""}${n.title}</strong>
+        <span class="v1-foot"><span>W${n.week[0]}–${n.week[1]}</span>${n.status === "locked" ? "<span>—</span>" : `<span class="row" style="gap:6px">${n.status === "done" ? starRow(n) : ""}<b class="${n.status === "doing" ? "signal" : ""}">${n.score}</b></span>`}</span>`;
+      b.onclick = () => select(n.id);
+      lane.appendChild(b);
+      if (n.status === "doing") {
+        const f = document.createElement("span");
+        f.className = "v1-flag"; f.innerHTML = `${icon("flag")}当前 · 第 8 周`;
+        f.style.left = `${x}px`; f.style.top = `${y - 28}px`;
+        lane.appendChild(f);
+      }
+      return { n, x, y, w: b.offsetWidth, h: b.offsetHeight };
+    });
+    // 路：已走过为墨色实线 4px；未走为灰色虚线
+    const svg = lane.querySelector(".v1-road");
+    svg.setAttribute("width", lane.clientWidth); svg.setAttribute("height", lane.clientHeight);
+    svg.innerHTML = pts.slice(1).map((p, i) => {
+      const a = pts[i]; const walked = a.n.status === "done";
+      const ax = a.x + a.w, ay = a.y + a.h / 2, bx = p.x, by = p.y + p.h / 2, mx = Math.round((ax + bx) / 2);
+      return `<path d="M${ax} ${ay}H${mx}V${by}H${bx}" fill="none" stroke="${walked ? "#0D0E10" : "#C9CCD3"}" stroke-width="4" ${walked ? "" : 'stroke-dasharray="4 4"'} shape-rendering="crispEdges"/>`;
+    }).join("");
+    lane._pts = pts;
+  });
+  // 跨线依赖：从前置关卡竖下到两条路的分界线，横走到目标关卡再竖上去；灰色虚线 + 说明
+  const lanes = [...document.querySelectorAll(".v1-lane")];
+  const mid = lanes[1].offsetTop - 4;
+  const find = (id) => { for (const l of lanes) { const p = l._pts.find((q) => q.n.id === id); if (p) return { p, l }; } };
+  let svg = map.querySelector(".v1-links");
+  if (!svg) { svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.classList.add("v1-road", "v1-links"); map.appendChild(svg); }
+  svg.setAttribute("width", map.clientWidth); svg.setAttribute("height", map.clientHeight);
+  svg.innerHTML = LINKS.map(([from, to]) => {
+    const A = find(from), B = find(to);
+    const X = (P, dx) => Math.round(P.l.offsetLeft + P.p.x + P.p.w / 2 + dx);
+    const Y = (P) => (P.l.offsetTop < mid ? P.l.offsetTop + P.p.y + P.p.h : P.l.offsetTop + P.p.y);
+    const ax = X(A, 10), bx = X(B, -10), ay = Y(A), by = Y(B);
+    const t = document.createElement("span");
+    t.className = "v1-link-label"; t.textContent = `${from} 的产出 → ${to}`;
+    t.style.left = `${Math.min(ax, bx) + 8}px`; t.style.top = `${mid - 20}px`;
+    map.appendChild(t);
+    const head = by > mid ? by - 6 : by;
+    return `<path d="M${ax} ${ay}V${mid}H${bx}V${by}" fill="none" stroke="#686D76" stroke-width="2" stroke-dasharray="4 4" shape-rendering="crispEdges"/><rect x="${bx - 4}" y="${head}" width="8" height="6" fill="#686D76"/>`;
+  }).join("");
+  select(sel);
+}
+let sel = "B4";
+function select(id) {
+  sel = id;
+  document.querySelectorAll(".v1-tile").forEach((t) => t.classList.toggle("is-sel", t.dataset.id === id));
+  const n = byId(id);
+  document.getElementById("detail").innerHTML = detailHTML(n, { cols: true });
+  document.getElementById("selHint").textContent = `${n.id} · ${n.lineName ?? ""}`.replace(" · undefined", "");
+}
+// 等样式和字体都到位再量宽度
+if (document.readyState === "complete") layout(); else addEventListener("load", layout);
+addEventListener("resize", layout);
+blinkCurrent();
+</script>
+</body>
+</html>

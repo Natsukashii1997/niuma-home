@@ -1,0 +1,75 @@
+/* 培养路径设计稿共用样式。只在 docs/design-drafts/mentor-path/ 里用；在 src/styles*.css 之后加载。
+   沿用规范：直角、2px 细线、无阴影无渐变；层级用抖动网点；动效只靠 JS 按帧切换 class，不写 transition。 */
+
+:root { --chrome-h: 34px; --sticky-top: calc(34px + var(--s4)); }
+.app { min-height: 100vh; }
+.draft-mark { padding: 0 var(--s2); border: 1px dashed var(--signal); color: var(--signal); font-size: 11px; }
+.mp-brand { display: grid; place-items: center; background: var(--text); color: var(--signal); }
+.mp-brand .pixel-icon { width: 14px; height: 14px; }
+.sidebar a { cursor: default; }
+.mp-toolbar .person-tabs button { min-height: var(--ctl); }
+.ok-text { color: var(--ok); } .warn-text { color: var(--warn); } .risk-text { color: var(--risk); }
+.mp-gap6 { gap: 6px; flex-wrap: wrap; }
+.tag .pixel-icon { width: 10px; height: 10px; }
+.tag-orange .pixel-icon { vertical-align: -1px; }
+
+/* 星级：像素星，亮星为墨色，暗星为描边灰 */
+.mp-stars { display: inline-flex; gap: 2px; color: var(--line); }
+.mp-stars i { display: inline-flex; }
+.mp-stars i.on { color: var(--text); }
+.mp-stars.is-signal i.on { color: var(--signal); }
+
+/* 抖动进度条上的通关线 */
+.dither-bar { position: relative; }
+.mp-passline { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); }
+
+/* 进度格（StepProgress 同款 20 格） */
+.mp-cells { display: grid; grid-template-columns: repeat(var(--n, 20), minmax(0, 1fr)); gap: 2px; }
+.mp-cells i { height: 10px; background: var(--dither-1); border: 1px solid var(--line); }
+.mp-cells i.on { background: var(--text); border-color: var(--text); }
+.mp-cells i.on.is-sig { background: var(--signal); border-color: var(--signal); }
+
+/* 当前关卡闪烁的橙方块 */
+.mp-blink { display: inline-block; width: 8px; height: 8px; background: var(--signal); }
+.mp-blink.off { background: transparent; }
+
+/* ---------- 关卡详情 ---------- */
+.mp-detail { display: flex; flex-direction: column; gap: var(--s4); }
+.mp-detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s4); padding-bottom: var(--s4); border-bottom: 1px solid var(--line); }
+.mp-detail-title { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.mp-detail-title h3 { font-size: 18px; font-weight: 600; line-height: 1.35; }
+.mp-score { display: grid; grid-template-columns: auto auto; align-items: end; justify-items: end; column-gap: var(--s1); row-gap: var(--s1); flex-shrink: 0; }
+.mp-score-num { font-size: 40px; line-height: 0.9; }
+.mp-score-of { font-size: 12px; color: var(--muted); }
+.mp-score .mp-stars { grid-column: 1 / -1; }
+.mp-score.is-locked { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.mp-sec { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
+.mp-sec p { margin: 0; font-size: 13px; line-height: 1.6; }
+.mp-sec-pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s4); }
+.mp-detail.is-cols .mp-sec-pair { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.mp-todo, .mp-out { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.mp-todo li { display: flex; align-items: flex-start; gap: var(--s2); padding: 6px 0; border-bottom: 1px solid var(--line); line-height: 1.5; }
+.mp-todo li:last-child, .mp-out li:last-child { border-bottom: 0; }
+.mp-todo li.done { color: var(--muted); }
+.mp-box { flex: none; display: grid; place-items: center; width: 14px; height: 14px; margin-top: 2px; border: 2px solid var(--text); background: var(--panel); }
+.mp-todo li.done .mp-box { background: var(--text); color: var(--panel); border-color: var(--text); }
+.mp-box .pixel-icon { width: 10px; height: 10px; }
+.mp-out li { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.mp-out li span:first-of-type { flex: 1; min-width: 0; }
+.mp-rubric { width: 100%; border-collapse: collapse; }
+.mp-rubric td { padding: 6px var(--s2); border-bottom: 1px solid var(--line); vertical-align: top; }
+.mp-rubric td:first-child { padding-left: 0; }
+.mp-rubric td.tnum { width: 48px; text-align: right; font-family: var(--font-mono); }
+.mp-rubric tfoot td { border-bottom: 0; border-top: 2px solid var(--text); font-weight: 600; }
+.mp-bar-row { display: flex; align-items: center; gap: var(--s3); }
+.mp-bar-row .dither-bar { flex: 1; }
+.mp-actions { display: flex; align-items: center; gap: var(--s2); padding-top: var(--s4); border-top: 1px solid var(--line); }
+.mp-actions .btn { height: var(--ctl-sm); padding: 0 var(--s2); font-size: 12px; }
+
+/* 图例 */
+.mp-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s4); font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.mp-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.mp-legend i { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--text); }
+.mp-legend i.done { background: var(--text); }
+.mp-legend i.doing { border-color: var(--signal); background: var(--dither-signal-2); }
+.mp-legend i.locked { border-color: var(--line); background: var(--dither-2); }
