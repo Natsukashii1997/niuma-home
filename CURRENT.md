@@ -7,7 +7,7 @@
 用户要求（同日）：AI 推测不与时间轴、明细表并列；删「显示来源单元格」；策略页常驻提示要可关；Voice 未接真实数据前用模拟数据（含首页）。促销打法不动。第 2 批（2027 时间线入口）、第 3 批（带教培养路径 5 版、知识库 3 版、业务图表 3 版设计稿）待做，设计稿已提成三张会话卡。
 
 - `src/modules/user/UserPage.jsx`：视图切换只剩「按月 · 时间轴 / 按国家 · 明细表」；工具栏右侧加「AI 推测 N 条待核」入口（`.tl-guess-entry`），同步后照常生成待核项。删掉显示来源开关及其控制的条上来源、明细「来源」列、月历原文对照、明细格来源小字；悬停提示与日期详情里的「来源」一并去掉；AI 推测核对页保留来源格（纠错要定位原格）。
-- `src/modules/user/StrategyView.jsx`：时间线依据提示改成 `EvidenceNotice`——与时间线一致时不显示；有变化或缺快照时显示并带 ×，关掉后按「状态 + 指纹 + 同步时间」记在本机 localStorage，依据再变才重新出现。
+- `src/modules/user/StrategyView.jsx`：时间线依据提示改成 `EvidenceNotice`——与时间线一致时不显示；有变化或缺快照时显示并带 ×，关掉后按「状态 + 指纹」记在本机 localStorage（只重新同步不会再弹），依据再变才重新出现。
 - `src/samples.js` 新增 `voiceSample()`（字段同 `/api/v3/voice`，七天日期按今天推）；`src/modules/voice/VoicePage.jsx` 在来源不可用时显示模拟热榜并加虚线「模拟数据」说明条，模拟话题不能转需求；`src/modules/home/HomePage.jsx` 留学之声卡同样显示模拟词云与摘要并标「示例 · 模拟数据」。来源接通或真实空榜时按原逻辑。
 - `src/styles-v3.css`：新增 `.tl-guess-entry`、`.us-warn-close`、`.voice-sample-note`；删除不再使用的 `.tl-calendar-reference`；`src/styles-layout.css` 删 `.tl-cell-source`。
 - 测试：`npm test` 670 / 670 通过，`npm run build`、`git diff --check` 通过（这批没有新增测试：都是前端展示）。

@@ -28,7 +28,7 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString("zh-CN", { month: "2-d
 // 时间线依据：一致时不显示；有变化或缺快照才挂出来，可点 × 关掉，直到依据再次变化（用户 2026-10-23）。
 const evidenceKey = (month) => `niuma:us-evidence:${month}`;
 function EvidenceNotice({ month, ev }) {
-  const stamp = `${ev.status}:${ev.fingerprint || ""}:${ev.syncedAt}`;
+  const stamp = `${ev.status}:${ev.fingerprint || ""}`; // 指纹已含来源、窗口与事件；只重新同步不算变化
   const [closed, setClosed] = useState(() => { try { return localStorage.getItem(evidenceKey(month)); } catch { return null; } });
   if (ev.status === "current" || closed === stamp) return null;
   const close = () => { try { localStorage.setItem(evidenceKey(month), stamp); } catch { /* 存不了就只关本次 */ } setClosed(stamp); };
