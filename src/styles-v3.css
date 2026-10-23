@@ -1854,3 +1854,167 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .tl-official-note { padding:0 16px; line-height:1.7; }
 
 .tl-scope { display:block; margin-top:4px; color:var(--muted); white-space:normal; line-height:1.5; }
+
+/* ---------- 带教 · 培养路径（定稿 V7 远征登山，用户 2026-10-23；这一页允许跳出位图风，规则见 STYLE-GUIDE「培养路径」） ----------
+   横向全景撑满主区：地图最小 1232 宽，窗口窄时横向滚动；页头和营地日志固定在可视区。
+   橙色只表示「现在」：太阳、登山者、正在爬的营地与标牌。AI 线用信息蓝。动效只靠 JS 按帧切换，不写 transition。 */
+.main:has(> .m7-page) { padding: 0; }
+.m7-page { position: absolute; inset: 0 0 var(--statusbar-h); overflow: hidden; background: var(--panel); }
+.m7-scroll { position: absolute; inset: 0; overflow: auto; }
+.m7 { position: relative; min-width: 1232px; height: 100%; min-height: 640px; background: var(--panel); }
+.m7-svg { position: absolute; left: 0; top: 0; display: block; }
+.m7-svg .m7-hit { cursor: pointer; }
+.m7-rope { stroke: #AEB3BB; stroke-width: 1.5; }
+.m7-rope.on { stroke: var(--text); stroke-width: 2.5; }
+.m7-labels { position: absolute; inset: 0; pointer-events: none; }
+/* 页头：叠在天空上，不跟地图滚 */
+.m7-head { position: absolute; left: 0; right: 0; top: 0; z-index: 10; display: flex; align-items: center; gap: var(--s5); height: 64px; padding: 0 var(--s5); pointer-events: none; }
+.m7-head > * { pointer-events: auto; }
+.m7-crumb { display: flex; align-items: center; gap: var(--s4); }
+.m7-crumb h1 { font-size: 20px; line-height: 1; }
+.m7-tabs { display: inline-flex; border: 2px solid var(--text); background: var(--panel); }
+.m7-tabs a { height: 28px; padding: 0 var(--s3); line-height: 28px; font-size: 12px; color: var(--text-2); text-decoration: none; }
+.m7-tabs a:hover { background: var(--panel-soft); color: var(--text); }
+.m7-tabs a.on { background: var(--text); color: var(--panel); }
+.m7-people { display: inline-flex; border: 2px solid var(--line); background: var(--panel); }
+.m7-people button { display: inline-flex; align-items: baseline; gap: 6px; height: 28px; padding: 0 var(--s3); border: 0; background: none; font: inherit; font-size: 13px; color: var(--text-2); cursor: pointer; }
+.m7-people button + button { border-left: 1px solid var(--line); }
+.m7-people button small { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.m7-people button.on { background: var(--panel-soft); color: var(--text); font-weight: 600; box-shadow: inset 0 -3px 0 var(--signal); }
+.m7-people button:disabled { color: var(--muted); cursor: default; }
+.m7-kpis { display: flex; align-items: baseline; gap: var(--s5); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.m7-kpis b { margin-right: 4px; font-family: var(--font-mono); font-size: 18px; font-weight: 600; color: var(--text); }
+.m7-kpis .is-warn b { color: var(--warn); }
+/* 营地标牌：已通关细边、正在爬橙色粗边、未解锁灰虚线；位置由 placePlates 算，引线（::after）从营地竖直连过来 */
+.m7-plate { position: absolute; width: 184px; display: flex; flex-direction: column; padding: 4px 8px 5px; background: var(--panel); border: 1px solid var(--text); pointer-events: auto; cursor: pointer; }
+.m7-plate .meta { display: flex; align-items: center; gap: 6px; height: 15px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em; color: var(--muted); white-space: nowrap; }
+.m7-plate .m7-tag { height: 14px; }
+.m7-plate strong { font-size: 14px; line-height: 1.3; }
+.m7-plate .sc { display: flex; align-items: center; gap: 4px; height: 16px; font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.m7-plate .sc .m7-stars { margin-right: 2px; }
+.m7-plate .sc .pixel-icon { width: 12px; height: 12px; }
+.m7-plate.is-ai { border-color: var(--info); }
+.m7-plate.is-doing { border: 2px solid var(--signal); padding: 3px 7px 4px; }
+.m7-plate.is-doing .sc { color: var(--signal); font-weight: 600; }
+.m7-plate.is-late .sc { color: var(--risk); }
+.m7-plate.is-locked { border: 1px dashed #9CA0A8; }
+.m7-plate.is-locked strong { font-weight: 500; color: var(--text-2); }
+.m7-plate.is-locked .sc { color: var(--muted); }
+.m7-plate.is-hl { outline: 2px solid var(--signal); outline-offset: 2px; }
+.m7-plate::after { content: ""; position: absolute; left: var(--lx, 8px); width: 2px; height: var(--lh, 10px); background: var(--text); }
+.m7-plate.is-down::after { top: var(--lt, -11px); }
+.m7-plate.is-up::after { bottom: var(--lt, -11px); }
+.m7-plate.is-ai::after { background: var(--info); }
+.m7-plate.is-doing::after { background: var(--signal); }
+.m7-plate.is-locked::after { background: #9CA0A8; }
+/* 小牌：完整标牌放不下时只留编号、阶段和星；悬停或打开时展开成完整标牌（is-peek） */
+.m7-plate .mini { display: none; }
+.m7-plate.is-mini { width: auto; padding: 2px 6px 2px 2px; }
+.m7-plate.is-mini > :not(.mini) { display: none; }
+.m7-plate.is-mini .mini { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.m7-plate.is-mini .mini .pixel-icon { width: 10px; height: 10px; }
+.m7-plate.is-locked .mini { font-weight: 500; color: var(--text-2); }
+.m7-plate.is-peek { z-index: 3; }
+.m7-tag { display: inline-flex; align-items: center; height: 16px; padding: 0 4px; font-family: var(--font-mono); font-size: 10px; font-style: normal; font-weight: 600; color: var(--panel); background: var(--text); }
+.m7-tag.is-ai { background: var(--info); }
+.m7-stars { display: inline-flex; gap: 2px; color: var(--line); }
+.m7-stars i { display: inline-flex; }
+.m7-stars i.on { color: var(--text); }
+.m7-ridge { position: absolute; padding: 2px 8px; background: var(--panel); border: 1px solid var(--text); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.m7-ridge.is-ai { border-color: var(--info); color: var(--info); }
+.m7-summit { position: absolute; padding: 7px 10px; background: var(--text); color: var(--panel); pointer-events: auto; cursor: pointer; }
+.m7-summit strong { display: block; font-size: 14px; }
+.m7-summit span { font-size: 11px; color: #9CA0A8; }
+.m7-summit.is-hl { outline: 2px solid var(--signal); outline-offset: 2px; }
+.m7-today { position: absolute; display: flex; flex-direction: column; font-family: var(--font-mono); font-size: 11px; line-height: 1.35; color: var(--signal); white-space: nowrap; }
+.m7-today b { font-size: 12px; }
+.m7-late { position: absolute; padding: 1px 6px; background: var(--risk); color: var(--panel); font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+.m7-rope-label { position: absolute; visibility: hidden; padding: 1px 6px; background: var(--text); color: var(--panel); font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+.m7-rope-label.on { visibility: visible; }
+/* 右下：本周攀登 */
+.m7-week { position: absolute; width: 440px; display: flex; flex-direction: column; background: var(--panel); border: 2px solid var(--text); pointer-events: auto; }
+.m7-week-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 34px; padding: 0 12px; border-bottom: 1px solid var(--line); }
+.m7-week-head b { font-size: 13px; }
+.m7-week-head span { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.m7-row { display: grid; grid-template-columns: 4px minmax(0, 1fr); gap: 10px; padding: 8px 12px; border: 0; border-bottom: 1px solid var(--line); background: var(--panel); font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+.m7-row:hover { background: var(--panel-soft); }
+.m7-row > i { align-self: stretch; }
+.m7-row > span { display: flex; flex-direction: column; }
+.m7-row .l1 { display: flex; align-items: baseline; gap: 8px; font-size: 13px; }
+.m7-row .l1 strong { font-size: 13px; }
+.m7-row .l1 span { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.m7-row .l2 { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 12px; color: var(--text-2); }
+.m7-row .l2 b { color: var(--signal); }
+.m7-row .l2 .risk { color: var(--risk); font-weight: 600; }
+.m7-meter { display: inline-grid; grid-template-columns: repeat(10, 6px); gap: 1px; }
+.m7-meter i { height: 8px; border: 1px solid var(--text); }
+.m7-meter i.on { background: var(--text); }
+.m7-meter.is-late i.on { background: var(--risk); border-color: var(--risk); }
+.m7-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 7px 12px; font-size: 11px; color: var(--muted); }
+.m7-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.m7-legend svg { flex: none; }
+/* 营地日志抽屉：固定在可视区右侧，从右按帧滑入 */
+.m7-drawer { position: absolute; top: 0; right: 0; bottom: 0; z-index: 40; width: 500px; display: flex; flex-direction: column; background: var(--panel); border-left: 2px solid var(--text); }
+.m7-drawer-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--s3); height: 56px; padding: 0 var(--s4) 0 var(--s5); border-bottom: 1px solid var(--line); }
+.m7-drawer-title { display: flex; align-items: center; gap: var(--s2); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; color: var(--muted); }
+.m7-drawer-body { flex: 1; min-height: 0; overflow: auto; padding: var(--s5); }
+.m7-x { display: grid; place-items: center; width: 32px; height: 32px; border: 2px solid var(--text); background: var(--panel); color: var(--text); cursor: pointer; }
+.m7-x:hover { background: var(--text); color: var(--panel); }
+.m7-note { display: flex; align-items: flex-start; gap: var(--s2); margin-bottom: var(--s4); padding: var(--s2) var(--s3); border: 1px dashed var(--muted); font-size: 12px; line-height: 1.6; color: var(--text-2); }
+.m7-note .pixel-icon { margin-top: 3px; }
+.m7-note.is-link { border-style: solid; border-color: var(--info-soft); background: var(--info-soft); color: var(--text); }
+.m7-camp { margin-bottom: var(--s4); padding: 12px 14px; background: var(--bg); border: 1px solid var(--line); }
+.m7-camp-top { display: flex; align-items: center; gap: 10px; }
+.m7-camp-ico { flex: none; display: grid; place-items: center; width: 40px; height: 40px; background: var(--panel); border: 1px solid var(--line); }
+.m7-camp-name { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.m7-camp-name b { font-size: 14px; }
+.m7-camp-name span { font-size: 12px; color: var(--muted); }
+.m7-nav { height: 28px; padding: 0 8px; gap: 4px; font-size: 12px; }
+.m7-slope { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+.m7-slope .cells, .m7-slope .wk { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 3px; }
+.m7-slope .cells i { height: 14px; border: 1px solid var(--text); background: var(--panel); }
+.m7-slope .cells i.past { background: var(--text); }
+.m7-slope .cells i.now { background: var(--signal); border-color: var(--signal); }
+.m7-slope .cells i.late { background: var(--risk); border-color: var(--risk); }
+.m7-slope .wk span { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.m7-slope .txt { font-size: 12px; color: var(--text-2); }
+.m7-slope .txt b { color: var(--signal); }
+.m7-slope .txt .risk { color: var(--risk); font-weight: 600; }
+.m7-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.m7-list li { display: flex; align-items: flex-start; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13px; line-height: 1.55; }
+.m7-list li:last-child { border-bottom: 0; }
+.m7-list li .pixel-icon { margin-top: 3px; }
+.m7-raw { display: flex; flex-direction: column; gap: var(--s4); }
+/* 关卡详情 */
+.m7-gap6 { gap: 6px; flex-wrap: wrap; }
+.m7-detail { display: flex; flex-direction: column; gap: var(--s4); }
+.m7-detail .tag .pixel-icon { width: 10px; height: 10px; }
+.m7-detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s4); padding-bottom: var(--s4); border-bottom: 1px solid var(--line); }
+.m7-detail-title { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.m7-detail-title h3 { font-size: 18px; font-weight: 600; line-height: 1.35; }
+.m7-score { display: grid; grid-template-columns: auto auto; align-items: end; justify-items: end; column-gap: var(--s1); row-gap: var(--s1); flex-shrink: 0; }
+.m7-score-num { font-size: 40px; line-height: 0.9; }
+.m7-score-of { font-size: 12px; color: var(--muted); }
+.m7-score .m7-stars { grid-column: 1 / -1; }
+.m7-score.is-locked { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.m7-sec { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
+.m7-sec p { margin: 0; font-size: 13px; line-height: 1.6; }
+.m7-todo, .m7-out { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.m7-todo li { display: flex; align-items: flex-start; gap: var(--s2); padding: 6px 0; border-bottom: 1px solid var(--line); line-height: 1.5; }
+.m7-todo li:last-child, .m7-out li:last-child { border-bottom: 0; }
+.m7-todo li.done { color: var(--muted); }
+.m7-box { flex: none; display: grid; place-items: center; width: 14px; height: 14px; margin-top: 2px; border: 2px solid var(--text); background: var(--panel); }
+.m7-todo li.done .m7-box { background: var(--text); color: var(--panel); border-color: var(--text); }
+.m7-box .pixel-icon { width: 10px; height: 10px; }
+.m7-out li { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.m7-out li span:first-of-type { flex: 1; min-width: 0; }
+.m7-rubric { width: 100%; border-collapse: collapse; }
+.m7-rubric td { padding: 6px var(--s2); border-bottom: 1px solid var(--line); vertical-align: top; }
+.m7-rubric td:first-child { padding-left: 0; }
+.m7-rubric td.tnum { width: 48px; text-align: right; font-family: var(--font-mono); }
+.m7-rubric tfoot td { border-bottom: 0; border-top: 2px solid var(--text); font-weight: 600; }
+.m7-bar-row { display: flex; align-items: center; gap: var(--s3); }
+.m7-bar { position: relative; flex: 1; }
+.m7-passline { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); }
+.m7-actions { display: flex; align-items: center; gap: var(--s2); padding-top: var(--s4); border-top: 1px solid var(--line); }
+.m7-actions .btn { height: var(--ctl-sm); padding: 0 var(--s2); font-size: 12px; }

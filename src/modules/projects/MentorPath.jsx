@@ -1,0 +1,453 @@
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { DitherBar, DitherPattern, PixelIcon, PixelSprite, SPRITES, SpriteCells, frames, prefersReducedMotion } from "../../ui/bitmap.jsx";
+import { useApi } from "../../api.js";
+import { Button, Loadable, PageHeader, PendingButton, Placeholder, SampleBadge, Tabs, Tag } from "../../ui/components.jsx";
+import { MENTOR_PATH_SAMPLE } from "../../samples.js";
+import { avgScore, busyBoxes, doneCount, findNode, fixedLabels, isLate, labelBoxes, lateWeeks, layout, lineStars, pendingReviews, pines, placePlates, placeRopeLabels, plateStyle, poly, prereqs, seasonClock, shortUnlock, slopeOf, stars, unlockText } from "./mentor-path.js";
+
+// 带教 · 培养路径（定稿 V7 远征登山，用户 2026-10-23）：横向全景，前山是业务线、后山是 AI 线；一关是一段坡，坡顶的营地是通关点，越往右越高，
+// 两条路在山顶汇合（结业）。太阳 = 今天，橙色虚线从太阳垂到地面；登山者站在现在的位置；绳桥是跨线依赖。橙色只表示「现在」。
+// 地图最小 1232 宽（1440×900 下的主区宽），窗口窄时横向滚动；页头和营地日志固定在可视区。坐标全部由 mentor-path.js 计算。
+// 数据：GET /api/v3/mentor/path 还没接真实来源（T14），先显示示例；评分、打开产出物也待 T14。
+const INK = "#0D0E10", PANEL = "#FBFBFC", SIGNAL = "#FF4F1F", BLUE = "#2563EB", GRAY = "#C9CCD3", MUTED = "#686D76", LOCKED = "#9CA0A8";
+const MOUNT = { biz: "前山", ai: "后山" }, LNAME = { biz: "业务线", ai: "AI 线" }, LCOLOR = { biz: INK, ai: BLUE };
+const KEYS = ["biz", "ai"];
+const pick = (t) => t?.closest?.("[data-hit]")?.dataset.hit ?? null;
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+export default function MentorPath({ tabs }) {
+  const state = useApi("/api/v3/mentor/path", MENTOR_PATH_SAMPLE);
+  return (
+    <Loadable state={state} name="培养路径" big>
+      {(data) => (data.trainees.some((t) => t.path)
+        ? <PathPage data={data} tabs={tabs} sample={state.isSample ? state.task : null} />
+        : <><PageHeader title="带教" /><Tabs items={tabs} active="path" /><Placeholder icon="route" title="还没有培养路径">管培生的培养路径接通后，这里显示两条线的营地、进度和本周攀登。</Placeholder></>)}
+    </Loadable>
+  );
+}
+
+function PathPage({ data, tabs, sample }) {
+  const clock = useMemo(() => seasonClock(data.season, data.today), [data]);
+  const [who, setWho] = useState(() => data.trainees.findIndex((t) => t.path));
+  const path = data.trainees[who].path;
+  const [selected, setSelected] = useState(null);   // 抽屉里打开的营地 id，或 summit / base
+  const [hover, setHover] = useState(null);
+  const switchTo = (k) => { setWho(k); setSelected(null); setHover(null); };
+  return (
+    <div className="m7-page">
+      <Mountain key={who} path={path} clock={clock} season={data.season} hl={hover ?? selected} onHover={setHover} onOpen={setSelected} />
+      <header className="m7-head">
+        <div className="m7-crumb"><h1>带教</h1>
+          <nav className="m7-tabs">{tabs.map((t) => <a key={t.key} href={t.href} className={t.key === "path" ? "on" : ""}>{t.label}</a>)}</nav>
+          {sample && <SampleBadge task={sample} />}</div>
+        <div className="m7-people">{data.trainees.map((t, k) => (
+          <button key={t.name} type="button" className={k === who ? "on" : ""} disabled={!t.path} title={t.path ? "" : "还没有培养路径"} onClick={() => switchTo(k)}>
+            {t.name}<small>{t.path ? `第 ${clock.week} 周` : "—"}</small></button>))}</div>
+        <span className="spacer" />
+        <Kpis path={path} clock={clock} pass={data.season.pass} />
+      </header>
+      {selected && <CampDrawer key={who} id={selected} path={path} clock={clock} season={data.season} onOpen={setSelected} onClose={() => setSelected(null)} />}
+    </div>
+  );
+}
+
+function Kpis({ path, clock, pass }) {
+  const total = path.lines.reduce((s, l) => s + l.nodes.length, 0);
+  return (
+    <div className="m7-kpis">
+      <span><b>W{clock.week}</b>/ {clock.weeks} 周</span>
+      <span><b>{path.lines.reduce((s, l) => s + doneCount(l), 0)}</b>/ {total} 关通关</span>
+      <span><b>{path.lines.reduce((s, l) => s + lineStars(l, pass), 0)}</b>/ {total * 3} 星</span>
+      <span className="is-warn"><b>{pendingReviews(path)}</b>份待评分</span>
+    </div>
+  );
+}
+
+/* ---------- 地图 ---------- */
+
+function Mountain({ path, clock, season, hl, onHover, onOpen }) {
+  const stageRef = useRef(null), labRef = useRef(null);
+  const [size, setSize] = useState(null);
+  const [fonts, setFonts] = useState(0);
+  const [place, setPlace] = useState(null);
+  useLayoutEffect(() => {
+    const el = stageRef.current, read = () => setSize((s) => (s && s.W === el.clientWidth && s.H === el.clientHeight ? s : { W: el.clientWidth, H: el.clientHeight }));
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  // 字体加载完文字宽度会变，重新量一遍
+  useEffect(() => { let alive = true; document.fonts?.ready.then(() => alive && setFonts((f) => f + 1)); return () => { alive = false; }; }, []);
+  const geo = useMemo(() => (size ? layout(size, path, clock) : null), [size, path, clock]);
+  const lines = useMemo(() => Object.fromEntries(path.lines.map((l) => [l.key, l])), [path]);
+  const doing = Object.fromEntries(KEYS.map((k) => [k, lines[k].nodes.find((n) => n.status === "doing")]));
+
+  // 先排版量尺寸，再摆位置：标牌（完整 / 小牌各量一次）、固定文字、绳桥说明
+  useLayoutEffect(() => {
+    if (!geo) return;
+    const lab = labRef.current, sz = (el) => ({ w: el.offsetWidth, h: el.offsetHeight });
+    const plateSizes = {};
+    lab.querySelectorAll(".m7-plate").forEach((el) => {
+      const cls = el.className;
+      el.classList.remove("is-mini", "is-peek");
+      const full = { ...sz(el), bw: el.clientLeft };
+      el.classList.add("is-mini");
+      const mini = { ...sz(el), bw: el.clientLeft };
+      el.className = cls;
+      plateSizes[el.dataset.id] = { full, mini };
+    });
+    const one = (sel) => sz(lab.querySelector(sel)), late = {}, ropeSizes = {};
+    lab.querySelectorAll(".m7-late").forEach((el) => (late[el.dataset.k] = sz(el)));
+    lab.querySelectorAll(".m7-rope-label").forEach((el) => (ropeSizes[el.dataset.key] = sz(el)));
+    const fl = fixedLabels(geo, { ridge: { biz: one(".m7-ridge:not(.is-ai)"), ai: one(".m7-ridge.is-ai") }, today: one(".m7-today"), summit: one(".m7-summit"), week: one(".m7-week"), late });
+    const labels = labelBoxes(fl), plates = placePlates(geo, plateSizes, labels);
+    setPlace({ geo, fl, plates: Object.fromEntries(plates.map((p) => [p.id, p])), ropes: placeRopeLabels(geo, ropeSizes, busyBoxes(geo, plates, labels)), pines: pines(geo, plates, fl.week.l) });
+  }, [geo, fonts]);
+  const P = place && place.geo === geo ? place : null;
+
+  const lower = useMemo(() => geo && <MapLower geo={geo} pineXs={P?.pines ?? []} />, [geo, P]);
+  const upper = useMemo(() => geo && <MapUpper geo={geo} />, [geo]);
+  const at = (box) => (box ? { left: box.l, top: box.t } : undefined);
+  const lastIds = KEYS.map((k) => lines[k].nodes.at(-1).id);
+
+  return (
+    <div className="m7-scroll">
+      <div className="m7" ref={stageRef} onMouseOver={(e) => onHover(pick(e.target))} onMouseLeave={() => onHover(null)} onClick={(e) => { const id = pick(e.target); if (id) onOpen(id); }}>
+        {geo && (
+          <svg className="m7-svg" viewBox={`0 0 ${geo.W} ${geo.H}`} width={geo.W} height={geo.H}>
+            {lower}
+            <Highlight geo={geo} id={hl} />
+            <line x1={geo.xNow} y1={geo.sun[1] + 26} x2={geo.xNow} y2={geo.yg} stroke={SIGNAL} strokeWidth="2" strokeDasharray="2 5" />
+            {geo.ropes.map((r) => <path key={`${r.from}>${r.to}`} className={`m7-rope${hl && (hl === r.from || hl === r.to) ? " on" : ""}`} d={r.d} fill="none" strokeDasharray="1 4" strokeLinecap="round" />)}
+            {upper}
+            <Climbers me={geo.me} />
+          </svg>
+        )}
+        {geo && (
+          <div className="m7-labels" ref={labRef}>
+            {[...geo.camps.biz, ...geo.camps.ai].map((c) => <Plate key={c.id} c={c} p={P?.plates[c.id]} hl={hl} clock={clock} path={path} pass={season.pass} />)}
+            <span className="m7-ridge" style={at(P?.fl.ridge.biz)}>前山 · 业务线</span>
+            <span className="m7-ridge is-ai" style={at(P?.fl.ridge.ai)}>后山 · AI 线</span>
+            <div className="m7-today" style={at(P?.fl.today)}><b>今天 {clock.today}</b><span>第 {clock.week} 周 · 太阳走到哪，就是哪一周</span></div>
+            <div className={`m7-summit${hl === "summit" ? " is-hl" : ""}`} data-hit="summit" style={at(P?.fl.summit)}><strong>山顶 · 结业</strong><span>{lastIds.join(" + ")} 通关后</span></div>
+            {KEYS.filter((k) => geo.me[k]?.late).map((k) => <span key={k} className="m7-late" data-k={k} style={at(P?.fl.late[k])}>超期 {lateWeeks(doing[k], clock.week)} 周</span>)}
+            {geo.ropes.map((r) => { const key = `${r.from}>${r.to}`; return <span key={key} className={`m7-rope-label${hl && (hl === r.from || hl === r.to) ? " on" : ""}`} data-key={key} style={at(P?.ropes[key])}>绳桥 {r.from} {r.note} → {r.to}</span>; })}
+            <WeekCard style={at(P?.fl.week)} lines={lines} doing={doing} clock={clock} pass={season.pass} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 天空、远山、两座山、积雪、松树、两条路（悬停高亮压在路上面）
+function MapLower({ geo, pineXs }) {
+  const { W, yg, ridge, far, sun, decor, snow, trail, base } = geo;
+  const area = (pts) => `${poly(pts)}L${W} ${yg}L0 ${yg}Z`;
+  const bands = (id, pts, ids) => {
+    const h = (yg - 120) / ids.length;
+    return (
+      <>
+        <clipPath id={`m7-c${id}`}><path d={area(pts)} /></clipPath>
+        <path d={area(pts)} fill={PANEL} />
+        <g clipPath={`url(#m7-c${id})`}>{ids.map((pid, k) => <rect key={pid} x="0" y={120 + k * h} width={W} height={h + 1} fill={`url(#${pid})`} />)}</g>
+      </>
+    );
+  };
+  return (
+    <>
+      <defs>
+        <DitherPattern id="m7-pFar" threshold={3} color={GRAY} />
+        {[1, 2, 4, 6].map((t, k) => <DitherPattern key={t} id={`m7-pB${k + 1}`} threshold={t} color="#AEB3BB" />)}
+        {[1, 2, 3, 4, 6].map((t, k) => <DitherPattern key={t} id={`m7-pF${k + 1}`} threshold={t} color={INK} />)}
+        <DitherPattern id="m7-pSun" threshold={5} color={SIGNAL} />
+      </defs>
+      {/* 天空：太阳（= 今天）、云、鸟 */}
+      <circle cx={sun[0]} cy={sun[1]} r="40" fill="url(#m7-pSun)" />
+      <circle cx={sun[0]} cy={sun[1]} r="22" fill={SIGNAL} />
+      {decor.clouds.map(([x, y, cell]) => <SpriteCells key={x} rows={SPRITES.cloud} x={x} y={y} cell={cell} color={INK} bg={PANEL} />)}
+      {decor.birds.map(([x, y]) => <SpriteCells key={x} rows={SPRITES.bird} x={x} y={y} cell={3} color={INK} />)}
+      {/* 山：远山 → 后山（AI）→ 前山（业务），越往下网点越密 */}
+      <path d={area(far)} fill="url(#m7-pFar)" />
+      {bands("B", ridge.ai, ["m7-pB1", "m7-pB2", "m7-pB3", "m7-pB4"])}
+      <path d={poly(ridge.ai)} fill="none" stroke={MUTED} strokeWidth="1.5" />
+      {bands("F", ridge.biz, ["m7-pF1", "m7-pF2", "m7-pF3", "m7-pF4", "m7-pF5"])}
+      <path d={poly(ridge.biz)} fill="none" stroke={INK} strokeWidth="2" />
+      <path d={`${poly(snow)}Z`} fill={PANEL} stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
+      {pineXs.map((x) => <SpriteCells key={x} rows={SPRITES.pine} x={x} y={yg - 21} cell={3} color={INK} />)}
+      {/* 路：已爬过的实线，没爬的虚线（终点都是山顶） */}
+      {["ai", "biz"].map((k) => (
+        <g key={k}>
+          <path d={poly(trail[k].todo)} fill="none" stroke={LCOLOR[k]} strokeWidth="3" strokeDasharray="7 6" />
+          {trail[k].done.at(-1)[0] > base[k][0] && <path d={poly(trail[k].done)} fill="none" stroke={LCOLOR[k]} strokeWidth="5" strokeLinejoin="round" />}
+        </g>
+      ))}
+    </>
+  );
+}
+
+// 营地、大本营、山顶旗、地平线（月份、周次、营地刻度）
+function MapUpper({ geo }) {
+  const { W, yg, RB, camps, base, summit, months, weeks } = geo;
+  const camp = ({ id, n, x, y, line }) => {
+    let g;
+    // 图标立在平台上：底边离线 5px，带白边
+    if (n.status === "done") g = <SpriteCells rows={SPRITES.flag} x={x - 12} y={y - 33} cell={4} color={LCOLOR[line]} outline bg={PANEL} />;
+    else if (n.status === "doing") g = <><rect x={x - 15} y={y - 33} width="30" height="28" fill={PANEL} stroke={SIGNAL} strokeWidth="2" strokeDasharray="4 3" /><SpriteCells rows={SPRITES.tent} x={x - 10.5} y={y - 29} cell={3} color={SIGNAL} /></>;
+    else g = n.boss ? <SpriteCells rows={SPRITES.keep} x={x - 10.5} y={y - 20} cell={3} color={INK} outline bg={PANEL} /> : <SpriteCells rows={SPRITES.tent} x={x - 10.5} y={y - 26} cell={3} color={LOCKED} outline bg={PANEL} />;
+    return <g key={id} className="m7-hit" data-hit={id}>{g}<rect x={x - 18} y={y - 36} width="36" height="41" fill="transparent" /></g>;
+  };
+  return (
+    <>
+      {camps.ai.map(camp)}
+      {camps.biz.map(camp)}
+      {/* 大本营（两座山各一顶）、山顶旗 */}
+      {KEYS.map((k) => (
+        <g key={k} className="m7-hit" data-hit="base">
+          <SpriteCells rows={SPRITES.tent} x={base[k][0] - 14} y={base[k][1] - 33} cell={4} color={LCOLOR[k]} outline bg={PANEL} />
+          <rect x={base[k][0] - 18} y={base[k][1] - 36} width="36" height="36" fill="transparent" />
+        </g>
+      ))}
+      <g className="m7-hit" data-hit="summit">
+        <SpriteCells rows={SPRITES.flag} x={summit[0] - 2} y={summit[1] - 46} cell={6} color={SIGNAL} />
+        <rect x={summit[0] - 10} y={summit[1] - 4} width="20" height="6" fill={INK} />
+        <rect x={summit[0] - 12} y={summit[1] - 50} width="54" height="56" fill="transparent" />
+      </g>
+      <rect x="0" y={yg} width={W} height={RB} fill={INK} />
+      {months.map((m) => (
+        <g key={m.name}>
+          <line x1={m.x} y1={yg} x2={m.x} y2={yg + 16} stroke={PANEL} strokeWidth="2" />
+          <text x={m.x + 6} y={yg + 14} fontFamily="Geist Mono" fontSize="10" fill={LOCKED}>{m.name}</text>
+        </g>
+      ))}
+      {weeks.map(({ w, a, b, cur }) => (
+        <g key={w}>
+          {cur && <rect x={a} y={yg + 20} width={b - a} height={RB - 20} fill={SIGNAL} />}
+          <text x={(a + b) / 2} y={yg + 37} textAnchor="middle" fontFamily="Geist Mono" fontSize="10" fill={cur ? PANEL : GRAY}>W{w}</text>
+        </g>
+      ))}
+      {[...camps.biz, ...camps.ai].map(({ id, x, line }) => <path key={id} d={`M${x - 5} ${yg + 1}L${x + 5} ${yg + 1}L${x} ${yg + 8}Z`} fill={line === "biz" ? PANEL : "#7FA4F5"} />)}
+    </>
+  );
+}
+
+// 高亮一段坡（上一营地 → 这一营地）；山顶 = 两条线最后一段
+function Highlight({ geo, id }) {
+  if (!id || id === "base") return null;
+  const w = id === "summit" ? 4 : 5;
+  return slopeOf(geo, id).map((pts, k) => (
+    <g key={k}>
+      <path d={poly(pts)} fill="none" stroke={PANEL} strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={poly(pts)} fill="none" stroke={SIGNAL} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+    </g>
+  ));
+}
+
+// 登山者两帧交替（约 2 次/秒）；减少动态效果时停在第一帧
+function Climbers({ me }) {
+  const [f, setF] = useState(0);
+  useEffect(() => (prefersReducedMotion() ? undefined : frames((k) => { if (k % 7 === 0) setF((x) => 1 - x); })), []);
+  return KEYS.filter((k) => me[k]).map((k) => <SpriteCells key={k} rows={SPRITES.climb[f]} x={me[k].x - 14} y={me[k].y - 41} cell={4} color={SIGNAL} outline bg={PANEL} />);
+}
+
+const Tagged = ({ id }) => <i className={`m7-tag${id[0] === "A" ? " is-ai" : ""}`}>{id}</i>;
+function Stars({ n, pass }) {
+  const k = n.status === "done" ? stars(n.score, pass) : 0;
+  return <span className="m7-stars" title={`${k} 星`}>{[0, 1, 2].map((i) => <i key={i} className={i < k ? "on" : ""}><PixelIcon name="star" /></i>)}</span>;
+}
+
+// 营地标牌：已通关细边、正在爬橙色粗边、未解锁灰虚线；小牌悬停或打开时展开（peek）
+function Plate({ c, p, hl, clock, path, pass }) {
+  const { n, line } = c, late = isLate(n, clock.week);
+  const peek = !!p && p.at.mini && hl === c.id, a = p && (peek ? p.peek : p.at);
+  const s = a && plateStyle(p, a);
+  const cls = ["m7-plate", `is-${n.status}`, line === "ai" && "is-ai", late && "is-late", a?.mini && "is-mini", a && `is-${a.side}`, hl === c.id && "is-hl", peek && "is-peek"].filter(Boolean).join(" ");
+  const sc = n.status === "done" ? <>{n.score} 分 <Stars n={n} pass={pass} />· {n.at} 通关</>
+    : late ? `${n.score} 分 · 超期 ${lateWeeks(n, clock.week)} 周`
+    : n.status === "doing" ? `${n.score} 分 · 差 ${pass - n.score} 分通关` : shortUnlock(path, n.id);
+  return (
+    <div className={cls} data-id={c.id} data-hit={c.id} style={s && { left: s.left, top: s.top, "--lx": `${s.lx}px`, "--lh": `${s.lh}px`, "--lt": `${s.lt}px` }}>
+      <span className="meta"><Tagged id={n.id} />{n.stage} · W{n.week[0]}–{n.week[1]}</span>
+      <strong>{n.boss && <><PixelIcon name="crown" /> </>}{n.title}</strong>
+      <span className="sc">{n.status === "locked" && <PixelIcon name="lock" />}{sc}</span>
+      <span className="mini"><Tagged id={n.id} />{n.boss ? <PixelIcon name="crown" /> : n.status === "locked" && <PixelIcon name="lock" />}{n.stage}{n.status === "done" && <Stars n={n} pass={pass} />}</span>
+    </div>
+  );
+}
+
+// 右下：本周攀登（两条线各一行，点开营地日志）+ 图例
+function WeekCard({ style, lines, doing, clock, pass }) {
+  const pct = (n) => clamp01((clock.nowW - (n.week[0] - 1)) / (n.week[1] - n.week[0] + 1));
+  const meter = (n) => { const late = isLate(n, clock.week), k = late ? 10 : Math.round(pct(n) * 10); return <span className={`m7-meter${late ? " is-late" : ""}`}>{Array.from({ length: 10 }, (_, j) => <i key={j} className={j < k ? "on" : ""} />)}</span>; };
+  const legend = (svg, text) => <span>{svg}{text}</span>;
+  return (
+    <div className="m7-week" style={style}>
+      <div className="m7-week-head"><b>本周攀登</b><span>W{clock.week} · {clock.weekStart(clock.week)} 至 {clock.weekEnd(clock.week)} · 距山顶 {clock.weeks - clock.week} 周</span></div>
+      {KEYS.filter((k) => doing[k]).map((k) => {
+        const n = doing[k], l = lines[k], late = isLate(n, clock.week), i = l.nodes.indexOf(n);
+        return (
+          <button key={k} type="button" className="m7-row" data-hit={n.id}><i style={{ background: LCOLOR[k] }} /><span>
+            <span className="l1"><strong>{MOUNT[k]} · {LNAME[k]}</strong><span>{doneCount(l)}/{l.nodes.length} 营地 · ★{lineStars(l, pass)}</span></span>
+            <span className="l2">{late ? `卡在营地 ${i + 1} 前` : `正在爬第 ${i + 1} 段坡`} · {n.title}<span className="spacer" />{meter(n)}</span>
+            <span className="l2"><b>{n.score} 分</b>差 {pass - n.score} 分通关 · {late ? <span className="risk">计划 W{n.week[1]} 结束，已超期 {lateWeeks(n, clock.week)} 周</span> : `坡上 ${Math.round(pct(n) * 100)}% · W${n.week[1]} 截止`}</span>
+          </span></button>
+        );
+      })}
+      <div className="m7-legend">
+        {legend(<PixelSprite rows={SPRITES.flag} color={INK} />, "已通关")}
+        {legend(<PixelSprite rows={SPRITES.tent} color={SIGNAL} />, "正在爬")}
+        {legend(<PixelSprite rows={SPRITES.tent} color={LOCKED} />, "未解锁")}
+        {legend(<PixelSprite rows={SPRITES.keep} color={INK} />, "BOSS 关")}
+        {legend(<svg width="22" height="14" viewBox="0 0 22 14" aria-hidden="true"><line x1="0" y1="7" x2="22" y2="7" stroke={INK} strokeWidth="2" strokeDasharray="1 4" strokeLinecap="round" /></svg>, "绳桥 = 跨线依赖")}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- 营地日志（抽屉） ---------- */
+
+// 从右侧按帧滑入（3 帧）；Esc 或 × 关闭；营地之间用上一营地 / 下一营地或 ← →
+function CampDrawer({ id, path, clock, season, onOpen, onClose }) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    if (prefersReducedMotion()) return undefined;
+    const steps = ["translateX(66%)", "translateX(33%)", ""], el = ref.current;
+    el.style.transform = steps[0];
+    return frames((f) => { el.style.transform = steps[f] ?? ""; return f < 2; });
+  }, []);
+  useEffect(() => {
+    const key = (e) => {
+      if (e.target.closest?.("input, textarea, select, dialog")) return;
+      if (e.key === "Escape") return onClose();
+      const f = id !== "summit" && id !== "base" && findNode(path.lines, id);
+      const to = f && (e.key === "ArrowLeft" ? f.line.nodes[f.i - 1] : e.key === "ArrowRight" ? f.line.nodes[f.i + 1] : null);
+      if (to) { e.preventDefault(); onOpen(to.id); }
+    };
+    addEventListener("keydown", key);
+    return () => removeEventListener("keydown", key);
+  }, [id, path, onOpen, onClose]);
+  const f = id !== "summit" && id !== "base" ? findNode(path.lines, id) : null;
+  const title = id === "summit" ? "山顶 · 结业" : id === "base" ? "大本营 · 规则" : <>营地日志 · <Tagged id={id} /> {f.n.stage}</>;
+  return (
+    <aside className="m7-drawer" ref={ref} aria-label="营地日志">
+      <div className="m7-drawer-head"><span className="m7-drawer-title"><PixelIcon name="flag" />{title}</span>
+        <button type="button" className="m7-x" aria-label="关闭" onClick={onClose}><PixelIcon name="close" /></button></div>
+      <div className="m7-drawer-body" key={id}>
+        {id === "summit" ? <SummitLog path={path} clock={clock} season={season} />
+          : id === "base" ? <BaseLog path={path} clock={clock} season={season} />
+          : <CampLog f={f} path={path} clock={clock} season={season} onOpen={onOpen} />}
+      </div>
+    </aside>
+  );
+}
+
+function CampHead({ ico, title, sub, children }) {
+  return <div className="m7-camp-top"><span className="m7-camp-ico">{ico}</span><span className="m7-camp-name"><b>{title}</b><span>{sub}</span></span>{children}</div>;
+}
+
+function CampLog({ f, path, clock, season, onOpen }) {
+  const { n, line: l, i } = f, prev = l.nodes[i - 1], next = l.nodes[i + 1], pass = season.pass;
+  const weeks = Array.from({ length: n.week[1] - n.week[0] + 1 }, (_, k) => n.week[0] + k);
+  const late = isLate(n, clock.week);
+  const pct = Math.round(clamp01((clock.nowW - (n.week[0] - 1)) / weeks.length) * 100);
+  const cell = (w) => (n.status === "done" ? "past" : n.status === "locked" ? "" : late ? "late" : w < clock.week ? "past" : w === clock.week ? "now" : "");
+  const txt = n.status === "done" ? `${n.at} 通关 · 这段坡已经爬完`
+    : late ? <><span className="risk">计划 W{n.week[1]} 结束，已超期 {lateWeeks(n, clock.week)} 周</span>，还差 {pass - n.score} 分</>
+    : n.status === "doing" ? <>今天走到这段坡的 <b>{pct}%</b>，还差 {pass - n.score} 分，W{n.week[1]} 截止</> : `还没到 · W${n.week[0]} 开始`;
+  const ico = n.status === "done" ? <PixelSprite rows={SPRITES.flag} cell={4} color={LCOLOR[l.key]} />
+    : <PixelSprite rows={n.boss ? SPRITES.keep : SPRITES.tent} cell={4} color={n.status === "doing" ? SIGNAL : n.boss ? INK : LOCKED} />;
+  const { feeds } = prereqs(path, n.id);
+  return (
+    <>
+      <div className="m7-camp">
+        <CampHead ico={ico} title={`营地 ${i + 1} / ${l.nodes.length} · ${n.stage}`} sub={`${MOUNT[l.key]}（${LNAME[l.key]}）· 第 ${i + 1} 段坡`}>
+          <span className="spacer" />
+          <button type="button" className="btn m7-nav" disabled={!prev} title="上一营地（←）" onClick={() => onOpen(prev.id)}><PixelIcon name="left" />{prev ? `营地 ${i}` : "起点"}</button>
+          <button type="button" className="btn m7-nav" disabled={!next} title="下一营地（→）" onClick={() => onOpen(next.id)}>{next ? `营地 ${i + 2}` : "山顶"}<PixelIcon name="right" /></button>
+        </CampHead>
+        <div className="m7-slope" style={{ "--n": weeks.length }}>
+          <div className="cells">{weeks.map((w) => <i key={w} className={cell(w)} />)}</div>
+          <div className="wk">{weeks.map((w) => <span key={w}>W{w}</span>)}</div>
+          <div className="txt">{clock.weekStart(n.week[0])} 至 {clock.weekEnd(n.week[1])} · {txt}</div>
+        </div>
+      </div>
+      {n.status === "locked" && <div className="m7-note"><PixelIcon name="lock" /><span><b>解锁条件</b>　{unlockText(path, n.id, pass)}</span></div>}
+      {feeds.length > 0 && n.status !== "locked" && <div className="m7-note is-link"><PixelIcon name="link" /><span><b>跨线</b>　用到 {feeds.map((k) => `${k.from} 的${k.note}`).join("、")}</span></div>}
+      <NodeDetail n={n} season={season} />
+    </>
+  );
+}
+
+const STATUS = { done: ["已通关", "green"], doing: ["进行中", "blue"], locked: ["未解锁", "neutral"] };
+
+// 关卡详情：阶段目标 / 要做的事 / 产出物 / 评分标准；评分与打开产出物待 T14
+function NodeDetail({ n, season }) {
+  const { pass, reviewer } = season, locked = n.status === "locked";
+  const todoDone = n.todoDone ?? (n.status === "done" ? n.todo.length : 0);
+  const outDone = n.outDone ?? (n.status === "done" ? n.output.length : 0);
+  const total = n.rubric.reduce((s, x) => s + (x.score ?? 0), 0);
+  return (
+    <div className="m7-detail">
+      <div className="m7-detail-head">
+        <div className="m7-detail-title">
+          <span className="row m7-gap6"><Tag tone="frame">{n.id}</Tag><span className="label">{n.stage}</span>{n.boss && <Tag tone="orange"><PixelIcon name="crown" />BOSS 关</Tag>}<Tag tone={STATUS[n.status][1]}>{STATUS[n.status][0]}</Tag></span>
+          <h3>{n.title}</h3>
+          <span className="small muted mono">第 {n.week[0]}–{n.week[1]} 周{n.at ? ` · 最近评分 ${n.at}` : ""} · 评分人 {reviewer}</span>
+        </div>
+        {locked ? <div className="m7-score is-locked"><PixelIcon name="lock" /><span className="small muted">完成前置关卡后解锁</span></div>
+          : <div className="m7-score"><span className="num m7-score-num">{n.score}</span><span className="m7-score-of mono">/ 100</span><Stars n={n} pass={pass} /></div>}
+      </div>
+      <section className="m7-sec"><span className="label">阶段目标</span><p>{n.goal}</p></section>
+      <section className="m7-sec"><span className="label">要做的事 · {todoDone}/{n.todo.length}</span>
+        <ul className="m7-todo">{n.todo.map((t, i) => <li key={t} className={i < todoDone ? "done" : ""}><i className="m7-box">{i < todoDone && <PixelIcon name="tick" />}</i>{t}</li>)}</ul></section>
+      <section className="m7-sec"><span className="label">产出物</span>
+        <ul className="m7-out">{n.output.map((o, i) => <li key={o}><PixelIcon name="file" /><span>{o}</span>{i < outDone ? <Tag tone={n.status === "done" ? "green" : "amber"}>{n.status === "done" ? "已交" : "初稿"}</Tag> : <Tag>{locked ? "—" : "未交"}</Tag>}</li>)}</ul></section>
+      <section className="m7-sec"><span className="label">评分标准 · 满分 100，{pass} 分通关</span>
+        <table className="m7-rubric"><tbody>
+          {n.rubric.map((x) => <tr key={x.name}><td>{x.name}{x.note && <span className="small muted"> · {x.note}</span>}</td><td className="tnum muted">{x.weight}</td><td className="tnum">{x.score ?? "—"}</td></tr>)}
+        </tbody><tfoot><tr><td>合计</td><td className="tnum muted">100</td><td className="tnum"><b>{locked ? "—" : total}</b></td></tr></tfoot></table>
+        {!locked && <div className="m7-bar-row"><span className="m7-bar"><DitherBar value={n.score / 100} /><i className="m7-passline" style={{ left: `${pass}%` }} /></span><span className={`small mono ${n.score >= pass ? "ok-text" : "warn-text"}`}>{n.score >= pass ? "已过通关线" : `差 ${pass - n.score} 分通关`}</span></div>}
+      </section>
+      <div className="m7-actions">
+        {locked ? <Button disabled><PixelIcon name="lock" />未解锁</Button> : <PendingButton task="T14"><PixelIcon name="link" />打开产出物</PendingButton>}
+        <span className="spacer" />
+        {n.status === "doing" ? <PendingButton task="T14" variant="primary"><PixelIcon name="edit" />评分</PendingButton> : n.status === "done" ? <PendingButton task="T14"><PixelIcon name="edit" />改评分</PendingButton> : null}
+      </div>
+    </div>
+  );
+}
+
+function SummitLog({ path, clock, season }) {
+  const lines = Object.fromEntries(path.lines.map((l) => [l.key, l])), last = KEYS.map((k) => lines[k].nodes.at(-1));
+  const sum = (fn) => KEYS.reduce((s, k) => s + fn(lines[k]), 0);
+  return (
+    <div className="m7-raw">
+      <div className="m7-camp"><CampHead ico={<PixelSprite rows={SPRITES.flag} cell={4} color={SIGNAL} />} title={`山顶 · 结业（${season.next}）`} sub={`W${clock.weeks} · ${clock.weekStart(clock.weeks)} 至 ${clock.weekEnd(clock.weeks)} · 还有 ${clock.weeks - clock.week} 周`} /></div>
+      <section className="m7-sec"><span className="label">登顶条件 · 两条线的最后一关都达到 {season.pass} 分</span>
+        <ul className="m7-list">{last.map((n) => <li key={n.id}><Tagged id={n.id} /><span><b>{n.title}</b><br /><span className="small muted">{n.status === "locked" ? `未解锁 · 需 ${unlockText(path, n.id, season.pass)}` : `${n.score} 分`}</span></span></li>)}</ul></section>
+      <section className="m7-sec"><span className="label">到目前为止 · 已通关 / 均分 / 星</span>
+        <table className="m7-rubric"><tbody>
+          {KEYS.map((k) => <tr key={k}><td>{MOUNT[k]} · {LNAME[k]}</td><td className="tnum muted">{doneCount(lines[k])}/{lines[k].nodes.length}</td><td className="tnum">{avgScore(lines[k])}</td><td className="tnum">★{lineStars(lines[k], season.pass)}</td></tr>)}
+        </tbody><tfoot><tr><td>合计</td><td className="tnum muted">{sum(doneCount)}/{sum((l) => l.nodes.length)}</td><td className="tnum" /><td className="tnum">★{sum((l) => lineStars(l, season.pass))}</td></tr></tfoot></table></section>
+      <section className="m7-sec"><span className="label">结业时看什么（示例，可改）</span><p>两条线的营地均分与星数，加上 {last.map((n) => n.id).join("、")} 的复盘文档；由{season.reviewer}评定是否晋级「{season.next}」。</p></section>
+    </div>
+  );
+}
+
+function BaseLog({ path, clock, season }) {
+  return (
+    <div className="m7-raw">
+      <div className="m7-camp"><CampHead ico={<PixelSprite rows={SPRITES.tent} cell={4} color={INK} />} title={`大本营 · ${clock.weekStart(1)} 入职`} sub={`两条线同时出发 · ${clock.weeks} 周 · 评分人 ${season.reviewer}`} /></div>
+      <section className="m7-sec"><span className="label">怎么通关</span><ul className="m7-list">
+        <li><PixelIcon name="check" /><span>每关 3 项加权评分，满分 100，<b>{season.pass} 分通关</b>；≥80 两星、≥90 三星。</span></li>
+        <li><PixelIcon name="lock" /><span>上一关通关后解锁下一关；有跨线依赖的，还要拿到另一条线那一关的产出。</span></li>
+        <li><PixelIcon name="edit" /><span>评分人是{season.reviewer}；管培生交产出后在营地日志里评分，初稿可以先给暂评。</span></li></ul></section>
+      <section className="m7-sec"><span className="label">怎么看这张图</span><ul className="m7-list">
+        <li><PixelIcon name="route" /><span>一段坡 = 一关，坡顶的营地 = 通关点；越往右越高 = 越难。</span></li>
+        <li><PixelIcon name="clock" /><span>太阳 = 今天，橙色虚线从太阳垂到地面；营地的位置 = 那一关计划结束的周。</span></li>
+        <li><PixelIcon name="flag" /><span>登山者 = 现在在哪；太阳已经过了营地、人还在营地前 = 超期。</span></li>
+        <li><PixelIcon name="link" /><span>绳桥 = 跨线依赖：{path.links.map((k) => `${k.from} ${k.note} → ${k.to}`).join("；")}。</span></li></ul></section>
+    </div>
+  );
+}

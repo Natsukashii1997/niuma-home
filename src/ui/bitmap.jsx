@@ -39,6 +39,15 @@ function ditherTile(threshold, color) {
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
+// SVG 里的网点填充（同一套 Bayer 阈值）：threshold 0–16 越大越密，px 为每个网点的边长
+export function DitherPattern({ id, threshold, color, px = 2 }) {
+  return (
+    <pattern id={id} width={px * 4} height={px * 4} patternUnits="userSpaceOnUse">
+      {BAYER.map((v, i) => (v < threshold ? <rect key={i} x={(i % 4) * px} y={Math.floor(i / 4) * px} width={px} height={px} fill={color} /> : null))}
+    </pattern>
+  );
+}
+
 // 启动时调用一次：注入网点变量，并接管所有 [data-dither] 元素的悬停（四档逐帧加密 / 退回）。
 export function installBitmap() {
   const root = document.documentElement.style;

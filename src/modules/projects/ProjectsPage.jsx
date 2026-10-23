@@ -9,6 +9,7 @@ import { localDate } from "../../constants.js";
 import { nodeState, projectSummary } from "./project-view.js";
 import { mentorReplyTime } from "./mentor-view.js";
 import CampaignView from "../marketing/CampaignView.jsx";
+import MentorPath from "./MentorPath.jsx";
 
 // 项目（v3）：项目推进读飞书「AI管培工作台 / 任务事项」；管培带教读两位管培生近 30 天日志，回复确认后挂回飞书原话。
 // 节点改动只存工作台本地（不回写飞书），每次都走「预览 → 确认 → 回读」。来源没填的完成状态、截止日期、当前阶段显示「未填写 / 未知」，不当成未完成。
@@ -33,9 +34,15 @@ export default function ProjectsPage({ route }) {
   );
 }
 
-// 带教（侧栏单列）：管培生近 30 天日志里的提问。
-export function MentorPage() {
-  return <><PageHeader title="带教" /><p className="tab-desc">管培生近 30 天日志里的提问：在右侧回复或让机械邪龙兽回答，确认后作为评论挂回飞书原话</p><Mentor /></>;
+// 带教（侧栏单列）：带教答疑 = 管培生近 30 天日志里的提问；培养路径 = 两条培养线的远征地图（用户 2026-10-23 定稿 V7）。
+const MENTOR_TABS = [
+  ["qa", "带教答疑", "管培生近 30 天日志里的提问：在右侧回复或让机械邪龙兽回答，确认后作为评论挂回飞书原话"],
+  ["path", "培养路径", "业务线和 AI 线两条培养路径：营地、进度和本周攀登"],
+].map(([key, label, desc]) => ({ key, label, desc, href: key === "qa" ? href("mentor") : href("mentor", key) }));
+
+export function MentorPage({ route = [] }) {
+  if (route[0] === "path") return <MentorPath tabs={MENTOR_TABS} />;
+  return <><PageHeader title="带教" /><Tabs items={MENTOR_TABS} active="qa" /><Mentor /></>;
 }
 
 const STATE_TEXT = { done: "已完成", open: "未完成", unknown: "未填写" };
