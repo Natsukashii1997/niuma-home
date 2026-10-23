@@ -25,6 +25,15 @@ test('每条规则都能抓到违规样本，合规写法不误报', t => {
     "const style = { animationDuration: '1s' };",
     "const Button = import('@mui/material/Button');",
   ].join('\n'));
+  put('src/c.jsx', [
+    'const saved = data.savedAt.slice(5, 16);',
+    'const shown = String(value).slice(0, 16).replace("T", " ");',
+    'const day = c.archivedAt.slice(0, 10);',
+    'const clock = at.slice(11, 16);',
+    'const today = updatedAt.slice(8, 10);',
+    'const synced = syncedAt.slice(0, 10); // 北京时间',
+    'const archived = beijingTime(c.archivedAt).slice(0, 10);',
+  ].join('\n'));
   put('server/index.mjs', [
     'http.createServer(handler).listen(port, "127.0.0.1", () => {});',
     'other.listen(port, () => {});',
@@ -42,5 +51,8 @@ test('每条规则都能抓到违规样本，合规写法不误报', t => {
     'src/b.jsx:2 library',
     'src/b.jsx:3 motion',
     'src/b.jsx:4 library',
+    'src/c.jsx:1 time',
+    'src/c.jsx:2 time',
+    'src/c.jsx:3 time',
   ]);
 });

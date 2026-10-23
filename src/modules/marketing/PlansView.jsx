@@ -3,7 +3,7 @@ import { PixelIcon } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Button, MonthSwitch, StatusMark, useToast } from "../../ui/components.jsx";
-import { LINES, PROMO_LINES, currentMonth, deliveryMonth } from "../../constants.js";
+import { LINES, PROMO_LINES, beijingTime, currentMonth, deliveryMonth } from "../../constants.js";
 import PlanEditor from "./PlanEditor.jsx";
 import PromosView from "./PromosView.jsx";
 
@@ -75,7 +75,7 @@ function RawBox({ month, line, has, showToast }) {
       <div className="card-head">
         <h2>{line}</h2>
         <div className="card-extra">
-          {data?.savedAt && <span className="small muted tnum">{data.savedAt.slice(5, 16).replace("T", " ")} 录入</span>}
+          {data?.savedAt && <span className="small muted tnum">{beijingTime(data.savedAt).slice(5)} 录入</span>}
           <Button className="btn btn-xs" onClick={copy} disabled={!data}><PixelIcon name="copy" />复制</Button>
         </div>
       </div>

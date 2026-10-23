@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PixelIcon } from "./bitmap.jsx";
 import { apiSend } from "../api.js";
+import { beijingTime } from "../constants.js";
 import { Button } from "./components.jsx";
 import { WriteBox, useWriteFlow } from "./write-flow.jsx";
 
@@ -87,7 +88,7 @@ export function FeishuExport({ what, previewPath, confirmPath, statusBase, extra
       {check.busy && <p className="small muted">正在只读核对…</p>}
       {check.note && <p className="small warn-text">{check.note}。可以稍后再核对一次；不会重新创建。</p>}
       {check.error && <p className="small risk-text">{check.error}</p>}
-      {shownDocument?.url && <p className="small ok-text">文档：<a className="link" href={shownDocument.url} target="_blank" rel="noreferrer">{receipt?.title || linkedDocument?.title || shownDocument.url}</a>{receipt?.verifiedAt ? ` · 核对于 ${String(receipt.verifiedAt).slice(0, 16).replace("T", " ")}` : ""}</p>}
+      {shownDocument?.url && <p className="small ok-text">文档：<a className="link" href={shownDocument.url} target="_blank" rel="noreferrer">{receipt?.title || linkedDocument?.title || shownDocument.url}</a>{receipt?.verifiedAt ? ` · 核对于 ${beijingTime(receipt.verifiedAt)}` : ""}</p>}
     </div>
   );
 }

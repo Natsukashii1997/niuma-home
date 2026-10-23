@@ -68,3 +68,15 @@ export function isoWeek(date = new Date()) {
 
 // 本地日期「YYYY-MM-DD」（不用 toISOString，避免时区把日期推到前一天）。
 export const localDate = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+// 后端存的是带时区的 ISO 时间（多为 UTC）；页面上一律按北京时间显示「YYYY-MM-DD HH:mm」，
+// 不直接截取 ISO 字符串（docs/LESSONS.md L-03）。没带时区或无效时返回空串，不猜。
+const beijingFormat = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit",
+  hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+});
+export function beijingTime(value) {
+  if (typeof value !== "string" || !/(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : beijingFormat.format(date);
+}

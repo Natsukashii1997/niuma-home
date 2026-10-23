@@ -36,9 +36,9 @@
 
 - 现象：带教回复的时间按 UTC 显示，不是北京时间。
 - 根因：页面直接截取 ISO 字符串里的「月-日 时:分」；后端存的 UTC 本身没错。
-- 正确做法：页面上的时间一律显式按 `Asia/Shanghai` 格式化，测试覆盖跨日、跨年。
-- 证据：提交 `3200d0e`；`docs/history/CURRENT-through-20261023-am.md`「带教回复北京时间」一节。
-- 升级：未升级。
+- 正确做法：页面上的时间一律用 `src/constants.js` 的 `beijingTime` 按 `Asia/Shanghai` 格式化，测试覆盖跨日、跨年。
+- 证据：提交 `3200d0e`；`docs/history/CURRENT-through-20261023-am.md`「带教回复北京时间」一节。第 2 次：2026-10-23 每周整理首次试跑发现同一写法还在促销方案「录入」、飞书导出「核对于」、活动「归档于」3 处，正式页面把 10:46 录入的方案显示成 02:46。
+- 升级：已写进 docs/STYLE-GUIDE.md §7；已写成 `scripts/check-style.mjs` 的时间规则（`npm test` 里跑）。
 
 ## L-04 React 重复 key 只在开发模式报（2026-10-23）
 

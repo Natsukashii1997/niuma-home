@@ -51,7 +51,7 @@ browser-extension/niuma-collect/   Chrome 收藏插件源码（安装位置见 H
 scripts/
   release-app.sh     发布 / 回滚正式 5280（launchd 常驻 + 固定快照）
   verify-release.sh  发布回读（只读；release-app.sh 末尾自动跑，也可单独跑）
-  check-style.mjs    样式与监听硬规则检查（npm run check:style；npm test 里也跑）
+  check-style.mjs    样式、监听与时间显示硬规则检查（npm run check:style；npm test 里也跑）
   health-check.sh    每日巡检（只读；--install 装成 launchd 任务）
 docs/
   LESSONS.md         开发实录与坑（排障、发布、改样式或脚本前先搜）

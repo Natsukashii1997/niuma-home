@@ -5,7 +5,7 @@ import { href } from "../../router.js";
 import { Button, Card, DateCommit, DateInput, Loadable, NodeCheck, PhaseSteps, Segmented, Tag } from "../../ui/components.jsx";
 import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { DeletedList, useSoftRemove } from "../../ui/soft-delete.jsx";
-import { deliveryMonth, deliverySteps } from "../../constants.js";
+import { beijingTime, deliveryMonth, deliverySteps } from "../../constants.js";
 
 // 营销战役（v3）：大节点（如双11）才开，可跨月。节点来自飞书营销战役模板（阶段、节点名、门禁、里程碑不能改）。
 // 还没创建战役时接口返回模板（id = "template"）：页面明确写「模板」，不显示进度、不让勾选；先填名称和起止日期创建战役。
@@ -228,7 +228,7 @@ function HistoryList({ initial, initialDeleted, deletedError }) {
       {items.length ? <ul className="list campaign-history">{items.map((c) => (
         <li key={c.id}><details>
           <summary><strong>{c.name}</strong><span className="tnum small muted">{c.start} → {c.end.slice(5)}</span></summary>
-          <p className="small muted tnum">{doneText(c)} · 归档于 {c.archivedAt.slice(0, 10)}</p>
+          <p className="small muted tnum">{doneText(c)} · 归档于 {beijingTime(c.archivedAt).slice(0, 10)}</p>
           {c.review ? <pre className="pre">{c.review}</pre> : <p className="small muted">没有写复盘</p>}
           <div className="row"><Button className="btn btn-xs" disabled={locked} onClick={() => remover.preview(c.id)}><PixelIcon name="close" />预览删除</Button></div>
         </details></li>
