@@ -6,6 +6,7 @@ import {openDb} from '../server/db.mjs';
 import {getRecord,putRecord} from '../server/local-records.mjs';
 import {createBriefService,briefXml} from '../server/briefs.mjs';
 import {syncBriefMaterials} from '../server/brief-template.mjs';
+import {generateBriefSuggestions} from '../server/brief-generate.mjs';
 import {briefPatch,briefText} from '../src/modules/marketing/brief-edit.js';
 import {canonicalXml} from '../server/feishu-xml.mjs';
 const month='2026-10';
@@ -62,6 +63,12 @@ test('物料名称尾部回车不生成标题后空行，正文的有效换行�
    assert.match(xml,/<p>第一段<br\/>第二段<\/p>/);assert.match(xml,/<p>第一行<br\/>第二行<\/p>/);
    assert.equal(draft.materials[0].name,'考前冲刺海报');
  }
+});
+test('未清洗的物料名带回车时，背景句拼接物料名不夹换行',t=>{
+ const {base,source}=fixture(t);
+ const raw={...base,materials:[{id:'a',name:'考前冲刺海报\n'},{id:'b',name:'选课海报\r\n'}]};
+ const r=generateBriefSuggestions(raw,source);
+ assert.match(r.value.background.text,/围绕考前冲刺海报、选课海报，把需求理解/);assert.ok(!r.value.background.text.includes('\n'));
 });
 test('旧版Brief人工内容在物料主表迁移、增加条目并保存后保留',t=>{
  const {service,db}=fixture(t);putRecord(db,'brief',month,{revision:1,editedAt:'旧版',overrides:{audience:[['旧物料','老用户','人工待办']],timeline:[['旧物料','下周','P0','负责人','说明']],items:[{id:'old',title:'旧物料',kind:'price',blocks:[['标题','人工内容','']],refs:[],reuse:null}]}});

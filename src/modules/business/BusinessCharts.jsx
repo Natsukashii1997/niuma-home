@@ -99,7 +99,7 @@ function LineChart({ chart, wide }) {
         const path = s.values.map((v, i) => v == null ? "" : `${i === 0 || s.values[i - 1] == null ? "M" : "L"}${x(i)},${y(v)}`).join(" ");
         return <g key={s.name} style={{ color: color(si) }}>
           <path d={path} fill="none" stroke="currentColor" strokeWidth="2" />
-          {s.values.map((v, i) => v != null && partial(s, i) && <text key={`p${i}`} x={x(i)} y={y(v) - 10} textAnchor="middle" className="bc-partial">至今</text>)}
+          {s.values.map((v, i) => v != null && partial(s, i) && <text key={`p${i}`} x={x(i)} y={chart.series.some(o => o !== s && o.values[i] != null && o.values[i] >= v) ? y(v) + 20 : y(v) - 10} textAnchor="middle" className="bc-partial">至今</text>)}
           {s.values.map((v, i) => v == null ? null : <rect key={i} x={x(i) - 4} y={y(v) - 4} width="8" height="8" fill={partial(s, i) ? "var(--panel)" : "currentColor"} stroke={partial(s, i) ? "currentColor" : undefined} strokeWidth={partial(s, i) ? 2 : undefined} tabIndex="0" role="img" aria-label={`${s.name} · ${chart.categories[i]}月${partial(s, i) ? "（至今）" : ""} · ${exact(v, chart.unit)}`} onMouseEnter={() => setHover({ series: s.name, x: chart.categories[i] })} onFocus={() => setHover({ series: s.name, x: chart.categories[i] })}><title>{s.name} · {chart.categories[i]} · {exact(v, chart.unit)}</title></rect>)}
         </g>;
       })}
