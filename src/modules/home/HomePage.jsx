@@ -7,6 +7,7 @@ import { deliveryMonth, deliverySteps, daysToDeadline, shortMonth } from "../../
 import { CodexCard } from "./CodexStrip.jsx";
 import { VoiceCloud, voiceIssue } from "../voice/VoicePage.jsx";
 import { PRESETS } from "../assistants/presets.js";
+import { voiceSample } from "../../samples.js";
 
 // 首页（v3）：Codex 重置 + 待我处理 → 交付月 + 今日日程 → 用户之声 + Agent。业务营收完成度在「业务」页。
 // 工作节奏是本月准备下月，月底前交付。
@@ -210,6 +211,17 @@ function AgentsCard() {
   );
 }
 
+// 留学之声卡片正文；来源没接通时用模拟数据并标出来（用户 2026-10-23）。
+function VoiceCardBody({ v, sample = false }) {
+  return (
+    <div className="voice-cloud-wrap">
+      <VoiceCloud cloud={v.cloud} />
+      <span className="small muted">{sample && <SampleBadge task="演示 · Voice 模拟数据" />} 近 48 小时 · {v.stats.participants} 个独立来源 · {v.stats.topics} 个话题上榜{sample && " · 模拟数据"}</span>
+      {v.daily && <p className="voice-daily small"><strong>今日摘要</strong>{v.daily}</p>}
+    </div>
+  );
+}
+
 // 留学之声：词云 + 今日摘要，点进 Voice 页看详情。
 function VoiceCard() {
   const state = useApi("/api/v3/voice");
@@ -217,16 +229,11 @@ function VoiceCard() {
   return (
     <Card className="col-8" dither title={<><PixelIcon name="voice" /> 留学之声</>}
       extra={<a className="link" href={href("voice")}>Voice<PixelIcon name="right" /></a>}>
-      {issue ? <Placeholder icon={issue.kind === "empty" ? "voice" : "alert"} title={issue.title}>{issue.text}</Placeholder> : <Loadable state={state} name="留学之声">
+      {issue?.kind === "unavailable" ? <VoiceCardBody v={voiceSample()} sample />
+        : issue ? <Placeholder icon={issue.kind === "empty" ? "voice" : "alert"} title={issue.title}>{issue.text}</Placeholder> : <Loadable state={state} name="留学之声">
         {(v) => {
           if (!v.hot?.length) return <Placeholder icon="voice" title="现在没有合格的话题">{v.note || "还没有达到 5 个独立来源的话题。"}</Placeholder>;
-          return (
-            <div className="voice-cloud-wrap">
-              <VoiceCloud cloud={v.cloud} />
-              <span className="small muted">近 48 小时 · {v.stats.participants} 个独立来源 · {v.stats.topics} 个话题上榜</span>
-              {v.daily && <p className="voice-daily small"><strong>今日摘要</strong>{v.daily}</p>}
-            </div>
-          );
+          return <VoiceCardBody v={v} />;
         }}
       </Loadable>}
     </Card>

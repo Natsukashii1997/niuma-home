@@ -2,16 +2,17 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { DotMatrix, PixelIcon, TypeText } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Card, Loadable, PageHeader, Placeholder, StatStrip, Tag } from "../../ui/components.jsx";
+import { Button, Card, Loadable, PageHeader, Placeholder, SampleBadge, StatStrip, Tag } from "../../ui/components.jsx";
 import { SavedNote } from "../../ui/write-flow.jsx";
 import { ManualNeedForm } from "../user/ManualNeedForm.jsx";
 import { deliveryMonth } from "../../constants.js";
 import { labelLayout, slotHeight } from "./label-layout.js";
+import { voiceSample } from "../../samples.js";
 
 // Voice · 留学之声（v3，侧栏独立模块）：留学生最近在讨论什么。基于本机运行的 AIHOT 引擎，免费英文信源；
 // 只看多数人的共性——同一人 / 同一矩阵只算一个来源，独立来源 ≥ 5 才上榜。
 // 接口用 503 + 错误码区分三种情况，页面分开写，不能混成一种：
-//   来源不可用（未配置、读取失败、记录过期、证据不完整）→ 热榜没有接通，不显示任何话题；
+//   来源不可用（未配置、读取失败、记录过期、证据不完整）→ 热榜没有接通，改用模拟数据展示并醒目标「模拟数据」，不能转需求（用户 2026-10-23）；
 //   真实读取后没有合格话题 → 合法的空榜（接口 200、hot 为空、note 写原因）；
 //   其他读取失败 → 可以重新读取。
 // 日期和趋势只用接口给的真实值（sparkDates、spark），不补造固定的七天。
@@ -30,7 +31,6 @@ function VoiceIssue({ issue, reload }) {
     <Placeholder className="is-page" icon={issue.kind === "empty" ? "voice" : "alert"} title={issue.title}
       action={issue.kind !== "unavailable" && reload ? <Button onClick={reload}><PixelIcon name="refresh" />重新读取</Button> : null}>
       <span className={issue.kind === "unavailable" ? "warn-text" : issue.kind === "error" ? "risk-text" : ""}>{issue.text}</span>
-      {issue.kind === "unavailable" && <><br />免费人工试运行：模型、付费采集和定时任务都没开；这里不显示任何示例话题。</>}
     </Placeholder>
   );
 }
@@ -41,8 +41,9 @@ export default function VoicePage() {
   return (
     <>
       <PageHeader title="Voice" subtitle="留学之声：留学生最近在讨论什么。只看多数人的共性——同一人或同一矩阵只算一个来源，独立来源 ≥ 5 才上榜。"
-        actions={state.data && <span className="small muted">本机运行 · 上次抓取 {state.data.updatedAt} · {state.data.nextAt ? `下次 ${state.data.nextAt}` : "人工采集，不定时"}</span>} />
-      {issue ? <VoiceIssue issue={issue} reload={state.reload} /> : <Loadable state={state} name="留学之声" big>{(v) => (v.hot?.length ? <VoiceBoard v={v} /> : <VoiceIssue issue={{ kind: "empty", title: "现在没有合格的话题", text: v.note || "还没有达到 5 个独立来源的话题。" }} />)}</Loadable>}
+        actions={state.data ? <span className="small muted">本机运行 · 上次抓取 {state.data.updatedAt} · {state.data.nextAt ? `下次 ${state.data.nextAt}` : "人工采集，不定时"}</span> : issue?.kind === "unavailable" ? <SampleBadge task="演示 · Voice 模拟数据" /> : null} />
+      {issue?.kind === "unavailable" ? <><p className="voice-sample-note"><SampleBadge task="演示 · Voice 模拟数据" />模拟数据：学生讨论来源还没接通（{issue.text}）。下面的话题和数字都是示例，接通后自动换成真实热榜。</p><VoiceBoard v={voiceSample()} sample /></>
+        : issue ? <VoiceIssue issue={issue} reload={state.reload} /> : <Loadable state={state} name="留学之声" big>{(v) => (v.hot?.length ? <VoiceBoard v={v} /> : <VoiceIssue issue={{ kind: "empty", title: "现在没有合格的话题", text: v.note || "还没有达到 5 个独立来源的话题。" }} />)}</Loadable>}
     </>
   );
 }
@@ -65,7 +66,7 @@ export function VoiceCloud({ cloud, size = 1, onPick }) {
   );
 }
 
-function VoiceBoard({ v }) {
+function VoiceBoard({ v, sample = false }) {
   const [scope, setScope] = useState("");
   const [kind, setKind] = useState("");
   const [word, setWord] = useState("");
@@ -165,7 +166,7 @@ function VoiceBoard({ v }) {
                   : converting === cur.id ? <ManualNeedForm key={cur.id} embedded month={month} voiceId={cur.id} title="转为主线需求草稿"
                     initial={{ seg: cur.tags.join(" · ").slice(0, 50), node: "Voice 话题", need: cur.title.slice(0, 500), pain: cur.summary.slice(0, 500) }}
                     onSaved={converted} onReread={rereadDrafts} onClose={() => setConverting("")} />
-                  : <div className="row"><Button onClick={() => { setConverting(cur.id); setNote(""); }} disabled={!drafts.data && !records} title={drafts.error ? `读取已转草稿失败：${drafts.error}` : undefined}><PixelIcon name="plus" />转为主线需求草稿</Button>{drafts.error && <span className="small risk-text">读取已转草稿失败，暂不能转</span>}</div>}
+                  : <div className="row"><Button onClick={() => { setConverting(cur.id); setNote(""); }} disabled={sample || (!drafts.data && !records)} title={sample ? "模拟话题不能转为需求" : drafts.error ? `读取已转草稿失败：${drafts.error}` : undefined}><PixelIcon name="plus" />转为主线需求草稿</Button>{drafts.error && <span className="small risk-text">读取已转草稿失败，暂不能转</span>}</div>}
               </div>
             </section>
           )}

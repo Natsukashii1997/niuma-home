@@ -86,7 +86,6 @@ function useTimelineSync(tl, onSynced) {
 
 function TimelineBoard({ tl, view, initialQ, onSynced }) {
   const [q, setQ] = useState(initialQ);
-  const [showSrc, setShowSrc] = useState(false);
   const [sync, runSync] = useTimelineSync(tl, onSynced);
   const go = (v) => { location.hash = href("user", "timeline", v); };
   return (
@@ -96,21 +95,22 @@ function TimelineBoard({ tl, view, initialQ, onSynced }) {
         <span className="small muted">{tl.source} · 同步于 {tl.syncedAt}</span>
       </div>
       <div className="toolbar">
-        <Segmented options={[["month", "按月 · 时间轴"], ["country", "按国家 · 明细表"], ["anomalies", `AI推测 ${tl.anomalies.filter((a) => !timelineResolved(a)).length}`]]} value={view} onChange={go} />
+        <Segmented options={[["month", "按月 · 时间轴"], ["country", "按国家 · 明细表"]]} value={view} onChange={go} />
         <label className="search-box tl-search"><PixelIcon name="search" /><input placeholder="搜索学校或事件，如 UQ / Final" value={q} onChange={(e) => setQ(e.target.value)} /></label>
-        <label className="check-inline"><input type="checkbox" checked={showSrc} onChange={(e) => setShowSrc(e.target.checked)} />显示来源单元格</label>
         <span className="spacer" />
+        {/* AI 推测不和两种视图并列：单独入口，同步新表后照常生成待核对项（用户 2026-10-23） */}
+        <button type="button" className={`link-btn tl-guess-entry${view === "anomalies" ? " is-on" : ""}`} onClick={() => go("anomalies")}>AI 推测 <span className="tnum">{tl.anomalies.filter((a) => !timelineResolved(a)).length}</span> 条待核</button>
         {sync.busy ? <div style={{ width: 200 }}><StepProgress label="同步飞书（只读）" /></div> : <Button onClick={runSync}><PixelIcon name="refresh" />同步</Button>}
       </div>
       {sync.note && <SuccessNotice className="small ok-text tl-sync" identity={sync}>{sync.note}</SuccessNotice>}
       {sync.error && <p className="small risk-text tl-sync">{sync.error}</p>}
-      {view === "month" ? <MonthTimeline tl={tl} q={q} showSrc={showSrc} /> : view === "country" ? <CountryTable tl={tl} q={q} showSrc={showSrc} /> : <Anomalies tl={tl} q={q} onSaved={onSynced} />}
+      {view === "month" ? <MonthTimeline tl={tl} q={q} /> : view === "country" ? <CountryTable tl={tl} q={q} /> : <Anomalies tl={tl} q={q} onSaved={onSynced} />}
     </>
   );
 }
 
 // 按月时间轴：一行一所学校，横轴是这个月的每一天；条的长度就是起止日期。跨月的条在边上标出真实起止。
-function MonthTimeline({ tl, q, showSrc }) {
+function MonthTimeline({ tl, q }) {
   const [month, setMonth] = useState(deliveryMonth());
   const [country, setCountry] = useState("");
   const [folded, setFolded] = useState(() => new Set());
@@ -121,7 +121,7 @@ function MonthTimeline({ tl, q, showSrc }) {
   const first = `${month}-01`, last = `${month}-${pad(nDays)}`;
   const now = new Date();
   const todayIdx = now.getFullYear() === y && now.getMonth() + 1 === m ? now.getDate() : 0;
-  const { list, calendar, count } = monthTimelineData(tl, month, country, q);
+  const { list, count } = monthTimelineData(tl, month, country, q);
   const counter = (c) => `${count(c).shown} 校`;
   const groups = useMemo(() => {
     const byC = new Map();
@@ -141,7 +141,7 @@ function MonthTimeline({ tl, q, showSrc }) {
     ro.current = new ResizeObserver(() => setDayW(el.clientWidth / nDays));
     ro.current.observe(el);
   }, [nDays]);
-  const place = (e) => placeBar(e, { first, last, nDays, dayW, showSrc });
+  const place = (e) => placeBar(e, { first, last, nDays, dayW });
   const countries = tl.countries.map(([, name]) => name).filter(name => count(name).shown > 0 || name === country).sort(byCountry);
   const cols = { gridTemplateColumns: `repeat(${nDays}, minmax(0, 1fr))` };
   return (
@@ -174,7 +174,7 @@ function MonthTimeline({ tl, q, showSrc }) {
                   <div className="gantt-track" style={{ ...cols, gridTemplateRows: `repeat(${rows.length}, 28px)` }}>
                     {Array.from({ length: nDays }, (_, i) => { const wd = new Date(y, m - 1, i + 1).getDay(); return <i key={`bg${i}`} className={`gantt-bg${wd === 0 || wd === 6 ? " is-wkd" : ""}${i + 1 === todayIdx ? " is-today" : ""}`} style={{ gridColumn: i + 1, gridRow: `1 / ${rows.length + 1}` }} />; })}
                     {rows.flatMap((items, lane) => items.flatMap(({ e, s, end, side, cols: n, when }, k) => {
-                      const tip = `${e.school} · ${e.type}${e.detail ? `（${e.detail}）` : ""}\n${e.pending ? e.raw : e.from}${e.to ? ` → ${e.to}（${span(e.from, e.to)} 天）` : e.pending ? "" : "（单日）"}${e.verification?.scope ? `\n适用范围：${e.verification.scope}` : ""}\n来源：${e.src}${e.flag === "conflict" ? "\n冲突待确认" : e.flag === "guess" ? "\n推测，待确认" : e.verified ? "\n官网核实" : e.ruled ? "\n人工裁定（工作台）" : ""}`;
+                      const tip = `${e.school} · ${e.type}${e.detail ? `（${e.detail}）` : ""}\n${e.pending ? e.raw : e.from}${e.to ? ` → ${e.to}（${span(e.from, e.to)} 天）` : e.pending ? "" : "（单日）"}${e.verification?.scope ? `\n适用范围：${e.verification.scope}` : ""}${e.flag === "conflict" ? "\n冲突待确认" : e.flag === "guess" ? "\n推测，待确认" : e.verified ? "\n官网核实" : e.ruled ? "\n人工裁定（工作台）" : ""}`;
                       if (e.pending && !e.displaySpan) return [<span key={`${lane}-${k}`} className="gantt-pending-event" style={{gridColumn:"1 / -1",gridRow:lane+1}} title={`${tip}\n${e.issue}`}><b>{e.type}</b><span>{timelineReferenceText(e.raw)}</span><small className="timeline-estimate">AI推测</small></span>];
                       const text = <><b>{e.type}</b><em className="tnum">{when}</em>{(e.flag === "guess" || e.flag === "conflict") && <i className="gantt-guess timeline-estimate">AI推测</i>}</>;
                       const bar = side === "single" ? [s, s + n] : [s, end];
@@ -197,11 +197,7 @@ function MonthTimeline({ tl, q, showSrc }) {
           {todayIdx > 0 && <i className="gantt-now" aria-hidden="true" title="现在" style={{ "--now": (todayIdx - 1 + (now.getHours() * 60 + now.getMinutes()) / 1440) / nDays }} />}
         </section>
       )}
-      {list.length > 0 && <MonthList list={list} first={first} showSrc={showSrc} />}
-      {showSrc && <details className="card tl-calendar-reference"><summary>月历原文对照 · {calendar.length} 条{country ? `（${country}）` : ""}</summary>
-        <p className="small muted">完整保留飞书当月月历的原文格。地区明细未收录的学校、额外事件和不同日期也可在这里核对；不按月历摆放位置推定年份或日期，不直接参与策略推导。选择“全部国家”可查看尚未归类的原文。</p>
-        <div className="table-wrap"><table className="grid"><thead><tr><th>学校 / 地区</th><th>月历原文</th><th>来源</th></tr></thead><tbody>{calendar.map(e => <tr key={e.src}><td>{e.schools.join("、") || "学校待核对"}<br /><span className="small muted">{e.countries.join("、") || "地区待核对"}</span></td><td style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{e.raw}</td><td>{e.src}</td></tr>)}</tbody></table></div>
-      </details>}
+      {list.length > 0 && <MonthList list={list} first={first} />}
     </>
   );
 }
@@ -224,11 +220,11 @@ function textWidth(text, font) {
   return measureCtx.measureText(text).width;
 }
 
-function placeBar(e, { first, last, nDays, dayW, showSrc }) {
+function placeBar(e, { first, last, nDays, dayW }) {
   if (e.pending && !e.displaySpan) return {e,s:1,end:nDays,side:"pending",cols:0,when:e.raw,a:1,b:nDays};
   const s = e.pending ? e.displaySpan.start : e.from < first ? 1 : Number(e.from.slice(8));
   const end = e.pending ? e.displaySpan.end : (e.to || e.from) > last ? nDays : Number((e.to || e.from).slice(8));
-  const when = `${e.pending ? timelineReferenceText(e.raw) : `${md(e.from)}${e.to ? ` → ${md(e.to)}` : ""}`}${showSrc ? ` · ${e.src}` : ""}`;
+  const when = `${e.pending ? timelineReferenceText(e.raw) : `${md(e.from)}${e.to ? ` → ${md(e.to)}` : ""}`}`;
   const w = textWidth(e.type, '600 12px Geist, "PingFang SC"') + 4 + textWidth(when, '11px "Geist Mono", "PingFang SC"')
     + (e.flag === "guess" || e.flag === "conflict" ? 4 + textWidth("AI推测", '11px Geist, "PingFang SC"') : 0);
   if (e.pending ? e.displaySpan.single : !e.to) { // 单日：菱形 + 文字，文字占的格子也算进分道
@@ -250,24 +246,23 @@ function OfficialLinks({ verification }) {
 }
 
 // 时间轴下面的文字清单：按开始日期排，一句话写全。
-function MonthList({ list, first, showSrc }) {
+function MonthList({ list, first }) {
   const rows = [...list].sort((a, b) => byCountry(a.c, b.c) || monthEventSortDate(a, first.slice(0, 7)).localeCompare(monthEventSortDate(b, first.slice(0, 7))));
   return (
     <section className="card month-list">
       <div className="card-head"><h2><PixelIcon name="menu" />本月节点清单</h2><span className="small muted">按国家、开始日期排序 · 悬停一行可看来源单元格</span></div>
       <table className="grid compact">
-        <thead><tr><th>开始</th><th>国家</th><th>学校</th><th>事件</th><th className="r">起止</th><th className="r">天数</th>{showSrc && <th>来源</th>}</tr></thead>
+        <thead><tr><th>开始</th><th>国家</th><th>学校</th><th>事件</th><th className="r">起止</th><th className="r">天数</th></tr></thead>
         <tbody>{rows.map((e, i) => {
           const d = e.from ? toDate(e.from) : null;
           return (
-            <tr key={i} title={`${e.school} · ${e.type}${e.detail ? `\n场次：${e.detail}` : ""}${e.verification?.scope ? `\n适用范围：${e.verification.scope}` : ""}${e.verified ? "\n官网核实" : e.ruled ? "\n人工裁定" : e.flag === "guess" || e.flag === "conflict" ? "\nAI推测" : ""}\n来源：${e.src}${e.raw ? `\n原文：${e.raw}` : ""}${e.issue ? `\n${e.issue}` : ""}${e.verification?.reason ? `\n官网核查：${e.verification.reason}` : ""}`} className={e.flag ? `is-${e.flag}` : ""}>
+            <tr key={i} title={`${e.school} · ${e.type}${e.detail ? `\n场次：${e.detail}` : ""}${e.verification?.scope ? `\n适用范围：${e.verification.scope}` : ""}${e.verified ? "\n官网核实" : e.ruled ? "\n人工裁定" : e.flag === "guess" || e.flag === "conflict" ? "\nAI推测" : ""}${e.raw ? `\n原文：${e.raw}` : ""}${e.issue ? `\n${e.issue}` : ""}${e.verification?.reason ? `\n官网核查：${e.verification.reason}` : ""}`} className={e.flag ? `is-${e.flag}` : ""}>
               <td className="tnum">{e.pending ? (e.displaySpan ? `${first.slice(5,7)}-${pad(e.displaySpan.start)}` : "—") : e.from < first ? <span className="muted">上月开始</span> : `${md(e.from)} 周${WD[d.getDay()]}`}</td>
               <td>{e.c}</td>
               <td><strong>{e.school}</strong></td>
               <td><span className={`ev-dot ev-${catOf(e.type)}`} />{e.type}{(e.flag === "conflict" || e.flag === "guess") && <small className="timeline-estimate">AI推测</small>}{e.ruled && <Tag tone="frame">人工裁定</Tag>}</td>
               <td className="r">{e.pending ? <span className="tl-pending-raw">{timelineReferenceText(e.raw)}</span> : <>{md(e.from)}{e.to ? ` → ${md(e.to)}` : ""}</>}</td>
               <td className="r">{e.pending ? "—" : e.to ? `${span(e.from, e.to)} 天` : "单日"}</td>
-              {showSrc && <td className="tnum small muted">{e.src}<OfficialLinks verification={e.verification} /></td>}
             </tr>
           );
         })}</tbody>
@@ -276,7 +271,7 @@ function MonthList({ list, first, showSrc }) {
   );
 }
 
-function CountryTable({ tl, q, showSrc }) {
+function CountryTable({ tl, q }) {
   const [c, setC] = useState("AU");
   const [detail, setDetail] = useState(null);
   const [showCats, setShowCats] = useState(() => new Set(COL_DEFAULT));
@@ -333,23 +328,22 @@ function CountryTable({ tl, q, showSrc }) {
                         const from = first.from.slice(-5), to = first.to?.slice(-5);
                         const inDm = parts.some(p => p.from.slice(-5).startsWith(dm) || p.to?.slice(-5).startsWith(dm));
                         const estimated = parts.some(p => p.flag === "guess" || p.flag === "conflict");
-                        return <td key={i} className={`tl-cell${inDm ? " is-dm" : ""}`} title={`来源：${cell[2]}${multiple ? `\n首段日期，共 ${parts.length} 个独立时段，点击查看完整安排` : ""}`}>
+                        return <td key={i} className={`tl-cell${inDm ? " is-dm" : ""}`} title={multiple ? `首段日期，共 ${parts.length} 个独立时段，点击查看完整安排` : undefined}>
                           <span className="tnum">{from}{to && to !== from && <> → {to}</>}{multiple && " …"}</span>
                           <small>
                             {multiple ? "首段" : to && to !== from ? `${first.from.length > 5 ? span(first.from, first.to) : mdSpan(from, to)} 天` : "单日"}
                             <button type="button" className="tl-detail-link" aria-label={`查看${r.school} · ${n}的${parts.length}个时段`} onClick={() => setDetail({ school: r.school, event: n, parts, src: cell[2] })}>{multiple ? `共 ${parts.length} 个时段` : "详情"}</button>
                             {estimated && <span className="timeline-estimate">AI推测</span>}
                           </small>
-                          {showSrc && <small className="tl-cell-source" title={cell[2]}>{cell[2]}</small>}
                         </td>;
                       }
-                      const [from, rawTo, src, flag] = cell;
+                      const [from, rawTo, , flag] = cell;
                       const to = rawTo && rawTo !== from ? rawTo : null; // 起止同一天按单日写
                       const inDm = from.startsWith(dm) || (to && to.startsWith(dm));
                       return (
-                        <td key={i} className={`tl-cell${flag ? ` is-${flag}` : ""}${inDm ? " is-dm" : ""}`} title={`来源：${src}`}>
+                        <td key={i} className={`tl-cell${flag ? ` is-${flag}` : ""}${inDm ? " is-dm" : ""}`}>
                           <span className="tnum">{from}{to && <> → {to}</>}</span>
-                          <small>{to ? `${mdSpan(from, to)} 天` : "单日"}{(flag === "guess" || flag === "conflict") && <span className="timeline-estimate">AI推测</span>}{flag === "ruled" && <Tag tone="frame">人工裁定</Tag>}{showSrc && <span className="tnum"> · {src}</span>}</small>
+                          <small>{to ? `${mdSpan(from, to)} 天` : "单日"}{(flag === "guess" || flag === "conflict") && <span className="timeline-estimate">AI推测</span>}{flag === "ruled" && <Tag tone="frame">人工裁定</Tag>}</small>
                         </td>
                       );
                     })}
@@ -373,12 +367,11 @@ function TimelineCellDetails({ detail, onClose }) {
     {detail && <>
       {detail.parts.length > 1 && <p className="small muted">共 {detail.parts.length} 个独立时段，请按适用场次查看。</p>}
       <table className="grid compact tl-date-details"><thead><tr><th>日期</th><th>场次 / 适用说明</th><th>状态</th></tr></thead><tbody>
-        {detail.parts.map((p, i) => <tr key={i}><td className="tnum">{p.from}{p.to && p.to !== p.from && <> → {p.to}</>}</td><td>{p.label || "—"}{p.src && p.src !== detail.src && <div className="small muted">来源：{p.src}</div>}</td><td>{p.flag === "verified" ? "官网核实" : p.flag === "ruled" ? "人工裁定" : p.flag === "guess" || p.flag === "conflict" ? <span className="timeline-estimate">AI推测</span> : "原表日期"}</td></tr>)}
+        {detail.parts.map((p, i) => <tr key={i}><td className="tnum">{p.from}{p.to && p.to !== p.from && <> → {p.to}</>}</td><td>{p.label || "—"}</td><td>{p.flag === "verified" ? "官网核实" : p.flag === "ruled" ? "人工裁定" : p.flag === "guess" || p.flag === "conflict" ? <span className="timeline-estimate">AI推测</span> : "原表日期"}</td></tr>)}
       </tbody></table>
       {verifications.map((v, i) => <div className="tl-date-evidence" key={i}>
         {v.scope && <p>{v.scope}</p>}{v.reason && <p className="small muted">{v.reason}</p>}<OfficialLinks verification={v} />
       </div>)}
-      <p className="small muted">来源单元格：{detail.src}</p>
     </>}
   </Modal>;
 }

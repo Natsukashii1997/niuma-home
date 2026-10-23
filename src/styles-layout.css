@@ -139,7 +139,6 @@ button.stat.is-on .stat-label, button.stat.is-on .stat-foot, button.stat.is-on .
 .tl-cell.is-pending { background: none; }
 .tl-cell > .tnum { white-space: nowrap; }
 .tl-cell .tl-detail-link { padding: 0; border: 0; background: none; color: var(--info); font: inherit; cursor: pointer; white-space: nowrap; text-decoration: underline; text-underline-offset: 3px; }
-.tl-cell .tl-cell-source { display: block; max-width: 190px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .tl-date-details td { vertical-align: top; }
 .tl-date-details td:first-child { white-space: nowrap; }
 .tl-date-evidence { margin-top: var(--s4); }

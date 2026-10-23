@@ -741,6 +741,8 @@ label.btn { cursor: pointer; }
 .month-list tr.is-conflict td:first-child { box-shadow: inset 3px 0 0 var(--risk); }
 /* 用户页窄屏不撑出横向滚动：搜索框放开下限、清单表在卡片内横滑、来源说明可换行 */
 .tl-search { flex: 0 1 300px; min-width: 0; }
+.tl-guess-entry { color: var(--text-2); }
+.tl-guess-entry.is-on { color: var(--signal); }
 .month-list { overflow-x: auto; }
 @media (max-width: 600px) { .tl-intro { flex-wrap: wrap; } .tl-intro > span { flex-shrink: 1; } }
 
@@ -880,6 +882,7 @@ label.btn { cursor: pointer; }
 
 .us-gen-preview { display: flex; flex-direction: column; gap: var(--s3); }
 .us-warn-line { display: flex; align-items: center; gap: var(--s2); margin: 0; color: var(--warn); font-weight: 600; }
+.us-warn-line .us-warn-close { flex: none; margin-left: auto; color: var(--warn); }
 .us-warns { padding: var(--s2) var(--s3); background: var(--warn-soft); }
 .us-warns .label { display: block; margin-bottom: var(--s1); color: var(--warn); }
 .us-play { color: inherit; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
@@ -894,6 +897,7 @@ label.btn { cursor: pointer; }
 
 /* ---------- Voice ---------- */
 .voice-top { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--gap); margin-bottom: var(--gap); }
+.voice-sample-note { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--gap); padding: var(--s2) var(--s3); border: 1px dashed var(--signal); color: var(--text-2); font-size: 13px; }
 .voice-top .voice-cloud { min-height: 220px; }
 button.vw { border: 0; background: none; padding: 0; font-family: inherit; cursor: pointer; }
 .voice-sub { margin: var(--s3) 0 var(--s1); }
@@ -1777,12 +1781,5 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .tl-official-links { display:inline-flex; flex-wrap:wrap; gap:8px; margin-left:8px; }
 .tl-official-links a { color:#3977d5; text-decoration:underline; }
 .tl-official-note { padding:0 16px; line-height:1.7; }
-.tl-calendar-reference { margin-top:20px; }
-.tl-calendar-reference table { table-layout:fixed; width:100%; }
-.tl-calendar-reference td { vertical-align:top; overflow-wrap:anywhere; }
-.tl-calendar-reference summary { cursor: pointer; padding: 16px; font-weight: 600; }
-.tl-calendar-reference > p { margin: 0 16px 16px; }
-.tl-calendar-reference th:first-child { width: 24%; }
-.tl-calendar-reference th:last-child { width: 21%; }
 
 .tl-scope { display:block; margin-top:4px; color:var(--muted); white-space:normal; line-height:1.5; }

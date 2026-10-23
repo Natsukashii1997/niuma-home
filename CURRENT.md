@@ -2,6 +2,20 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 第 1 批：策略页与 Voice 模拟数据（2026-10-23，Claude，用户同意分批计划与默认做法；已改并截图，等用户确认；ui-v4 未提交、未发布）
+
+用户要求（同日）：AI 推测不与时间轴、明细表并列；删「显示来源单元格」；策略页常驻提示要可关；Voice 未接真实数据前用模拟数据（含首页）。促销打法不动。第 2 批（2027 时间线入口）、第 3 批（带教培养路径 5 版、知识库 3 版、业务图表 3 版设计稿）待做，设计稿已提成三张会话卡。
+
+- `src/modules/user/UserPage.jsx`：视图切换只剩「按月 · 时间轴 / 按国家 · 明细表」；工具栏右侧加「AI 推测 N 条待核」入口（`.tl-guess-entry`），同步后照常生成待核项。删掉显示来源开关及其控制的条上来源、明细「来源」列、月历原文对照、明细格来源小字；悬停提示与日期详情里的「来源」一并去掉；AI 推测核对页保留来源格（纠错要定位原格）。
+- `src/modules/user/StrategyView.jsx`：时间线依据提示改成 `EvidenceNotice`——与时间线一致时不显示；有变化或缺快照时显示并带 ×，关掉后按「状态 + 指纹 + 同步时间」记在本机 localStorage，依据再变才重新出现。
+- `src/samples.js` 新增 `voiceSample()`（字段同 `/api/v3/voice`，七天日期按今天推）；`src/modules/voice/VoicePage.jsx` 在来源不可用时显示模拟热榜并加虚线「模拟数据」说明条，模拟话题不能转需求；`src/modules/home/HomePage.jsx` 留学之声卡同样显示模拟词云与摘要并标「示例 · 模拟数据」。来源接通或真实空榜时按原逻辑。
+- `src/styles-v3.css`：新增 `.tl-guess-entry`、`.us-warn-close`、`.voice-sample-note`；删除不再使用的 `.tl-calendar-reference`；`src/styles-layout.css` 删 `.tl-cell-source`。
+- 测试：`npm test` 670 / 670 通过，`npm run build`、`git diff --check` 通过（这批没有新增测试：都是前端展示）。
+- 验证：隔离 5290 + 正式库 `.backup` 副本（`codex_push_enabled` 写 0，用完已删）；Chrome 无头 1440 宽，改前对照 5280。点 × 后刷新提示不再出现；Voice 页「转为主线需求草稿」为禁用。
+- 截图（不入库）：`docs/handoff/第1批-策略与Voice-20261023/`。
+- 其他页面常驻提示清单（只列不改，等用户定）：Brief 页时间线依据变化提示（`BriefView.jsx:162`）、业务页数据源过期提示（`BusinessPage.jsx:33`）、日 / 周报「更新未完成 / 旧内容」（`ReportsPage.jsx:61,85`）、AI 推测页旧格式与裁定原格已改提示（`UserPage.jsx` Anomalies）、Agent 页知识库警告（`AssistantsPage.jsx:73`）、知识库「拖进下面的文件夹」提示（`KbCanvas.jsx:308`，随知识库重设计一起定）、设计参考操作说明（`DesignReferences.jsx:89`）、用户策略各节编辑提示（`StrategyView.jsx` HINT）。
+- 范围外发现：`server/user-strategy.mjs` 已读设置项 `timeline_source`（时间线来源可配置），第 2 批 2027 入口可在此基础上做。
+
 ## 逐页走查 8 处界面问题（2026-10-23，Claude，用户同意按默认改法全修并确认截图与第 5 处改法；已发布 nm-20261023-150835-4309174，回读通过）
 
 用户要求：8 处都按默认改法修，改完在隔离端口逐处截图给用户看，确认后再发布。

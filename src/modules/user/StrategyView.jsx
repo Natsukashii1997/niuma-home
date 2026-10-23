@@ -25,6 +25,20 @@ const barrierName = Object.fromEntries(BARRIERS.flatMap(([, , list]) => list));
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const when = (iso) => (iso ? new Date(iso).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) : "");
 
+// 时间线依据：一致时不显示；有变化或缺快照才挂出来，可点 × 关掉，直到依据再次变化（用户 2026-10-23）。
+const evidenceKey = (month) => `niuma:us-evidence:${month}`;
+function EvidenceNotice({ month, ev }) {
+  const stamp = `${ev.status}:${ev.fingerprint || ""}:${ev.syncedAt}`;
+  const [closed, setClosed] = useState(() => { try { return localStorage.getItem(evidenceKey(month)); } catch { return null; } });
+  if (ev.status === "current" || closed === stamp) return null;
+  const close = () => { try { localStorage.setItem(evidenceKey(month), stamp); } catch { /* 存不了就只关本次 */ } setClosed(stamp); };
+  return <p className="us-warn-line">
+    <PixelIcon name="alert" />{ev.message}
+    {ev.syncedAt && <span className="small tnum">同步于 {ev.syncedAt}</span>}
+    <button type="button" className="icon-btn us-warn-close" onClick={close} aria-label="关闭这条提示"><PixelIcon name="close" /></button>
+  </p>;
+}
+
 export function Strategy() {
   const [month, setMonth] = useState(deliveryMonth);
   const path = `/api/v3/user-strategy?month=${month}`;
@@ -72,10 +86,7 @@ export function Strategy() {
           <PendingButton task="T13-用户策略生成">导出到飞书</PendingButton>
         </span>
       </div>
-      {d?.timelineEvidence && <p className={`us-warn-line${d.timelineEvidence.status === "current" ? " muted" : ""}`}>
-        {d.timelineEvidence.status !== "current" && <PixelIcon name="alert" />}{d.timelineEvidence.message}
-        {d.timelineEvidence.syncedAt && <span className="small tnum">同步于 {d.timelineEvidence.syncedAt}</span>}
-      </p>}
+      {d?.timelineEvidence && <EvidenceNotice key={month} month={month} ev={d.timelineEvidence} />}
       <WriteBox flow={gen} title={`${month} 促销策略 · 生成预览`} confirmLabel={overwrite ? "覆盖定稿并保存为草稿" : "保存为草稿"} savedText="促销策略已保存为草稿，回读核对一致"
         onConfirm={() => confirm(gen)} onRepreview={generate} onReread={() => { gen.resolve(); state.reload(); }}>
         {(pv) => <GenPreview pv={pv} />}
