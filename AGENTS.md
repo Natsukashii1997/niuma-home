@@ -9,6 +9,7 @@
 - 用户提过的功能入口（如 Voice、自言自语）暂时没有落点时，推荐「补上查看位置 / 保持现状」，不把「下线」列为推荐（用户 2026-10-23）。
 - 派单流程保留为可选：需要拆分时由一方写 `docs/tasks/T*.md`，另一方认领（在 CURRENT.md 标「进行中」）→ 实现 + 测试 + 截图 → 交接 → 验收 → 用户最终验收。
 - 一次只做一件授权的事；范围外的问题记进交接，不顺手修。
+- 并行的会话各开独立 worktree，不在同一目录改代码。做不到时，测试记录写明「工作区含他人未提交改动」，提交用 `git commit -- <自己的文件>`，不带别人的改动，不动别人的未跟踪文件（[LESSONS](docs/LESSONS.md) L-07）。
 - 历史：2026-10-16 起曾按「Claude 做 UI、Codex 做后端」分工，2026-10-18 起改为按授权前后端一起做。
 
 ## 运行
@@ -38,7 +39,7 @@ src/
   router.js          #/ 路由：useRoute() / href()
   api.js             useApi(path, sample) / apiSend()
   constants.js       业务线、促销字段、月份工具、交付月环节
-  samples.js         示例数据（接口 501 时显示；目前为空）
+  samples.js         示例数据（接口 501 时显示）；另有 Voice 模拟数据 `voiceSample`（来源接通前显示，用户 2026-10-23 要求）
   ui/components.jsx  公共组件
   ui/bitmap.jsx      位图风基础件：FlipNumber / DotMatrix / DitherBar / TypeText / StepProgress / PixelIcon / BitAvatar / dissolve
   assets/fonts/      Geist / Geist Mono / Geist Pixel（OFL）

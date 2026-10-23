@@ -37,7 +37,7 @@
 - 现象：带教回复的时间按 UTC 显示，不是北京时间。
 - 根因：页面直接截取 ISO 字符串里的「月-日 时:分」；后端存的 UTC 本身没错。
 - 正确做法：页面上的时间一律显式按 `Asia/Shanghai` 格式化，测试覆盖跨日、跨年。
-- 证据：提交 `3200d0e`；CURRENT.md「带教回复北京时间」一节。
+- 证据：提交 `3200d0e`；`docs/history/CURRENT-through-20261023-am.md`「带教回复北京时间」一节。
 - 升级：未升级。
 
 ## L-04 React 重复 key 只在开发模式报（2026-10-23）
@@ -53,7 +53,7 @@
 - 现象：样式规矩每轮手工 grep；发布回读有的轮只比首页和 JS，有的另比 CSS 和 server，而发布脚本本身只核对首页。
 - 根因：规矩写成提醒，没有变成工具。
 - 正确做法：能机器判定的写成检查，在跑测试或发布时自动执行。
-- 证据：`docs/history/CURRENT-through-20261022.md` 的 T09 测试记录；CURRENT.md「带教回复北京时间」一节的回读记录；提交 `7c85fbf`、`b5c212d`。
+- 证据：`docs/history/CURRENT-through-20261022.md` 的 T09 测试记录；`docs/history/CURRENT-through-20261023-am.md`「带教回复北京时间」一节的回读记录；提交 `7c85fbf`、`b5c212d`。
 - 升级：已写成 `tests/style-rules.test.mjs`（`npm run check:style`）与 `scripts/verify-release.sh`（`release-app.sh` 末尾自动跑）。
 
 ## L-06 改了发布脚本只做 bash 验证，没跑全量测试（2026-10-23）
@@ -70,7 +70,7 @@
 - 根因：两个会话同时在 `work-desk-ui-bitmap` 里改代码，`npm test` 跑的是整个工作区。
 - 正确做法：并行的会话各开独立 worktree；做不到时，测试记录里写明「工作区含他人未提交改动」，提交时用 `git commit -- <自己的文件>`，不碰别人的改动。
 - 证据：CURRENT.md「常驻提示可关闭」一节与本轮交接的测试记录。
-- 升级：未升级。
+- 升级：已写进 AGENTS.md「分工」（2026-10-23 每周整理首次试跑提出，用户采纳）。
 
 ## L-08 launchd 里用 /bin/bash 读不了「文稿」下的脚本（2026-10-23）
 
