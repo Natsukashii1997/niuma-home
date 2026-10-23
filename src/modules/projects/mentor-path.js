@@ -51,6 +51,9 @@ export const pendingReviews = (path) => path.lines.reduce((s, l) => s + l.nodes.
 
 /* ---------- 山形 ---------- */
 export const LEDGE = 14;   // 营地平台半宽：图标立在这段平路上，不压线
+// 地图按周定宽（用户 10-23：横向拉长到约 3 倍，每周固定宽度）：左边大本营 170 + 每周 WEEK_W + 右边山顶 248；赛季周数变了地图跟着变长
+export const WEEK_W = 140;
+export const mapWidth = (weeks) => 170 + weeks * WEEK_W + 248;
 const KEYS = ["biz", "ai"];
 function makeRng(seed) { const r = () => (r.seed = (r.seed * 9301 + 49297) % 233280) / 233280; r.seed = seed; return r; }
 // 控制点之间插两处起伏（间距大于 min 才插，amp 控制幅度），控制点本身仍在山脊线上
@@ -89,11 +92,12 @@ export function layout({ W, H }, path, clock) {
   const flat = ([x, y], w) => [[x - w, y], [x + w, y]];
   const ridgeOf = (k, foot, tail) => {
     const trail = [...flat(base[k], 16), ...camps[k].flatMap((c) => flat([c.x, c.y], LEDGE)), summit];
-    return [...crest([foot, trail[0]], rnd).slice(0, -1), ...crest(trail, rnd, { min: 100, amp: 0.45 }), ...crest([summit, ...tail], rnd).slice(1)];
+    return [...crest([foot, trail[0]], rnd).slice(0, -1), ...crest(trail, rnd, { min: 100, amp: 0.7 }), ...crest([summit, ...tail], rnd).slice(1)];
   };
   const ridge = { biz: ridgeOf("biz", [0, yg - 28], [[XS + 70, 250], [W, 330]]), ai: ridgeOf("ai", [0, yg - 220], [[XS + 60, 190], [W, 250]]) };
   const XE = XS - 22;   // 路线画到雪线为止，山顶只留旗子和雪
-  const far = crest([[0, 330], [W * 0.18, 250], [W * 0.36, 300], [W * 0.55, 220], [W * 0.74, 280], [W, 230]], rnd);
+  // 远山：每 420px 一起一伏，高低随机，长图上不显得平
+  const far = crest(Array.from({ length: Math.ceil(W / 420) + 1 }, (_, k) => [Math.min(W, k * 420), (k % 2 ? 214 : 286) + rnd() * 44]), rnd);
   const xNow = xw(clock.nowW), sun = [xNow, 132];
 
   // 现在在哪：在途的关按今天在计划周期里的位置；超期的停在营地前。没有在途的关就没有登山者，实线走到最后一个通关营地
@@ -129,10 +133,11 @@ export function layout({ W, H }, path, clock) {
 
   // 地平线：月份分界、周次格、营地刻度
   const months = clock.months.map((m) => ({ ...m, x: xw(m.w) })).filter((m) => m.x < X24 + 1);
-  const weeks = Array.from({ length: clock.weeks }, (_, k) => ({ w: k + 1, a: xw(k), b: xw(k + 1), cur: k + 1 === clock.week }));
+  const weeks = Array.from({ length: clock.weeks }, (_, k) => ({ w: k + 1, a: xw(k), b: xw(k + 1), cur: k + 1 === clock.week, from: clock.weekStart(k + 1) }));
+  // 云每 4 周一朵、高低错开；鸟一群跟着太阳，另外两群散在后面
   const decor = {
-    clouds: [[xw(1.2), 112, 4], [xw(11.6), 96, 4], [xw(16.2), 128, 3]],
-    birds: [[xNow - 92, 104], [xNow - 74, 116], [xw(13.6), 160]],
+    clouds: Array.from({ length: Math.floor(clock.weeks / 4) }, (_, k) => [xw(1.2 + k * 4 + (k % 2) * 1.4), [112, 96, 128][k % 3], k % 3 === 2 ? 3 : 4]),
+    birds: [[xNow - 92, 104], [xNow - 74, 116], [xw(clock.weeks * 0.55), 160], [xw(clock.weeks * 0.8), 140]],
   };
   return { W, H, RB, yg, X1, XS, X24, XE, xNow, sun, summit, base, camps, ridge, far, me, trail, snow: [...snowTop, ...snowBot], ropes, months, weeks, decor, seedAfter: rnd.seed };
 }
@@ -163,11 +168,12 @@ export function fixedLabels(geo, sizes) {
     ridge: { biz: box(24, base.biz[1] - 22, sizes.ridge.biz.w, sizes.ridge.biz.h), ai: box(24, base.ai[1] - 22, sizes.ridge.ai.w, sizes.ridge.ai.h) },
     today: box(sun[0] + 48, sun[1] - 16, sizes.today.w, sizes.today.h),
     summit: box(summit[0] + 24, summit[1] + 10, sizes.summit.w, sizes.summit.h),
-    week: box(W - 24 - sizes.week.w, yg - 14 - sizes.week.h, sizes.week.w, sizes.week.h),
+    // 「本周攀登」卡固定在可视区右下、不在图上时不传 week
+    week: sizes.week ? box(W - 24 - sizes.week.w, yg - 14 - sizes.week.h, sizes.week.w, sizes.week.h) : null,
     late,
   };
 }
-export const labelBoxes = (fl) => [fl.ridge.biz, fl.ridge.ai, fl.today, fl.summit, ...KEYS.map((k) => fl.late[k]).filter(Boolean), fl.week];
+export const labelBoxes = (fl) => [fl.ridge.biz, fl.ridge.ai, fl.today, fl.summit, ...KEYS.map((k) => fl.late[k]).filter(Boolean), fl.week].filter(Boolean);
 
 /* ---------- 标牌自动摆放 ---------- */
 // 标牌挂在自己的营地上：业务线默认在营地右下、AI 线默认在左上。放不下时依次试：
@@ -186,6 +192,7 @@ function obstacles(geo, labels) {
     ...[...camps.biz, ...camps.ai].map((c) => ({ l: c.x - 18, t: c.y - 36, r: c.x + 18, b: c.y + 5, m: 2, id: c.id })),
   ];
 }
+const TOP = 64;   // 标牌上沿不进页头（页头 64px 高）；标牌多一行后，挨着山顶的最后一关往上挂才放得下
 export function placePlates(geo, sizes, labels) {
   const { W, yg, base, ridge, XS, camps } = geo;
   const fixed = obstacles(geo, labels);
@@ -217,7 +224,7 @@ export function placePlates(geo, sizes, labels) {
   };
   const score = (p, s, others) => {
     const { r, lead } = s;
-    if (r.l < 8 || r.r > W - 8 || r.t < 70 || r.b > yg - 8) return Infinity;
+    if (r.l < 8 || r.r > W - 8 || r.t < TOP || r.b > yg - 8) return Infinity;
     let bad = fixed.filter((o) => o.id !== p.id && (hit(r, o, o.m) || hit(lead, o))).length;
     if (road.some(([x, y, k]) => !(k === p.c.line && Math.abs(x - p.c.x) < 22) && x > r.l - 5 && x < r.r + 5 && y > r.t - 5 && y < r.b + 5)) bad++;
     others.forEach((q) => { if (hit(r, q.at.r, 4) || hit(lead, q.at.r, 1) || hit(r, q.at.lead, 1)) bad++; });

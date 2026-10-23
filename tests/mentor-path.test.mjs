@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { busyBoxes, fixedLabels, isLate, labelBoxes, layout, pendingReviews, pines, placePlates, placeRopeLabels, plateStyle, seasonClock, shortUnlock, slopeOf, unlockText, yAt } from "../src/modules/projects/mentor-path.js";
+import { WEEK_W, busyBoxes, fixedLabels, isLate, labelBoxes, layout, mapWidth, pendingReviews, pines, placePlates, placeRopeLabels, plateStyle, seasonClock, shortUnlock, slopeOf, unlockText, yAt } from "../src/modules/projects/mentor-path.js";
 import { MENTOR_PATH_SAMPLE } from "./helpers/mentor-path-sample.mjs";
 
 const { today } = MENTOR_PATH_SAMPLE;
@@ -96,7 +96,8 @@ test("绳桥：弧线不穿过别的营地", () => {
   }
 });
 
-// 定稿在 1232 宽（工作台 1440×900 / 1280×800 的地图宽）下摆出来的标牌位置：[左, 上, 是否小牌]
+// 定稿在 1232 宽（V7 原来的地图宽）下摆出来的标牌位置：[左, 上, 是否小牌]。页面 10-23 起按周定宽（见文件末尾），这几项留作窄图的算法回归
+
 const DRAFT = {
   814: { B1: [228, 700, 0], B2: [296, 630, 0], B3: [364, 559, 0], B4: [465, 489, 0], B5: [635, 427, 1], B6: [771, 364, 0], B7: [974, 302, 0], A1: [126, 418, 1], A2: [206, 358, 1], A3: [233, 264, 0], A4: [369, 196, 0], A5: [667, 145, 0], A6: [810, 77, 0] },
   710: { B1: [64, 455, 0], B2: [296, 575, 0], B3: [364, 506, 0], B4: [465, 437, 0], B5: [527, 275, 0], B6: [771, 347, 0], B7: [974, 302, 0], A1: [126, 314, 1], A2: [206, 275, 1], A3: [233, 201, 0], A4: [465, 163, 0], A5: [667, 124, 0], A6: [858, 77, 0] },
@@ -178,4 +179,51 @@ test("layout：一条线没有在途的关时没有登山者，实线走到最�
   assert.equal(geo.trail.ai.done.at(-1)[0], geo.camps.ai[2].x);
   const plates = placePlates(geo, plateSizes, labelBoxes(fixedLabels(geo, { ...LABELS, late: {} })));
   assert.equal(plates.length, 13);
+});
+
+// 按周定宽（用户 10-23：横向拉长到约 3 倍）：每周 WEEK_W，24 周地图 3778 宽；「本周攀登」卡固定在可视区，不在图上。
+// 标牌按页面实测：完整 200×76（多一行待办 / 产出），小牌尺寸同上
+const WIDE = Object.fromEntries(Object.entries(PLATES).map(([id, [w, h, bw = 1]]) => [id, { full: { w: 200, h: 76, bw }, mini: { w, h, bw } }]));
+function placeWide(H) {
+  const geo = layout({ W: mapWidth(clock.weeks), H }, path, clock);
+  const fl = fixedLabels(geo, { ...LABELS, week: undefined }), labels = labelBoxes(fl);
+  const plates = placePlates(geo, WIDE, labels);
+  return { geo, fl, labels, plates, ropes: placeRopeLabels(geo, ROPES, busyBoxes(geo, plates, labels)) };
+}
+
+test("按周定宽：24 周 3778 宽，营地横坐标 = 170 + 结束周 × WEEK_W；云每 4 周一朵；周次带起始日；本周攀登卡不在图上", () => {
+  assert.equal(WEEK_W, 140);
+  assert.equal(mapWidth(24), 3778);
+  const { geo, fl, labels } = placeWide(810);
+  assert.equal(geo.W, 3778);
+  [...geo.camps.biz, ...geo.camps.ai].forEach((c) => assert.equal(c.x, 170 + c.n.week[1] * WEEK_W, c.id));
+  assert.equal(geo.summit[0], 3778 - 156);
+  assert.equal(geo.decor.clouds.length, 6);
+  assert.equal(geo.weeks[7].from, "10-20");
+  assert.equal(fl.week, null);
+  assert.equal(labels.length, 5); // 两块山名、今天、山顶、A3 超期小牌
+});
+
+test("按周定宽：标牌全部完整摆开、两两不相交、不出框；绳桥说明不压标牌和文字，绳桥不穿过别的营地", () => {
+  for (const H of [810, 699, 640]) {
+    const { geo, labels, plates, ropes } = placeWide(H);
+    plates.forEach((p, i) => {
+      const r = p.at.r;
+      assert.equal(p.at.mini, false, `${p.id}@${H} 收成了小牌`);
+      assert.ok(r.l >= 8 && r.r <= geo.W - 8 && r.t >= 64 && r.b <= geo.yg - 8, `${p.id}@${H} 出框（上沿不进 64px 高的页头）`);
+      labels.forEach((b) => assert.ok(!hit(r, b), `${p.id}@${H} 压到固定文字`));
+      plates.slice(i + 1).forEach((q) => {
+        assert.ok(!hit(r, q.at.r), `${p.id} × ${q.id}（${H}）`);
+        assert.ok(!hit(p.at.lead, q.at.r) && !hit(r, q.at.lead), `${p.id} 引线 × ${q.id}（${H}）`);
+      });
+    });
+    Object.entries(ropes).forEach(([k, r]) => [...labels, ...plates.map((p) => p.at.r)].forEach((b) => assert.ok(!hit(r, b), `${k}@${H}`)));
+    const all = [...geo.camps.biz, ...geo.camps.ai];
+    geo.ropes.forEach((r) => all.filter((c) => c.id !== r.from && c.id !== r.to).forEach((c) => {
+      for (let i = 0; i <= 40; i++) {
+        const [x, y] = r.at(i / 40);
+        assert.ok(!(x > c.x - 18 && x < c.x + 18 && y > c.y - 38 && y < c.y + 4), `${r.from}→${r.to} 穿过 ${c.id}（${H}）`);
+      }
+    }));
+  }
 });

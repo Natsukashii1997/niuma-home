@@ -3,11 +3,12 @@ import { DitherBar, DitherPattern, PixelIcon, PixelSprite, SPRITES, SpriteCells,
 import { apiRead, apiSend, useApi } from "../../api.js";
 import { Button, Loadable, PageHeader, Placeholder, Tabs, Tag } from "../../ui/components.jsx";
 import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
-import { avgScore, busyBoxes, doneCount, findNode, fixedLabels, isLate, labelBoxes, lateWeeks, layout, lineStars, pendingReviews, pines, placePlates, placeRopeLabels, plateStyle, poly, prereqs, seasonClock, shortUnlock, slopeOf, stars, unlockText } from "./mentor-path.js";
+import { avgScore, busyBoxes, doneCount, findNode, fixedLabels, isLate, labelBoxes, lateWeeks, layout, lineStars, mapWidth, pendingReviews, pines, placePlates, placeRopeLabels, plateStyle, poly, prereqs, seasonClock, shortUnlock, slopeOf, stars, unlockText } from "./mentor-path.js";
 
 // 带教 · 培养路径（定稿 V7 远征登山，用户 2026-10-23）：横向全景，前山是业务线、后山是 AI 线；一关是一段坡，坡顶的营地是通关点，越往右越高，
 // 两条路在山顶汇合（结业）。太阳 = 今天，橙色虚线从太阳垂到地面；登山者站在现在的位置；绳桥是跨线依赖。橙色只表示「现在」。
-// 地图最小 1232 宽（1440×900 下的主区宽），窗口窄时横向滚动；页头和营地日志固定在可视区。坐标全部由 mentor-path.js 计算。
+// 地图按周定宽（每周 WEEK_W，24 周约 3800，约原来的 3 倍；用户 10-23），横向滚动，打开时滚到今天，鼠标滚轮也横着滚；
+// 页头、营地日志和「本周攀登」卡（右下，可收起，带「回到今天」）固定在可视区。坐标全部由 mentor-path.js 计算。
 // 数据（T14）：GET /api/v3/mentor/path，每人一份路径，只存工作台本地；营地日志里评分走「预览 → 确认 → 回读」。
 const INK = "#0D0E10", PANEL = "#FBFBFC", SIGNAL = "#FF4F1F", BLUE = "#2563EB", GRAY = "#C9CCD3", MUTED = "#686D76", LOCKED = "#9CA0A8";
 const MOUNT = { biz: "前山", ai: "后山" }, LNAME = { biz: "业务线", ai: "AI 线" }, LCOLOR = { biz: INK, ai: BLUE };
@@ -67,7 +68,7 @@ function Kpis({ path, clock, pass }) {
 /* ---------- 地图 ---------- */
 
 function Mountain({ path, clock, season, hl, onHover, onOpen }) {
-  const stageRef = useRef(null), labRef = useRef(null);
+  const stageRef = useRef(null), labRef = useRef(null), scrollRef = useRef(null), scrolled = useRef(false);
   const [size, setSize] = useState(null);
   const [fonts, setFonts] = useState(0);
   const [place, setPlace] = useState(null);
@@ -101,20 +102,36 @@ function Mountain({ path, clock, season, hl, onHover, onOpen }) {
     const one = (sel) => sz(lab.querySelector(sel)), late = {}, ropeSizes = {};
     lab.querySelectorAll(".m7-late").forEach((el) => (late[el.dataset.k] = sz(el)));
     lab.querySelectorAll(".m7-rope-label").forEach((el) => (ropeSizes[el.dataset.key] = sz(el)));
-    const fl = fixedLabels(geo, { ridge: { biz: one(".m7-ridge:not(.is-ai)"), ai: one(".m7-ridge.is-ai") }, today: one(".m7-today"), summit: one(".m7-summit"), week: one(".m7-week"), late });
+    const fl = fixedLabels(geo, { ridge: { biz: one(".m7-ridge:not(.is-ai)"), ai: one(".m7-ridge.is-ai") }, today: one(".m7-today"), summit: one(".m7-summit"), late });
     const labels = labelBoxes(fl), plates = placePlates(geo, plateSizes, labels);
-    setPlace({ geo, fl, plates: Object.fromEntries(plates.map((p) => [p.id, p])), ropes: placeRopeLabels(geo, ropeSizes, busyBoxes(geo, plates, labels)), pines: pines(geo, plates, fl.week.l) });
+    setPlace({ geo, fl, plates: Object.fromEntries(plates.map((p) => [p.id, p])), ropes: placeRopeLabels(geo, ropeSizes, busyBoxes(geo, plates, labels)), pines: pines(geo, plates, geo.W) });
   }, [geo, fonts]);
   const P = place && place.geo === geo ? place : null;
+  // 回到今天：今天尽量放在可视区 40% 处，但太阳、登山者、正在爬的营地标牌都要露出来，不能压在右下的「本周攀登」卡底下。
+  // 第一次排好时滚过去，点「回到今天」再滚一次
+  const toToday = (smooth) => {
+    const el = scrollRef.current;
+    if (!el || !P) return;
+    const view = el.clientWidth, page = el.getBoundingClientRect(), card = el.parentElement.querySelector(".m7-week")?.getBoundingClientRect();
+    const keep = [{ l: geo.sun[0] - 42, r: geo.sun[0] + 42, b: geo.sun[1] + 42 }, ...KEYS.filter((k) => geo.me[k]).map((k) => ({ l: geo.me[k].x - 16, r: geo.me[k].x + 16, b: geo.me[k].y })), ...KEYS.map((k) => doing[k] && P.plates[doing[k].id]?.at.r).filter(Boolean)];
+    let s = geo.xNow - view * 0.4;
+    keep.forEach((k) => { s = Math.max(s, k.r - view + 16, card && k.b > card.top - page.top - 8 ? k.r - (card.left - page.left - 16) : -Infinity); });
+    keep.forEach((k) => { s = Math.min(s, k.l - 16); });
+    el.scrollTo({ left: Math.max(0, s), behavior: smooth && !prefersReducedMotion() ? "smooth" : "auto" });
+  };
+  useLayoutEffect(() => { if (P && !scrolled.current) { scrolled.current = true; toToday(false); } });
+  // 地图只横着滚：竖向滚轮也换成横向
+  const wheel = (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY; };
 
   const lower = useMemo(() => geo && <MapLower geo={geo} pineXs={P?.pines ?? []} />, [geo, P]);
   const upper = useMemo(() => geo && <MapUpper geo={geo} />, [geo]);
   const at = (box) => (box ? { left: box.l, top: box.t } : undefined);
   const lastIds = KEYS.map((k) => lines[k].nodes.at(-1).id);
 
-  return (
-    <div className="m7-scroll">
-      <div className="m7" ref={stageRef} onMouseOver={(e) => onHover(pick(e.target))} onMouseLeave={() => onHover(null)} onClick={(e) => { const id = pick(e.target); if (id) onOpen(id); }}>
+  const hoverOn = { onMouseOver: (e) => onHover(pick(e.target)), onMouseLeave: () => onHover(null), onClick: (e) => { const id = pick(e.target); if (id) onOpen(id); } };
+  return (<>
+    <div className="m7-scroll" ref={scrollRef} onWheel={wheel}>
+      <div className="m7" ref={stageRef} style={{ width: mapWidth(clock.weeks) }} {...hoverOn}>
         {geo && (
           <svg className="m7-svg" viewBox={`0 0 ${geo.W} ${geo.H}`} width={geo.W} height={geo.H}>
             {lower}
@@ -134,12 +151,12 @@ function Mountain({ path, clock, season, hl, onHover, onOpen }) {
             <div className={`m7-summit${hl === "summit" ? " is-hl" : ""}`} data-hit="summit" style={at(P?.fl.summit)}><strong>山顶 · 结业</strong><span>{lastIds.join(" + ")} 通关后</span></div>
             {KEYS.filter((k) => geo.me[k]?.late).map((k) => <span key={k} className="m7-late" data-k={k} style={at(P?.fl.late[k])}>超期 {lateWeeks(doing[k], clock.week)} 周</span>)}
             {geo.ropes.map((r) => { const key = `${r.from}>${r.to}`; return <span key={key} className={`m7-rope-label${hl && (hl === r.from || hl === r.to) ? " on" : ""}`} data-key={key} style={at(P?.ropes[key])}>绳桥 {r.from} {r.note} → {r.to}</span>; })}
-            <WeekCard style={at(P?.fl.week)} lines={lines} doing={doing} clock={clock} pass={season.pass} />
           </div>
         )}
       </div>
     </div>
-  );
+    <WeekCard lines={lines} doing={doing} clock={clock} pass={season.pass} onToday={() => toToday(true)} {...hoverOn} />
+  </>);
 }
 
 // 天空、远山、两座山、积雪、松树、两条路（悬停高亮压在路上面）
@@ -222,10 +239,10 @@ function MapUpper({ geo }) {
           <text x={m.x + 6} y={yg + 14} fontFamily="Geist Mono" fontSize="10" fill={LOCKED}>{m.name}</text>
         </g>
       ))}
-      {weeks.map(({ w, a, b, cur }) => (
+      {weeks.map(({ w, a, b, cur, from }) => (
         <g key={w}>
           {cur && <rect x={a} y={yg + 20} width={b - a} height={RB - 20} fill={SIGNAL} />}
-          <text x={(a + b) / 2} y={yg + 37} textAnchor="middle" fontFamily="Geist Mono" fontSize="10" fill={cur ? PANEL : GRAY}>W{w}</text>
+          <text x={(a + b) / 2} y={yg + 37} textAnchor="middle" fontFamily="Geist Mono" fontSize="10" fill={cur ? PANEL : GRAY}>W{w}<tspan fill={cur ? PANEL : LOCKED}>{` · ${from}`}</tspan></text>
         </g>
       ))}
       {[...camps.biz, ...camps.ai].map(({ id, x, line }) => <path key={id} d={`M${x - 5} ${yg + 1}L${x + 5} ${yg + 1}L${x} ${yg + 8}Z`} fill={line === "biz" ? PANEL : "#7FA4F5"} />)}
@@ -274,19 +291,26 @@ function Plate({ c, p, hl, clock, path, pass }) {
       <span className="meta"><Tagged id={n.id} />{n.stage} · W{n.week[0]}–{n.week[1]}</span>
       <strong>{n.boss && <><PixelIcon name="crown" /> </>}{n.title}</strong>
       <span className="sc">{n.status === "locked" && <PixelIcon name="lock" />}{sc}</span>
+      <span className="dt">{n.status === "locked" ? `${n.todo.length} 件要做 · 交 ${n.output.length} 份` : `待办 ${n.todoChecked.filter(Boolean).length}/${n.todo.length} · 产出 ${n.outLinks.filter(Boolean).length}/${n.output.length}`}</span>
       <span className="mini"><Tagged id={n.id} />{n.boss ? <PixelIcon name="crown" /> : n.status === "locked" && <PixelIcon name="lock" />}{n.stage}{n.status === "done" && <Stars n={n} pass={pass} />}</span>
     </div>
   );
 }
 
-// 右下：本周攀登（两条线各一行，点开营地日志）+ 图例
-function WeekCard({ style, lines, doing, clock, pass }) {
+// 右下：本周攀登（两条线各一行，点开营地日志）+ 图例。固定在可视区，不跟地图滚；可收起成一行（记在本机）
+const WEEK_OPEN = "niuma:m7-week-open";
+function WeekCard({ lines, doing, clock, pass, onToday, ...hoverOn }) {
+  const [open, setOpen] = useState(() => { try { return localStorage.getItem(WEEK_OPEN) !== "0"; } catch { return true; } });
+  const toggle = () => { setOpen(!open); try { localStorage.setItem(WEEK_OPEN, open ? "0" : "1"); } catch { /* 存不了就只管这次 */ } };
   const pct = (n) => clamp01((clock.nowW - (n.week[0] - 1)) / (n.week[1] - n.week[0] + 1));
   const meter = (n) => { const late = isLate(n, clock.week), k = late ? 10 : Math.round(pct(n) * 10); return <span className={`m7-meter${late ? " is-late" : ""}`}>{Array.from({ length: 10 }, (_, j) => <i key={j} className={j < k ? "on" : ""} />)}</span>; };
   const legend = (svg, text) => <span>{svg}{text}</span>;
   return (
-    <div className="m7-week" style={style}>
-      <div className="m7-week-head"><b>本周攀登</b><span>W{clock.week} · {clock.weekStart(clock.week)} 至 {clock.weekEnd(clock.week)} · 距山顶 {clock.weeks - clock.week} 周</span></div>
+    <div className={`m7-week${open ? "" : " is-shut"}`} {...hoverOn}>
+      <div className="m7-week-head"><b>本周攀登</b><span>W{clock.week} · {clock.weekStart(clock.week)} 至 {clock.weekEnd(clock.week)} · 距山顶 {clock.weeks - clock.week} 周</span>
+        <button type="button" className="m7-week-btn" onClick={(e) => { e.stopPropagation(); onToday(); }}><PixelIcon name="target" />回到今天</button>
+        <button type="button" className="m7-week-btn is-icon" onClick={(e) => { e.stopPropagation(); toggle(); }} aria-label={open ? "收起本周攀登" : "展开本周攀登"} title={open ? "收起" : "展开"}><PixelIcon name={open ? "down" : "up"} /></button></div>
+      {open && <>
       {KEYS.filter((k) => doing[k]).map((k) => {
         const n = doing[k], l = lines[k], late = isLate(n, clock.week), i = l.nodes.indexOf(n);
         return (
@@ -304,6 +328,7 @@ function WeekCard({ style, lines, doing, clock, pass }) {
         {legend(<PixelSprite rows={SPRITES.keep} color={INK} />, "BOSS 关")}
         {legend(<svg width="22" height="14" viewBox="0 0 22 14" aria-hidden="true"><line x1="0" y1="7" x2="22" y2="7" stroke={INK} strokeWidth="2" strokeDasharray="1 4" strokeLinecap="round" /></svg>, "绳桥 = 跨线依赖")}
       </div>
+      </>}
     </div>
   );
 }
