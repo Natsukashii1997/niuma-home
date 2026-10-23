@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { PixelIcon } from "../../ui/bitmap.jsx";
 import { href } from "../../router.js";
 import { Card, Placeholder, Segmented } from "../../ui/components.jsx";
@@ -42,16 +42,18 @@ function PlayList() {
   return (
     <>
       <div className="filter-bar plb-bars">
-        <button type="button" className={`chip${!bar ? " is-on" : ""}`} onClick={() => setBar("")}>全部障碍 <span className="tnum">{base.length}</span></button>
-        {BARRIERS.map(([group, groupName, items]) => (
-          <span key={group} className="plb-bar-group">
-            <span className="label">{group} {groupName}</span>
-            {items.map(([code, name]) => (
-              <button key={code} type="button" className={`chip${bar === code ? " is-on" : ""}`} aria-pressed={bar === code} onClick={() => setBar(bar === code ? "" : code)}>
-                {code} {name} <span className="tnum">{count(code)}</span>
-              </button>
-            ))}
-          </span>
+        <button type="button" className={`chip plb-all${!bar ? " is-on" : ""}`} onClick={() => setBar("")}>全部障碍 <span className="tnum">{base.length}</span></button>
+        {BARRIERS.map(([group, groupName, items], i) => (
+          <Fragment key={group}>
+            <span className="label plb-bar-name" style={{ gridRow: i + 1 }}>{group} {groupName}</span>
+            <span className="plb-bar-group" style={{ gridRow: i + 1 }}>
+              {items.map(([code, name]) => (
+                <button key={code} type="button" className={`chip${bar === code ? " is-on" : ""}`} aria-pressed={bar === code} onClick={() => setBar(bar === code ? "" : code)}>
+                  {code} {name} <span className="tnum">{count(code)}</span>
+                </button>
+              ))}
+            </span>
+          </Fragment>
         ))}
       </div>
       <div className="filter-bar">

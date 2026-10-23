@@ -6,6 +6,10 @@ import "./business-charts.css";
 const COLORS = ["var(--info)", "var(--text)", "var(--ok)", "var(--warn)", "var(--risk)", "var(--muted)"];
 const color = i => COLORS[i % COLORS.length];
 const exact = (value, unit) => value == null ? "无数据" : unit === "percent" ? `${(value * 100).toFixed(2)}%` : `${value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 元`;
+// 纵轴取整刻度：步长取 1 / 2 / 2.5 / 5 × 10 的整数次方，约 4 段（用户 2026-10-23）
+const niceStep = raw => { const p = 10 ** Math.floor(Math.log10(raw)), f = raw / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; };
+// 饼图只画前 5 名 + 其他：调色板只有 6 色，再多会重色、图例分不清（用户 2026-10-23 要求可读）
+const PIE_TOP = 5;
 const short = (value, unit) => unit === "percent" ? `${(value * 100).toFixed(0)}%` : `${(value / 10000).toLocaleString("zh-CN", { maximumFractionDigits: 1 })}`;
 
 // 显式刷新直达飞书；后台刷新期间保留旧图，刷新完成后自动回读页面。
@@ -78,20 +82,25 @@ function LineChart({ chart, wide }) {
   const values = chart.series.flatMap(s => s.values).filter(v => v != null);
   if (!values.length) return <Placeholder icon="trend" title="原图暂无可绘制数据" />;
   const width = wide ? 1000 : 480, height = 250, left = 56, right = 16, top = 16, bottom = 32;
-  const min = Math.min(0, ...values), max = Math.max(0, ...values);
-  const range = max - min || 1;
+  const step = niceStep((Math.max(0, ...values) - Math.min(0, ...values)) / 4 || 1);
+  const min = Math.floor(Math.min(0, ...values) / step) * step, max = Math.ceil(Math.max(0, ...values) / step) * step;
+  const range = max - min || 1, ticks = Array.from({ length: Math.round(range / step) + 1 }, (_, n) => min + step * n);
+  // 当月还没过完：今年这一点画空心并标「至今」，免得看成断崖
+  const now = new Date(), thisMonth = chart.dimension === "月份" ? String(now.getMonth() + 1).padStart(2, "0") : null;
+  const partial = (s, i) => thisMonth && s.name === String(now.getFullYear()) && chart.categories[i] === thisMonth;
   const x = i => left + (width - left - right) * (chart.categories.length === 1 ? 0.5 : i / (chart.categories.length - 1));
   const y = value => top + (height - top - bottom) * (1 - (value - min) / range);
   return <>
     <div className="bc-legend">{chart.series.map((s, i) => <span key={s.name}><i style={{ background: color(i) }} />{s.name}</span>)}<span className="muted">缺失月份不补零</span></div>
     <svg className="bc-line-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${chart.name}，横轴${chart.dimension}，${chart.unit === "percent" ? "百分比" : "单位万元"}；完整数值在下方展开查看`}>
-      {[0, 1, 2, 3, 4].map(n => { const v = min + range * n / 4; return <g key={n}><line x1={left} x2={width - right} y1={y(v)} y2={y(v)} className="bc-grid" /><text x={left - 8} y={y(v) + 4} textAnchor="end">{short(v, chart.unit)}</text></g>; })}
+      {ticks.map(v => { return <g key={v}><line x1={left} x2={width - right} y1={y(v)} y2={y(v)} className="bc-grid" /><text x={left - 8} y={y(v) + 4} textAnchor="end">{short(v, chart.unit)}</text></g>; })}
       {chart.categories.map((c, i) => <text key={c} x={x(i)} y={height - 8} textAnchor="middle">{c}{chart.dimension === "月份" ? "月" : ""}</text>)}
       {chart.series.map((s, si) => {
         const path = s.values.map((v, i) => v == null ? "" : `${i === 0 || s.values[i - 1] == null ? "M" : "L"}${x(i)},${y(v)}`).join(" ");
         return <g key={s.name} style={{ color: color(si) }}>
           <path d={path} fill="none" stroke="currentColor" strokeWidth="2" />
-          {s.values.map((v, i) => v == null ? null : <rect key={i} x={x(i) - 4} y={y(v) - 4} width="8" height="8" fill="currentColor" tabIndex="0" role="img" aria-label={`${s.name} · ${chart.categories[i]}月 · ${exact(v, chart.unit)}`} onMouseEnter={() => setHover({ series: s.name, x: chart.categories[i] })} onFocus={() => setHover({ series: s.name, x: chart.categories[i] })}><title>{s.name} · {chart.categories[i]} · {exact(v, chart.unit)}</title></rect>)}
+          {s.values.map((v, i) => v != null && partial(s, i) && <text key={`p${i}`} x={x(i)} y={y(v) - 10} textAnchor="middle" className="bc-partial">至今</text>)}
+          {s.values.map((v, i) => v == null ? null : <rect key={i} x={x(i) - 4} y={y(v) - 4} width="8" height="8" fill={partial(s, i) ? "var(--panel)" : "currentColor"} stroke={partial(s, i) ? "currentColor" : undefined} strokeWidth={partial(s, i) ? 2 : undefined} tabIndex="0" role="img" aria-label={`${s.name} · ${chart.categories[i]}月${partial(s, i) ? "（至今）" : ""} · ${exact(v, chart.unit)}`} onMouseEnter={() => setHover({ series: s.name, x: chart.categories[i] })} onFocus={() => setHover({ series: s.name, x: chart.categories[i] })}><title>{s.name} · {chart.categories[i]} · {exact(v, chart.unit)}</title></rect>)}
         </g>;
       })}
     </svg>
@@ -102,14 +111,17 @@ function LineChart({ chart, wide }) {
 function PieChart({ chart }) {
   const [active, setActive] = useState(null);
   const items = [...chart.items].sort((a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity));
-  const shown = items.find(item => item.label === active);
+  const folded = items.length > PIE_TOP + 1;
+  const parts = folded ? [...items.slice(0, PIE_TOP), { label: `其他 ${items.length - PIE_TOP} 项`, value: items.slice(PIE_TOP).reduce((sum, item) => sum + (item.value || 0), 0) }] : items;
+  const tint = i => folded && i >= PIE_TOP ? "var(--muted)" : color(i);
+  const shown = items.find(item => item.label === active) || parts.find(item => item.label === active);
   let angle = -Math.PI / 2;
   const cx = 100, cy = 100, radius = 90;
-  const slices = items.map((item, i) => {
+  const slices = parts.map((item, i) => {
     if (!chart.pieAvailable || !item.value) return null;
     const start = angle, span = item.value / chart.total * Math.PI * 2;
     angle += span;
-    const props = { fill: color(i), onMouseEnter: () => setActive(item.label), onFocus: () => setActive(item.label), tabIndex: 0, role: "img", "aria-label": `${item.label} ${exact(item.value, chart.unit)} 占 ${(item.value / chart.total * 100).toFixed(2)}%` };
+    const props = { fill: tint(i), onMouseEnter: () => setActive(item.label), onFocus: () => setActive(item.label), tabIndex: 0, role: "img", "aria-label": `${item.label} ${exact(item.value, chart.unit)} 占 ${(item.value / chart.total * 100).toFixed(2)}%` };
     const title = <title>{props["aria-label"]}</title>;
     if (span >= Math.PI * 2 - 1e-10) return <circle key={i} cx={cx} cy={cy} r={radius} {...props}>{title}</circle>;
     const d = `M${cx},${cy} L${cx + radius * Math.cos(start)},${cy + radius * Math.sin(start)} A${radius},${radius} 0 ${span > Math.PI ? 1 : 0},1 ${cx + radius * Math.cos(angle)},${cy + radius * Math.sin(angle)} Z`;
@@ -122,7 +134,7 @@ function PieChart({ chart }) {
     <div className="bc-readout bc-pie-readout small" aria-live="polite">{shown ? <><b>{shown.label}</b><span className="tnum">{exact(shown.value, chart.unit)}{chart.pieAvailable && ` · ${(shown.value / chart.total * 100).toFixed(2)}%`}</span></> : <span className="muted">按金额降序 · 共 {chart.items.length} 项 · 指向查看数值</span>}</div>
     <div className="bc-pie-legend" aria-label={`${chart.name}全部分类`}>
       {items.map((item, i) => <button type="button" key={item.label} className={item.label === active ? "active" : ""} onMouseEnter={() => setActive(item.label)} onFocus={() => setActive(item.label)} onClick={() => setActive(item.label)}>
-        <i style={{ background: color(i) }} /><span>{item.label}</span><span className="tnum">{item.value == null ? "—" : item.value.toLocaleString("zh-CN", { maximumFractionDigits: 2 })}<small>{chart.pieAvailable ? `${(item.value / chart.total * 100).toFixed(2)}%` : "—"}</small></span>
+        <i style={{ background: tint(i) }} /><span>{item.label}</span><span className="tnum">{item.value == null ? "—" : item.value.toLocaleString("zh-CN", { maximumFractionDigits: 2 })}<small>{chart.pieAvailable ? `${(item.value / chart.total * 100).toFixed(2)}%` : "—"}</small></span>
       </button>)}
     </div>
   </>;

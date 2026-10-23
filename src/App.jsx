@@ -46,6 +46,8 @@ function useDisplayedRoute(route) {
   const canvas = useRef(null), area = useRef(null);
   useEffect(() => {
     if (moduleOf(route[0]).key === moduleOf(shown[0]).key || prefersReducedMotion() || !canvas.current || !area.current) {
+      // 同模块换页签（route[1] 变了）回到顶部；同一页签里换月份、换条目不动滚动位置（用户 2026-10-23）
+      if (moduleOf(route[0]).key !== moduleOf(shown[0]).key || (route[1] || "") !== (shown[1] || "")) scrollTo(0, 0);
       setShown(route);
       return undefined;
     }

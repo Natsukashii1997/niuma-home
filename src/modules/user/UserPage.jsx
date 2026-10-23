@@ -148,11 +148,10 @@ function MonthTimeline({ tl, q, showSrc }) {
     <>
       <div className="toolbar">
         <MonthSwitch month={month} onChange={setMonth} mark={month === deliveryMonth() ? "交付月" : ""} />
-        <button type="button" className={`chip${!country ? " is-on" : ""}`} onClick={() => setCountry("")}>全部国家 <span className="tnum">{counter("")}</span></button>
-        {countries.map((c) => <button key={c} type="button" className={`chip${country === c ? " is-on" : ""}`} onClick={() => setCountry(country === c ? "" : c)}>{c} <span className="tnum">{counter(c)}</span></button>)}
-        <span className="spacer" />
-        <span className="tl-cats">{CATS.map(([k, label]) => <span key={k}><i className={`ev-${k}`} />{label}</span>)}<span className="timeline-estimate">AI推测</span></span>
+        <button type="button" className={`chip tl-country${!country ? " is-on" : ""}`} onClick={() => setCountry("")}>全部国家 <span className="tnum">{counter("")}</span></button>
+        {countries.map((c) => <button key={c} type="button" className={`chip tl-country${country === c ? " is-on" : ""}`} onClick={() => setCountry(country === c ? "" : c)}>{c} <span className="tnum">{counter(c)}</span></button>)}
       </div>
+      <div className="tl-cats-row"><span className="tl-cats">{CATS.map(([k, label]) => <span key={k}><i className={`ev-${k}`} />{label}</span>)}<span className="timeline-estimate">AI推测</span></span></div>
       {!groups.length ? <Placeholder icon="calendar" title={`${country || "全部国家"} · ${month} 暂无节点`}>换个月份或清掉筛选；勾选“显示来源单元格”可查看月历原文。</Placeholder> : (
         <section className="card gantt">
           <div className="gantt-head">

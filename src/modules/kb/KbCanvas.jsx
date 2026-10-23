@@ -224,7 +224,7 @@ function Canvas({ kb: initialKb, focus, initialOrder, ruleIds, reload, onSpace }
         </div>
         <button type="button" className="kbf-case" onClick={() => openGroup(g.id)} aria-label={`${isOpen ? "收起" : "打开"}分组：${g.name}`}>
           {peeks.length ? peeks.map((k, j) => (
-            <span key={k.id} className={`kbf-peek${k.kids ? " is-folder" : ""}`} style={{ top: 22 + j * 40, transform: `rotate(${pose(k.id, 1)[0] / 5}deg)`, zIndex: j }}>
+            <span key={k.id} className={`kbf-peek${k.kids ? " is-folder" : ""}${j < peeks.length - 1 ? " is-back" : ""}`} style={{ top: 22 + j * 40, transform: `rotate(${pose(k.id, 1)[0] / 5}deg)`, zIndex: j }}>
               <strong>{k.name}</strong>
               <span className="kbf-meta"><span>{k.kids ? `文件夹 · ${countDocs(k)} 篇` : TYPE_ZH[docs[k.id]?.type] || "文档"}</span><span className="tnum">{(k.kids ? latest(k) : docs[k.id]?.updated)?.slice(5) || ""}</span></span>
             </span>

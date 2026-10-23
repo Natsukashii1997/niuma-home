@@ -13,6 +13,7 @@
 .bc-legend i, .bc-pie-legend i { display: inline-block; width: 8px; height: 8px; flex-shrink: 0; }
 .bc-line-svg { display: block; width: 100%; height: auto; overflow: visible; }
 .bc-line-svg text { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+.bc-line-svg text.bc-partial { fill: currentColor; font-family: var(--font-sans); } /* 当月「至今」标注跟线同色 */
 .bc-grid { stroke: var(--line); stroke-dasharray: 2 4; }
 .bc-line-svg rect, .bc-pie-svg path, .bc-pie-svg circle { cursor: crosshair; }
 .bc-line-svg rect:focus, .bc-pie-svg :focus { outline: 2px solid var(--signal); }

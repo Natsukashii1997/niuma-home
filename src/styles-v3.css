@@ -691,6 +691,9 @@ label.btn { cursor: pointer; }
 .ev-other { --ev: var(--muted); --ev-bg: var(--panel-soft); }
 .ev-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; background: var(--ev); vertical-align: 1px; }
 .tl-cats { display: inline-flex; flex-wrap: wrap; gap: var(--s3); font-size: 12px; color: var(--text-2); }
+/* 按月视图：国家按钮收窄内边距，1440 宽一行放下；图例单独一行靠右（用户 2026-10-23） */
+.chip.tl-country { padding: 0 var(--s2); }
+.tl-cats-row { display: flex; justify-content: flex-end; margin: calc(var(--s2) * -1) 0 var(--s3); background: var(--bg); }
 .tl-cats span { display: inline-flex; align-items: center; gap: var(--s1); }
 .tl-cats i { width: 14px; height: 8px; background: var(--ev-bg); border-left: 3px solid var(--ev); }
 .tl-cats i.ev-flag { background: none; border: 1px dashed var(--risk); }
@@ -1159,6 +1162,7 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .kbf-peek { position: absolute; left: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; height: 104px; padding: 10px 12px; border: var(--border) solid var(--line); background: var(--panel); }
 .kbf-peek strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; font-weight: 600; line-height: 1.45; }
 .kbf-peek.is-folder { border-left: 4px solid var(--text); }
+.kbf-peek.is-back strong { -webkit-line-clamp: 1; } /* 叠在后面的纸只露出 40px，标题第二行会被前一张盖住，只留一行（用户 2026-10-23） */
 .kbf-peek.is-empty { border-style: dashed; }
 .kbf-peek.is-empty strong { font-weight: 400; color: var(--muted); }
 .kbf-lip { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 12px; border-top: var(--border) solid var(--text); background-color: var(--panel-soft); background-image: var(--dither-1); font-family: var(--font-mono); font-size: 11px; color: var(--text-2); }
@@ -1632,9 +1636,11 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .pb-anchor { scroll-margin-top: 96px; } /* 滚到节点预览时让开顶栏 */
 
 /* ---------- 策略 · 打法库（docs/打法库/） ---------- */
-.plb-bars { row-gap: var(--s2); }
-.plb-bar-group { display: inline-flex; align-items: center; gap: var(--s2); }
-.plb-bar-group .label { margin-left: var(--s2); }
+/* 决策障碍筛选：A / B / C 每组一行，组名一列对齐；「全部障碍」在第一行最前（用户 2026-10-23） */
+.filter-bar.plb-bars { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); align-items: center; gap: var(--s2) var(--s3); }
+.plb-all { grid-column: 1; grid-row: 1; }
+.plb-bar-name { grid-column: 2; }
+.plb-bar-group { grid-column: 3; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .plb-cat-head .plb-cat-count { margin-left: auto; }
 .plb-grid { display: grid; gap: var(--s4); }
 .plb-tile { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; padding: var(--s4); background: var(--panel); border: var(--border) solid var(--line); color: var(--text); text-decoration: none; }
