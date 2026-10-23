@@ -1,5 +1,5 @@
 // 位图风基础件。规范见 docs/STYLE-GUIDE.md「位图风」：动效一律按帧跳变（约 15 帧/秒），不用缓动、弹簧、模糊；
-// 像素只用于数字、图标、点阵图、抖动网点、1-bit 头像和方块光标。系统开启「减少动态效果」时直接显示终态。
+// 像素只用于数字、图标、点阵图、抖动网点、1-bit 头像、方块光标和培养路径地图的插画。系统开启「减少动态效果」时直接显示终态。
 import { useEffect, useRef, useState } from "react";
 import { ICONS7 } from "./icons7.js";
 
@@ -353,6 +353,49 @@ export function PixelIcon({ name, size = 14, className = "" }) {
   return (
     <svg className={`pixel-icon ${className}`} width={px} height={px} viewBox="0 0 7 7" shapeRendering="crispEdges" fill="currentColor" aria-hidden="true">
       {rows.flatMap((row, y) => [...row].map((c, x) => (c === "#" ? <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" /> : null)))}
+    </svg>
+  );
+}
+
+/* ---------- 像素插画 ---------- */
+
+// 插画不是图标：用在整张图里（培养路径地图的旗子、帐篷、城堡、登山者等），按格画，cell 为每格的屏幕像素（整数）。
+// # = 主色，o = 底色（云的内部）。outline 时先在 8 个方向各错 2px 画一遍底色，像贴纸的白边，压在线和网点上也看得清。
+export const SPRITES = {
+  flag: ["#......", "#####..", "######.", "#####..", "#......", "#......", "#......"],
+  tent: ["...#...", "..###..", "..#.#..", ".#...#.", ".#.#.#.", "#..#..#", "#######"],
+  keep: ["#..#..#", "##.#.##", "#######", "#######", ".#####.", ".......", "......."],
+  pine: ["..#..", ".###.", "..#..", ".###.", "#####", "..#..", "..#.."],
+  bird: ["#...#", ".#.#."],
+  cloud: ["......####......", "....##oooo##....", "..##oooooooo##..", ".#oooooooooooo#.", "################"],
+  // 登山者两帧：放下手 / 举手挥
+  climb: [
+    ["...##..", "...##..", ".#####.", "#.###.#", "..###..", "..###..", "..#.#..", ".##.##.", ".#...#."],
+    ["...##.#", "...##.#", ".######", "#.###..", "..###..", "..###..", "..#.#..", ".#..##.", ".#...#."],
+  ],
+};
+const OUTLINE = [[-2, 0], [2, 0], [0, -2], [0, 2], [-2, -2], [2, -2], [-2, 2], [2, 2]];
+const spriteCells = (rows, ch) => rows.flatMap((row, y) => [...row].map((c, x) => (c === ch ? `M${x} ${y}h1v1h-1z` : ""))).join("");
+
+// 画在已有的 <svg> 里；左上角取整，格子不发虚
+export function SpriteCells({ rows, x, y, cell, color, outline = false, bg = "var(--panel)" }) {
+  const ink = spriteCells(rows, "#"), fill = spriteCells(rows, "o");
+  const at = (dx, dy) => `translate(${Math.round(x) + dx} ${Math.round(y) + dy}) scale(${cell})`;
+  return (
+    <g shapeRendering="crispEdges">
+      {outline && OUTLINE.map(([dx, dy]) => <path key={`${dx},${dy}`} d={ink + fill} transform={at(dx, dy)} fill={bg} />)}
+      {fill && <path d={fill} transform={at(0, 0)} fill={bg} />}
+      <path d={ink} transform={at(0, 0)} fill={color} />
+    </g>
+  );
+}
+
+// 单独一张（图例、抽屉标题旁）
+export function PixelSprite({ rows, cell = 2, color = "currentColor", className = "" }) {
+  const w = rows[0].length * cell, h = rows.length * cell;
+  return (
+    <svg className={`pixel-sprite ${className}`} width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
+      <SpriteCells rows={rows} x={0} y={0} cell={cell} color={color} />
     </svg>
   );
 }

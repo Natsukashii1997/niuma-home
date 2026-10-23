@@ -296,6 +296,16 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `POST /api/v3/mentor/:name/items/:id/reply` 请求 `{ previewId, confirm: true }` → 回复记录（`state: "sent"`）。用 `lark-cli drive +add-comment --block-id <id>` 在原话那一段挂评论（user = 常浩本人，bot = 机械邪龙兽应用），只发一次，再按评论编号回读核对；同一预览重复确认返回同一回执。授权被拒（确定没执行）清掉记录；其他失败或回读不一致记为 `unknown` 并返回 502 `REPLY_UNKNOWN`。
 - `POST /api/v3/mentor/:name/items/:id/reply/reconcile` 请求 `{}`：只读翻这篇文档的划词评论，找到同一段、同样内容的评论记为 `sent`；没找到清掉记录（`{ state: "none", checked: true }`），可重新发送。
 
+## 带教 · 培养路径（T14，待实现，2026-10-23）
+
+- `GET /api/v3/mentor/path` 目前返回 501 `{ error, task: "T14" }`，页面显示 `src/samples.js` 的 `MENTOR_PATH_SAMPLE` 并标「示例」。真实来源（飞书表、本地表或手填）未定，见 [docs/tasks/T14-培养路径真实数据.md](tasks/T14-培养路径真实数据.md)。
+- 约定形状（实现时按此返回，示例同形）：`{ season: { name, start: "YYYY-MM-DD", weeks, pass, rank, next, reviewer }, today: "YYYY-MM-DD", trainees: [{ name, role, path: { lines, links } | null }] }`。
+  - `lines`：两条线，`key` 为 `biz`（业务线，前山）和 `ai`（AI 线，后山），各带 `code`、`name`、`desc`、`nodes`。
+  - `nodes[]`：`{ id, stage, title, week: [起, 止], status: "done" | "doing" | "locked", score?, at?, boss?, goal, todo[], todoDone?, output[], outDone?, rubric: [{ name, weight, score?, note? }] }`；`week` 是第几周（入职日所在周为第 1 周），营地横坐标取 `week[1]`。
+  - `links[]`：跨线依赖 `{ from, to, note }`，`note` 写前一关的哪份产出被后一关用到。
+  - `today` 由后端给（今天落在第几周、谁超期都按它算），页面不读浏览器时间。没有路径的人 `path` 为 null，页面把这个人的按钮置灰。
+- 评分、打开产出物暂不提供，页面按钮为 `PendingButton`（T14）；以后接写入时走「预览 → 确认 → 回读」。
+
 ## 策略 · 月度用户策略（T13，2026-10-20）
 
 结构与写作规范见 `docs/用户策略规范.md`。分两层：

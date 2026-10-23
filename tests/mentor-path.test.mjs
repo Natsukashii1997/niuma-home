@@ -179,3 +179,13 @@ test("layout：一条线没有在途的关时没有登山者，实线走到最�
   const plates = placePlates(geo, plateSizes, labelBoxes(fixedLabels(geo, { ...LABELS, late: {} })));
   assert.equal(plates.length, 13);
 });
+
+test("接口：/api/v3/mentor/path 真实来源未定，返回 501 + T14，页面据此显示示例", async () => {
+  const { projectRoutes } = await import("../server/routes/projects.mjs");
+  const { match } = await import("../server/http.mjs");
+  const found = match(projectRoutes({ projects: {}, mentor: {}, kb: {} }), "GET", "/api/v3/mentor/path");
+  let status, body;
+  await found.handler({}, { writeHead: (s) => (status = s), end: (b) => (body = JSON.parse(b)) }, { params: found.params });
+  assert.equal(status, 501);
+  assert.equal(body.task, "T14");
+});

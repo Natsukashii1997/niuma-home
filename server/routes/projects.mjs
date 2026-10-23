@@ -1,4 +1,4 @@
-import { readJson, route } from '../http.mjs';
+import { pending, readJson, route } from '../http.mjs';
 import { handleV3 } from './user.mjs';
 import { failure } from '../v3-common.mjs';
 import { createProjectService } from '../projects.mjs';
@@ -26,6 +26,8 @@ export function projectRoutes({ projects, mentor, kb }) {
     route('PATCH', '/api/v3/projects', handleV3(async req => { const value = await body(req); return projects.confirm(value.id, value); })),
     route('GET', '/api/v3/mentor', handleV3(() => mentor.list())),
     route('POST', '/api/v3/mentor/refresh', handleV3(() => mentor.list({ refresh: true }))),
+    // 培养路径（定稿 V7）：真实来源未定，先返回 501，页面显示示例（T14）
+    route('GET', '/api/v3/mentor/path', pending('T14')),
     route('POST', '/api/v3/mentor/:name/records/preview', handleV3(async (req, { params }) => mentor.preview(params.name, await body(req)))),
     route('POST', '/api/v3/mentor/:name/records', handleV3(async (req, { params }) => mentor.confirm(params.name, await body(req)))),
     route('POST', '/api/v3/mentor/:name/draft/preview', handleV3(async (req, { params }) => mentor.previewDraft(params.name, await body(req)))),
