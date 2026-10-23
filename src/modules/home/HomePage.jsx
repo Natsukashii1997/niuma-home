@@ -57,7 +57,7 @@ export default function HomePage() {
   );
 }
 
-// 交付月：剩余天数 + 6 个环节（见 deliverySteps：方案录入由前端用真实的 /api/plans 计算）。
+// 交付月：剩余天数 + 5 个环节（见 deliverySteps：方案录入由前端用真实的 /api/plans 计算）。
 // 环节接口读取失败时写明失败，不显示「0/x」这种看起来像真实进度的数字。
 function DeliveryCard({ month, plans }) {
   const state = useApi(`/api/v3/months/${month}`);

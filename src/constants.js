@@ -2,7 +2,7 @@ export const LINES = ["大学辅导", "国际课程", "申诉服务"];
 // 方案汇总只有这两条业务线；申诉服务只存方案原文，不进汇总（用户 2026-10-19）；固定 SKU 见 server/plan-parser.mjs。
 export const PROMO_LINES = ["大学辅导", "国际课程"];
 
-// 交付月的 6 个环节：接口返回其余 5 个，「方案录入」由前端用 /api/plans 算出，固定放在第 2 位。
+// 交付月的 5 个环节：接口返回其余 4 个，「方案录入」由前端用 /api/plans 算出，固定放在第 1 位（主线需求环节 2026-10-23 去掉）。
 // 未接入的环节（state 为 pending，或旧接口在 meta 里写「未接入」）统一显示「待接入」，原文放悬停提示。
 export function deliverySteps(steps = [], plans, month) {
   const done = plans ? PROMO_LINES.filter((l) => plans.some((p) => p.month === month && p.line === l)) : [];
@@ -14,7 +14,7 @@ export function deliverySteps(steps = [], plans, month) {
   };
   const rest = steps.filter((s) => s.key !== "plans").map((s) => (s.state === "pending" || /未接入/.test(s.meta || "")
     ? { ...s, state: "todo", meta: "待接入", note: s.note || s.meta } : s));
-  return [...rest.slice(0, 1), plan, ...rest.slice(1)];
+  return [plan, ...rest];
 }
 
 export const PROMO_FIELDS = [

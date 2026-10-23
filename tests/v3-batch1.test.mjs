@@ -100,7 +100,7 @@ test('V3 新 GET 覆盖501且保持形状，后续批次仍501，月份校验', 
   const tl = (await request('GET','/api/v3/timeline')).body;
   assert.deepEqual(Object.keys(tl).sort(), ['source','syncedAt','stage','countries','terms','nodes','table','agenda','anomalies','rulings','coverage','calendarEntries','verifications'].sort());
   const month = (await request('GET','/api/v3/months/2026-11')).body;
-  assert.equal(month.steps.length,5); assert.equal(month.campaign,null); assert.ok(month.steps.every(s=>s.key!=='plans')); assert.equal(month.steps.find(s=>s.key==='materials').state,'pending');
+  assert.equal(month.steps.length,4); assert.equal(month.campaign,null); assert.ok(month.steps.every(s=>s.key!=='plans')); assert.equal(month.steps.find(s=>s.key==='materials').state,'pending');
   for (const value of ['', '2026-00','2026-13','26-11']) assert.equal((await request('GET',`/api/v3/needs?month=${value}`)).status,400);
   assert.equal((await request('GET','/api/v3/months/2026-13')).status,400);
 });

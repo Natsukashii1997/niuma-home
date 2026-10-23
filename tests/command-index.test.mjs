@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildActions, buildDocs, buildNeeds, buildPages, buildSchools, buildSkus, parseQuery, pushRecent, readRecent, score, search } from "../src/modules/command/command-index.js";
+import { buildActions, buildDocs, buildPages, buildSchools, buildSkus, parseQuery, pushRecent, readRecent, score, search } from "../src/modules/command/command-index.js";
 
 const promo = (month, line, sku, price = "¥100") => ({ month, line, sku, trial: "¥99", price, newDeal: "无", renewal: "无" });
 const promos = [promo("2026-08", "大学辅导", "灵活学Lite", "¥4300（赠课版）"), promo("2026-09", "大学辅导", "灵活学Lite", "¥4300（赠课版）"),
@@ -57,7 +57,7 @@ test("「>」开头只搜操作；空输入返回 null", () => {
 });
 
 test("全部范围按组排序、每组最多 5 条；单一范围不截到 5 条", () => {
-  const items = [...buildPages(), ...buildSkus(promos), ...buildActions(promos, "2026-11"), ...buildNeeds({ needs: [] }), ...buildSchools(tl, "2026-10-16")];
+  const items = [...buildPages(), ...buildSkus(promos), ...buildActions(promos, "2026-11"), ...buildSchools(tl, "2026-10-16")];
   const groups = search(items, "灵活", "all");
   assert.deepEqual(groups.map((g) => g.kind), ["sku", "action"]);
   const pages = search(items, "·", "page"); // 「模块 · 页签」共 11 个

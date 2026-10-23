@@ -3,10 +3,9 @@ import { PixelIcon } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Tag } from "../../ui/components.jsx";
-import { deliveryMonth } from "../../constants.js";
-import { GROUP_LABEL, SCOPES, buildActions, buildDocs, buildNeeds, buildPages, buildSchools, buildSkus, latestPolicyAction, parseQuery, pushRecent, readRecent, search } from "./command-index.js";
+import { GROUP_LABEL, SCOPES, buildActions, buildDocs, buildPages, buildSchools, buildSkus, latestPolicyAction, parseQuery, pushRecent, readRecent, search } from "./command-index.js";
 
-// ⌘K 命令面板（第三轮提案 2）：任何页面按 ⌘K / Ctrl+K 打开。按对象找：页面、SKU、学校、主线需求、知识库文档、操作。
+// ⌘K 命令面板（第三轮提案 2）：任何页面按 ⌘K / Ctrl+K 打开。按对象找：页面、SKU、学校、知识库文档、操作。
 // ↑↓ 选择，↵ 打开，Tab / ⇧Tab 切换范围，输入「>」只搜操作，Esc 关闭。没输入时显示最近打开的 5 项和全部页面。
 // 每次打开重新读取本地接口；关闭时卸载索引，避免沿用上次打开时的促销和目录。
 
@@ -19,7 +18,6 @@ export function CommandPalette({ open, onClose }) {
 function LoadedPalette({ onClose }) {
   const promos = useApi("/api/promos");
   const timeline = useApi("/api/v3/timeline");
-  const needs = useApi(`/api/v3/needs?month=${deliveryMonth()}`);
   const kb = useApi("/api/v3/kb/tree");
   const items = useMemo(() => {
     const mark = (list, state) => (state.isSample ? list.map((it) => ({ ...it, sample: true })) : list);
@@ -28,12 +26,11 @@ function LoadedPalette({ onClose }) {
       ...buildSkus(promos.data || []),
       ...buildActions(promos.data || []),
       ...mark(buildSchools(timeline.data, today()), timeline),
-      ...mark(buildNeeds(needs.data), needs),
       ...mark(buildDocs(kb.data), kb),
     ];
-  }, [promos.data, timeline.data, needs.data, kb.data, timeline.isSample, needs.isSample, kb.isSample]);
-  const loading = [promos, timeline, needs, kb].some((s) => s.loading);
-  const failed = [["促销表", promos], ["时间线", timeline], ["主线需求", needs], ["知识库", kb]].filter(([, s]) => s.error).map(([n]) => n);
+  }, [promos.data, timeline.data, kb.data, timeline.isSample, kb.isSample]);
+  const loading = [promos, timeline, kb].some((s) => s.loading);
+  const failed = [["促销表", promos], ["时间线", timeline], ["知识库", kb]].filter(([, s]) => s.error).map(([n]) => n);
   return <Palette items={items} loading={loading} failed={failed} onClose={onClose} />;
 }
 
@@ -106,7 +103,7 @@ function Palette({ items, loading, failed, onClose }) {
       <div className="cmdk" role="dialog" aria-modal="true" aria-label="命令面板" onKeyDown={onKey}>
         <div className="cmdk-input">
           <PixelIcon name="search" />
-          <input ref={input} value={text} onChange={(e) => { setText(e.target.value); setNote(""); }} placeholder="搜索页面、SKU、学校、需求、文档；输入 > 只搜操作"
+          <input ref={input} value={text} onChange={(e) => { setText(e.target.value); setNote(""); }} placeholder="搜索页面、SKU、学校、文档；输入 > 只搜操作"
             aria-label="搜索" aria-controls="cmdk-list" aria-activedescendant={cur ? `cmdk-${cur.id}` : undefined} spellCheck={false} />
           <kbd>Esc</kbd>
         </div>
@@ -180,17 +177,6 @@ function Preview({ item, onClose }) {
       ? <dl className="kv is-dates">{p.next.map((e) => <Fragment key={`${e.from}${e.type}`}><dt>{e.from.slice(5)}{e.to && e.to !== e.from ? ` → ${e.to.slice(5)}` : ""}</dt><dd>{e.type}</dd></Fragment>)}</dl>
       : <p className="small muted">时间线里今天以后没有这所学校的节点。</p>;
     links[0] = ["看明细表", null, "↵"];
-  } else if (p.kind === "need") {
-    const x = p.need;
-    head = "主线需求 · 预览";
-    body = <dl className="kv">
-      <dt>时间窗</dt><dd className="tnum">{x.when}</dd>
-      <dt>学校</dt><dd>{x.schools ? `${x.schools} 校` : "—"}</dd>
-      <dt>需求</dt><dd>{x.need}</dd>
-      <dt>痛点</dt><dd>{x.pain}</dd>
-      <dt>状态</dt><dd><Tag tone={x.status === "已采纳" ? "green" : "amber"}>{x.status}</Tag></dd>
-    </dl>;
-    links[0] = ["在用户策略里打开", null, "↵"];
   } else if (p.kind === "doc") {
     head = "知识库文档 · 预览";
     body = <dl className="kv">

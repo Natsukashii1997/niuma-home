@@ -291,7 +291,7 @@ function CellInput({ value, onCommit, ...rest }) {
   return <input {...rest} value={v} onChange={(e) => setV(e.target.value.trim())} onBlur={commit} onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setV(value || ""); }} />;
 }
 
-// 月底交付倒计时：本月每天一格，已过为墨、今天为橙、月底交付日空心；右边是交付月 6 个环节的完成数。
+// 月底交付倒计时：本月每天一格，已过为墨、今天为橙、月底交付日空心；右边是交付月 5 个环节的完成数。
 function DeadlineBar() {
   const month = useApi(`/api/v3/months/${deliveryMonth()}`);
   const plans = useApi("/api/plans");

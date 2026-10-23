@@ -4,9 +4,9 @@ import { PROMO_FIELDS, deliveryMonth, shortMonth } from "../../constants.js";
 // ⌘K 命令面板的索引与搜索（第三轮提案 2）。只用页面已经读到的接口建索引，不新增接口；这里全是纯函数，便于测试。
 // 条目：{ id, kind, title, sub, keys, href | copy, icon, go, preview, sample }。href 打开页面；copy 是要复制的文字。
 
-export const SCOPES = [["all", "全部"], ["page", "页面"], ["sku", "SKU"], ["school", "学校"], ["need", "需求"], ["doc", "文档"], ["action", "操作"]];
-const ORDER = ["sku", "action", "school", "need", "doc", "page"];
-export const GROUP_LABEL = { recent: "最近", page: "页面", sku: "SKU", school: "学校", need: "主线需求", doc: "文档 · 知识库", action: "操作" };
+export const SCOPES = [["all", "全部"], ["page", "页面"], ["sku", "SKU"], ["school", "学校"], ["doc", "文档"], ["action", "操作"]];
+const ORDER = ["sku", "action", "school", "doc", "page"];
+export const GROUP_LABEL = { recent: "最近", page: "页面", sku: "SKU", school: "学校", doc: "文档 · 知识库", action: "操作" };
 
 // 页面与页签：标题写「模块 · 页签」，keys 带英文路由名，输入 price、kb 也能找到。
 const PAGES = [
@@ -19,7 +19,7 @@ const PAGES = [
   ["user/timeline", "策略 · 用户时间", "timeline", "各国大学的选课、开学、考试、出分"],
   ["user/timeline/country", "策略 · 时间线明细表", "timeline", "按国家看每所学校的全部节点"],
   ["user/timeline/anomalies", "策略 · 时间线 AI 推测", "alert", "查看 AI 推测日期、原文与核查依据"],
-  ["user/strategy", "策略 · 用户策略", "user", "主线需求 → 拆解 → 行动"],
+  ["user/strategy", "策略 · 用户策略", "user", "按月用户情况 → 促销策略"],
   ["voice", "Voice", "voice", "留学之声：大家在说什么"],
   ["brand", "品牌", "brand", "品牌资料"],
   ["business", "业务", "business", "营收与业务线指标"],
@@ -79,14 +79,6 @@ export function buildSchools(tl, today) {
   }));
 }
 
-export function buildNeeds(data) {
-  return (data?.needs || []).map((n) => ({
-    id: `need:${n.id}`, kind: "need", title: `${n.seg} · ${n.node}`, sub: `${n.when} · ${n.schools ? `${n.schools} 校 · ` : ""}${n.status}`,
-    keys: `${n.need} ${n.pain}`, icon: "target", go: "用户策略",
-    href: href("user", "strategy", n.id), preview: { kind: "need", need: n },
-  }));
-}
-
 // 文档：叶子文件与有正文链接的父节点都可查找；路径写到上一级目录。
 export function buildDocs(kb) {
   if (!kb?.tree) return [];
@@ -115,7 +107,6 @@ export function buildActions(promos = [], dm = deliveryMonth()) {
     ["brief", `写 ${m}设计 Brief`, "brief", "自动保存，工作台内部规则生成前两节", href("marketing", "brief")],
     ["wall", "看月度物料", "image", "每月交付了哪些物料、沿用了哪一版", href("marketing", "materials", "wall")],
     ["anomalies", "查看时间线 AI 推测", "alert", "查看推测日期、原文和官网核查依据", href("user", "timeline", "anomalies")],
-    ["needs", "审主线需求", "target", "采纳需求并拆解用户策略", href("user", "strategy")],
     ["chat", "打开 Agent 对话", "agent", "文案助手等", href("assistants")],
   ].map(([key, title, icon, sub, to]) => ({ id: `action:${key}`, kind: "action", title, sub, keys: key, icon, go: "跳转", href: to, preview: { kind: "action", desc: sub } }));
   const copies = buildSkus(promos).map(({ preview: { latest } }) => ({

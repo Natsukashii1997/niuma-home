@@ -18,14 +18,14 @@ const empty = { needs: [] };
 const step = (view, key) => view.steps.find(s => s.key === key);
 const matrix = () => ({ sku: 'uni-lite', line: '大学辅导', name: '灵活学Lite', unitOrig: 990, tiers: [5], schemes: [{ id: 'official', name: '已核对价格', kind: '常规', status: '生效中', from: '2026-11-01', to: '2026-11-30', prices: [6000], gifts: [0] }] });
 
-test('交付月接口仍返回五环节，方案录入不重复；未配置不伪装done，NAS待接入', async t => {
+test('交付月接口返回四环节（主线需求已去掉，方案录入由前端补），方案录入不重复；未配置不伪装done，NAS待接入', async t => {
   const db = setup(t), calls = [];
   const routes = deliveryRoutes({ list: async month => { calls.push(month); return empty; } }, db);
   const found = match(routes, 'GET', '/api/v3/months/2026-11');
   let result, status;
   await found.handler({}, { writeHead: s => status = s, end: body => result = JSON.parse(body) }, { params: found.params });
   assert.equal(status, 200); assert.deepEqual(calls, ['2026-11']);
-  assert.deepEqual(result.steps.map(s => s.key), ['needs', 'prices', 'materials', 'brief', 'campaign']);
+  assert.deepEqual(result.steps.map(s => s.key), ['prices', 'materials', 'brief', 'campaign']);
   assert.equal(result.campaign, null); assert.ok(result.steps.every(s => s.state !== 'done')); assert.equal(step(result, 'materials').state, 'pending');
   const invalid = match(routes, 'GET', '/api/v3/months/2026-13');
   await invalid.handler({}, { writeHead: s => status = s, end: body => result = JSON.parse(body) }, { params: invalid.params });
@@ -46,12 +46,12 @@ test('价格完成按当月正式有效已存方案判定，演示成本、草�
   value.schemes[0].breachReason = '专项补贴已核对'; putRecord(db, 'price-schemes', 'uni-lite', value); assert.equal(step(deliveryView(db, '2026-11', empty), 'prices').state, 'done');
 });
 
-test('活动价格关联需求失效、结构不完整不计完成；正常主线需求计算不变', t => {
+test('活动价格关联需求失效、结构不完整不计完成', t => {
   const db = setup(t), value = matrix(); saveSetting(db, 'price_floor_margin', '.25'); saveSetting(db, 'price_cost_per_hour', '440');
   value.schemes[0].kind = '活动'; value.schemes[0].needId = 'n1'; putRecord(db, 'price-schemes', 'uni-lite', value);
   const data = { needs: [{ id: 'n1', status: '已采纳' }] };
-  let view = deliveryView(db, '2026-11', data); assert.equal(step(view, 'needs').state, 'done'); assert.equal(step(view, 'prices').state, 'done');
-  data.needs[0].status = '待复核'; view = deliveryView(db, '2026-11', data); assert.equal(step(view, 'prices').state, 'part'); assert.match(step(view, 'needs').meta, /待复核/);
+  let view = deliveryView(db, '2026-11', data); assert.equal(step(view, 'prices').state, 'done');
+  data.needs[0].status = '待复核'; view = deliveryView(db, '2026-11', data); assert.equal(step(view, 'prices').state, 'part');
   data.needs[0].status = '已采纳'; value.schemes[0].gifts = []; putRecord(db, 'price-schemes', 'uni-lite', value); assert.equal(step(deliveryView(db, '2026-11', data), 'prices').state, 'part');
 });
 

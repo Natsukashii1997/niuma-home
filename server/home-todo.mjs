@@ -1,8 +1,8 @@
-import { beijingText, requireMonth } from './v3-common.mjs';
+import { beijingText } from './v3-common.mjs';
 import { getRecord, listRecords } from './local-records.mjs';
 import { availablePriceMatrices, priceSettings } from './price.mjs';
 
-export function todoView({ timeline, needs, projects, campaign, matrices, settings, personal = [] }, now = Date.now()) {
+export function todoView({ timeline, projects, campaign, matrices, settings, personal = [] }, now = Date.now()) {
   const items = [], today = beijingText(now).slice(0, 10), day = Date.parse(`${today}T00:00:00Z`);
   const node = (n, name, href) => {
     if (n.done) return;
@@ -22,18 +22,13 @@ export function todoView({ timeline, needs, projects, campaign, matrices, settin
   }
   const open = timeline.anomalies.filter(a => !a.ruling && a.verification?.status !== 'confirmed').length; // 与时间线页面的待确认口径一致
   if (open) items.push({ kind: '时间线', text: `${open} 条 AI 推测`, due: '', href: '#/user/timeline/anomalies' });
-  const draft = needs.needs.filter(n => n.status === '草稿').length, review = needs.needs.filter(n => n.status === '待复核').length;
-  if (draft || review) items.push({ kind: '需求', text: [draft && `${draft} 条主线需求草稿待采纳`, review && `${review} 条已采纳需求待复核`].filter(Boolean).join('；'), due: '', href: '#/user/strategy' });
   for (const item of personal.filter(x => !x.done)) items.push({ kind: '待办', text: item.title || item.text, due: item.due || '', href: '#/home' });
   return items;
 }
 
-export function createTodoReader(db, { timeline, needs, projects, now = Date.now }) {
-  return async (month) => {
-    const today = beijingText(now()).slice(0, 10);
-    month ||= new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 1)).toISOString().slice(0, 7);
-    requireMonth(month);
-    const [tl, ns, ps] = await Promise.all([timeline(), needs.list(month), projects.list()]);
-    return todoView({ timeline: tl, needs: ns, projects: ps, campaign: getRecord(db, 'campaign', 'current'), matrices: availablePriceMatrices(db), settings: priceSettings(db), personal: listRecords(db, 'selftalk-todo') }, now());
+export function createTodoReader(db, { timeline, projects, now = Date.now }) {
+  return async () => {
+    const [tl, ps] = await Promise.all([timeline(), projects.list()]);
+    return todoView({ timeline: tl, projects: ps, campaign: getRecord(db, 'campaign', 'current'), matrices: availablePriceMatrices(db), settings: priceSettings(db), personal: listRecords(db, 'selftalk-todo') }, now());
   };
 }

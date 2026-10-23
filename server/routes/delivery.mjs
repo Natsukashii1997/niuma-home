@@ -46,7 +46,6 @@ function briefStep(db, month) {
 
 export function deliveryView(db, month, data) {
   requireMonth(month);
-  const accepted = data.needs.filter(n => n.status === '已采纳').length, review = data.needs.filter(n => n.status === '待复核').length;
   const saved = db && getRecord(db, 'campaign', 'current');
   const instance = saved && saved.origin !== 'demo' && saved.id !== 'template' && isDay(saved.start) && isDay(saved.end) && saved.start <= saved.end && saved.months?.includes(month) ? saved : null;
   const nodes = new Map();
@@ -56,7 +55,6 @@ export function deliveryView(db, month, data) {
   }
   const completed = [...nodes.values()].filter(Boolean).length;
   return { month, campaign: instance ? { id: instance.id, name: instance.name, start: instance.start, end: instance.end } : null, steps: [
-    { key: 'needs', label: '主线需求', state: data.needs.length && accepted === data.needs.length ? 'done' : accepted ? 'part' : 'todo', meta: `${data.needs.length} 条 · ${accepted} 条已采纳${review ? ` · ${review} 条待复核` : ''}`, href: '#/user/strategy' },
     priceStep(db, month, data.needs),
     { key: 'materials', label: '物料交付', state: 'pending', meta: '', note: 'NAS 尚未接入', href: '#/marketing/materials' },
     briefStep(db, month),
