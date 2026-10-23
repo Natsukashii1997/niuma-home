@@ -5,6 +5,7 @@ import { Button, Loadable, Modal } from "../../ui/components.jsx";
 import { SavedNote } from "../../ui/write-flow.jsx";
 import { useLocalCanvas } from "../../ui/use-local-canvas.js";
 import CacheImageWarning from "../../ui/CacheImageWarning.jsx";
+import { DismissibleNote } from "../../ui/dismissible.jsx";
 
 const groupOf = i => i.tags[0] || "未分组";
 const zone = name => ({ name, x: 0, y: 0, w: 300, h: 280 });
@@ -86,7 +87,7 @@ function Desk({ initial }) {
     </div>
     {naming && <form className="design-naming" onSubmit={nameGroup}><input autoFocus aria-label="分组名称" maxLength={50} placeholder="输入分组名称" value={naming.value} onChange={e => setNaming({ ...naming, value: e.target.value })} /><Button type="submit" disabled={!naming.value.trim() || groups.includes(naming.value.trim()) && naming.value.trim() !== naming.old}>保存</Button><Button onClick={() => setNaming(null)} type="button">取消</Button></form>}
     {error && <div className="write-box is-error" role="alert">{error}<Button disabled={busy} onClick={reread}>重新读取核对</Button>{canRetry && <Button disabled={busy} onClick={retry}>继续保存草稿</Button>}{canDiscard && <Button disabled={busy} onClick={discard}>移除失败的这一项</Button>}</div>}
-    <p className="small muted design-hint">点击分组展开或收起 · 拖动卡片归类 · 拖动组名排序 · 点击卡片看完整帖子</p>
+    <DismissibleNote id="design-hint" stamp="1" className="small muted design-hint">点击分组展开或收起 · 拖动卡片归类 · 拖动组名排序 · 点击卡片看完整帖子</DismissibleNote>
     <div className="design-desk">
       {!items.length && !value.zones.length && <div className="design-empty"><PixelIcon name="star" size={32} /><strong>收好每一篇设计灵感</strong><p>从数码世界「设计参考」分组导入，一篇帖子一张卡，完整图片保存在本机。</p><Button onClick={() => setImporting(true)}>导入收藏</Button></div>}
       {groups.filter(g => (!filter || filter === g) && (g !== "未分组" || items.some(i => groupOf(i) === g))).map(g => {

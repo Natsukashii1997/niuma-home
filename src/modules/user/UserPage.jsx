@@ -10,6 +10,7 @@ import { Strategy } from "./StrategyView.jsx";
 import { Playbook } from "./PlaybookView.jsx";
 import { deliveryMonth } from "../../constants.js";
 import { TimelineYears } from "./TimelineYears.jsx";
+import { DismissibleNote } from "../../ui/dismissible.jsx";
 
 // 用户（v3）：时间线 → 用户策略（月度，结构见 docs/用户策略规范.md）。Voice 已独立成侧栏模块。
 // 时间线的第一要求是严谨：写全「学校 · 事件 · 起止日期」；冲突和推测单独标出，工作台不自行猜测；
@@ -402,8 +403,8 @@ function Anomalies({ tl, q, onSaved }) {
   return (
     <>
       <p className="small muted">导入时发现日期不完整、多个时段、含限定条件或互相冲突的格子，共 {anomalies.length} 条，{open} 条标为 AI推测{q ? `，筛出 ${list.length} 条` : ""}。尚未核实或裁定的格子不作为确定日期推导主线需求。日期类异常可以在这里人工裁定（只存工作台，不改飞书）；也可以改飞书原表后点「同步」。</p>
-      {oldSnapshot && <p className="small warn-text">当前快照是旧格式，没有记录单元格位置；点上面的「同步」重新读取（只读）后才能裁定。</p>}
-      {tl.rulings?.stale > 0 && <p className="small warn-text">有 {tl.rulings.stale} 条裁定对应的飞书原格已经改过，已自动失效，这些格子重新标为 AI推测。</p>}
+      {oldSnapshot && <DismissibleNote id="timeline-old-snapshot" stamp="old" className="small warn-text">当前快照是旧格式，没有记录单元格位置；点上面的「同步」重新读取（只读）后才能裁定。</DismissibleNote>}
+      {tl.rulings?.stale > 0 && <DismissibleNote id="timeline-rulings-stale" stamp={tl.rulings.stale} className="small warn-text">有 {tl.rulings.stale} 条裁定对应的飞书原格已经改过，已自动失效，这些格子重新标为 AI推测。</DismissibleNote>}
       <div className="toolbar">
         {tl.years?.length > 1 && <Segmented options={[["all", "全部年份"], ...tl.years.map((y) => [y.tag, String(y.year)])]} value={year} onChange={setYear} />}
         <Segmented options={RULE_SHOW.map(([k, label]) => [k, `${label} ${k === "open" ? open : k === "ruled" ? anomalies.length - open : anomalies.length}`])} value={show} onChange={setShow} />

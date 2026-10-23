@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { PixelIcon, frames, prefersReducedMotion } from "../../ui/bitmap.jsx";
 import { ROOT, countDocs, currentDirectory, locate } from "./kb-canvas.js";
-import { breakColumns, cleanName, isRecent, packRows, piles, shelfItems, spineName, splitNumber, todayOf, tokenize, wordStarts } from "./kb-shelf.js";
+import { breakColumns, cleanName, isRecent, packRows, piles, shelfItems, spineName, spineText, splitNumber, todayOf, tokenize, wordStarts } from "./kb-shelf.js";
 
 // 知识库书架（用户 2026-10-23 从三轮设计稿里选定「V4 书架精修」，稿件 docs/design-drafts/kb/v4-2.html，本地不入库）：
 // - 一整个书柜，两格并排（窄于 640 一格）；一个一级目录是一层，一层放不下就多加一块层板。
@@ -40,7 +40,7 @@ function measure(toks, bold) {
 function spine(label, h, box) {
   const key = `${box ? 1 : 0}${h}\u0000${label}`;
   if (SPINES.has(key)) return SPINES.get(key);
-  const toks = tokenize(spineName(label) || "未命名"), cap = capOf(h, box);
+  const toks = tokenize(spineText(label) || "未命名"), cap = capOf(h, box);
   measure(toks, box);
   const adv = toks.map((t) => ADV.get(advKey(t, box)) || 14);
   const { segs, more } = breakColumns(toks, adv, cap, wordStarts(toks.map((t) => t.t).join("")));

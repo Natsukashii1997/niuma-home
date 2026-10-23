@@ -3,6 +3,7 @@ import { Button, Card, Loadable, PageHeader, SampleStrip } from "../../ui/compon
 import { BusinessCharts } from "./BusinessCharts.jsx";
 import { PixelBar, PixelIcon } from "../../ui/bitmap.jsx";
 import { LINES } from "../../constants.js";
+import { DismissibleNote } from "../../ui/dismissible.jsx";
 
 // 业务线名称统一用全称（与月度促销一致），不用接口返回的简称。
 const LINE_NAME = { uni: LINES[0], intl: LINES[1], appeal: LINES[2] };
@@ -30,7 +31,7 @@ function RevenueCard() {
     <Card className={`revenue${state.isSample ? " is-sample" : ""}`} title={<><PixelIcon name="trend" /> 业务营收完成度</>}
       extra={<>{r && <span className="small muted">{r.period}{r.timePct != null && ` · 时间进度 ${Math.round(r.timePct * 100)}%（竖线）`} · 更新 {r.updatedAt}</span>} <Button onClick={state.reload} disabled={state.busy}>{state.busy ? '读取中…' : '重新读取'}</Button></>}>
       {state.isSample && <SampleStrip task={state.task} />}
-      {r && (state.error || r.sourceError || r.stale) && <p className="small warn-text" role="status">{state.error || r.sourceError ? `更新未完成：${state.error || r.sourceError}。` : '正在更新。'}当前显示上次完整结果。</p>}
+      {r && (state.error || r.sourceError || r.stale) && <DismissibleNote id="business-stale" stamp={`${state.error || r.sourceError || "stale"}:${r.updatedAt || ""}`} className="small warn-text" role="status">{state.error || r.sourceError ? `更新未完成：${state.error || r.sourceError}。` : '正在更新。'}当前显示上次完整结果。</DismissibleNote>}
       <Loadable state={r ? { data: r } : state} name="营收完成度">
         {(data) => (
           <div className="rev-groups">

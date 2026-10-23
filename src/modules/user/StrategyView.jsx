@@ -8,6 +8,7 @@ import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { BARRIERS, MECHANISMS } from "./playbook.js";
 import { PLAY_BY_ID } from "./playbook-cards.js";
 import { authoredStrategyRecord } from "./strategy-record.js";
+import { DismissibleNote } from "../../ui/dismissible.jsx";
 
 // 用户策略（结构见 docs/用户策略规范.md，接口见 T13）：
 // 0 核心结论 → 1 全局研判 → 2 用户洞察（地区矩阵）→ 3 机会收敛 → 4 促销策略 → 附 依据与待确认。
@@ -191,7 +192,7 @@ function InlineEdit({ editor }) {
             </label>
           ))}</div>
         : <textarea value={e.text} rows={Math.max(2, vals.length + 1)} onChange={(ev) => editor.text(ev.target.value)} onKeyDown={onKey} disabled={locked} />)}
-      {!e.done && HINT[key] && <span className="us-hint small muted">{HINT[key]}</span>}
+      {!e.done && HINT[key] && <DismissibleNote as="span" id={`us-hint:${key}`} stamp="1" className="us-hint small muted">{HINT[key]}</DismissibleNote>}
       {!e.done && flow.phase === "idle" && <div className="write-actions"><Button onClick={editor.close}>取消</Button><Button variant="primary" onClick={editor.preview}>预览</Button></div>}
       <WriteBox flow={flow} title="修改预览" confirmLabel="确认保存" savedText="已保存，回读核对一致" onConfirm={editor.confirm} onRepreview={editor.preview} onReread={editor.reread}>
         {(pv) => <Piece d={pv.value} e={e} />}

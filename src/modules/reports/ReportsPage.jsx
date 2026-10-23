@@ -4,6 +4,7 @@ import { href } from "../../router.js";
 import { Button, Empty, Loadable, PageHeader, Segmented, Tag } from "../../ui/components.jsx";
 import { parseMarkdown, statusTone, cleanCell } from "../../ui/markdown.js";
 import { MarkdownTable } from "../../ui/Markdown.jsx";
+import { DismissibleNote } from "../../ui/dismissible.jsx";
 
 // 报告接口的失败响应也有逐来源结果；局部保留它，不改变公共 useApi 的约定。
 function useReports(path) {
@@ -58,7 +59,7 @@ export default function ReportsPage({ route }) {
         <a className="btn" href={href("settings")}><PixelIcon name="settings" />设置来源</a>
         <Button disabled={state.busy} onClick={() => setRefresh(value => value + 1)}><PixelIcon name="refresh" /> {state.busy ? "读取中…" : "刷新"}</Button>
       </>} />
-      {state.error && state.data && <p className="warn-text" role="status">更新未完成：{state.error}。当前仍显示上次完整结果。</p>}
+      {state.error && state.data && <DismissibleNote id="reports-error" stamp={state.error} className="warn-text" role="status">更新未完成：{state.error}。当前仍显示上次完整结果。</DismissibleNote>}
       {refresh > 0 && <div className="operation-progress"><StepProgress key={refresh} label="刷新日/周报" done={!state.busy && !state.error && state.data?.sources.every(s => s.ok)} error={state.error || state.data?.sources.filter(s => !s.ok).map(s => s.error).join("；")} /></div>}
       <Loadable state={state.data ? { data: state.data } : state} name="日/周报" big>
         {({ reports, sources }) => {
@@ -82,7 +83,7 @@ export default function ReportsPage({ route }) {
                     <Button onClick={() => setRefresh(value => value + 1)}>重试</Button>
                   </>}
                 </div>
-                {source.stale && <span className="small warn-text">{source.refreshing ? '正在更新 · ' : '旧内容 · '}{source.fetchedAt ? `上次读取 ${new Date(source.fetchedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}` : ''}</span>}
+                {source.stale && <DismissibleNote as="span" id={`reports-stale:${source.role}`} stamp={`${source.refreshing ? "refreshing" : "old"}:${source.fetchedAt || ""}`} className="small warn-text">{source.refreshing ? '正在更新 · ' : '旧内容 · '}{source.fetchedAt ? `上次读取 ${new Date(source.fetchedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}` : ''}</DismissibleNote>}
                 {source.unrecognized.length > 0 && <details>
                   <summary>{source.unrecognized.length} 个标题未识别</summary>
                   <ul>{source.unrecognized.map(item => <li key={item.lineNo}>第 {item.lineNo} 行：{item.title}</li>)}</ul>

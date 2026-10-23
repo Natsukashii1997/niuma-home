@@ -80,7 +80,7 @@ export function createKnowledgeCollectService(db,{now=Date.now,run,readDirectory
     return{parentTitle,location};
   }
   async function target(p){
-    if(!p.parentNodeToken)return{title:'根目录'};// 归类不明确：放在知识库根目录（画布散卡区）
+    if(!p.parentNodeToken)return{title:'根目录'};// 归类不明确：放在知识库根目录（书柜顶上的「待上架」）
     let n;try{n=await nodeGet(p.parentNodeToken);}catch{throw targetInvalid();}
     if(!nodeValid(n)||n.node_token!==p.parentNodeToken||n.space_id!==p.spaceId)throw targetInvalid();return n;
   }

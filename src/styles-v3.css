@@ -886,6 +886,11 @@ label.btn { cursor: pointer; }
 .us-gen-preview { display: flex; flex-direction: column; gap: var(--s3); }
 .us-warn-line { display: flex; align-items: center; gap: var(--s2); margin: 0; color: var(--warn); font-weight: 600; }
 .us-warn-line .us-warn-close { flex: none; margin-left: auto; color: var(--warn); }
+/* 可关闭的常驻提示（src/ui/dismissible.jsx）：× 跟在文字右边，颜色随提示 */
+.has-close { display: flex; align-items: flex-start; gap: var(--s2); }
+span.has-close { display: inline-flex; }
+.has-close > .note-close { flex: none; width: 20px; height: 20px; margin: -2px 0 -2px auto; color: inherit; }
+.has-close > .note-close .pixel-icon { width: 10px; height: 10px; }
 .us-warns { padding: var(--s2) var(--s3); background: var(--warn-soft); }
 .us-warns .label { display: block; margin-bottom: var(--s1); color: var(--warn); }
 .us-play { color: inherit; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }

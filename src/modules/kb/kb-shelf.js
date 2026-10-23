@@ -5,6 +5,8 @@
 const EMOJI = /[\p{Extended_Pictographic}\u{1F000}-\u{1F2FF}️‍⃣]/gu;
 export const cleanName = (s) => String(s ?? "").replace(EMOJI, "").replace(/\s+/g, " ").trim();
 export const spineName = (s) => cleanName(s).replace(/\.(pdf|docx?|xlsx?|pptx?)$/i, "");
+// 竖排书脊上「｜」会转成横线、看着像「一」，书脊上换成「·」（用户 2026-10-23）；书卡、搜索、飞书里仍是原名
+export const spineText = (s) => spineName(s).replace(/[｜丨|]/g, "·");
 
 // 「01｜公司与行业认知」→ ["01", "公司与行业认知"]；没有编号 → ["", 原名]。层名和柜顶横放的书都用。
 export function splitNumber(s) {

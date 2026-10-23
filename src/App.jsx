@@ -20,6 +20,8 @@ import { StatusBar } from "./modules/statusbar/StatusBar.jsx";
 // 新增模块：在这里登记一项（icon 为 src/ui/icons7.js 中的图标名），并在 src/modules/<key>/ 下建页面。
 // 侧栏顺序与名称（用户 2026-10-19）：不再分「工作 / 协作与工具」两组，一列排下。
 // 策略 = 用户时间线 + 用户策略；营销 = 月度促销 + 价格档案 + 物料沉淀 + 设计 Brief；项目 = 项目看板 + 项目推进 + 营销战役；带教单列。
+// 窗口条路径显示页签的中文名（与各页页签同名，用户 2026-10-23）；对不上的保持原样
+const SUB_LABELS = { timeline: "用户时间", strategy: "用户策略", playbook: "促销打法", plans: "月度促销", promos: "月度促销", prices: "价格档案", materials: "物料沉淀", brief: "设计 Brief", sku: "SKU 档案", board: "项目推进", campaign: "营销战役", overview: "项目看板", qa: "带教答疑", path: "培养路径" };
 const MODULES = [
   { key: "home", label: "首页", icon: "home", Page: HomePage },
   { key: "user", label: "策略", icon: "target", Page: UserPage },
@@ -99,7 +101,7 @@ export default function App() {
     <div className={`app${drawer ? " drawer-open" : ""}`}>
       <header className="chrome">
         <span className="chrome-dots" aria-hidden="true"><i /><i /><i /></span>
-        <span className="chrome-path">niuma-home / <b>{current.label}</b>{route.slice(1, 2).map((p) => ` / ${p}`)}</span>
+        <span className="chrome-path">niuma-home / <b>{current.label}</b>{route.slice(1, 2).map((p) => ` / ${SUB_LABELS[p] || p}`)}</span>
         <SelfTalkButton open={drawer} onToggle={() => setDrawer((v) => !v)} />
         <span className="chrome-time">{now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
       </header>

@@ -10,6 +10,7 @@ import { consumeMessageStream } from "./message-stream.js";
 import ModelControls from "./ModelControls.jsx";
 import { assistantListReader } from "./assistant-list.js";
 import { legacyState, legacyWrite, recoverLegacy, retryLegacy } from "../../ui/legacy-write.js";
+import { DismissibleNote } from "../../ui/dismissible.jsx";
 
 const KIND_LABEL = { copywriter: "文案", imported: "Codex 导入", custom: "自建" };
 
@@ -70,7 +71,7 @@ function KnowledgePanel({ assistant }) {
     <div className="kb-panel">
       <div className="row kb-meter"><span className="label">知识量</span><span className="tnum">{total.toLocaleString()} / {kb.limit.toLocaleString()} 字</span><span className="small muted">新建会话时全量带入；已有会话不变</span></div>
       <span className="dither-bar"><span className="dither-bar-fill" style={{ width: `${Math.min(100, (total / kb.limit) * 100)}%` }} /></span>
-      {kb.warning && <p className="small warn-text">{kb.warning}</p>}
+      {kb.warning && <DismissibleNote id="agent-kb-warning" stamp={kb.warning} className="small warn-text">{kb.warning}</DismissibleNote>}
       <div className="kb-add">
         <div className="row">
           <input className="kb-title" value={form.title} placeholder="标题" onChange={(e) => change({ title: e.target.value })} disabled={locked} />

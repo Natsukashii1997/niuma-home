@@ -34,7 +34,7 @@ test("用户页：时间线同步时间 + 异常数（数字高亮）", () => {
 test("知识库页：同步时间 + 本页快捷键", () => {
   const info = pageInfo("kb", { data, now });
   assert.equal(text(info), "知识库 22:15 同步 | 只建快捷方式，不动原文");
-  assert.deepEqual(info.keys.map(([k]) => k), ["⌘Z", "⇧⌘N", "F2", "⌘X ⌘V"]);
+  assert.deepEqual(info.keys.map(([k]) => k), ["拖动", "悬停层名"], "只列书柜里真能用的操作");
 });
 
 test("日/周报、营销、Voice", () => {

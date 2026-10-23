@@ -47,7 +47,7 @@ function PathPage({ data, tabs, onFresh }) {
         <span className="spacer" />
         <Kpis path={path} clock={clock} pass={season.pass} />
       </header>
-      {selected && <CampDrawer key={who} id={selected} name={data.trainees[who].name} path={path} clock={clock} season={season} onFresh={onFresh} onOpen={setSelected} onClose={() => setSelected(null)} />}
+      {selected && <CampDrawer key={`drawer-${who}`} id={selected} name={data.trainees[who].name} path={path} clock={clock} season={season} onFresh={onFresh} onOpen={setSelected} onClose={() => setSelected(null)} />}
     </div>
   );
 }
@@ -547,7 +547,7 @@ function SummitLog({ path, clock, season }) {
         <table className="m7-rubric"><tbody>
           {KEYS.map((k) => <tr key={k}><td>{MOUNT[k]} · {LNAME[k]}</td><td className="tnum muted">{doneCount(lines[k])}/{lines[k].nodes.length}</td><td className="tnum">{avgScore(lines[k])}</td><td className="tnum">★{lineStars(lines[k], season.pass)}</td></tr>)}
         </tbody><tfoot><tr><td>合计</td><td className="tnum muted">{sum(doneCount)}/{sum((l) => l.nodes.length)}</td><td className="tnum" /><td className="tnum">★{sum((l) => lineStars(l, season.pass))}</td></tr></tfoot></table></section>
-      <section className="m7-sec"><span className="label">结业时看什么（示例，可改）</span><p>两条线的营地均分与星数，加上 {last.map((n) => n.id).join("、")} 的复盘文档；由{season.reviewer}评定是否晋级「{season.next}」。</p></section>
+      <section className="m7-sec"><span className="label">结业时看什么</span><p>两条线的营地均分与星数，加上 {last.map((n) => n.id).join("、")} 的复盘文档；由{season.reviewer}评定是否晋级「{season.next}」。</p></section>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { breakColumns, cleanName, isLatin, isRecent, packRows, piles, seriesOf, shelfItems, spineName, splitNumber, tokenize, wordStarts } from "../src/modules/kb/kb-shelf.js";
+import { breakColumns, cleanName, isLatin, isRecent, packRows, piles, seriesOf, shelfItems, spineName, spineText, splitNumber, tokenize, wordStarts } from "../src/modules/kb/kb-shelf.js";
 
 // 假字宽，接近 13px 字号 + 1px 字距的实测：汉字、标点、横排压格 14，竖立的每个字 14，侧转的每个字母 7，半角「-」6，空格 4
 const advOf = (t) => (t.k === "up" ? 14 * t.t.length : t.k === "side" ? 7 * t.t.length : t.k === "sp" ? 4 : t.t === "-" ? 6 : 14);
@@ -17,6 +17,8 @@ test("书名：去彩色 emoji，书脊再去扩展名，拆出编号", () => {
   assert.equal(cleanName("✅2025大学辅导-策略文档"), "2025大学辅导-策略文档");
   assert.equal(cleanName("设计  Brief 需求模板"), "设计 Brief 需求模板");
   assert.equal(spineName("2026路觅教育品牌手册.pdf"), "2026路觅教育品牌手册");
+  assert.equal(spineText("00｜知识库使用说明"), "00·知识库使用说明", "书脊上「｜」换成「·」");
+  assert.deepEqual(splitNumber(spineName("00｜知识库使用说明")), ["00", "知识库使用说明"], "拆编号仍认原名里的「｜」");
   assert.deepEqual(splitNumber("01｜公司与行业认知"), ["01", "公司与行业认知"]);
   assert.deepEqual(splitNumber("管培生带教工作台"), ["", "管培生带教工作台"]);
 });

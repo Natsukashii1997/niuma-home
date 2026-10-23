@@ -13,6 +13,7 @@ import { createBriefAttachmentQueue, protectBriefAttachmentQueues } from './brie
 
 
 import { acquireBriefJournal, createBriefAutosave } from './brief-autosave.js';
+import { DismissibleNote } from "../../ui/dismissible.jsx";
 
 const attachmentQueues = new Map(); // Failed uploads survive internal navigation.
 const releaseAttachmentGuard=protectBriefAttachmentQueues(attachmentQueues,window);
@@ -159,7 +160,7 @@ function Brief({ brief, month, setMonth, journal }) {
             <div className="card-body stack-sm">
               <p className="small muted">读取 {month} 的用户策略，综合物料名称补充背景、目的、面向人群与当前待办。已有文字保留。</p>
               <p className="small muted">工作台内部规则生成，可按实际需求修改。交付时间、负责人、详细文案及后三节可留空。</p>
-              {strategySource?.timelineEvidence?.status==='changed' && <p className="small warn-text" role="status">{strategySource.timelineEvidence.message} 请先核对用户策略，再按需重新生成第一、二部分；已有 Brief 文字不会自动改写。</p>}
+              {strategySource?.timelineEvidence?.status==='changed' && <DismissibleNote id={`brief-evidence:${month}`} stamp={strategySource.timelineEvidence.fingerprint || strategySource.timelineEvidence.message} className="small warn-text" role="status">{strategySource.timelineEvidence.message} 请先核对用户策略，再按需重新生成第一、二部分；已有 Brief 文字不会自动改写。</DismissibleNote>}
               <Button variant="primary" disabled={locked || !strategySource?.available} onClick={()=>generate()}>{generating?'正在生成…':'内部生成建议'}</Button>
               {strategySource?.available && <button className="link-btn" disabled={locked} onClick={()=>setRewrite(!rewrite)}>重新生成第一、二部分</button>}
               {rewrite && <div className="stack-sm"><p className="small warn-text">将替换背景、目的和受众文字，其他部分保留。</p><Button disabled={locked} onClick={()=>generate(true)}>确认重新生成</Button><button className="link-btn" onClick={()=>setRewrite(false)}>取消</button></div>}
