@@ -1241,6 +1241,8 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .chat-list-name { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .chat-list-name small { font-size: 11px; }
 .agent-card .agent-new { align-self: flex-start; margin-top: auto; }
+/* 首页 Agent 卡占 4 栏：1320px 以下四个一行会把名字挤出小卡，改两行两列（用户 2026-10-23）；900px 以下卡片占满一行，回到一行四个 */
+@media (min-width: 901px) and (max-width: 1320px) { .agent-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ---------- ⌘K 命令面板（第三轮提案 2）：遮罩是墨色网点；选中行反色 + 左侧 4px 橙条，和侧栏选中一致 ---------- */
 .cmdk-dim { position: fixed; inset: 0; z-index: 30; background-image: var(--dither-ink-1); }

@@ -2,6 +2,11 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 首页 Agent 小卡窄屏两行两列 + 待定项结论（2026-10-23，Claude，用户确认；已提交，未发布）
+
+- `src/styles-v3.css`：901–1320px 时首页 Agent 四个小卡排成 2×2，名字不再挤出卡片；1440 宽和 900px 以下仍为一行四个。隔离 5290 实测 800 / 1024 / 1269 / 1440 均无挤出，1269 宽时卡片高度与旁边留学之声卡相同（311px）。`npm test` 669 / 669、构建通过。
+- 用户结论：Voice「转为主线需求草稿」和自言自语「转主线需求」**保持现状**（都是用户提的需求，Voice 还要想办法实现），下面「首页窄屏…」一节的范围外条目以此为准；前端拆包不做（本机加载收益小）；毛利底线、课时成本由用户自己在设置页填写。
+
 ## 文档与环境整理（2026-10-23，Claude，用户同意计划与三个默认选择；只改文档与本机环境，不涉及运行代码，未重新发布）
 
 - 证据搬迁：`/tmp` 里 15 个证据目录（文档引用的 10 个 + 5 个带日期、未被引用的证据目录）搬到 `~/Library/Application Support/NiumaHome/evidence/`，共 58MB，逐目录核对校验值一致后才删除 `/tmp` 原件；两份 `release-checkout`（完整代码检出）未搬。CURRENT / HANDOFF / `docs/handoff/` 共 14 个文件的路径已同步。10-21 那批（strategy-labels、business-charts、kb-switch、kb-sync、materials、brief、brief-autosave、brief-sync）此前已被系统清理，`docs/history/CURRENT-through-20261022.md` 顶部补了说明。29 个测试临时目录和日志按约定保留，交给系统清理。
