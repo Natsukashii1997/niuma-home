@@ -743,6 +743,9 @@ label.btn { cursor: pointer; }
 .tl-search { flex: 0 1 300px; min-width: 0; }
 .tl-guess-entry { color: var(--text-2); }
 .tl-guess-entry.is-on { color: var(--signal); }
+.tl-years-add { margin-top: var(--s4); }
+.tl-years-input { display: flex; gap: var(--s2); }
+.tl-years-input .set-input { flex: 1; min-width: 0; }
 .month-list { overflow-x: auto; }
 @media (max-width: 600px) { .tl-intro { flex-wrap: wrap; } .tl-intro > span { flex-shrink: 1; } }
 

@@ -8,6 +8,18 @@ import { readCalendarEntries } from './timeline-calendar.mjs';
 const execute = promisify(execFile);
 export const TIMELINE_SOURCE = { title: '2026海外大学时间线', token: 'BRzDsSWKGh8sMgtI2AocU42qnlg', url: 'https://vm94j8bzy7.feishu.cn/wiki/ZWx9wzNaCiNMsqkAhCtc7lfgnIm' };
 export const REGION_SHEETS = ['美东 美西 加拿大', '英国 爱尔兰', '澳大利亚 新西兰', '香港 澳门 新加坡 马来西亚'];
+
+// 多年时间表（用户 2026-10-23）：timeline_source 是首年（默认 2026）的表，timeline_years 是之后登记的年份
+// [{ year, title, token, url }]。只登记首年时来源身份、快照、裁定与旧版完全一致；后加年份的地区代码记作
+// 「UK@2027」、来源格记作「2027·英国 爱尔兰!S2」，裁定与官网核验按格子对应，不会串年。
+const yearOfTitle = title => Number(String(title || '').match(/20\d{2}/)?.[0]) || 2026;
+export function timelineSources(settings) {
+  let base = TIMELINE_SOURCE, extra = [];
+  try { if (settings.timeline_source) base = JSON.parse(settings.timeline_source); } catch { throw failure(400, '时间线来源配置格式错误'); }
+  try { if (settings.timeline_years) extra = JSON.parse(settings.timeline_years); } catch { throw failure(400, '时间线年份配置格式错误'); }
+  return [{ ...base, year: yearOfTitle(base.title), tag: '' }, ...extra.map(s => ({ ...s, tag: String(s.year) }))];
+}
+export const timelineIdentity = settings => settings.timeline_years ? JSON.stringify(timelineSources(settings).map(({ tag, ...s }) => s)) : settings.timeline_source || JSON.stringify(TIMELINE_SOURCE);
 const countries = { 美西: ['US', '美国'], 美东: ['US', '美国'], 加拿大: ['CA', '加拿大'], 英国: ['UK', '英国'], 爱尔兰: ['IE', '爱尔兰'], 澳洲: ['AU', '澳洲'], 新西兰: ['NZ', '新西兰'], 香港: ['HK', '香港'], 澳门: ['MO', '澳门'], 新加坡: ['SG', '新加坡'], 马来西亚: ['MY', '马来西亚'] };
 const empty = value => !value.trim() || /^(?:\/|—|-|暂无|待定|TBC|未公开|未更新)$/i.test(value.trim());
 const guessRe = /推测|预估|预计|估计|去年|左右|大概|通常|一般|约|上旬|中旬|下旬|月底|月初/i;
@@ -70,22 +82,23 @@ function eventType(header) {
   return header;
 }
 
-export function parseTimeline(sheets, syncedAt, year = 2026) {
-  const result = { source: '飞书《2026海外大学时间线》· 地区明细表', syncedAt, stage: '本科', countries: [], terms: {}, nodes: {}, table: {}, agenda: [], anomalies: [] };
+export function parseTimeline(sheets, syncedAt, year = 2026, { tag = '', title = '2026海外大学时间线' } = {}) {
+  const result = { source: `飞书《${title}》· 地区明细表`, syncedAt, stage: '本科', countries: [], terms: {}, nodes: {}, table: {}, agenda: [], anomalies: [] };
   const labels = new Map();
   // 日期类异常另带 cell（国家、表格行与列、事件类型、各单元格解析出的日期），供人工裁定定位；校名类异常没有。
   const anomaly = (school, issue, a, src, b = '', cell) => result.anomalies.push({ school, issue, a, b, src, ...(cell && { cell }) });
   for (const sheet of sheets.filter(s => REGION_SHEETS.includes(s.name))) {
     let country, headers, slots;
+    const sheetRef = tag ? `${tag}·${sheet.name}` : sheet.name;
     for (const row of sheet.rows) {
       const rawSchool = row.values[0]?.trim();
       if (!rawSchool) {
-        if (row.values.slice(1).some(v => !empty(v))) anomaly('未标学校', '缺少学校名称', row.values.slice(1).filter(v => !empty(v)).join('；'), `${sheet.name}!A${row.row}`);
+        if (row.values.slice(1).some(v => !empty(v))) anomaly('未标学校', '缺少学校名称', row.values.slice(1).filter(v => !empty(v)).join('；'), `${sheetRef}!A${row.row}`);
         continue;
       }
       const region = Object.keys(countries).find(k => rawSchool === k || rawSchool.startsWith(`${k}（`) || rawSchool.startsWith(`${k}(`));
       if (region) {
-        country = countries[region]; headers = row.values;
+        country = tag ? [`${countries[region][0]}@${tag}`, countries[region][1]] : countries[region]; headers = row.values;
         const [code, name] = country;
         if (!result.table[code]) { result.countries.push([code, name]); result.table[code] = []; result.nodes[code] = []; labels.set(code, new Map()); }
         result.terms[code] = `${year} · 地区表各学期（含源中明确的跨年日期）`;
@@ -102,15 +115,15 @@ export function parseTimeline(sheets, syncedAt, year = 2026) {
       }
       if (!country || !headers) throw failure(502, `${sheet.name} 的地区表头无法识别，未更新快照`);
       const { school, abbr } = schoolName(rawSchool), display = [school, abbr].filter(Boolean).join(' '), [code, name] = country;
-      if (!/[\u3400-\u9fff]/.test(school)) anomaly(display, '源表只有缩写，中文校名待核对', rawSchool, `${sheet.name}!A${row.row}`);
-      if (rawSchool === 'UCB') anomaly(display, '校名据官方校历交叉匹配，源表无全称，待确认', rawSchool, `${sheet.name}!A${row.row}`);
-      if (rawSchool === 'UWM') anomaly(display, '源缩写 UWM 的官网指向 UW–Madison，保留源写法', rawSchool, `${sheet.name}!A${row.row}`);
+      if (!/[\u3400-\u9fff]/.test(school)) anomaly(display, '源表只有缩写，中文校名待核对', rawSchool, `${sheetRef}!A${row.row}`);
+      if (rawSchool === 'UCB') anomaly(display, '校名据官方校历交叉匹配，源表无全称，待确认', rawSchool, `${sheetRef}!A${row.row}`);
+      if (rawSchool === 'UWM') anomaly(display, '源缩写 UWM 的官网指向 UW–Madison，保留源写法', rawSchool, `${sheetRef}!A${row.row}`);
       const record = { school, abbr, cells: [] };
       const rangesBySlot = {};
       const semesterStarts = new Map();
       let autumnStart;
       for (let col = 1; col < row.values.length; col++) {
-        const raw = row.values[col], src = `${sheet.name}!${sheet.cols[col]}${row.row}`;
+        const raw = row.values[col], src = `${sheetRef}!${sheet.cols[col]}${row.row}`;
         if (empty(raw)) continue;
         if (!headers[col]?.trim()) {
           anomaly(display, '本地区列标题缺失，不继承其他地区含义', raw, src);
@@ -159,9 +172,9 @@ export function parseTimeline(sheets, syncedAt, year = 2026) {
     a.monthHints ||= timelineMonthHints(a.a, year);
   }
   const calendars = sheets.filter(s => /(?:\d{1,2})月$/.test(s.name));
-  result.calendarEntries = readCalendarEntries(calendars, result.table, result.countries, year);
+  result.calendarEntries = readCalendarEntries(calendars, result.table, result.countries, year, tag);
   result.coverage = { schools: Object.values(result.table).reduce((n, rows) => n + rows.length, 0), regionSheets: sheets.filter(s => REGION_SHEETS.includes(s.name)).length, calendarSheets: calendars.length };
-  if (calendars.length) result.source = '飞书《2026海外大学时间线》· 4张地区明细 + 12张月历';
+  if (calendars.length) result.source = `飞书《${title}》· 4张地区明细 + 12张月历`;
   // 同源语义完全相同的重复列仅在需求侧去重；此处保留各自单元格以便追溯。
   result.agenda.sort((a, b) => a.from.localeCompare(b.from) || a.src.localeCompare(b.src));
   return result;
@@ -230,21 +243,40 @@ export async function readTimelineSheets({ run = execute, source = TIMELINE_SOUR
   return sheets;
 }
 
+// 各年分别解析后合并：后加年份的地区代码与来源格自带年份，合并时不会互相覆盖。years 给「年份」弹窗用。
+export function mergeTimelines(parts) {
+  const meta = ({ source, value }) => ({ year: source.year, title: source.title, url: source.url || '', tag: source.tag, schools: value.coverage?.schools || 0, events: value.agenda.length, anomalies: value.anomalies.length });
+  const out = structuredClone(parts[0].value);
+  for (const { value } of parts.slice(1)) {
+    out.countries.push(...value.countries);
+    for (const key of ['table', 'nodes', 'terms']) Object.assign(out[key], value[key]);
+    for (const key of ['agenda', 'anomalies', 'calendarEntries']) out[key].push(...(value[key] || []));
+    out.coverage = { schools: out.coverage.schools + value.coverage.schools, regionSheets: out.coverage.regionSheets + value.coverage.regionSheets, calendarSheets: out.coverage.calendarSheets + value.coverage.calendarSheets };
+  }
+  if (parts.length > 1) {
+    out.source = parts.map(p => p.value.source).join('；');
+    out.agenda.sort((a, b) => a.from.localeCompare(b.from) || a.src.localeCompare(b.src));
+  }
+  out.years = parts.map(meta);
+  return out;
+}
+
 export function createTimelineReader(db, { readSheets = readTimelineSheets, now = Date.now, ttl = 600_000, onSource = () => {} } = {}) {
   let cached, pending, at = -Infinity, cachedIdentity;
   return async ({ refresh = false } = {}) => {
-    const identity = getSettings(db).timeline_source || JSON.stringify(TIMELINE_SOURCE);
-    let source; try { source = JSON.parse(identity); } catch { throw failure(400, '时间线来源配置格式错误'); }
+    const settings = getSettings(db), identity = timelineIdentity(settings), sources = timelineSources(settings);
     if (cachedIdentity !== identity) { cached = undefined; at = -Infinity; }
     if (pending) return pending;
     if (!refresh && cached && now() - at >= 0 && now() - at < ttl) return cached;
     pending = (async () => {
       const attemptAt = now();
       try {
-        const sheets = await readSheets({ source });
-        if ((getSettings(db).timeline_source || JSON.stringify(TIMELINE_SOURCE)) !== identity) throw failure(409, '读取期间来源已修改，请重新同步');
-        const payload = parseTimeline(sheets, beijingText(now()));
-        if (REGION_SHEETS.some(name => sheets.filter(s => s.name === name).length !== 1)) throw failure(502, '须完整读取四张地区明细表');
+        const read = [];
+        for (const source of sources) read.push({ source, sheets: await readSheets({ source }) });
+        if (timelineIdentity(getSettings(db)) !== identity) throw failure(409, '读取期间来源已修改，请重新同步');
+        const syncedAt = beijingText(now());
+        if (read.some(({ sheets }) => REGION_SHEETS.some(name => sheets.filter(s => s.name === name).length !== 1))) throw failure(502, '须完整读取四张地区明细表');
+        const payload = mergeTimelines(read.map(({ source, sheets }) => ({ source, value: source.tag ? parseTimeline(sheets, syncedAt, source.year, { tag: source.tag, title: source.title }) : parseTimeline(sheets, syncedAt) })));
         // 快照身份属于本次成功读取，不能借用最近一次（可能失败的）尝试身份。
         saveSnapshot(db, 'timeline', { identity, value: payload }, new Date(now()).toISOString());
         onSource({ identity, attemptAt, at: new Date(now()).toISOString() });

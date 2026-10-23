@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createLocalChanges, fingerprint, getRecord } from './local-records.mjs';
 import { getSettings } from './db.mjs';
-import { TIMELINE_SOURCE } from './timeline.mjs';
+import { timelineIdentity } from './timeline.mjs';
 import { withRulings } from './timeline-rulings.mjs';
 import { failure, requireMonth } from './v3-common.mjs';
 import { BARRIERS, MECHANISMS, PRIORITY, parseCard } from '../src/modules/user/playbook.js';
@@ -94,7 +94,7 @@ export function strategyTimelineView(db, record) {
   } });
   let timeline, identity;
   try {
-    identity = getSettings(db).timeline_source || JSON.stringify(TIMELINE_SOURCE);
+    identity = timelineIdentity(getSettings(db));
     const row = db.prepare('SELECT payload FROM v3_snapshots WHERE kind=?').get('timeline');
     if (!row) return unavailable();
     const snapshot = JSON.parse(row.payload);

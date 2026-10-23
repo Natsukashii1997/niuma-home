@@ -1,7 +1,7 @@
 import { getSettings } from './db.mjs';
 import { beijingText } from './v3-common.mjs';
 import { reportDocumentUrl } from './reports.mjs';
-import { TIMELINE_SOURCE } from './timeline.mjs';
+import { timelineIdentity } from './timeline.mjs';
 
 export function reportIdentity(value) {
   try { return reportDocumentUrl(value); } catch { return value || ''; }
@@ -22,7 +22,7 @@ export function sourceStatus(db, { now = Date.now, implemented = ['daily', 'week
   for (const kind of ['daily', 'weekly', 'timeline', 'kb', 'nas', 'voice']) {
     if (!enabled.has(kind)) { sources[kind] = { state: 'off' }; continue; }
     const row = db.prepare('SELECT * FROM v3_source_status WHERE kind=?').get(kind);
-    const identity = kind === 'daily' ? reportIdentity(settings.report_doc_url) : kind === 'weekly' ? reportIdentity(settings.weekly_doc_url || settings.report_doc_url) : kind === 'timeline' ? settings.timeline_source || JSON.stringify(TIMELINE_SOURCE) : kind === 'kb' ? settings.kb_space_id || '7620758074885835965' : kind === 'voice' ? voiceIdentity : undefined;
+    const identity = kind === 'daily' ? reportIdentity(settings.report_doc_url) : kind === 'weekly' ? reportIdentity(settings.weekly_doc_url || settings.report_doc_url) : kind === 'timeline' ? timelineIdentity(settings) : kind === 'kb' ? settings.kb_space_id || '7620758074885835965' : kind === 'voice' ? voiceIdentity : undefined;
     if (!row || identity !== undefined && row.identity !== identity) {
       sources[kind] = { state: 'never' };
       // 接入状态记录前已成功同步的完整快照仍是可核验的成功水位。

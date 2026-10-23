@@ -69,7 +69,7 @@ export function validateV3Setting(key, raw) {
 export function createSettingsChanges(db, { now = Date.now, validate = validateV3Setting, run } = {}) {
   const pending = new Map();
   return {
-    read: () => ({ values: { ...V3_DEFAULTS, ...getSettings(db) }, saved: getSettings(db), readonly: ['lark_profile', 'lark_app_id'], demoDefaults: ['price_floor_margin', 'price_cost_per_hour'] }),
+    read: () => ({ values: { ...V3_DEFAULTS, ...getSettings(db) }, saved: getSettings(db), readonly: ['lark_profile', 'lark_app_id', 'timeline_years'], demoDefaults: ['price_floor_margin', 'price_cost_per_hour'] }),
     preview(key, body) {
       const value = validate(key, body?.value), before = getSettings(db)[key] ?? null;
       const space = getSettings(db).kb_collect_space || COLLECT_SPACE;

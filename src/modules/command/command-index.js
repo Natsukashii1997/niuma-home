@@ -65,7 +65,8 @@ export function buildSkus(promos = []) {
 export function buildSchools(tl, today) {
   if (!tl?.table) return [];
   const names = Object.fromEntries(tl.countries || []);
-  return Object.entries(tl.table).flatMap(([code, rows]) => rows.map((s) => {
+  const seen = new Set(); // 多年并存时同一所学校只列一次（UK 与 UK@2027），最近节点取自全部年份
+  return Object.entries(tl.table).flatMap(([code, rows]) => rows.filter((s) => { const k = `${code.split("@")[0]}|${s.school}`; if (seen.has(k)) return false; seen.add(k); return true; }).map((s) => {
     const full = s.abbr ? `${s.school} ${s.abbr}` : s.school;
     const next = (tl.agenda || [])
       .filter((e) => (e.school === full || e.school.startsWith(s.school)) && (e.to || e.from) >= today)

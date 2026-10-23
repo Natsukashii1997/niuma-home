@@ -42,7 +42,7 @@ function previewValue(key, draft) {
 // 按用途分组：每组对应工作台里用到它的页面。item：old = 旧四键表单，v3 = 工作台配置，其余为专用行。
 const GROUPS = [
   { id: "reports", title: "日报 · 周报", icon: "reports", use: "首页、日/周报页", items: [["old", "report_doc_url"], ["old", "weekly_doc_url"]] },
-  { id: "project", title: "项目与用户", icon: "project", use: "项目页、用户页、管培生", items: [["v3", "project_base_url"], ["v3", "project_table_id"], ["v3", "timeline_source"], ["v3", "mentor_sources"]] },
+  { id: "project", title: "项目与用户", icon: "project", use: "项目页、用户页、管培生", items: [["v3", "project_base_url"], ["v3", "project_table_id"], ["v3", "timeline_source"], ["v3", "timeline_years"], ["v3", "mentor_sources"]] },
   { id: "kb", title: "知识库收藏", icon: "kb", use: "知识库页、Chrome 扩展", items: [["v3", "kb_space_id"], ["v3", "kb_collect_space"], ["rules"], ["pairing"]] },
   { id: "marketing", title: "营销与品牌", icon: "marketing", use: "营销页、品牌页、价格", items: [["old", "brand_base_url"], ["old", "material_types"], ["v3", "campaign_table_id"], ["v3", "price_sku_table_id"], ["v3", "price_floor_margin"], ["v3", "price_cost_per_hour"]] },
   { id: "push", title: "推送与预算", icon: "send", use: "机械邪龙兽、留学之声", items: [["push"], ["v3", "voice_budget"]] },
@@ -258,6 +258,7 @@ function SetGroup({ title, icon, extra, children }) {
 // 飞书 profile 和应用身份固定只读；毛利底线、课时成本还是演示口径，标「示例」直到你保存自己的值。
 const V3_FIELDS = {
   timeline_source: { label: "用户时间线来源", hint: "飞书《2026海外大学时间线》：标题、表格 token、链接（JSON）", json: true },
+  timeline_years: { label: "时间线后加年份", hint: "在「用户时间」页点「年份」添加，这里只看（JSON）", json: true },
   project_base_url: { label: "项目多维表格", hint: "AI管培工作台的多维表格链接" },
   project_table_id: { label: "项目推进数据表", hint: "以 tbl 开头" },
   kb_space_id: { label: "知识库空间", hint: "工作台当前连接的知识空间 ID（数字）" },

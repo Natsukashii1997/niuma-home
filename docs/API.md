@@ -372,3 +372,12 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - 自聊撤销预览与回执增加关联记录的撤回/保留说明；未被后续使用的派生草稿随同撤回，已编辑待办、已采纳需求保留。并发变化拒绝，写入事务失败整体回滚。
 - 新项目模板只复制任务结构/名称/阶段/节点类型；清空负责人、开始与完成日期、逾期和交付物。
 - 带教未知回复核对必须同时匹配评论ID（已有时）、段落锚点、完整正文且分页完整；不足时保持unknown，不自动重发。
+
+## 2026-10-23 时间线多年份
+
+- 设置 `timeline_years`：首年之后登记的年份 `[{year,title,token,url}]`（`timeline_source` 仍是首年，默认 2026）。只读展示，不能经 `/api/v3/settings` 写入，只能用下面的登记接口。
+- 只登记首年时来源身份、快照、裁定与旧版完全一致；有后加年份时来源身份为全部年份来源的 JSON 数组。
+- 后加年份按自己的年份解析无年份日期；地区代码记作 `UK@2027`，来源格记作 `2027·英国 爱尔兰!S2`，人工裁定与官网核验按格子对应，不串年。官网核验只对应首年。
+- `GET /api/v3/timeline` / `POST /api/v3/timeline/sync` 新增 `years:[{year,title,url,tag,schools,events,anomalies}]`（`tag` 首年为空、其余为年份字符串）；`agenda/anomalies/calendarEntries/countries/table/nodes/terms` 为各年合并。同步依次只读全部年份，任一年失败都不替换快照。
+- `POST /api/v3/timeline/years/preview {url}`：飞书 `/wiki/` 或 `/sheets/` 链接 → 只读解析表名（须含年份）、校验 4 张地区明细 + 12 张月历并试解析，返回 `{previewId,expiresAt,summary:{year,title,url,schools,regionSheets,calendarSheets,events,anomalies,from,to}}`；同一年或同一张表已登记返回 409。不写入。
+- `POST /api/v3/timeline/years/confirm {previewId,confirm:true}`：预览后年份配置有变化返回 409；写入 `timeline_years` 并回读，再同步全部年份，返回 `{saved,years,syncedAt}`；同步失败不回滚登记，返回 `{saved,years:null,syncError}`。

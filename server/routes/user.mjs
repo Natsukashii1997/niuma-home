@@ -6,6 +6,7 @@ import { createStrategyExportService } from '../feishu-export.mjs';
 import { createManualNeeds } from '../manual-needs.mjs';
 import { createRulingService, withRulings } from '../timeline-rulings.mjs';
 import { createUserStrategyService } from '../user-strategy.mjs';
+import { createTimelineYearService } from '../timeline-years.mjs';
 
 export const handleV3 = fn => async (req, res, context) => {
   try { json(res, 200, await fn(req, context)); }
@@ -19,10 +20,11 @@ export function createUserServices(db, options = {}) {
   // 页面、需求推导、首页待办看到的都是叠加了人工裁定的时间线；裁定本身对照原始快照。
   const timeline = async opts => withRulings(db, await raw(opts));
   const needs = createNeedsService(db, timeline, options.needs);
-  return { timeline, needs, strategyExports: createStrategyExportService(db, needs, options.exports), manualNeeds: createManualNeeds(db, { voice: options.voiceReader, ...options.manualNeeds }), rulings: createRulingService(db, raw, options.rulings), userStrategy: createUserStrategyService(db, options.userStrategy) };
+  return { timeline, needs, strategyExports: createStrategyExportService(db, needs, options.exports), manualNeeds: createManualNeeds(db, { voice: options.voiceReader, ...options.manualNeeds }), rulings: createRulingService(db, raw, options.rulings), userStrategy: createUserStrategyService(db, options.userStrategy),
+    timelineYears: createTimelineYearService(db, { ...(options.timeline?.readSheets && { readSheets: options.timeline.readSheets }), ...options.timelineYears, refresh: () => timeline({ refresh: true }) }) };
 }
 export function userRoutes(services) {
-  const { timeline, needs, strategyExports, manualNeeds, rulings, userStrategy } = services;
+  const { timeline, needs, strategyExports, manualNeeds, rulings, userStrategy, timelineYears } = services;
   return [
     // 月度用户策略（T13，docs/用户策略规范.md）：用户情况内置可改，促销策略按钮生成；修改 / 生成 / 定稿都先预览，再用同一个 confirm 写入并回读。
     route('GET', '/api/v3/user-strategy', handleV3((req, { url }) => userStrategy.get(url.searchParams.get('month')))),
@@ -39,6 +41,9 @@ export function userRoutes(services) {
     route('POST', '/api/v3/manual-needs/confirm', handleV3(async req => manualNeeds.confirm(await body(req)))),
     route('GET', '/api/v3/timeline', handleV3(() => timeline())),
     route('POST', '/api/v3/timeline/sync', handleV3(() => timeline({ refresh: true }))),
+    // 登记新年份的时间表：先预览（只读校验结构），确认后写设置并同步回读。
+    route('POST', '/api/v3/timeline/years/preview', handleV3(async req => timelineYears.preview(await body(req)))),
+    route('POST', '/api/v3/timeline/years/confirm', handleV3(async req => timelineYears.confirm(await body(req)))),
     route('GET', '/api/v3/needs', handleV3((req, { url }) => needs.list(url.searchParams.get('month')))),
     route('POST', '/api/v3/needs/:id/preview', handleV3(async (req, { params }) => needs.preview(params.id, await body(req)))),
     route('POST', '/api/v3/needs/:id/adopt', handleV3(async (req, { params }) => needs.confirm(params.id, await body(req)))),

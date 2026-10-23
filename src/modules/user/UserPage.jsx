@@ -9,10 +9,11 @@ import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { Strategy } from "./StrategyView.jsx";
 import { Playbook } from "./PlaybookView.jsx";
 import { deliveryMonth } from "../../constants.js";
+import { TimelineYears } from "./TimelineYears.jsx";
 
 // 用户（v3）：时间线 → 用户策略（月度，结构见 docs/用户策略规范.md）。Voice 已独立成侧栏模块。
 // 时间线的第一要求是严谨：写全「学校 · 事件 · 起止日期」；冲突和推测单独标出，工作台不自行猜测；
-// 来源单元格默认收起，打开「显示来源」或悬停才看，避免干扰阅读。
+// 来源单元格不在时间轴和明细表里显示（用户 2026-10-23），只在 AI 推测核对页保留，用来定位原表格子。
 // 用户时间线的说明在视图里（右侧带来源），所以这里不写 desc
 const TABS = [
   ["timeline", "用户时间"],
@@ -60,6 +61,10 @@ function colCat(name) {
   return "other";
 }
 
+// 后加年份的地区代码记作「UK@2027」、来源格记作「2027·…」；首年两者都不带年份（见 server/timeline.mjs）。
+const codeTag = (code) => code.split("@")[1] || "";
+const srcTag = (src = "") => src.match(/^(\d{4})·/)?.[1] || "";
+
 function Timeline({ route }) {
   const state = useApi("/api/v3/timeline");
   const [fresh, setFresh] = useState(null); // 同步成功后回读到的新快照
@@ -87,6 +92,7 @@ function useTimelineSync(tl, onSynced) {
 function TimelineBoard({ tl, view, initialQ, onSynced }) {
   const [q, setQ] = useState(initialQ);
   const [sync, runSync] = useTimelineSync(tl, onSynced);
+  const [yearsOpen, setYearsOpen] = useState(false);
   const go = (v) => { location.hash = href("user", "timeline", v); };
   return (
     <>
@@ -100,8 +106,10 @@ function TimelineBoard({ tl, view, initialQ, onSynced }) {
         <span className="spacer" />
         {/* AI 推测不和两种视图并列：单独入口，同步新表后照常生成待核对项（用户 2026-10-23） */}
         <button type="button" className={`link-btn tl-guess-entry${view === "anomalies" ? " is-on" : ""}`} onClick={() => go("anomalies")}>AI 推测 <span className="tnum">{tl.anomalies.filter((a) => !timelineResolved(a)).length}</span> 条待核</button>
+        <Button onClick={() => setYearsOpen(true)} title="已登记的时间表年份；在这里添加新一年"><PixelIcon name="calendar" />年份 <span className="tnum">{(tl.years || []).map((y) => y.year).join(" · ")}</span></Button>
         {sync.busy ? <div style={{ width: 200 }}><StepProgress label="同步飞书（只读）" /></div> : <Button onClick={runSync}><PixelIcon name="refresh" />同步</Button>}
       </div>
+      <TimelineYears tl={tl} open={yearsOpen} onClose={() => setYearsOpen(false)} onSynced={onSynced} />
       {sync.note && <SuccessNotice className="small ok-text tl-sync" identity={sync}>{sync.note}</SuccessNotice>}
       {sync.error && <p className="small risk-text tl-sync">{sync.error}</p>}
       {view === "month" ? <MonthTimeline tl={tl} q={q} /> : view === "country" ? <CountryTable tl={tl} q={q} /> : <Anomalies tl={tl} q={q} onSaved={onSynced} />}
@@ -142,7 +150,7 @@ function MonthTimeline({ tl, q }) {
     ro.current.observe(el);
   }, [nDays]);
   const place = (e) => placeBar(e, { first, last, nDays, dayW });
-  const countries = tl.countries.map(([, name]) => name).filter(name => count(name).shown > 0 || name === country).sort(byCountry);
+  const countries = [...new Set(tl.countries.map(([, name]) => name))].filter(name => count(name).shown > 0 || name === country).sort(byCountry);
   const cols = { gridTemplateColumns: `repeat(${nDays}, minmax(0, 1fr))` };
   return (
     <>
@@ -272,7 +280,9 @@ function MonthList({ list, first }) {
 }
 
 function CountryTable({ tl, q }) {
-  const [c, setC] = useState("AU");
+  const [base, setC] = useState("AU");
+  const [tag, setTag] = useState(""); // 年份：多年并存时明细表一次看一年
+  const c = tag ? `${base}@${tag}` : base;
   const [detail, setDetail] = useState(null);
   const [showCats, setShowCats] = useState(() => new Set(COL_DEFAULT));
   const rows = (tl.table[c] || []).filter((r) => !q || `${r.school}${r.abbr}`.toLowerCase().includes(q.toLowerCase()));
@@ -283,14 +293,15 @@ function CountryTable({ tl, q }) {
   const dm = deliveryMonth().slice(5);
   // 空格子分两种：原表这一格空白；或者原表写了，但日期不完整 / 有冲突，进了「异常待确认」（按「学校 + 列名」对上异常清单）。
   // 裁定为「不采用」的格子单独标出；已裁定采用的格子已有日期，不再算待确认。
-  const cellKey = (a) => `${a.school}|${a.issue.split("：")[0]}`;
+  const cellKey = (a) => `${srcTag(a.src)}|${a.school}|${a.issue.split("：")[0]}`;
   const pendingKeys = useMemo(() => new Set(tl.anomalies.filter((a) => !timelineResolved(a)).map(cellKey)), [tl.anomalies]);
   const excludedKeys = useMemo(() => new Set(tl.anomalies.filter((a) => a.ruling?.decision === "exclude").map(cellKey)), [tl.anomalies]);
   return (
     <>
       <div className="toolbar">
-        {[...tl.countries].sort(([, a], [, b]) => byCountry(a, b)).map(([code, name]) => (
-          <button key={code} type="button" className={`chip${c === code ? " is-on" : ""}`} aria-pressed={c === code} onClick={() => setC(code)}>
+        {tl.years?.length > 1 && <Segmented options={tl.years.map((y) => [y.tag, String(y.year)])} value={tag} onChange={setTag} />}
+        {[...tl.countries].filter(([code]) => codeTag(code) === tag).sort(([, a], [, b]) => byCountry(a, b)).map(([code, name]) => (
+          <button key={code} type="button" className={`chip${c === code ? " is-on" : ""}`} aria-pressed={c === code} onClick={() => setC(code.split("@")[0])}>
             {name} <span className="tnum">{tl.table[code] ? `${tl.table[code].length} 校` : "—"}</span>
           </button>
         ))}
@@ -318,7 +329,7 @@ function CountryTable({ tl, q }) {
                     <th scope="row" className="tl-school"><strong>{r.school}</strong><span className="tnum small muted">{r.abbr}</span></th>
                     {visible.map(([n, i]) => {
                       const cell = r.cells[i];
-                      const k = `${r.abbr ? `${r.school} ${r.abbr}` : r.school}|${n}`;
+                      const k = `${tag}|${r.abbr ? `${r.school} ${r.abbr}` : r.school}|${n}`;
                       if (!cell) return pendingKeys.has(k)
                         ? <td key={i} className="tl-cell is-pending" title="原表写了，但日期不完整或有冲突，点击查看原文"><a className="timeline-estimate" href={href("user", "timeline", "anomalies", r.abbr || r.school)}>AI推测</a></td>
                         : excludedKeys.has(k) ? <td key={i} className="tl-cell is-missing" title="原表写了，人工裁定为不采用"><a href={href("user", "timeline", "anomalies", r.abbr || r.school)}>不采用</a></td>
@@ -382,16 +393,21 @@ function TimelineCellDetails({ detail, onClose }) {
 const RULE_SHOW = [["open", "AI推测"], ["ruled", "已核实 / 裁定"], ["all", "全部"]];
 function Anomalies({ tl, q, onSaved }) {
   const [show, setShow] = useState("all");
-  const open = tl.anomalies.filter((a) => !timelineResolved(a)).length;
-  const list = tl.anomalies.filter((a) => (!q || `${a.school}${a.issue}`.toLowerCase().includes(q.toLowerCase())) && (show === "all" || (show === "ruled") === timelineResolved(a)));
+  const [year, setYear] = useState("all"); // 多年并存时按年份筛
+  const anomalies = year === "all" ? tl.anomalies : tl.anomalies.filter((a) => srcTag(a.src) === year);
+  const open = anomalies.filter((a) => !timelineResolved(a)).length;
+  const list = anomalies.filter((a) => (!q || `${a.school}${a.issue}`.toLowerCase().includes(q.toLowerCase())) && (show === "all" || (show === "ruled") === timelineResolved(a)));
   const oldSnapshot = tl.anomalies.length > 0 && !tl.anomalies.some((a) => a.cell);
   const reread = async () => { const back = await apiSend("GET", "/api/v3/timeline"); onSaved(back); return back; };
   return (
     <>
-      <p className="small muted">导入时发现日期不完整、多个时段、含限定条件或互相冲突的格子，共 {tl.anomalies.length} 条，{open} 条标为 AI推测{q ? `，筛出 ${list.length} 条` : ""}。尚未核实或裁定的格子不作为确定日期推导主线需求。日期类异常可以在这里人工裁定（只存工作台，不改飞书）；也可以改飞书原表后点「同步」。</p>
+      <p className="small muted">导入时发现日期不完整、多个时段、含限定条件或互相冲突的格子，共 {anomalies.length} 条，{open} 条标为 AI推测{q ? `，筛出 ${list.length} 条` : ""}。尚未核实或裁定的格子不作为确定日期推导主线需求。日期类异常可以在这里人工裁定（只存工作台，不改飞书）；也可以改飞书原表后点「同步」。</p>
       {oldSnapshot && <p className="small warn-text">当前快照是旧格式，没有记录单元格位置；点上面的「同步」重新读取（只读）后才能裁定。</p>}
       {tl.rulings?.stale > 0 && <p className="small warn-text">有 {tl.rulings.stale} 条裁定对应的飞书原格已经改过，已自动失效，这些格子重新标为 AI推测。</p>}
-      <div className="toolbar"><Segmented options={RULE_SHOW.map(([k, label]) => [k, `${label} ${k === "open" ? open : k === "ruled" ? tl.anomalies.length - open : tl.anomalies.length}`])} value={show} onChange={setShow} /></div>
+      <div className="toolbar">
+        {tl.years?.length > 1 && <Segmented options={[["all", "全部年份"], ...tl.years.map((y) => [y.tag, String(y.year)])]} value={year} onChange={setYear} />}
+        <Segmented options={RULE_SHOW.map(([k, label]) => [k, `${label} ${k === "open" ? open : k === "ruled" ? anomalies.length - open : anomalies.length}`])} value={show} onChange={setShow} />
+      </div>
       {!list.length ? <Placeholder icon="search" title="没有符合条件的异常">换个学校名或事件名试试。</Placeholder> : (
         <div className="anomaly-list">
           {list.map((a, i) => <AnomalyCard key={a.key || `${a.src}-${i}`} a={a} reread={reread} />)}

@@ -6,7 +6,7 @@ import { withRulings } from './timeline-rulings.mjs';
 import { failure } from './v3-common.mjs';
 import { marketingFailure, isDay } from './campaigns.mjs';
 import { V3_DEFAULTS } from './v3-settings.mjs';
-import { TIMELINE_SOURCE } from './timeline.mjs';
+import { TIMELINE_SOURCE, timelineIdentity } from './timeline.mjs';
 import demo from '../fixtures/v3-demo-price.json' with { type: 'json' };
 import provided from '../fixtures/v3-provided-prices.json' with { type: 'json' };
 
@@ -43,7 +43,7 @@ export function priceSettings(db) {
 export function acceptedMarketingNeeds(db, month) {
   const rows = month ? db.prepare('SELECT * FROM v3_needs WHERE month=?').all(month) : db.prepare('SELECT * FROM v3_needs').all();
   const snapshot = db.prepare("SELECT payload FROM v3_snapshots WHERE kind='timeline'").get();
-  const defaultIdentity = JSON.stringify(TIMELINE_SOURCE), identity = getSettings(db).timeline_source || defaultIdentity;
+  const defaultIdentity = JSON.stringify(TIMELINE_SOURCE), identity = timelineIdentity(getSettings(db));
   const saved = snapshot ? JSON.parse(snapshot.payload) : null;
   // 来源必须来自成功快照自身。旧裸快照没有身份，只兼容已知默认来源。
   const wrapped = saved && (Object.hasOwn(saved, 'identity') || Object.hasOwn(saved, 'value'));
