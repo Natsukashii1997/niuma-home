@@ -2,6 +2,16 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 文档与环境整理（2026-10-23，Claude，用户同意计划与三个默认选择；只改文档与本机环境，不涉及运行代码，未重新发布）
+
+- 证据搬迁：`/tmp` 里 15 个证据目录（文档引用的 10 个 + 5 个带日期、未被引用的证据目录）搬到 `~/Library/Application Support/NiumaHome/evidence/`，共 58MB，逐目录核对校验值一致后才删除 `/tmp` 原件；两份 `release-checkout`（完整代码检出）未搬。CURRENT / HANDOFF / `docs/handoff/` 共 14 个文件的路径已同步。10-21 那批（strategy-labels、business-charts、kb-switch、kb-sync、materials、brief、brief-autosave、brief-sync）此前已被系统清理，`docs/history/CURRENT-through-20261022.md` 顶部补了说明。29 个测试临时目录和日志按约定保留，交给系统清理。
+- AGENTS.md：进入顺序、按授权分工（接手一方前后端都可做，改现有视觉先问）、飞书固定 `--profile codex`、结构图、新增「发布」一节、交接格式（写在 CURRENT 顶部，截图不入库）、证据放持久目录。
+- REQUIREMENTS.md：顶部新增「当前范围（2026-10-23 整理）」——13 个模块、第一版后改定的决定、待定项；第一版原文保留。待用户过目。
+- `.gitignore`：忽略 `docs/handoff/**` 下的 png / jpg / jpeg；已入库的截图不动。
+- Chrome 收藏插件：安装位置改为 `~/Library/Application Support/NiumaHome/extension/niuma-collect/`（从主库复制，与原安装版逐文件一致）。用户已在 Chrome 移除旧插件、从新目录加载并「保存并检查」配对码；Claude 在飞书文档页确认「★ 收藏」按钮已注入，未点击、未写入。HANDOFF.md 已写明同步方法。
+- 清理：删除 4 个已合并的 `.claude/worktrees/*` 和 `work-desk-t10`（其中 2 处改动与主库插件一致），以及分支 `claude/*` 4 个、`codex/t10-final`、`ui-v3`、`ui-bitmap`；剩 `main` 与本会话的 `ui-v4`。腾出约 770MB。
+- 未做：插件真实收藏一次的端到端验证（会写飞书，等用户日常使用时观察）。
+
 ## 交付环节「物料交付」改读 NAS（2026-10-23，Claude，用户确认口径；已发布 nm-20261023-140119-40c9528，回读通过）
 
 原来 `server/routes/delivery.mjs` 把这一步写死为 `pending`「NAS 尚未接入」，首页一直显示「待接入」。
