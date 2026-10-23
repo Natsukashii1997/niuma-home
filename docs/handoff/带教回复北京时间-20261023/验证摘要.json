@@ -1,0 +1,325 @@
+{
+  "runtime": {
+    "release": "nm-20261023-103847-3200d0e",
+    "pid": 70616,
+    "indexAndJsMatchesRelease": true,
+    "js": "/assets/index-Dy9weayl.js",
+    "beijingDisplayCodePresent": true,
+    "cssUnchanged": true,
+    "allServerFilesUnchanged": 72,
+    "fixtureOnlyGetRequests": true,
+    "fixtureRequestCount": 4
+  },
+  "tests": {
+    "targeted": 4,
+    "full": 668,
+    "failed": 0
+  },
+  "browser": {
+    "normal": "10-22 21:35",
+    "crossDay": "10-23 00:05",
+    "crossYear": "01-01 00:30",
+    "errors": 0
+  },
+  "dataPreservation": {
+    "checkedAt": "2026-10-23T02:39:31.390923+00:00",
+    "baseline": "pre-release.db",
+    "tables": {
+      "assistants": {
+        "before": 5,
+        "after": 5,
+        "same": true,
+        "beforeSha256": "bab2c3a66dd9392104c608c2ca197987eabaad71023c9aa73f82b81e478f4005",
+        "afterSha256": "bab2c3a66dd9392104c608c2ca197987eabaad71023c9aa73f82b81e478f4005"
+      },
+      "codex_push": {
+        "before": 0,
+        "after": 0,
+        "same": true,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "material_images": {
+        "before": 0,
+        "after": 0,
+        "same": true,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "materials": {
+        "before": 0,
+        "after": 0,
+        "same": true,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "plans": {
+        "before": 3,
+        "after": 3,
+        "same": true,
+        "beforeSha256": "d081b3b4299959cc3b27c2a8a91ce88a16df2824e361607a789707f14a08fac3",
+        "afterSha256": "d081b3b4299959cc3b27c2a8a91ce88a16df2824e361607a789707f14a08fac3"
+      },
+      "promos": {
+        "before": 24,
+        "after": 24,
+        "same": true,
+        "beforeSha256": "c35550069f1a1c071ed9f330820ed7c27f4d9c12a6398333d8785230e1153c70",
+        "afterSha256": "c35550069f1a1c071ed9f330820ed7c27f4d9c12a6398333d8785230e1153c70"
+      },
+      "settings": {
+        "before": 6,
+        "after": 6,
+        "same": true,
+        "beforeSha256": "f4a79083cc1ad79c8408fe52f83b961c9192b5e9499068f157d71d2feff119ff",
+        "afterSha256": "f4a79083cc1ad79c8408fe52f83b961c9192b5e9499068f157d71d2feff119ff"
+      },
+      "sku_aliases": {
+        "before": 2,
+        "after": 2,
+        "same": true,
+        "beforeSha256": "99264c22049d91cdf54f2647c2f6bf9fbf1143484682705d9776c978a7d84e89",
+        "afterSha256": "99264c22049d91cdf54f2647c2f6bf9fbf1143484682705d9776c978a7d84e89"
+      },
+      "v3_documents": {
+        "before": 58,
+        "after": 58,
+        "same": true,
+        "beforeSha256": "41262706db0482204926ba0a4c5c5b3ae02efe40aeead079e1b0d8a330bbe880",
+        "afterSha256": "41262706db0482204926ba0a4c5c5b3ae02efe40aeead079e1b0d8a330bbe880"
+      },
+      "v3_needs": {
+        "before": 12,
+        "after": 12,
+        "same": true,
+        "beforeSha256": "3d8e35ce5f6530d4f8dd47e18bb2873b5837926663048d238a2b195fc9c8334a",
+        "afterSha256": "3d8e35ce5f6530d4f8dd47e18bb2873b5837926663048d238a2b195fc9c8334a"
+      },
+      "v3_snapshots": {
+        "before": 9,
+        "after": 9,
+        "same": false,
+        "beforeSha256": "8e80cc7ac336cc6b0741b81183551906e7b694a8d05bb29e47e7f992aff4f3b1",
+        "afterSha256": "d7c10605434cfcab38ec41e5a238b6c079a510e8604a3ffa919af316cafba5be"
+      },
+      "v3_source_status": {
+        "before": 6,
+        "after": 6,
+        "same": false,
+        "beforeSha256": "5ff74cdf8878f5f6fa6b0046184d9767d9c96c8156ebbb7edd3ecb6418abbfe1",
+        "afterSha256": "442765847e2a93ffb7814e823ed158b171f1fd01c98d3d69e7cd873d077c627d"
+      }
+    },
+    "snapshotChanges": [
+      {
+        "kind": "mentor",
+        "changedFields": [
+          "payload",
+          "updated_at"
+        ],
+        "payloadChangedKeys": [
+          "value"
+        ],
+        "payloadSame": false
+      },
+      {
+        "kind": "projects",
+        "changedFields": [
+          "updated_at"
+        ],
+        "payloadChangedKeys": [],
+        "payloadSame": true
+      },
+      {
+        "kind": "selftalk",
+        "changedFields": [
+          "payload",
+          "updated_at"
+        ],
+        "payloadChangedKeys": [
+          "coverage",
+          "pulledAt"
+        ],
+        "payloadSame": false
+      },
+      {
+        "kind": "timeline",
+        "changedFields": [
+          "payload",
+          "updated_at"
+        ],
+        "payloadChangedKeys": [
+          "value"
+        ],
+        "payloadSame": false
+      }
+    ],
+    "sourceStatusChanged": true,
+    "manualAndDocumentsPreserved": true,
+    "allTablesSame": false,
+    "timelinePreserved": true,
+    "cacheDetails": {
+      "mentor": [
+        {
+          "path": ".value[0].evidence",
+          "beforeLength": 17,
+          "afterLength": 16
+        },
+        {
+          "path": ".value[0].feedback",
+          "beforeLength": 62,
+          "afterLength": 62
+        },
+        {
+          "path": ".value[0].items",
+          "beforeLength": 21,
+          "afterLength": 20
+        },
+        {
+          "path": ".value[0].logs",
+          "beforeLength": 17,
+          "afterLength": 16
+        },
+        {
+          "path": ".value[1].evidence",
+          "beforeLength": 17,
+          "afterLength": 16
+        },
+        {
+          "path": ".value[1].feedback",
+          "beforeLength": 62,
+          "afterLength": 62
+        },
+        {
+          "path": ".value[1].items",
+          "beforeLength": 19,
+          "afterLength": 17
+        },
+        {
+          "path": ".value[1].logs",
+          "beforeLength": 17,
+          "afterLength": 16
+        }
+      ],
+      "selftalk": [
+        {
+          "path": ".coverage.end",
+          "before": "2026-10-23T02:27:49.748Z",
+          "after": "2026-10-23T02:39:23.128Z"
+        },
+        {
+          "path": ".pulledAt",
+          "before": "2026-10-23 10:27",
+          "after": "2026-10-23 10:39"
+        }
+      ],
+      "sourceStatus": [
+        {
+          "path": "[3].attempt_at",
+          "before": 1792722469748,
+          "after": 1792723163128
+        },
+        {
+          "path": "[3].success_at",
+          "beforeLength": 24,
+          "afterLength": 24
+        }
+      ]
+    },
+    "mentorCacheRollForward": [
+      {
+        "personIndex": 0,
+        "sameName": true,
+        "logs": {
+          "removedCount": 1,
+          "removedDates": [
+            "2026-09-23"
+          ],
+          "addedCount": 0,
+          "retainedSame": true
+        },
+        "evidence": {
+          "removedCount": 1,
+          "removedDates": [
+            "2026-09-23"
+          ],
+          "addedCount": 0,
+          "retainedSame": true
+        },
+        "items": {
+          "removedCount": 1,
+          "removedDates": [
+            "2026-09-23"
+          ],
+          "addedCount": 0,
+          "retainedSame": true
+        },
+        "feedbackOnlyLogCountChanged": true,
+        "otherFieldsSame": true
+      },
+      {
+        "personIndex": 1,
+        "sameName": true,
+        "logs": {
+          "removedCount": 1,
+          "removedDates": [
+            "2026-09-23"
+          ],
+          "addedCount": 0,
+          "retainedSame": true
+        },
+        "evidence": {
+          "removedCount": 1,
+          "removedDates": [
+            "2026-09-23"
+          ],
+          "addedCount": 0,
+          "retainedSame": true
+        },
+        "items": {
+          "removedCount": 2,
+          "removedDates": [
+            "2026-09-23"
+          ],
+          "addedCount": 0,
+          "retainedSame": true
+        },
+        "feedbackOnlyLogCountChanged": true,
+        "otherFieldsSame": true
+      }
+    ],
+    "cacheExplanation": {
+      "mentor": "近30天读取窗口从上一日滚动，移除窗口外的2026-09-23日志缓存；保留窗口内条目内容一致，没有删除飞书原文。",
+      "selftalk": "读取窗口截止时间与拉取时间按重启后的后台读取更新；消息内容未变。",
+      "v3_source_status": "selftalk 与 timeline 源正常读取的尝试/成功时间更新，内容不变。",
+      "timeline": "仅 syncedAt 从 10:29 更新为 10:40；已核查日期及其余全部字段一致。",
+      "projects": "仅快照 updated_at 刷新，payload 逐字段相同。"
+    },
+    "sourceStatusChanges": [
+      {
+        "kind": "selftalk",
+        "changedFields": [
+          "attempt_at",
+          "success_at"
+        ]
+      },
+      {
+        "kind": "timeline",
+        "changedFields": [
+          "attempt_at",
+          "success_at"
+        ]
+      }
+    ],
+    "finalCheckedAt": "2026-10-23T02:41:25.438987+00:00",
+    "allPreservationChecksPassed": true,
+    "timelineCacheChanges": [
+      {
+        "path": ".value.syncedAt",
+        "before": "2026-10-23 10:29",
+        "after": "2026-10-23 10:40"
+      }
+    ],
+    "timelinePayloadSame": false
+  }
+}
