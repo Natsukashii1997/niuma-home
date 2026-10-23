@@ -16,7 +16,8 @@
   - 证据：`~/Library/Application Support/NiumaHome/evidence/每日巡检-20261023/隔离launchd正常一轮.log`。
 - 截图：无界面改动，无截图。
 - 本轮新坑：L-08、L-09。
-- 遗留：正式任务未安装；第 5 批每周整理未做。
+- 提交与安装（开工 `2026-10-23 22:37`，`date` 记录）：用户确认后只提交本批 5 个文件 `303807b`；主工作区 `main` 从 `e4b72df` 快进到 `303807b`（只带这一个提交）；在主工作区 `bash scripts/health-check.sh --install` 装上 `cn.niuma-home.health`（每天 08:30，`plutil -lint` OK，程序指向主工作区脚本、借外壳 node 启动）；`launchctl kickstart` 手动触发一次：10 项全 ✓、`last exit code = 0`，真实日志新增 `2026-10-23 22:38  通过`。卸载：`bash scripts/health-check.sh --uninstall`。
+- 遗留：通知横幅是否显示待用户确认；第 5 批每周整理未做。
 
 ## 规矩改成工具：样式检查、发布回读脚本、LESSONS.md（2026-10-23，Claude，用户同意 3 批计划与 3 项推荐做法；三批均经用户确认后提交：`7c85fbf` / `b5c212d` / 本节所在提交；不涉及运行代码，无需发布）
 
