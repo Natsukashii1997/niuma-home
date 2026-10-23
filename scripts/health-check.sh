@@ -1,5 +1,6 @@
 #!/bin/bash
-# 每日巡检（只读，不调用模型）：发布回读 7 项 + 数据库完整性 + 磁盘余量 + 距上次数据库备份的天数。
+# 每日巡检（不调用模型）：发布回读 7 项 + 数据库完整性 + 磁盘余量 + 每日数据库备份（写后回读，只保留 7 份）+ 昨天有没有巡检记录。
+# 不碰数据，只写 <NiumaHome>/backups/ 的每日备份和 evidence/health/ 的日志。
 # 结果每次追加一行到 <NiumaHome>/evidence/health/<年-月>.log；只有未通过时才弹本机通知。
 # 用法：
 #   bash scripts/health-check.sh               跑一次
@@ -15,7 +16,7 @@ HEALTH_LABEL=${NIUMA_HEALTH_LABEL:-cn.niuma-home.health}
 HEALTH_PLIST="$HOME/Library/LaunchAgents/$HEALTH_LABEL.plist"
 LOG_DIR="$BASE/evidence/health"
 MIN_FREE_KB=$((5 * 1024 * 1024))
-BACKUP_DAYS=7
+KEEP_DAILY=7
 
 if [ "${1:-}" = "--install" ]; then
   # launchd 直接用 /bin/bash 读不了「文稿」里的脚本（macOS 隐私保护，退出码 126）；
@@ -61,6 +62,9 @@ fi
 
 OUT=$(mktemp)
 trap 'rm -f "$OUT"' EXIT
+# launchd 把每次输出追加到 launchd.log；超过 500 行就只留最近 300 行（原地截断，不换文件，正在追加的句柄不受影响）
+LAUNCHD_LOG="$LOG_DIR/launchd.log"
+if [ -f "$LAUNCHD_LOG" ] && [ "$(wc -l < "$LAUNCHD_LOG")" -gt 500 ]; then tail -n 300 "$LAUNCHD_LOG" > "$OUT" && cat "$OUT" > "$LAUNCHD_LOG"; : > "$OUT"; fi
 ok() { echo "✓ $*" >> "$OUT"; }
 bad() { echo "✗ $*" >> "$OUT"; }
 
@@ -84,9 +88,23 @@ if [ -z "$FREE_KB" ]; then bad "读不到磁盘剩余空间"
 elif [ "$FREE_KB" -lt "$MIN_FREE_KB" ]; then bad "磁盘只剩 $((FREE_KB / 1024 / 1024)) GB，低于 5 GB"
 else ok "磁盘剩余 $((FREE_KB / 1024 / 1024)) GB"; fi
 
-# 4. 数据库备份只在发布前做；太久没发布就没有新备份
-if [ -n "$(find "$BASE/backups" -name 'work-desk-*.db' -mtime -"$BACKUP_DAYS" 2>/dev/null | head -1)" ]; then ok "$BACKUP_DAYS 天内有数据库备份"
-else bad "超过 $BACKUP_DAYS 天没有数据库备份（只在发布前自动备份）"; fi
+# 4. 每日备份：发布前的备份只在发布时做，一周不发布就没有新备份，所以巡检自己做一份。
+#    写后回读（quick_check），只保留最近 KEEP_DAILY 份；发布保留策略不认这个文件名，得自己清。
+if [ -f "$DB" ]; then
+  DAILY="$BASE/backups/work-desk-$(date +%Y%m%d)-daily.db"
+  mkdir -p "$BASE/backups"
+  if [ -f "$DAILY" ] || sqlite3 "$DB" ".backup '$DAILY'" >> "$OUT" 2>&1; then
+    CHECK=$(sqlite3 -readonly "$DAILY" "PRAGMA quick_check;" 2>&1 | head -1)
+    [ "$CHECK" = "ok" ] && ok "每日备份 $(basename "$DAILY") 回读 ok" || bad "每日备份回读不过：$CHECK"
+    ls "$BASE/backups"/work-desk-*-daily.db 2>/dev/null | sort -r | tail -n +"$((KEEP_DAILY + 1))" | while IFS= read -r old; do rm -f "$old"; done
+  else bad "每日备份失败：$DAILY"; fi
+fi
+
+# 5. 昨天有没有巡检记录：巡检自己没跑（launchd 停了、路径变了）也得有人知道。首次运行之前没有记录，不查。
+YDAY=$(date -v-1d +%F)
+if grep -qs "^$YDAY " "$LOG_DIR/${YDAY%-??}.log"; then ok "昨天（$YDAY）有巡检记录"
+elif [ -z "$(cat "$LOG_DIR"/20[0-9][0-9]-[0-9][0-9].log 2>/dev/null | awk -v y="$YDAY" '$1 < y' | head -1)" ]; then ok "首次运行，不查昨天的记录"
+else bad "昨天（$YDAY）没有巡检记录，launchd 可能没跑；看 $LAUNCHD_LOG"; fi
 
 FAILS=$(grep '^✗' "$OUT")
 COUNT=$(grep -c '^✗' "$OUT")
