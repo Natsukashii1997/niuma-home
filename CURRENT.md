@@ -2,6 +2,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 带教「培养路径」V7 远征登山（2026-10-23，Claude，用户定稿 V7 并同意 4 批计划；进行中：第 1 批已提交，未发布）
+
+用户要求（同日）：「V7 就按现在这版定稿」，另开会话实现并发布。稿件（本地，不入库）：`docs/design-drafts/mentor-path/v7.html` + `_shared/`、截图 `shots/v7*.png`；细节备忘在会话共享笔记 `~/Library/Application Support/Claude/side-session-notes/local_78c266b8-9b8c-4c3c-8986-a13056a783f1/v7-细节收尾.md`。
+用户确认的做法：保留工作台侧栏，地图定宽（最小 1232，即 1440×900 下的主区宽），窗口窄时横向滚动；地图插画（旗、帐篷、城堡、登山者、云、松树）收进 `src/ui/bitmap.jsx` 做公共件；本轮先用示例数据，`GET /api/v3/mentor/path` 写 `pending("T14")`，真实来源下一轮再定。第 3 批做完截图给用户，确认后发布。
+
+- 第 1 批（已提交）：`src/modules/projects/mentor-path.js`（新）——季度时钟（UTC 算日期，宿主时区不影响）、关卡文字（超期、解锁条件、待评分）、`layout()`（山形、营地平台、山脊、登山者、实线 / 虚线、积雪、绳桥弧度避让、地平线刻度）、`fixedLabels()`、`placePlates()`（标牌避让 + 小牌）、`plateStyle()`、`placeRopeLabels()`、`pines()`、`slopeOf()`，全部照稿子移过来、不碰 DOM。`src/samples.js` 加 `MENTOR_PATH_SAMPLE`（稿子的模拟数据；测试要用，从第 2 批提前）。`tests/mentor-path.test.mjs`（新）11 项：用稿子在 Chrome 实测的尺寸，1232×814 / 1232×710 下标牌位置、小牌、绳桥弧线与说明、松树、登山者坐标都与稿子一致；标牌、引线、固定文字两两不相交、不出框；绳桥不穿过别的营地。`npm test` 701 / 701 通过；界面未变。
+- 已知（稿子同样）：1232×814 下悬停 B3 / A3 时「绳桥 B3 访谈纪要 → A3」说明压到 A1 旗子右边约 14px；沿整条绳桥都没有空位，保留稿子的做法。
+- 第 2 批（待做）：`bitmap.jsx` 加 `PixelSprite` 与地图插画，`icons7.js` 补 flag、crown；`/api/v3/mentor/path` 占位、`docs/API.md`、`docs/tasks/T14`。
+- 第 3 批（待做）：带教页签「带教答疑 / 培养路径」，`MentorPath.jsx` 页面、样式、STYLE-GUIDE 一节。
+- 第 4 批（待做）：测试、构建、隔离 5290 截图（1440×900、1280×800），用户同意后发布。
+
 ## 知识库页改为书架（2026-10-23，Claude，用户从三轮设计稿选定「V4 书架精修」并同意 4 批计划；第 1–4 批已提交；用户同意后已发布 nm-20261023-172917-cdfef96，回读通过；插件已同步，待用户在 chrome://extensions 重新加载）
 
 用户要求（同日）：文件夹里只露两篇看不清、散卡区和文件夹区各是各的。三轮设计稿后选定 V4 书架精修版，要求竖排文字对齐、页面干净、注意细节。稿件（本地，不入库）：`docs/design-drafts/kb/v4-2.html`、总览 `index.html`、截图 `shots/v4-2-*.png`；实现规则备忘在会话共享笔记 `~/Library/Application Support/Claude/side-session-notes/local_1da347e0-4601-4d99-ba30-f08824a7f00d/kb-shelf-v4-2.md`。
