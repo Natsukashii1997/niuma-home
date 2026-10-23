@@ -2,6 +2,23 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## AGENTS 瘦身：入口 + 导航表，操作细节搬 docs/OPERATIONS.md（2026-10-24，Claude，用户同意方案 A 与推荐项；确认后提交并快进 main；无需发布）
+
+- 时间：开工 `2026-10-24 00:12`（`date '+%F %H:%M'` 记录）。来由：AGENTS.md 一天长到 114 行，走上分享警告的「说明书越写越长」老路；按「入口只放怎么开始和做什么事之前读哪份，知识按需读」瘦身，只搬家、不删规矩。
+- 改了哪些文件：`AGENTS.md`（114 → 98 行、6,531 → 5,016 字符：新增「做什么事之前读哪份」导航表 6 行；分工留 5 条；运行块补 `npm run check:style`、`npm run import:mentor-path`（W2026-10-23-14）；结构树只加 `docs/OPERATIONS.md`、`docs/templates/handoff.md` 两行；规则留 7 条硬约束加 1 句占位指向；「发布」「交接格式」各留一句硬约束加指向）；`docs/OPERATIONS.md`（新，「操作手册」64 行：派单流程、接口占位机制、写接口与接外部来源、发布、发布回读、回滚、每日巡检、每周整理、交接写法、报告与验收，各节原文从 AGENTS 逐行复制，只把 `docs/` 链接前缀去掉）；`docs/LESSONS.md`（「怎么升级」加 OPERATIONS 并说明「硬约束进 AGENTS、细节进 OPERATIONS」；第 15 行每周整理、L-10 与 L-11 的「升级」行改指 OPERATIONS，注明 2026-10-24 搬来）；`docs/templates/handoff.md`（第 3 行「写法细节见」改指 OPERATIONS「交接写法」「报告与验收」）。
+- 对照表（原来在哪 → 现在在哪，行号按 `87c6e99` 的 AGENTS.md）：
+  - 留 AGENTS、原文不动：1–3 开头（第 3 行句末加一句指向 OPERATIONS）；分工 7、8、9、11、12；运行 17–24 与 26；结构 30–66；规则 72、73、74、75、76、77、80；交接格式 94（句尾「：」改「。」，加一句指向）。
+  - 搬 OPERATIONS：10、13 → 「派单流程（可选）」；70、71 → 「接口占位机制」（AGENTS 规则留一句：未实现的接口写 `pending`、按钮用 `PendingButton`）；78、79 → 「写接口与接外部来源」；84、85、86 → 「发布」（AGENTS「发布」留一句：launchd 5280、只在用户同意后在主工作区 `main` 跑 `release-app.sh`）；87 → 「发布回读」；88 → 「回滚」；89 → 「每日巡检」；90 → 「每周整理」；96–104 → 「交接写法」；106–114 → 「报告与验收」。
+  - 核对方式：生成脚本从 `git show 87c6e99:AGENTS.md` 逐行取原文拼出两份新文件，断言搬走的 29 行、留下的 65 行逐行能在新文件里找到，HEAD 每一非空行都有去向（脚本在会话 scratch 目录，不入库）。
+- 仓库外：每周整理提示词 `~/.claude/scheduled-tasks/niuma-weekly-review/SKILL.md` 第 3 步阅读清单加 `$M/docs/OPERATIONS.md` 全文，第 5 步 B「写进 AGENTS.md 或 docs/STYLE-GUIDE.md」加 OPERATIONS（`update_scheduled_task` 改，改后回读文件）；`~/Library/Application Support/NiumaHome/evidence/weekly-review/decisions.md` 追加 W2026-10-23-14 采纳。
+- 测试：临时克隆跑了两次。第一次（`87c6e99` + 本轮 5 个文件，`2026-10-24 00:23` 起）`npm test` 原样结果 `ℹ tests 737` / `ℹ pass 737` / `ℹ fail 0`；提交前 HEAD 变成 `359ac18`，第二次（`359ac18` + 本轮 4 个文件，LESSONS 来自 `359ac18`，`00:28` 起）原样结果 `ℹ tests 737` / `ℹ pass 737` / `ℹ fail 0`；两次 `npm run check:style` 都输出「样式检查通过」、退出码 0。本目录不跑全量（L-07，工作区含他人未提交的 CURRENT.md 改动）。日志与提示词改前改后副本在 `~/Library/Application Support/NiumaHome/evidence/AGENTS瘦身-20261024/`。
+- 验证：只改文档，无界面。`grep -rn 'AGENTS' docs tests scripts REQUIREMENTS.md` 核对仍引用 AGENTS 章节的地方：REQUIREMENTS.md:7「发布」（节名与 5280 仍在）；`scripts/check-style.mjs` 报错文案「AGENTS.md 规则」（引用的动效、图标、依赖、监听四条都还在）；LESSONS L-01、L-02、L-07 的「已写进 AGENTS.md「分工」/「规则」」（仍在）；`tests/handoff-format.test.mjs:6` 注释提 AGENTS「报告与验收」（代码文件，不动）。
+- 提交：本提交只含 `AGENTS.md`、`CURRENT.md`、`docs/OPERATIONS.md`、`docs/templates/handoff.md` 4 个文件。`docs/LESSONS.md` 的 4 处改动在提交前被另一会话整文件提交的 `359ac18`（修 verify-release.sh、加 L-12）顺带带进仓库，内容与本轮预期一致（已核对），所以不在本提交里——同目录共用工作树的 L-07 情形，不算新坑。
+- 截图：无。
+- 发布与回读：未发布、无需发布（文档不进快照）。
+- 与授权不一致 / 范围外发现：① 行数约 100 而非 60–70：代码树 37 行与运行块 8 行按约束保留，去掉它们后正文 69 行压到 53 行；字数减 23%。② 每周整理提示词第 5 步 D「AGENTS.md / STYLE-GUIDE / LESSONS.md 里说法重复」没加 OPERATIONS（本轮只改第 3 步与 5B），要查 OPERATIONS 的重复时再加。③ `tests/handoff-format.test.mjs:6` 注释仍写 AGENTS「报告与验收」，代码文件未动。
+- 本轮新坑：无。
+
 ## 交接模板 + 依赖白名单（审核后第 8 批，2026-10-24，Claude，用户同意分批计划，确认后提交并快进 main；无需发布）
 
 - 时间：开工 `2026-10-24 00:02`（`date '+%F %H:%M'` 记录）。来由：审核发现「开工记时间」连漏两轮是因为没有骨架可抄；依赖检查用黑名单认不出新出的库。

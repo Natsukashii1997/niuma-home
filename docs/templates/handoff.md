@@ -1,6 +1,6 @@
 # 交接一节的骨架
 
-每轮完成后复制下面这段到 CURRENT.md 顶部（「更新：…」那行之后、上一节之前），按实际填。带 ★ 的三行是硬要求，`tests/handoff-format.test.mjs` 会检查 CURRENT.md 顶部一节：缺了就算没交接。写法细节见 AGENTS.md「交接格式」与「报告与验收」。
+每轮完成后复制下面这段到 CURRENT.md 顶部（「更新：…」那行之后、上一节之前），按实际填。带 ★ 的三行是硬要求，`tests/handoff-format.test.mjs` 会检查 CURRENT.md 顶部一节：缺了就算没交接。写法细节见 docs/OPERATIONS.md「交接写法」与「报告与验收」。
 
 ```markdown
 ## <做了什么>（<YYYY-MM-DD>，<Claude / Codex>，<用户是否同意、同意了什么>；<已提交 / 未提交>、<已发布 nm-… 回读通过 / 未发布 / 无需发布>）
