@@ -1,0 +1,30 @@
+/* ---------- 底部状态栏（第三轮提案 7）：等宽小字；点为绿（正常）/ 琥珀（有问题，悬停看原因）/ 灰空心（未接入） ---------- */
+.statusbar { position: fixed; z-index: 6; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: var(--s4); height: var(--statusbar-h); padding: 0 var(--s3); background: var(--panel); border-top: 1px solid var(--line); font: 11px var(--font-mono); color: var(--muted); white-space: nowrap; }
+.sb-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sb-group b { font-weight: 400; color: var(--text); }
+.sb-dot { width: 6px; height: 6px; background: var(--ok); }
+.sb-summary { display: inline-flex; align-items: center; gap: 8px; min-width: 0; height: 20px; padding: 0 var(--s1); border: 0; background: none; font: inherit; color: var(--text-2); cursor: pointer; }
+.sb-summary > .sb-dot { flex: none; width: 8px; height: 8px; } /* C 版：最前面的彩色小方块，颜色 = 本页数据源状态 */
+.sb-seg { flex: none; }
+.sb-seg:last-child { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; } /* 放不下时只让最后一段收缩并省略 */
+.sb-seg + .sb-seg::before { content: ""; flex: none; display: inline-block; width: 1px; height: 12px; margin-right: 8px; vertical-align: -2px; background: var(--line); }
+.sb-hot { font-weight: 500; color: var(--signal); }
+.sb-keys { display: inline-flex; align-items: center; gap: var(--s3); color: var(--muted); }
+.sb-keys > span { display: inline-flex; align-items: center; gap: 4px; }
+.sb-host { color: var(--muted); }
+.sb-summary:hover, .sb-summary[aria-expanded="true"] { color: var(--text); }
+.sb-summary.is-warn { color: var(--warn); }
+.sb-summary.is-warn .sb-dot { background: var(--warn); }
+.sb-summary.is-off .sb-dot { background: none; border: 1px solid var(--muted); }
+.sb-panel { position: fixed; left: var(--s3); bottom: calc(var(--statusbar-h) + 4px); max-width: calc(100vw - var(--s3) * 2); white-space: normal; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s2) var(--s3); background: var(--panel); border: var(--border) solid var(--text); } /* 点开的各来源明细；fixed 定位，窄屏底栏横向滚动时不被裁掉 */
+.sb-group.is-warn .sb-dot { background: var(--warn); }
+.sb-group.is-off .sb-dot { background: none; border: 1px solid var(--muted); }
+.sb-item + .sb-item::before { content: "·"; margin-right: 6px; color: var(--muted); }
+.sb-item.is-ok { color: var(--text-2); }
+.sb-item.is-warn { color: var(--warn); }
+.sb-item.is-off { color: var(--muted); }
+.sb-cmd { display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 var(--s1); border: 0; background: none; font: inherit; color: var(--text-2); cursor: pointer; }
+.sb-cmd:hover { color: var(--text); }
+.sb-cmd:hover kbd { border-color: var(--text); }
+@media (max-width: 600px) { .sb-keys, .sb-cmd, .sb-host { display: none; } } /* 底栏窄屏只留方块和本页信息；手机上没有键盘，快捷键和 ⌘K 不显示 */
+

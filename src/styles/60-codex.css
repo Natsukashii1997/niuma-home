@@ -1,0 +1,61 @@
+/* ---------- Codex 预警横条 ---------- */
+.codex-strip { position: sticky; top: 34px; z-index: 4; display: flex; align-items: center; gap: var(--s3); width: 100%; height: 30px; padding: 0 var(--s3); border: 0; border-bottom: 1px solid var(--line); background: var(--panel); font: inherit; font-size: 12px; color: var(--text-2); text-align: left; cursor: pointer; }
+.codex-strip:hover { background: var(--panel-soft); }
+.codex-strip.is-new { border-bottom: 2px solid var(--signal); }
+.codex-strip.is-new > .pixel-icon { color: var(--signal); }
+.codex-stage { font-weight: 600; color: var(--text); white-space: nowrap; }
+.codex-when, .codex-cd { white-space: nowrap; }
+.codex-cd { color: var(--text); }
+.codex-strip.is-new .codex-cd { color: var(--signal); }
+.codex-quote { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); color: var(--muted); }
+.codex-more { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.sidebar { top: 64px; height: calc(100vh - 64px); }
+.codex-detail { display: flex; flex-direction: column; gap: var(--s3); }
+/* 首页 Codex 大卡：左原帖，右倒计时（倒计时是本卡唯一的像素主数字） */
+.codex-card { flex: 1 1 auto; display: grid; grid-template-columns: minmax(0, 1fr) 300px; }
+.codex-main { display: flex; flex-direction: column; gap: var(--s3); padding: var(--s4); min-width: 0; }
+.codex-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s1) var(--s4); }
+.codex-meta span { white-space: nowrap; }
+.codex-src { margin: 0; padding: var(--s2) var(--s3); border-left: 4px solid var(--text); background: var(--panel-soft); font-family: var(--font-mono); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.codex-zh { margin: 0; line-height: 1.7; color: var(--text-2); }
+.codex-zh-lead { font-size: 16px; font-weight: 600; color: var(--text); }
+.codex-done { margin: 0; font-family: var(--font-pixel); font-size: 32px; line-height: 1; color: var(--signal); } /* 「已重置」用信号橙（用户 2026-10-18） */
+.codex-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-top: auto; }
+.codex-stages { display: flex; gap: var(--s1); }
+.codex-count { display: flex; flex-direction: column; justify-content: center; gap: var(--s2); padding: var(--s4) var(--s4); border-left: 1px solid var(--line); background-color: var(--panel-soft); background-image: radial-gradient(circle, var(--line) 1px, transparent 1.2px); background-size: 6px 6px; } /* 网点底：二次评审曾去掉，用户 10-17 要求恢复 */
+.codex-count strong { font-size: 14px; }
+.codex-past, .codex-strip .codex-cd.is-past { font-weight: 600; color: var(--signal); } /* 状态文字用信号橙（用户 2026-10-18，原为绿） */
+/* 窄屏（L12）：首页 12 栏在 900px 以下改为每张卡占满一行；600px 以下 Codex 卡、交付月卡上下排列，倒计时移到正文下方，网点底和状态色不变 */
+@media (max-width: 900px) {
+  .home-grid > * { grid-column: 1 / -1; }
+  .todo-card { min-height: 360px; }
+  .campaign-grid.cols-9-3, .proj-layout.cols-3-9 { grid-template-columns: minmax(0, 1fr); } /* 删除/恢复入口所在的两页：窄屏单列，其他页面不在本次范围 */
+  .proj-items, .proj-list { position: static; }
+  .statusbar { overflow: hidden; } /* 底栏不换行也不横向滚动：放不下的信息末尾省略，见 600px 以下 */
+}
+@media (max-width: 600px) {
+  .codex-card { grid-template-columns: minmax(0, 1fr); }
+  .delivery { grid-template-columns: minmax(0, 1fr); } /* 交付月卡同样是固定 260px 左栏，390px 下右侧只剩 2px */
+  .delivery-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* 手机宽度三列又太挤，回到两列（边框规则同 1320px） */
+  .delivery-steps li:nth-child(3n) { border-right: 1px solid var(--line); }
+  .delivery-steps li:nth-child(2n) { border-right: 0; }
+  .delivery-steps li:nth-child(n+4) { border-bottom: 1px solid var(--line); }
+  .delivery-steps li:nth-child(n+5) { border-bottom: 0; }
+  .codex-count { border-left: 0; border-top: 1px solid var(--line); }
+  .codex-meta span { white-space: normal; }
+  .codex-foot { flex-wrap: wrap; }
+  .codex-stages { flex-wrap: wrap; }
+  .card-head .card-extra { flex-wrap: wrap; justify-content: flex-end; }
+  .codex-strip .codex-quote, .codex-strip .codex-when:has(+ .codex-cd) { display: none; } /* 顶部横条：有倒计时就省掉时间说明和引文，完整内容在首页卡片和详情 */
+  .set-row-head { grid-template-columns: minmax(0, 1fr) auto auto; } .set-row-head .set-value { grid-column: 1 / -1; grid-row: 2; } /* 设置行头：150px 标签列在窄屏挤出「编辑」按钮；值改到第二行 */
+  .set-row.is-open .settings-form { padding-left: 0; } .set-push-kv { grid-template-columns: 64px minmax(0, 1fr); }
+  .set-groups > .stat-strip { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); } .set-groups > .stat-strip .stat:nth-child(odd) { border-left: 0; } .set-groups > .stat-strip .stat:nth-child(n+3) { border-top: 1px solid var(--line); } /* 设置页总览：窄屏 2×2 */ /* 展开的表单不再让出 150px 名称列 */
+  .state-error { flex-wrap: wrap; } /* 读取失败框：标题不换行 + 按钮，窄屏下换行而不是撑出卡片 */
+}
+.countdown { display: flex; align-items: flex-start; gap: var(--s1); }
+.countdown span { display: flex; flex-direction: column; align-items: center; gap: var(--s1); }
+.countdown b { min-width: 62px; padding: var(--s1) var(--s2); background: var(--text); color: var(--panel); font-family: var(--font-pixel); font-weight: 400; font-size: 40px; line-height: 1; text-align: center; }
+.countdown em { font-style: normal; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--muted); }
+.countdown i { padding-top: var(--s3); font-family: var(--font-pixel); font-style: normal; font-size: 24px; color: var(--signal); }
+.countdown.is-unknown i { color: var(--muted); } /* 未公布：同款数字块填 --，冒号不用信号橙 */
+

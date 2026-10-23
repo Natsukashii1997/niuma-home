@@ -121,9 +121,10 @@ const commentId = data => data?.comment_id || data?.comment?.comment_id || data?
 const replyText = comment => (comment?.reply_list?.replies || []).map(r => (r.content?.elements || []).map(e => e.text_run?.text || '').join('')).join('\n');
 const matchesReply = (comment, blockId, text) => Boolean(comment?.comment_id) && comment.extra?.content_anchor_id === blockId && replyText(comment) === text;
 
-export function createMentorService(db, { now = Date.now, readLogs = source => readMentorLogs(source, { now }), generate = createTextDraftGenerator(db, { now }), lark = runLark, ...options } = {}) {
+// staleWhileRevalidate（2026-10-23 审核第 2 条）：GET 先回落库快照，超过 ttl 再后台读飞书；POST …/refresh 仍现读。
+export function createMentorService(db, { now = Date.now, readLogs = source => readMentorLogs(source, { now }), generate = createTextDraftGenerator(db, { now }), lark = runLark, staleWhileRevalidate = true, ...options } = {}) {
   const config = () => mentorConfig(getSettings(db));
-  const read = createConfiguredReader(db, 'mentor', config, sources => Promise.all(sources.map(readLogs)), { now, ...options });
+  const read = createConfiguredReader(db, 'mentor', config, sources => Promise.all(sources.map(readLogs)), { now, staleWhileRevalidate, ...options });
   const changes = createLocalChanges(db, { now });
   const draftPreviews = new Map();
   const sourceFor = name => { const source = config().find(s => s.name === name); if (!source) throw failure(404, '带教对象不存在'); return source; };

@@ -3,7 +3,7 @@ import { useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Card, Loadable, Placeholder, SampleBadge, StatusMark } from "../../ui/components.jsx";
 import { AgentFace, FlipNumber, PixelIcon } from "../../ui/bitmap.jsx";
-import { deliveryMonth, deliverySteps, daysToDeadline, shortMonth } from "../../constants.js";
+import { currentMonth, deliveryMonth, deliverySteps, daysToDeadline, shortMonth } from "../../constants.js";
 import { CodexCard } from "./CodexStrip.jsx";
 import { VoiceCloud, voiceIssue } from "../voice/VoicePage.jsx";
 import { PRESETS } from "../assistants/presets.js";
@@ -36,6 +36,7 @@ export default function HomePage() {
   const now = new Date();
   const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
   const month = deliveryMonth();
+  const thisMonth = currentMonth(); // 右上角按钮进本月促销（用户 2026-10-23：月份默认都是本月）；交付月卡仍按交付月
   const plans = useApi("/api/plans");
   return (
     <>
@@ -44,7 +45,7 @@ export default function HomePage() {
           <h1>{greeting(now.getHours())}</h1>
           <p className="label">{WEEKDAYS[now.getDay()]} {String(now.getDate()).padStart(2, "0")} {MONTHS[now.getMonth()]} {now.getFullYear()} · DAY {dayOfYear} · WK {isoWeek(now)} · 交付月 {month}</p>
         </div>
-        <a className="btn btn-primary" href={href("marketing", "plans", month)}><PixelIcon name="grid" /> {shortMonth(month)}促销</a>
+        <a className="btn btn-primary" href={href("marketing", "plans", thisMonth)}><PixelIcon name="grid" /> {shortMonth(thisMonth)}促销</a>
       </header>
       <div className="home-grid">
         <CodexCard className="col-8" />
@@ -136,7 +137,7 @@ function TodoList({ items }) {
         {shown.map((t, i) => (
           <li key={i}>
             <span className={`todo-kind${t.urgent ? ` is-${TODO_TONE[t.kind] || "warn"}` : ""}`}>{t.kind}</span>
-            <a href={t.href} className="todo-text">{t.text}</a>
+            <a href={t.href} className="todo-text">{t.text}{t.sub && <small className="todo-sub">{t.sub}</small>}</a>
             {t.due && <span className={`tnum small ${daysUntil(t.due) !== null && daysUntil(t.due) <= 0 ? "risk-text" : t.urgent ? "warn-text" : "muted"}`}>{t.due}</span>}
           </li>
         ))}

@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { openDb } from "./db.mjs";
-import { json, match } from "./http.mjs";
+import { checkOrigin, json, match } from "./http.mjs";
 import { createCodexPush } from "./codex-push.mjs";
 import * as marketing from "./routes/marketing.mjs";
 import * as assistants from "./routes/assistants.mjs";
@@ -33,12 +33,17 @@ async function serveStatic(res, urlPath) {
 createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   if (!url.pathname.startsWith("/api/")) return serveStatic(res, url.pathname);
+  // 跨站防护：所有接口先核对来源（见 http.mjs checkOrigin）；收藏接口另放行带配对码的扩展。
+  const rejected = checkOrigin(req, { allowExtension: url.pathname.startsWith("/api/v3/kb/collect") });
+  if (rejected) { req.resume(); return json(res, 403, { error: `请求来源校验未通过：${rejected}`, code: "ORIGIN_REJECTED" }); }
   const found = match(routes, req.method, url.pathname);
   if (!found) return json(res, 404, { error: "接口不存在" });
   try {
     await found.handler(req, res, { params: found.params, url });
   } catch (e) {
     console.error(e);
-    json(res, 500, { error: e.message });
+    // 带 status 的是预期内的拒绝（如 413 / 415），原样回；其余只给固定文案，细节留在服务日志里。
+    if (e.status) json(res, e.status, { error: e.message, ...(e.code && { code: e.code }) });
+    else json(res, 500, { error: "服务内部错误，详情见服务日志", code: "INTERNAL" });
   }
 }).listen(port, "127.0.0.1", () => console.log(`工作台 http://127.0.0.1:${port}`));

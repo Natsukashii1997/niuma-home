@@ -23,6 +23,33 @@
 - 本轮新坑：无（本会话等文件时 zsh 对不匹配通配报错导致等待脚本空转，属会话工具用法，不是项目坑）。
 - 遗留：W-8 至 W-14 与待定的 W-1、W-6 等用户决定；第 8 批（交接模板与依赖白名单）未做。
 
+## 审核后一次性优化（2026-10-23 晚，Claude；用户授权「确认的问题按顺序改、月份默认本月、首页优先级不变、待我处理两行、去掉转主线需求、长期占位不管、工程项按建议做」并要求不分批一次做完；未提交、未发布）
+
+- 时间：开工 `2026-10-23 23:24`（`date` 记录）；审核本身 23:03 开始，见 [审核记录](docs/handoff/UI与功能审核-20261023/审核记录.md)。
+- 改了哪些文件（按审核编号）：
+  - 第 1 条：`server/http.mjs` 新增 `checkOrigin`（Host 本机 + Origin 同源 + 扩展只放行收藏路由）与 `readJson` 的 2MB 上限、content-type 校验（写了才校验；不带的按 JSON 解析，否则收藏接口的测试桩和 curl 过不了）；`server/index.mjs` 全部 `/api/` 先过校验，意外错误只回固定文案；`tests/request-guard.test.mjs`（新，5 项）；`docs/API.md`「请求来源要求」。
+  - 第 2 条：`server/mentor.mjs` 读取器开 `staleWhileRevalidate`（默认开，可传参关）；`tests/mentor-snapshot.test.mjs`（新，2 项）。前端没改、没有「正在更新」提示：带教快照值是数组，`withStatus` 会把数组摊成对象，改接口形状要动多处，本轮不动。
+  - 第 3 条：`server/reports.mjs` 加 `persist` 钩子，`server/routes/workspace.mjs` 接到 `v3_snapshots`（kind `reports:<文档 URL>`）；`tests/reports-persist.test.mjs`（新，3 项）。
+  - 第 4 条：`src/api.js` `readShared`（同路径进行中请求共用、3 秒内复用、`reload()` 强制、`apiSend` 写后失效）；`tests/use-api-dedupe.test.mjs`（新，4 项）。自言自语抽屉不另改：它和按钮读同一路径，靠共享即可。
+  - 第 5 条：`src/ui/bitmap.jsx` `dissolve` 加 500 ms 兜底与 `visibilitychange` 揭开。
+  - 第 6 条：`src/modules/marketing/BriefView.jsx` 删物料改公共 `Modal`，去掉 `window.confirm`。
+  - 第 7 条：另一会话已提交 `664ccc5`，本轮未动。
+  - 第 8 条：`server/routes/workspace.mjs` Voice 来源未接通改回 `200 { unavailable, code, error }`；`VoicePage.jsx` `voiceIssue` 读它；`tests/v3-voice.test.mjs` 两处断言改 200。
+  - 月份默认本月：`StrategyView.jsx`、`UserPage.jsx` 按月时间轴、首页右上按钮（`HomePage.jsx`，「10 月促销」）；`constants.js` 注释；交付月卡、倒计时、状态栏、⌘K 操作不动。
+  - 待我处理两行：`server/home-todo.mjs` 拆 `text` / `sub`；`HomePage.jsx` 渲染；`src/styles/20-home.css` 加 `.todo-sub`；`tests/v3-integration.test.mjs` 一处断言改读 `sub`。
+  - 去掉「转为主线需求草稿」：`VoicePage.jsx`（按钮、表单、草稿读取、「关联主线需求」块）、`SelfTalk.jsx`（N 键、按钮、预览文案；历史标签仍显示）、删除 `src/modules/user/ManualNeedForm.jsx` 与 `.manual-need` 样式；后端接口和数据不动；`REQUIREMENTS.md` 记录决定。
+  - 工程：`scripts/smoke-pages.mjs`（新）+ `package.json` `smoke` + `verify-release.sh` 第 7 步可选（`NIUMA_SMOKE=1`）；4 处 `aria-label`；`styles-v3.css` 拆成 `src/styles/` 20 个带序号文件 + `index.css`（拼回与原文件逐字节一致，脚本校验过），`main.jsx`、AGENTS、STYLE-GUIDE 同步；设置页旧四键 `SettingForm`（140 行）换成 `LegacySettingRow`（WriteBox 流程，周报试读与清空保留）。
+  - 文档：`docs/LESSONS.md` L-10、L-11；`AGENTS.md` 规则两条、`npm run smoke`、结构图；`HANDOFF.md` 上一轮范围；`docs/API.md` 两节。
+- 测试：`npm test` 原样结果 `ℹ tests 735` / `ℹ pass 735` / `ℹ fail 0`（开工时工作区干净，`664ccc5` 之后无他人改动）；`npm run check:style` 通过；`npm run build` 通过；`git diff --check`、`bash -n scripts/verify-release.sh` 通过。日志 `~/Library/Application Support/NiumaHome/evidence/全面优化-20261023/npm-test.log`。实看后在含他人未提交改动的工作区（见下一条，HEAD `c3f5bf6`）复跑：`npm test` 原样结果 `ℹ tests 737` / `ℹ pass 737` / `ℹ fail 0`（比上次多 2 项，工作区含他人新增的 `tests/handoff-format.test.mjs`），`npm run check:style` 退出码 0，日志 `npm-test-2.log`。
+- 工作区含他人未提交改动（L-07）：实看期间另一会话在同一目录提交了 `c3f5bf6`（每周整理升级，只含它自己的 AGENTS 一行与 CURRENT 一节，没带本轮文件），并留下未提交的 `scripts/check-style.mjs`、`tests/style-rules.test.mjs`、`docs/templates/handoff.md`、`tests/handoff-format.test.mjs`（它的下一批，不属本轮，提交时不带）。
+- 验证：`npm run smoke`（隔离服务、临时数据目录、假 lark-cli、1440 宽）24 项 0 问题：全部路由 + ⌘K + 抽屉无 JS 异常、无 console.error/warn、无非 GET 请求；「资源加载失败」是假 lark-cli 下的 5xx，预期内。截图与 `summary.json` 在证据目录 `smoke-iso/`，日志 `smoke-iso.log`。第一次跑完在清理 Chrome 临时目录时报 ENOTEMPTY（结果已写出），脚本随后改为等进程退出再删并重试，复跑日志 `smoke-iso-2.log`。
+  - 实看（交接会话，`2026-10-23 23:55` 开始，`date` 记在证据目录 `时间.txt`）：正式库 `sqlite3 .backup` 副本加 images 放会话 scratch 目录，假 `lark-cli` 前置 PATH，`PORT=5291 npm start`（日志 `server-5291.log`）；`npm run smoke -- --base http://127.0.0.1:5291` 原样结果 `24 项，0 项有问题`（`smoke-real/`、`smoke-real.log`）。内置浏览器 1440 宽逐项看：① 首页右上按钮「10 月促销」；「待我处理」在隔离环境显示飞书读取失败——它的 `timeline()` 来源不带快照，`/api/v3/timeline`、`/api/v3/home/todo` 都 502（既有行为，不在本轮范围），两行渲染只能发布后在 5280 看。② Voice 页和自言自语抽屉（点窗口条按钮打开）用页面查找都搜不到「主线需求」。③ 用户策略月份框显示 `2026-10 · 本月`（请求 `user-strategy?month=2026-10`）；用户时间同样来源读取失败，默认月份发布后在 5280 看。④ 带教答疑：`/api/v3/mentor` 6–8 ms（快照），页内计时从切路由到出 1889 字内容 168 ms。⑤ 设置页「物料类型清单」编辑 → 填两行重复值加空行 → 预览保存 → WriteBox 显示「确认前不会写入」、原值（尚未配置）划掉、新值合并成一条 → 取消、收起；全程唯一非 GET 是一次 `POST /api/settings/material_types/preview`，隔离库 `settings` 表没有 `material_types` 行。⑥ 设计 Brief 物料表第 1 行「删掉这一行」弹出公共 Modal「删除物料」（正文写明只改本地草稿，按钮取消 / 确认删除），点取消后 3 条物料仍在，Brief 页没有非 GET 请求。
+  - 未做：没有在正式 5280 实看（待我处理两行、用户时间默认本月要飞书来源，发布后看）；没有真实飞书往返。
+- 截图：`docs/handoff/全面优化-20261023/`（不入库）10 张：`隔离1440-首页-10月促销按钮-待我处理需飞书.png`、`隔离1440-Voice-无转主线入口.png`、`隔离1440-自言自语抽屉-无转主线入口.png`、`隔离1440-用户策略-默认本月.png`、`隔离1440-用户时间-来源需飞书.png`、`隔离1440-带教答疑-快照秒开.png`、`隔离1440-设置页.png`、`隔离1440-设计Brief.png`（这 8 张整页来自冒烟 `smoke-real/`）、`隔离1440-设置页-物料类型清单-编辑预览未确认.png`、`隔离1440-Brief-删物料弹窗-未确认.png`（两张交互态由临时 CDP 脚本截，脚本在会话 scratch 目录，不入库）。冒烟截图原件与 `summary.json` 在证据目录。
+- 与授权不一致：① 第 2 条没加「正在更新」提示（原因见上）；② 超长行换行没做，改到的文件也没重排，避免 diff 噪音；③ content-type 校验放宽为「写了才校验」，真正的防护是 Origin 校验。
+- 遗留 / 下一步：① 隔离实看已做（见「验证」），发布后在 5280 补看待我处理两行与用户时间默认月份；② 用户确认后只提交本轮文件、快进 `main`、发布、`NIUMA_SMOKE=1 bash scripts/verify-release.sh` 回读；③ Chrome 扩展不用改（已带 JSON content-type 与配对码，核对过）；④ 带教「正在更新」提示另议。
+- 本轮新坑：L-10、L-11。
+
 ## 巡检升级：每日备份、查昨天记录、日志裁剪（审核后第 6 批，2026-10-23，Claude，用户同意分批计划，确认后提交并快进 main，正式任务已重装，见本节末尾）
 
 - 时间：开工 `2026-10-23 23:27`（`date` 记录）。来由：深度审核发现「7 天没备份」会每天报警直到发布、巡检自己停了没人知道、launchd.log 无限追加。

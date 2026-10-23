@@ -122,7 +122,7 @@ function PromoTable({ rows, plans, dossier }) {
                   <tr key={JSON.stringify([row.month, row.line, row.sku])}>
                     {BASE.map(([k]) => <td key={k} className={k === "sku" ? "nowrap promo-sku" : "nowrap"}>{k === "sku" ? <button type="button" className="sku-link" onClick={() => setDrawer({ line: row.line, sku: row.sku })} title="打开 SKU 档案">{row.sku}</button> : row[k]}</td>)}
                     {TABLE_FIELDS.map(([field], k) => <PromoCell key={field} value={row[field]} field={field} previous={previous.get(row)}
-                      action={k === TABLE_FIELDS.length - 1 && <button type="button" className="icon-btn promo-row-copy" title="复制这一行" onClick={() => copyRows(JSON.stringify([row.month, row.line, row.sku]), [row])}><PixelIcon name={copied === JSON.stringify([row.month, row.line, row.sku]) ? "check" : "copy"} /></button>} />)}
+                      action={k === TABLE_FIELDS.length - 1 && <button type="button" className="icon-btn promo-row-copy" title="复制这一行" aria-label="复制这一行" onClick={() => copyRows(JSON.stringify([row.month, row.line, row.sku]), [row])}><PixelIcon name={copied === JSON.stringify([row.month, row.line, row.sku]) ? "check" : "copy"} /></button>} />)}
                   </tr>
                 ))}
                 {!collapsed.has(key) && specialsOf(key).map(specialRow)}

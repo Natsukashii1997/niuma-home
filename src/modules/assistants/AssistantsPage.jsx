@@ -91,7 +91,7 @@ function KnowledgePanel({ assistant }) {
       </WriteBox>
       {!kb.docs.length ? <p className="small muted">还没有知识文档。</p> : (
         <table className="grid compact"><thead><tr><th>类型</th><th>标题</th><th className="r">字数</th><th>加入时间</th><th /></tr></thead>
-          <tbody>{kb.docs.map((d) => <tr key={d.id}><td><Tag tone="neutral">{d.kind}</Tag></td><td>{d.title}</td><td className="r">{d.chars.toLocaleString()}</td><td className="tnum small muted">{d.at}</td><td><button type="button" className="icon-btn" title="移除（先预览）" disabled={locked} onClick={() => previewDelete(d)}><PixelIcon name="close" /></button></td></tr>)}</tbody></table>
+          <tbody>{kb.docs.map((d) => <tr key={d.id}><td><Tag tone="neutral">{d.kind}</Tag></td><td>{d.title}</td><td className="r">{d.chars.toLocaleString()}</td><td className="tnum small muted">{d.at}</td><td><button type="button" className="icon-btn" title="移除（先预览）" aria-label="移除这篇知识（先预览）" disabled={locked} onClick={() => previewDelete(d)}><PixelIcon name="close" /></button></td></tr>)}</tbody></table>
       )}
     </div>
   );

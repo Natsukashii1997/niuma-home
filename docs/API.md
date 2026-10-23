@@ -3,6 +3,13 @@
 全部为 JSON；出错返回 `{ error: "中文说明", code?: "错误码" }` 与相应状态码；未实现返回 501 `{ error, task }`。
 字段名用 camelCase；月份 `YYYY-MM`；业务线取值：大学辅导 / 国际课程 / 申诉服务（促销表只有大学辅导 / 国际课程；方案原文另有申诉服务：无固定 SKU，内容记为整月特殊活动，不进方案汇总，2026-10-19 起）。
 
+## 请求来源要求（2026-10-23，全部 `/api/` 路由）
+
+- Host 必须是本机（`127.0.0.1` / `localhost` / `[::1]`，可带端口）；浏览器带 `Origin` 时必须等于 `http://<Host>`（Vite 开发页代理保留页面 Host，5281 也能过）。不满足返回 `403 ORIGIN_REJECTED`。不带 `Origin` 的本机请求（curl、脚本）照旧放行。
+- `chrome-extension://` 来源只能访问 `/api/v3/kb/collect*`，并仍须带配对码 `x-niuma-collect-code`（见「知识库 · 快捷收藏」）。
+- 请求正文：写了 `content-type` 的必须是 `application/json`，否则 `415`（浏览器跨站简单请求带的 `text/plain` 会被拒）；不带 content-type 的（curl、脚本）按 JSON 解析；超过 2MB 返回 `413`。
+- 处理失败：带状态码的预期拒绝原样返回；其余返回 `500 { error: "服务内部错误，详情见服务日志", code: "INTERNAL" }`，细节只进服务日志。
+
 ## 旧写入口保存保护（2026-10-22）
 
 以下 9 个写入口必须带 `X-Workdesk-Request-Id`（8–128 位字母、数字、`_`、`-`）：助手新建、助手 PATCH、会话导入；物料新建、PATCH、DELETE、上传图片、删除图片；方案 PUT。每次用户操作在发送前持久保存编号和原草稿，同一操作恢复时沿用编号。
@@ -405,3 +412,10 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `GET /api/v3/timeline` / `POST /api/v3/timeline/sync` 新增 `years:[{year,title,url,tag,schools,events,anomalies}]`（`tag` 首年为空、其余为年份字符串）；`agenda/anomalies/calendarEntries/countries/table/nodes/terms` 为各年合并。同步依次只读全部年份，任一年失败都不替换快照。
 - `POST /api/v3/timeline/years/preview {url}`：飞书 `/wiki/` 或 `/sheets/` 链接 → 只读解析表名（须含年份）、校验 4 张地区明细 + 12 张月历并试解析，返回 `{previewId,expiresAt,summary:{year,title,url,schools,regionSheets,calendarSheets,events,anomalies,from,to}}`；同一年或同一张表已登记返回 409。不写入。
 - `POST /api/v3/timeline/years/confirm {previewId,confirm:true}`：预览后年份配置有变化返回 409；写入 `timeline_years` 并回读，再同步全部年份，返回 `{saved,years,syncedAt}`；同步失败不回滚登记，返回 `{saved,years:null,syncError}`。
+
+## 2026-10-23 审核后接口调整
+
+- `GET /api/v3/voice`：来源未接通不再返回 503，改为 `200 { unavailable: true, code: "VOICE_…", error }`，页面据此显示模拟数据并标明；合格空榜仍是 `200 { empty: true, hot: [] }`；其余读取失败仍按状态码返回。
+- `GET /api/v3/home/todo`：每项 `{ kind, text, sub?, due, dueDate?, href, urgent? }`。`text` 是主行（节点名 / 方案名），`sub` 是次行小字（项目 · 负责人 · 到期，或 SKU 名）；原先拼在 `text` 里的项目名移到 `sub`。
+- `GET /api/v3/mentor`：先回落库快照（`v3_snapshots.mentor`），超过 5 分钟后台重读飞书；`POST /api/v3/mentor/refresh` 仍现读。
+- `GET /api/reports`：解析结果落库（`v3_snapshots` 的 `reports:<文档 URL>`），服务重启后先回上次完整结果，再按 staleWhileRevalidate 刷新。

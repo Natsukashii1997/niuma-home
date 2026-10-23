@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { Button, Card, Loadable, PageHeader, SampleBadge, StatStrip, Tag } from "../../ui/components.jsx";
 import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
-import { classifyFailure } from "../../ui/write-flow-state.js";
 import { PixelIcon } from "../../ui/bitmap.jsx";
 
 const fields = [
@@ -66,13 +65,17 @@ function itemStatus([type, key], settings, v3data) {
 export default function SettingsPage() {
   const state = useApi("/api/settings");
   const v3 = useV3Settings();
-  const [dailyRevision, setDailyRevision] = useState(0);
-  const [dailyPending, setDailyPending] = useState(false);
-  const onDailyState = pending => { setDailyPending(pending); setDailyRevision(value => value + 1); };
-  const form = (settings, key) => { const field = fields.find((f) => f.key === key); return <SettingForm key={key} field={field} initialValue={settings[key] || ""} dailyRevision={dailyRevision} dailyPending={dailyPending} onDailyState={onDailyState} />; };
+  const [saved, setSaved] = useState({}); // 旧四键保存后的新值（回读一致后记在这里，StatStrip 和行头跟着变）
+  const [dailyBusy, setDailyBusy] = useState(false); // 日报来源保存中或结果待核对：周报行先等
+  const [dailyRevision, setDailyRevision] = useState(0); // 日报来源变了：周报行的旧预览作废
   const row = (settings, item) => {
     const [type, key] = item;
-    if (type === "old") return form(settings, key);
+    if (type === "old") {
+      return <LegacySettingRow key={key} field={fields.find((f) => f.key === key)} value={saved[key] ?? settings[key] ?? ""}
+        dailyBusy={key === "weekly_doc_url" && dailyBusy} dailyRevision={key === "weekly_doc_url" ? dailyRevision : 0}
+        onBusy={key === "report_doc_url" ? setDailyBusy : undefined}
+        onSaved={(value) => { setSaved((old) => ({ ...old, [key]: value })); if (key === "report_doc_url") setDailyRevision((n) => n + 1); }} />;
+    }
     if (type === "v3") return <V3Rows key={key} v3={v3} keys={[key]} />;
     if (type === "rules") return <CollectRulesRow key="rules" v3={v3} />;
     if (type === "pairing") return <PairingRow key="pairing" />;
@@ -82,11 +85,12 @@ export default function SettingsPage() {
   return <>
     <PageHeader title="设置" subtitle="按用途分组；每项单独编辑、预览确认后保存并回读；飞书身份固定只读" />
     <Loadable state={state} name="设置" big>{(settings) => {
-      const groups = GROUPS.map((g) => ({ ...g, rows: g.items.map((item) => ({ item, label: itemLabel(item), status: itemStatus(item, settings, v3.data) })) }));
+      const merged = { ...settings, ...saved };
+      const groups = GROUPS.map((g) => ({ ...g, rows: g.items.map((item) => ({ item, label: itemLabel(item), status: itemStatus(item, merged, v3.data) })) }));
       const all = groups.flatMap((g) => g.rows);
       const count = (s) => all.filter((r) => r.status === s).length;
       const todo = all.filter((r) => r.status === "demo" || r.status === "missing");
-      const cards = (list) => list.map((g) => <SetGroup key={g.id} title={g.title} icon={g.icon} extra={<GroupCount group={g} />}>{g.rows.map((r) => row(settings, r.item))}</SetGroup>);
+      const cards = (list) => list.map((g) => <SetGroup key={g.id} title={g.title} icon={g.icon} extra={<GroupCount group={g} />}>{g.rows.map((r) => row(merged, r.item))}</SetGroup>);
       return <div className="settings-page set-groups">
         <StatStrip items={[
           { label: "已保存", value: count("ok"), tone: "ok", foot: "你保存过的值" },
@@ -106,148 +110,92 @@ function GroupCount({ group }) {
   return <span className="set-count"><span className="muted">{group.use}</span>{parts.join(" · ")}</span>;
 }
 
-function SettingForm({ field, initialValue, dailyRevision, dailyPending, onDailyState }) {
+// 旧四键（日报、周报、品牌表、物料类型）：2026-10-23 并入 WriteBox，和 V3 行同一套「预览 → 确认 → 回读」，
+// 预览与确认同样走 /api/settings/:key/preview 与 PUT /api/settings/:key（previewId）。周报链接保存前先试读一次。
+// 预览失效 / 输入被拒 / 结果不明的分类与锁定由 useWriteFlow 统一处理；回读不一致或清空后配置键仍在都不算保存。
+function LegacySettingRow({ field, value, dailyBusy = false, dailyRevision = 0, onBusy, onSaved }) {
   const { key, label, hint, placeholder } = field;
-  const [saved, setSaved] = useState(initialValue);
-  const [draft, setDraft] = useState(() => displayValue(key, initialValue));
-  const [preview, setPreview] = useState(null); // 服务端规范化后的待保存值
-  const [token, setToken] = useState(null); // 服务端预览：{ previewId, expiresAt, before, value }；确认只发令牌
-  const [sourcePreview, setSourcePreview] = useState(null);
-  const [trial, setTrial] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const [uncertain, setUncertain] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(() => displayValue(key, value));
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const lock = useRef(false);
-  const previewVersion = useRef(0);
-  const previousDaily = useRef(dailyRevision);
-  const sourceBlocked = key === "weekly_doc_url" && dailyPending;
-  const clearPreview = () => { setPreview(null); setToken(null); };
-  // T11-1 起旧四键也要后端预览令牌：先本地校验，再向服务端取预览；显示的值以服务端规范化结果为准。
-  const serverPreview = async (value) => {
-    const pv = await apiSend("POST", `/api/settings/${key}/preview`, { value });
+  const [trial, setTrial] = useState(null); // 周报试读：{ busy } / { result } / { error }
+  const flow = useWriteFlow();
+  const locked = flow.busy || flow.phase === "unknown" || dailyBusy;
+  useEffect(() => { onBusy?.(flow.busy || flow.phase === "unknown"); }, [flow.busy, flow.phase]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (dailyRevision) { flow.reset(); setTrial(null); setError("日报来源已改，请重新预览周报链接。"); } }, [dailyRevision]); // eslint-disable-line react-hooks/exhaustive-deps
+  const change = (text) => { setDraft(text); flow.reset(); setError(""); setTrial(null); };
+  const serverPreview = async (v) => {
+    const pv = await apiSend("POST", `/api/settings/${key}/preview`, { value: v });
     if (!pv || pv.key !== key || typeof pv.previewId !== "string" || typeof pv.value !== "string") throw new Error("预览结果无效，请重试");
     return pv;
   };
-  const applyPreview = (pv) => { setPreview(pv.value); setToken(pv); };
-  useEffect(() => {
-    if (key !== "weekly_doc_url" || previousDaily.current === dailyRevision) return;
-    setTrial(null);
-    previousDaily.current = dailyRevision; previewVersion.current++;
-    clearPreview(); setSourcePreview(null); setNotice(dailyPending ? "日报来源正在保存或结果待核对，请先完成日报回读。" : "日报来源已核对，请重新预览周报链接。");
-  }, [key, dailyRevision, dailyPending]);
+  const preview = async () => {
+    setError(""); setTrial(null);
+    let local;
+    if (key === "weekly_doc_url" && draft.trim() === "") local = ""; // 清空周报来源：改为从日报文档识别周报
+    else { try { local = previewValue(key, draft); } catch (e) { setError(e.message); return; } }
+    if (key === "weekly_doc_url" && local) {
+      setTrial({ busy: true });
+      try {
+        const result = await apiSend("POST", "/api/reports/source-preview", { role: "weekly", url: local });
+        if (!result || !Number.isInteger(result.count) || !Array.isArray(result.unrecognized)) throw new Error("试读结果无效，请重试");
+        setTrial({ result });
+      } catch (e) { setTrial({ error: e.message }); setError(e.message); return; }
+    }
+    flow.preview(() => serverPreview(local));
+  };
   const readValue = async () => {
     const settings = await apiSend("GET", "/api/settings");
     if (!settings || Array.isArray(settings) || typeof settings !== "object" || (settings[key] !== undefined && typeof settings[key] !== "string")) throw new Error("配置回读内容无效");
-    if (key === "weekly_doc_url" && settings[key] === "") throw new Error("周报来源清空后应删除配置键，请重新核对");
-    return settings[key] || "";
+    return settings[key];
   };
-  const confirm = async () => {
-    if (lock.current || uncertain || sourceBlocked || preview === null || !token) return;
-    lock.current = true; setBusy(true); setNotice(""); setError("");
-    if (key === "report_doc_url") onDailyState(true);
-    try {
-      let result;
-      try { result = await apiSend("PUT", `/api/settings/${key}`, { previewId: token.previewId, confirm: true }); }
-      catch (error) {
-        // 预览失效、旧值被改、输入被拒都是「没有写入」；只有 5xx / 断网才算结果不明，需要重新读取核对。
-        const kind = classifyFailure(error);
-        if (kind === "unknown") throw error;
-        if (key === "report_doc_url") onDailyState(false);
-        clearPreview(); setError(kind === "stale" && !/重新预览/.test(error.message) ? `${error.message}。没有写入，请按当前内容重新预览。` : `${error.message}。没有写入。`);
-        // 明确被拒绝时顺手重读当前值，让行头显示实际已保存的内容（可能已在别处改过）。
-        readValue().then((actual) => setSaved(actual), () => {});
-        return;
-      }
+  const confirm = () => flow.confirm(
+    (pv) => apiSend("PUT", `/api/settings/${key}`, { previewId: pv.previewId, confirm: true }),
+    async (receipt, pv) => {
+      if (receipt?.key !== key || receipt.value !== pv.value) return false;
       const actual = await readValue();
-      if (result?.key !== key || result.value !== preview || actual !== preview) throw new Error("保存值与回读结果不一致");
-      if (key === "report_doc_url") onDailyState(false);
-      setSaved(actual); setDraft(displayValue(key, actual)); clearPreview(); setNotice(`已保存${label}，并已回读核对。`);
-    } catch (error) {
-      setUncertain(true); setError(`${error.message}。保存结果尚未确认，请先重新读取配置核对。`);
-    } finally { lock.current = false; setBusy(false); }
+      if (pv.value === "") { if (actual !== undefined) return "周报来源清空后应删除配置键，请重新核对"; }
+      else if (actual !== pv.value) return false;
+      onSaved?.(pv.value); setDraft(displayValue(key, pv.value));
+      return true;
+    },
+  );
+  const reread = async () => {
+    try { const actual = await readValue(); onSaved?.(actual || ""); setDraft(displayValue(key, actual || "")); setError(""); flow.resolve(); }
+    catch (e) { setError(`重新读取失败：${e.message}。请稍后再次读取。`); }
   };
-  const reload = async () => {
-    if (lock.current) return;
-    lock.current = true; setBusy(true);
-    if (key === "report_doc_url") onDailyState(true);
-    try {
-      const actual = await readValue();
-      if (key === "report_doc_url") onDailyState(false);
-      setSaved(actual); setDraft(displayValue(key, actual)); clearPreview(); setUncertain(false); setError(""); setNotice("已重新读取当前配置，请核对下方已保存的值。");
-    } catch (error) { setError(`重新读取失败：${error.message}。请稍后再次读取。`); }
-    finally { lock.current = false; setBusy(false); }
-  };
-  const changed = (event) => { setTrial(null); setDraft(event.target.value); clearPreview(); setSourcePreview(null); setError(""); setNotice(""); };
-  const previewDraft = async (event) => {
-    event.preventDefault(); setNotice(""); setError("");
-    if (lock.current || uncertain || sourceBlocked) return;
-    if (key === "weekly_doc_url") {
-      clearPreview(); setSourcePreview(null); setTrial(null);
-      if (draft === "") { await previewClear(); return; }
-      lock.current = true; setBusy(true);
-      setTrial({});
-      const version = previewVersion.current;
-      try {
-        const result = await apiSend("POST", "/api/reports/source-preview", { role: "weekly", url: draft });
-        if (!result || !Number.isInteger(result.count) || !Array.isArray(result.unrecognized)) throw new Error("试读结果无效，请重试");
-        const pv = await serverPreview(draft);
-        if (version === previewVersion.current) { setSourcePreview(result); applyPreview(pv); setTrial({ done: true }); }
-      } catch (error) { if (version === previewVersion.current) { setError(error.message); setTrial({ error: error.message }); } }
-      finally { lock.current = false; setBusy(false); }
-      return;
-    }
-    let local;
-    try { local = previewValue(key, draft); } catch (error) { clearPreview(); setError(error.message); return; }
-    lock.current = true; setBusy(true);
-    try { applyPreview(await serverPreview(local)); } catch (error) { clearPreview(); setError(error.message); }
-    finally { lock.current = false; setBusy(false); }
-  };
-  // 清空周报来源也要后端预览令牌。
-  const previewClear = async () => {
-    lock.current = true; setBusy(true);
-    try { applyPreview(await serverPreview("")); } catch (error) { clearPreview(); setError(error.message); }
-    finally { lock.current = false; setBusy(false); }
-  };
-  const [open, setOpen] = useState(false);
-  const expanded = open || uncertain || busy || preview !== null;
-  return <div className={`set-row${expanded ? " is-open" : ""}`}>
-    <div className="set-row-head">
-      <span className="set-label">{label}</span>
-      <span className="set-value">{saved ? displayValue(key, saved).split("\n").join(" · ") : <span className="muted">尚未配置</span>}</span>
-      <Tag tone={saved ? "green" : "neutral"}>{saved ? "已配置" : "未配置"}</Tag>
-      <Button onClick={() => setOpen((v) => !v)} disabled={busy}><PixelIcon name={expanded ? "up" : "edit"} />{expanded ? "收起" : "编辑"}</Button>
+  const expanded = open || flow.phase !== "idle";
+  return (
+    <div className={`set-row${expanded ? " is-open" : ""}`}>
+      <div className="set-row-head">
+        <span className="set-label">{label}</span>
+        <span className="set-value">{value ? displayValue(key, value).split("\n").join(" · ") : <span className="muted">尚未配置</span>}</span>
+        <Tag tone={value ? "green" : "neutral"}>{value ? "已配置" : "未配置"}</Tag>
+        <Button onClick={() => { setOpen((v) => !v); flow.reset(); setError(""); setTrial(null); setDraft(displayValue(key, value)); }} disabled={flow.busy || flow.phase === "unknown"}><PixelIcon name={expanded ? "up" : "edit"} />{expanded ? "收起" : "编辑"}</Button>
+      </div>
+      {expanded && <div className="set-edit stack-sm">
+        <span className="small muted">{hint}</span>
+        {key === "material_types"
+          ? <textarea className="review-box" value={draft} rows={5} placeholder={placeholder} disabled={locked} aria-label={label} onChange={(e) => change(e.target.value)} />
+          : <input className="set-input" type="text" inputMode="url" value={draft} placeholder={placeholder} disabled={locked} aria-label={label} onChange={(e) => change(e.target.value)} />}
+        {trial?.busy && <StepProgress label="试读周报来源" />}
+        {error && <p className="small warn-text" role="alert">{error}</p>}
+        {dailyBusy && <p className="small muted">日报来源正在保存或结果待核对，请先完成日报回读。</p>}
+        <div className="row"><span className="spacer" />
+          {key === "weekly_doc_url" && <Button disabled={locked} onClick={() => change("")}>清空</Button>}
+          <Button variant="primary" onClick={preview} disabled={locked || flow.phase === "preview"}><PixelIcon name="eye" />预览保存</Button>
+        </div>
+        <WriteBox flow={flow} title={`${label} · 保存预览`} savedText={`已保存${label}，回读核对一致`} onConfirm={confirm} onRepreview={preview} onReread={reread}>
+          {(pv) => <dl className="kv">
+            <dt>原值</dt><dd><pre className="pre diff-old">{pv.before ? displayValue(key, pv.before) : "（尚未配置）"}</pre></dd>
+            <dt>新值</dt><dd><pre className="pre diff-new">{pv.value === "" ? "（清空：改为从日报文档识别周报）" : displayValue(key, pv.value)}</pre></dd>
+            {trial?.result && <><dt>试读</dt><dd>识别到 {trial.result.count} 篇周报 · {trial.result.unrecognized.length} 个标题未识别{trial.result.latest ? `；最新：${trial.result.latest.title}（${trial.result.latest.date}）` : ""}{trial.result.sameAsDaily ? "；与日报文档相同，将按单文档方式读取" : ""}</dd></>}
+            <dt>写到哪里</dt><dd>工作台本地配置；下次读取对应来源时生效</dd>
+          </dl>}
+        </WriteBox>
+      </div>}
     </div>
-    {expanded && <form className="settings-form" aria-label={`${label}配置`} onSubmit={previewDraft}>
-      <label className="settings-field" htmlFor={`setting-${key}`}>{label}</label>
-      {key === "material_types"
-        ? <textarea id={`setting-${key}`} value={draft} onChange={changed} rows={5} placeholder={placeholder} disabled={busy || uncertain} aria-describedby={`hint-${key}`} />
-        : <input id={`setting-${key}`} type="text" inputMode="url" value={draft} onChange={changed} placeholder={placeholder} disabled={busy || uncertain} aria-describedby={`hint-${key}`} />}
-      <p id={`hint-${key}`} className="muted small">{hint}</p>
-      {key === "weekly_doc_url" && <Button type="button" disabled={busy || uncertain || sourceBlocked} onClick={() => {
-        if (lock.current || uncertain || sourceBlocked) return;
-        setTrial(null); setDraft(""); setSourcePreview(null); setError(""); setNotice("");
-        previewClear();
-      }}>清空</Button>}
-      {trial && <StepProgress label="试读周报来源" {...trial} />}
-      {error && <p className="error" role="alert">{error}</p>}
-      {uncertain ? <Button type="button" disabled={busy} onClick={reload}>重新读取配置</Button> : preview !== null ? <div className="settings-preview">
-        <h3 className="section-title">保存预览</h3>
-        <p className="small muted">确认前不会写入{token?.expiresAt ? ` · ${new Date(token.expiresAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })}前有效` : ""}</p>
-        {token && token.before !== null && token.before !== preview && <><p className="small muted">当前已保存</p><pre className="pre diff-old">{displayValue(key, token.before)}</pre><p className="small muted">将改为</p></>}
-        <pre className="pre">{preview === "" ? "（清空）" : displayValue(key, preview)}</pre>
-        {key === "weekly_doc_url" && (preview === "" ? <p>确认后将清空独立周报来源，改为从日报文档识别周报。</p> : sourcePreview && <div className="stack">
-          <p>识别到 {sourcePreview.count} 篇周报 · {sourcePreview.unrecognized.length} 个标题未识别</p>
-          {sourcePreview.latest && <p>最新：{sourcePreview.latest.title}（{sourcePreview.latest.date}）</p>}
-          {sourcePreview.sameAsDaily && <p>与日报文档相同，将按单文档方式读取</p>}
-        </div>)}
-        <div className="row"><Button type="button" disabled={busy} onClick={() => clearPreview()}>取消预览</Button><Button type="button" variant="primary" disabled={busy || sourceBlocked} onClick={confirm}>确认保存</Button></div>
-      </div> : <Button type="submit" variant="primary" disabled={busy || sourceBlocked}>预览保存</Button>}
-      <p className="small muted" role="status">{busy ? "正在处理，请稍候…" : notice}</p>
-      {uncertain && <div className="settings-saved"><h3 className="section-title">已保存的值（上次读取，待核对）</h3><pre className="pre">{saved ? displayValue(key, saved) : "尚未配置"}</pre></div>}
-    </form>}
-    {!expanded && notice && <p className="small muted set-notice" role="status">{notice}</p>}
-  </div>;
+  );
 }
 
 function SetGroup({ title, icon, extra, children }) {

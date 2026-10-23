@@ -1,0 +1,18 @@
+/* ---------- Agent ---------- */
+.assistant-page .chat-head { flex-wrap: wrap; gap: var(--s2); }
+/* Agent：页面撑满视口，聊天面板吃掉剩余高度，消息区在面板里滚动（P2-11） */
+.main:has(.assistant-page) { padding-bottom: var(--s6); }
+.assistant-page { display: flex; flex-direction: column; height: max(600px, calc(100vh - var(--chrome-h) - 2 * var(--s6))); }
+.assistant-page .chat-layout { flex: 1 1 auto; min-height: 0; }
+.assistant-page .chat-list { overflow-y: auto; }
+.assistant-page .chat-panel { min-height: 0; }
+.assistant-page .chat-messages { max-height: none; min-height: 0; overflow-y: auto; }
+.model-panel:not(.is-open) .assistant-model-row, .model-panel:not(.is-open) .assistant-models > p.muted.small:not([role]) { display: none; }
+.model-panel:not(.is-open) .assistant-models { padding: 0 var(--s4); border-bottom: 0; }
+.model-panel:not(.is-open) .assistant-models:empty { display: none; }
+.chat-starters { display: flex; flex-direction: column; gap: var(--s2); max-width: 520px; margin: var(--s5) auto; }
+.kb-panel { display: flex; flex-direction: column; gap: var(--s3); padding: var(--s4); }
+.kb-meter { gap: var(--s3); }
+.drop-zone { display: flex; align-items: center; justify-content: center; gap: var(--s2); padding: var(--s4); border: 2px dashed var(--line); color: var(--muted); font-size: 13px; cursor: pointer; }
+.drop-zone:hover { border-color: var(--text); color: var(--text); }
+

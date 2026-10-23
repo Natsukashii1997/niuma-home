@@ -498,11 +498,19 @@ export function dissolve(canvas, area, swap) {
     if (fill) ctx.fillRect(x, y, size, size); else ctx.clearRect(x, y, size, size);
   };
   // v3：3 帧（约 200ms）。第 1 帧盖住一半，第 2 帧盖满并换页，第 3 帧整体揭开。
+  let swapped = false;
+  const doSwap = () => { if (!swapped) { swapped = true; swap(); } };
+  const finish = () => { doSwap(); canvas.style.display = "none"; cleanup(); };
   const stop = frames((frame) => {
-    if (prefersReducedMotion()) { if (frame <= 2) swap(); canvas.style.display = "none"; return false; }
+    if (prefersReducedMotion()) { finish(); return false; }
     if (frame === 1) cover.slice(0, half).forEach((i) => cell(i, true));
-    if (frame === 2) { cover.slice(half).forEach((i) => cell(i, true)); swap(); }
-    if (frame === 3) { canvas.style.display = "none"; return false; }
+    if (frame === 2) { cover.slice(half).forEach((i) => cell(i, true)); doSwap(); }
+    if (frame === 3) { finish(); return false; }
   });
-  return () => { stop(); canvas.style.display = "none"; };
+  // 兜底（2026-10-23 审核第 5 条）：定时器被降频或窗口被遮住时画布不能一直盖着主区——超过 500ms 或页面重新可见就直接揭开。
+  const guard = setTimeout(() => { stop(); finish(); }, 500);
+  const onVisible = () => { if (!document.hidden) { stop(); finish(); } };
+  document.addEventListener("visibilitychange", onVisible);
+  function cleanup() { clearTimeout(guard); document.removeEventListener("visibilitychange", onVisible); }
+  return () => { stop(); cleanup(); canvas.style.display = "none"; };
 }

@@ -1,0 +1,27 @@
+/* ---------- 项目 ---------- */
+.proj-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: var(--gap); align-items: start; }
+.proj-card-top { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); }
+.proj-bar { height: 8px; color: var(--ok); } /* PixelBar */
+.proj-card-meta { display: flex; gap: var(--s2); }
+.proj-next { display: inline-flex; align-items: center; gap: var(--s1); color: var(--text-2); }
+.proj-main { min-width: 0; }
+.person-tabs button em { margin-left: var(--s1); padding: 0 var(--s1); font-style: normal; font-size: 11px; background: var(--risk-soft); color: var(--risk); }
+.person-tabs { display: inline-flex; gap: var(--s2); }
+.person-tabs button { display: flex; align-items: center; gap: var(--s2); padding: var(--s1) var(--s3); border: var(--border) solid var(--line); background: var(--panel); font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+.person-tabs button span { display: flex; flex-direction: column; line-height: 1.3; }
+.person-tabs button .small { color: var(--muted); }
+.person-tabs button.active { border-color: var(--text); background: var(--text); color: var(--panel); }
+.person-tabs button.active .small { color: #9CA0A8; }
+.mentor-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: var(--gap); align-items: start; }
+.logs { list-style: none; margin: 0; padding: 0; }
+.logs li { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: start; gap: var(--s2); padding: var(--s2) 0; border-bottom: 1px solid var(--line); font-size: 13px; line-height: 1.6; }
+.logs li:last-child { border-bottom: 0; }
+/* 普通日志不画方块（不能勾），卡点、提问只靠右侧标签区分（P2-10） */
+.coach-block { padding: var(--s3) var(--s4); border-bottom: 1px solid var(--line); }
+.coach-block:last-child { border-bottom: 0; }
+.coach-block h4 { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s2); font-size: 14px; }
+.coach-block ul { margin: 0 0 var(--s2); padding-left: var(--s4); font-size: 13px; line-height: 1.8; }
+.coach-block ul li .icon-btn { width: 22px; height: 22px; vertical-align: middle; visibility: hidden; }
+.coach-block ul li:hover .icon-btn { visibility: visible; }
+.coach-block .row { margin-top: var(--s2); }
+

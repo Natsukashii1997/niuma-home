@@ -87,3 +87,19 @@
 - 正确做法：先 `[ -f "$plist" ]` 再读。
 - 证据：`scripts/health-check.sh` 读数据目录那几行；`verify-release.sh` 开头已先判断文件存在。
 - 升级：未升级。
+
+## L-10 外部来源的 GET 每次现读，页面每次打开都要等（2026-10-23）
+
+- 现象：带教答疑每次打开等 3.7 秒（`curl /api/v3/mentor` 实测 3.66 秒，其余只读接口都在 30 毫秒内）；日/周报的解析结果只在内存里，服务重启或发布后第一次打开要等飞书读完。
+- 根因：`mentor.mjs` 建读取器时没开 `staleWhileRevalidate`，有落库快照也不先回；`reports.mjs` 的缓存不落库。
+- 正确做法：接外部只读来源一律用 `createConfiguredReader(db, kind, …, { staleWhileRevalidate: true })`（或同样的「先回落库快照、超时后台刷新、刷新接口现读」），页面用 `useFreshApi` 或照常读，不让用户等现读。
+- 证据：`docs/handoff/UI与功能审核-20261023/审核记录.md` 第 3、4 条；本轮修复见 CURRENT.md「审核后一次性优化」；`tests/mentor-snapshot.test.mjs`、`tests/reports-persist.test.mjs`。
+- 升级：已写进 AGENTS.md「规则」。
+
+## L-11 请求来源校验只做在一组接口上，其余接口裸奔（2026-10-23）
+
+- 现象：Host + Origin 校验（`kb-collect-pairing.mjs` 的 `guard`）只挂在知识库收藏 5 个接口；其余 POST 没有校验，`readJson` 也不看 content-type，浏览器里任何网页都能向本机 5280 发简单 POST 触发拉飞书、调 Codex、写库。
+- 根因：校验写在模块里，没有放到入口统一做。
+- 正确做法：横切的保护（来源校验、正文大小、统一错误响应）放 `server/index.mjs` / `server/http.mjs` 对全部 `/api/` 生效，模块里只做自己的业务校验（如配对码）。
+- 证据：审核记录第 1 条；`server/http.mjs` `checkOrigin`、`tests/request-guard.test.mjs`。
+- 升级：已写进 AGENTS.md「规则」。

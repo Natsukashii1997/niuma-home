@@ -39,7 +39,7 @@ test('Voice采集失败通过路由返回概括错误，状态记error且不推�
   const{db,dir}=database(t),file=path.join(dir,'source-failure.json');let clock=now;
   const broken=sample();broken.checks.sourceReads={attempted:3,successful:0,complete:false,errors:[{source:'合成来源',url:'https://student-community.invalid/private',reason:'敏感原始错误标记'}]};
   writeFileSync(file,JSON.stringify(broken));const all=routes(db,undefined,undefined,{voice:{snapshotPath:file,now:()=>clock}});
-  const failed=await invoke(all,'/api/v3/voice');assert.equal(failed.status,503);assert.equal(failed.body.code,'VOICE_SOURCE_UNAVAILABLE');assert.ok(!JSON.stringify(failed.body).includes('敏感原始错误标记'));
+  const failed=await invoke(all,'/api/v3/voice');assert.equal(failed.status,200);assert.equal(failed.body.unavailable,true);assert.equal(failed.body.code,'VOICE_SOURCE_UNAVAILABLE');assert.ok(!JSON.stringify(failed.body).includes('敏感原始错误标记'));
   const state=()=>sourceStatus(db,{implemented:['voice'],voiceIdentity:file}).sources.voice;
   assert.equal(state().state,'error');assert.equal(state().at,undefined);assert.ok(!state().error.includes('敏感原始错误标记'));
   writeFileSync(file,JSON.stringify(sample()));const empty=await invoke(all,'/api/v3/voice');assert.equal(empty.status,200);assert.deepEqual([empty.body.empty,empty.body.hot.length],[true,0]);assert.equal(state().state,'ok');
@@ -87,9 +87,9 @@ test('Voice本机预算低于导出上限时返回和状态均采用较低值，
   const lower=qualifiedSample();lower.budget.limit=3;writeFileSync(file,JSON.stringify(lower));assert.equal((await read()).budget.limit,3);
   saveSetting(db,'voice_budget','unknown');await assert.rejects(read(),e=>e.code==='VOICE_BUDGET_UNVERIFIED');
 });
-test('GET /api/v3/voice 未配置明确返回503/code，成功仅暴露公开数据形状',async t=>{
+test('GET /api/v3/voice 未配置返回200 + unavailable/code（2026-10-23 起不用503），成功仅暴露公开数据形状',async t=>{
   const{db,dir}=database(t),all=routes(db,undefined,undefined,{voice:{snapshotPath:'',now:()=>now}});
-  const missing=await invoke(all,'/api/v3/voice');assert.equal(missing.status,503);assert.equal(missing.body.code,'VOICE_NOT_CONFIGURED');
+  const missing=await invoke(all,'/api/v3/voice');assert.equal(missing.status,200);assert.equal(missing.body.unavailable,true);assert.equal(missing.body.code,'VOICE_NOT_CONFIGURED');assert.equal(missing.body.hot,undefined);
   const file=path.join(dir,'export.json');writeFileSync(file,JSON.stringify(qualifiedSample()));saveSetting(db,'voice_budget','5');
   const response=await invoke(routes(db,undefined,undefined,{voice:{snapshotPath:file,now:()=>now}}),'/api/v3/voice');
   assert.equal(response.status,200);assert.equal(response.body.budget.limit,5);assert.equal(response.body.hot[0].participantIds,undefined);assert.equal(response.body.hot[0].evidence,undefined);assert.equal(response.body.hot[0].sparkDates.length,7);

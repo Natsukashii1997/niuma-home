@@ -19,6 +19,7 @@ npm install
 npm run build && npm start      # http://127.0.0.1:5280（开发目录直接起服务；正式环境见「发布」）
 npm run dev                     # 开发页 http://127.0.0.1:5281，/api 转给 5280
 npm test                        # 自动使用临时数据目录，不碰 data/
+npm run smoke                   # 页面冒烟：先 npm run build；隔离服务 + 本机 Chrome 只读打开全部路由，截图到证据目录（--base 可指向已在跑的服务）
 npm run import:feishu           # 一次性迁移旧飞书表（已执行过，可重复执行）
 ```
 
@@ -44,7 +45,7 @@ src/
   ui/bitmap.jsx      位图风基础件：FlipNumber / DotMatrix / DitherBar / TypeText / StepProgress / PixelIcon / BitAvatar / dissolve
   assets/fonts/      Geist / Geist Mono / Geist Pixel（OFL）
   styles.css         设计变量 + 基础样式
-  styles-v3.css      v3 起各页面样式（大部分页面样式在这里）
+  styles/            v3 起各页面样式，按模块拆成带序号的文件；index.css 按序号引入，序号就是层叠顺序（2026-10-23 从 styles-v3.css 拆出）
   styles-layout.css / styles-scrollbars.css  布局与滚动条
   modules/<模块>/     各模块页面
 browser-extension/niuma-collect/   Chrome 收藏插件源码（安装位置见 HANDOFF.md）
@@ -52,6 +53,7 @@ scripts/
   release-app.sh     发布 / 回滚正式 5280（launchd 常驻 + 固定快照）
   verify-release.sh  发布回读（只读；release-app.sh 末尾自动跑，也可单独跑）
   check-style.mjs    样式、监听与时间显示硬规则检查（npm run check:style；npm test 里也跑）
+  smoke-pages.mjs    页面冒烟（npm run smoke）：全部路由 + ⌘K + 抽屉，查 JS 异常、console 错误与非 GET 请求，截图；verify-release.sh 加 NIUMA_SMOKE=1 可选调用
   health-check.sh    每日巡检（只读；--install 装成 launchd 任务）
 docs/
   LESSONS.md         开发实录与坑（排障、发布、改样式或脚本前先搜）
@@ -73,6 +75,8 @@ fixtures/            验收样例（飞书复制的方案原文）
 - 所有写入真实数据的操作必须「先预览、后确认」。唯一例外：知识库快捷收藏（T12，只新建指向原文的快捷方式）用户 2026-10-18 确认点击即收藏，但仍须只写一次、不自动重试、写后回读、结果不明时锁住核对。
 - 访问飞书一律用本机 `lark-cli`，固定 `--profile codex`（机械邪龙兽应用）：读写资源用该应用的 user 身份，发评论用 bot 身份；不回退其他机器人，不在代码里写 token。
 - 只监听 127.0.0.1。
+- 请求来源校验在 `server/index.mjs` 对全部 `/api/` 统一做（`http.mjs` 的 `checkOrigin`：Host 本机、Origin 同源；扩展只在收藏路由放行），新接口不用自己做；正文上限与错误响应也在那里（[API.md](docs/API.md)「请求来源要求」）。
+- 接外部只读来源一律 `createConfiguredReader(…, { staleWhileRevalidate: true })` 落快照，页面先回旧数据再后台刷新，不让用户等现读（[LESSONS](docs/LESSONS.md) L-10）。
 - 验证用的备份、日志等证据放 `~/Library/Application Support/NiumaHome/evidence/<目录名>/`，不要只留在 `/tmp`（会被系统清理）；私人数据库与完整日志不进仓库。
 
 ## 发布

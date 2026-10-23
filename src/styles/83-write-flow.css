@@ -1,0 +1,19 @@
+/* ---------- 写操作：预览 → 确认 → 提交 → 回读（V3 接线）：左侧 4px 色条区分阶段，颜色同时配文字 ---------- */
+.write-box { display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s3); padding: var(--s3) var(--s4); background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--text); }
+.write-box.is-saved { border-left-color: var(--ok); background: var(--ok-soft); border-color: var(--ok-soft); }
+.write-box.is-warn, .write-box.is-unknown { border-left-color: var(--warn); background: var(--warn-soft); border-color: var(--warn-soft); }
+.write-box.is-error { border-left-color: var(--risk); background: var(--risk-soft); border-color: var(--risk-soft); }
+.write-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.write-head strong { font-size: 13px; }
+.write-box.is-saved .write-head .pixel-icon { color: var(--ok); }
+.write-box.is-warn .write-head .pixel-icon, .write-box.is-unknown .write-head .pixel-icon { color: var(--warn); }
+.write-box.is-error .write-head .pixel-icon { color: var(--risk); }
+.write-body { display: flex; flex-direction: column; gap: var(--s2); font-size: 13px; overflow-wrap: anywhere; }
+.write-body .kv { font-size: 12px; }
+.write-body pre { margin: 0; max-height: 320px; overflow: auto; padding: var(--s2) var(--s3); background: var(--panel-soft); border: 1px solid var(--line); font: 12px/1.6 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.write-msg { margin: 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.write-actions { display: flex; justify-content: flex-end; gap: var(--s2); }
+.write-actions .btn { height: var(--ctl-sm); font-size: 12px; }
+.diff-old { color: var(--muted); text-decoration: line-through; }
+.diff-new { font-weight: 600; }
+

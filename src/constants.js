@@ -35,7 +35,7 @@ export function monthLabel(month) {
   return `${y} 年 ${Number(m)} 月`;
 }
 
-// v3：月份工具。工作节奏是「本月准备下月，月底前交付」，所以默认定位到交付月。
+// v3：月份工具。工作节奏是「本月准备下月，月底前交付」：交付月卡、倒计时按交付月；各页月份选择器默认本月（用户 2026-10-23）。
 export function shiftMonth(month, delta) {
   const [y, m] = month.split("-").map(Number);
   const d = new Date(y, m - 1 + delta, 1);

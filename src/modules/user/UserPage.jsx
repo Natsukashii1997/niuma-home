@@ -8,7 +8,7 @@ import { Button, DateInput, Loadable, Modal, MonthSwitch, PageHeader, Placeholde
 import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { Strategy } from "./StrategyView.jsx";
 import { Playbook } from "./PlaybookView.jsx";
-import { deliveryMonth } from "../../constants.js";
+import { currentMonth, deliveryMonth } from "../../constants.js";
 import { TimelineYears } from "./TimelineYears.jsx";
 import { DismissibleNote } from "../../ui/dismissible.jsx";
 
@@ -120,7 +120,7 @@ function TimelineBoard({ tl, view, initialQ, onSynced }) {
 
 // 按月时间轴：一行一所学校，横轴是这个月的每一天；条的长度就是起止日期。跨月的条在边上标出真实起止。
 function MonthTimeline({ tl, q }) {
-  const [month, setMonth] = useState(deliveryMonth());
+  const [month, setMonth] = useState(currentMonth()); // 默认本月（用户 2026-10-23）；交付月仍在月份旁标出
   const [country, setCountry] = useState("");
   const [folded, setFolded] = useState(() => new Set());
   const fold = (c) => setFolded((o) => { const n = new Set(o); if (n.has(c)) n.delete(c); else n.add(c); return n; });

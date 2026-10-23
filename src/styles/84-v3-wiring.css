@@ -1,0 +1,91 @@
+/* ---------- 项目推进 / 管培带教（V3 接线）：未填写状态、完整日期、长项目名换行 ---------- */
+.proj-main .stat:first-child .stat-value { white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.proj-main .node-list .node-cols, .proj-main .node-list .node { grid-template-columns: 20px 24px minmax(0, 1fr) 88px 132px 84px; } /* 序号列收窄，勾选框和序号挨近 */
+.proj-main .node-list .node-due { font-size: 12px; }
+.proj-main .node-list .node-due:disabled { color: var(--muted); }
+.node.is-unknown .node-check input[type="checkbox"] { border: 1px dashed var(--muted); } /* 状态未填写：灰色虚线，不抢眼 */
+.proj-sync { padding: var(--s2) var(--s4); border-bottom: 1px solid var(--line); margin: 0; }
+.proj-card-top strong { min-width: 0; overflow-wrap: anywhere; }
+.week-input { width: 104px; height: var(--ctl-sm); margin-left: var(--s1); padding: 0 var(--s2); border: 1px solid var(--line); background: var(--panel); font: 12px var(--font-mono); color: var(--text); }
+.week-input:focus { outline: none; border-color: var(--text); }
+.logs a { color: inherit; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.logs a:hover { color: var(--signal); }
+.logs li { grid-template-columns: 84px minmax(0, 1fr) auto; }
+
+/* ---------- 导出到飞书（brief、策略共用） ---------- */
+.feishu-export { display: flex; flex-direction: column; gap: var(--s2); }
+.export-form { display: flex; flex-direction: column; gap: var(--s1); }
+.export-form .row { align-items: flex-end; flex-wrap: wrap; }
+.export-target { display: flex; flex-direction: column; gap: 2px; flex: 1 1 360px; min-width: 0; }
+.export-target input { height: var(--ctl); padding: 0 var(--s2); border: var(--border) solid var(--line); background: var(--panel); font: 13px var(--font-mono); color: var(--text); }
+.export-target input:focus { outline: none; border-color: var(--text); }
+.ok-text a, .ok-text .link { color: inherit; }
+
+/* ---------- 用户时间线（V3 接线）：异常原文完整换行、局部滚动；明细表「待确认」格；同步结果 ---------- */
+.anomaly { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); align-items: start; }
+.anomaly-main { min-width: 0; overflow-wrap: anywhere; }
+.anomaly-opts > div { min-width: 0; }
+.anomaly-rule { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--s2); padding-top: var(--s2); border-top: 1px dashed var(--line); }
+.anomaly-rule .row { flex-wrap: wrap; gap: var(--s2); }
+.rule-day { width: 150px; height: var(--ctl); padding: 0 var(--s2); border: var(--border) solid var(--line); background: var(--panel); font: 13px var(--font-mono); }
+.rule-note { flex: 1 1 220px; min-width: 180px; height: var(--ctl); padding: 0 var(--s2); border: var(--border) solid var(--line); background: var(--panel); font: inherit; font-size: 13px; }
+.rule-day:focus, .rule-note:focus { outline: none; border-color: var(--text); }
+.anomaly-raw { margin: 0; max-height: 168px; overflow: auto; padding: var(--s1) var(--s2); background: var(--panel-soft); border: 1px solid var(--line); font: 12px/1.6 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+.tl-cell.is-pending { background: var(--warn-soft); }
+.tl-cell.is-pending a { font-size: 12px; color: var(--warn); text-decoration: underline; text-underline-offset: 3px; }
+.tl-sync { margin: 0 0 var(--s3); }
+
+.plain-list { margin: 0; padding-left: var(--s4); }
+.delivery-steps.is-state { display: flex; align-items: center; padding: var(--s4); }
+.delivery-steps.is-state > * { flex: 1; } /* 让加载条撑开，否则宽度塌成 0、看起来是空白 */
+
+/* ---------- 营销战役（V3 接线）：模板态的创建表单、节点负责人输入 ---------- */
+.campaign-create { margin-bottom: var(--gap); }
+.create-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--s3); margin-bottom: var(--s3); }
+.create-grid label { display: flex; flex-direction: column; gap: var(--s1); }
+.create-grid .is-wide { grid-column: 1 / -1; }
+.create-grid .span-2 { grid-column: span 2; }
+.create-grid input { height: var(--ctl); padding: 0 var(--s2); border: var(--border) solid var(--line); background: var(--panel); font: inherit; font-size: 13px; }
+.create-grid input:focus { outline: none; border-color: var(--text); }
+.node-list .node-owner-input { width: 100%; padding: 1px var(--s1); border: 1px solid transparent; background: none; font: inherit; font-size: 12px; color: var(--text); }
+.node-list .node-owner-input:hover, .node-list .node-owner-input:focus { border-color: var(--text); outline: none; background: var(--panel); }
+.review-box:disabled { background: var(--panel-soft); color: var(--muted); }
+
+/* ---------- 设计 brief（V3 接线）：正文即输入框 ---------- */
+.doc-input { display: block; width: 100%; min-height: 26px; padding: 2px var(--s1); border: 1px solid transparent; background: none; font: inherit; font-size: 13px; line-height: 1.7; color: var(--text); resize: none; overflow: hidden; }
+.doc-input:hover { background: var(--panel-soft); }
+.doc-input:focus { outline: none; border-color: var(--text); background: var(--panel); }
+.doc-input::placeholder { color: var(--muted); }
+.doc-input.is-title { font-size: 18px; font-weight: 600; }
+.doc > h2 > .doc-input, .doc > section > .doc-input { width: calc(100% + 2 * (var(--s1) + 1px)); margin-left: calc(-1 * (var(--s1) + 1px)); } /* 文字和上方小标签、节标题对齐，悬停底色向外出血 */
+.doc-input.muted { color: var(--muted); }
+.goals li { display: grid; grid-template-columns: minmax(0, 1fr) 28px; align-items: start; }
+.brief-table td, .brief-blocks td { padding: 2px; vertical-align: top; }
+.brief-table .row-del { width: 32px; min-width: 32px; }
+.sec-status { height: 24px; padding: 0 var(--s1); border: 1px solid var(--line); background: var(--panel); font: 12px var(--font-sans); color: var(--text-2); }
+.doc-export { display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid var(--line); }
+.p9-cell .doc-input { padding: 0; }
+
+/* ---------- 价格方案（V3 接线）：方案面板里的输入框 ---------- */
+.cell-input { width: 100%; height: 26px; padding: 0 var(--s1); border: 1px solid var(--line); background: var(--panel); font: inherit; font-size: 12px; color: var(--text); }
+.cell-input.date { width: 96px; font-family: var(--font-mono); }
+.cell-input:focus { outline: none; border-color: var(--text); }
+.price-dirty { margin: 0 0 var(--s3); }
+.canvas-empty { position: absolute; left: 48px; top: 48px; display: flex; flex-direction: column; gap: var(--s1); padding: var(--s4); border: var(--border) dashed var(--line); background: var(--panel); color: var(--muted); }
+.canvas-empty strong { color: var(--text); }
+.ref.is-new { outline: 2px dashed var(--warn); outline-offset: 2px; }
+.st-digest-row { margin-top: var(--s2); }
+.st-digest .write-box pre { max-height: 220px; }
+.st-write { margin: 0 var(--s4) var(--s2); }
+.st-item.is-pending { border-color: var(--warn); }
+.st-actions button:disabled { opacity: 1; color: var(--line); cursor: not-allowed; }
+.kb-add { display: flex; flex-direction: column; gap: var(--s2); margin: var(--s3) 0; }
+.kb-add .row { gap: var(--s2); }
+.kb-title { flex: 1 1 auto; min-width: 0; height: var(--ctl-sm); padding: 0 var(--s2); border: 1px solid var(--line); background: var(--panel); font: inherit; font-size: 13px; }
+.kb-kind { width: 96px; height: var(--ctl-sm); padding: 0 var(--s2); border: 1px solid var(--line); background: var(--panel); font: inherit; font-size: 12px; }
+.kb-title:focus, .kb-kind:focus { outline: none; border-color: var(--text); }
+.set-edit { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s2) 0 var(--s3); }
+.set-input { height: var(--ctl); padding: 0 var(--s2); border: var(--border) solid var(--line); background: var(--panel); font: 13px var(--font-mono); }
+.set-input:focus { outline: none; border-color: var(--text); }
+.write-body code { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
+

@@ -60,7 +60,8 @@ export function mergeReports(groups) {
 
 // 缓存完整解析结果，按本次来源角色筛选，避免单/双文档切换时复用错误列表。
 // staleWhileRevalidate：超过十分钟的旧结果先返回，后台再读一次（打开日报不再等飞书）；手动刷新仍现读。
-export function createReportReader(getConfig, { readDocument = readReportDocument, now = Date.now, onSource = () => {}, staleWhileRevalidate = false } = {}) {
+// persist（2026-10-23 审核第 3 条）：{ load(url) → 上次完整解析结果 | null, save(url, result) }，由路由层接到 v3_snapshots；服务重启后先回旧结果再按 staleWhileRevalidate 刷新。
+export function createReportReader(getConfig, { readDocument = readReportDocument, now = Date.now, onSource = () => {}, staleWhileRevalidate = false, persist = null } = {}) {
   const entries = new Map();
   let lastAttempt = 0;
   const config = () => {
@@ -80,7 +81,11 @@ export function createReportReader(getConfig, { readDocument = readReportDocumen
     return list;
   };
   const read = async (url, refresh, validate, settled) => {
-    if (!entries.has(url)) entries.set(url, { generation: 0 });
+    if (!entries.has(url)) {
+      const fresh = { generation: 0 };
+      if (persist) { try { const saved = persist.load(url); if (Array.isArray(saved?.reports) && Number.isFinite(saved.time)) fresh.cache = saved; } catch { /* 快照读不到就现读 */ } }
+      entries.set(url, fresh);
+    }
     const entry = entries.get(url);
     if (!refresh && staleWhileRevalidate && entry.failed && now() < entry.failed.until) {
       if (entry.cache) return entry.cache;
@@ -99,6 +104,7 @@ export function createReportReader(getConfig, { readDocument = readReportDocumen
         validate(result); // 不能用无效标题覆盖上次完整结果。
         if (entry.generation === generation) {
           entry.cache = result; entry.failed = undefined;
+          if (persist) { try { persist.save(url, result); } catch (error) { console.error("日/周报快照写入失败", error); } }
           settled({ parsed: result, attemptAt });
         }
         return result;

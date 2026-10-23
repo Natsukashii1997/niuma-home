@@ -1,18 +1,15 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { DotMatrix, PixelIcon, TypeText } from "../../ui/bitmap.jsx";
-import { apiSend, useApi } from "../../api.js";
+import { useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Button, Card, Loadable, PageHeader, Placeholder, SampleBadge, StatStrip, Tag } from "../../ui/components.jsx";
-import { SavedNote } from "../../ui/write-flow.jsx";
-import { ManualNeedForm } from "../user/ManualNeedForm.jsx";
-import { deliveryMonth } from "../../constants.js";
 import { labelLayout, slotHeight } from "./label-layout.js";
 import { voiceSample } from "../../samples.js";
 
 // Voice · 留学之声（v3，侧栏独立模块）：留学生最近在讨论什么。基于本机运行的 AIHOT 引擎，免费英文信源；
 // 只看多数人的共性——同一人 / 同一矩阵只算一个来源，独立来源 ≥ 5 才上榜。
 // 接口用 503 + 错误码区分三种情况，页面分开写，不能混成一种：
-//   来源不可用（未配置、读取失败、记录过期、证据不完整）→ 热榜没有接通，改用模拟数据展示并醒目标「模拟数据」，不能转需求（用户 2026-10-23）；
+//   来源不可用（未配置、读取失败、记录过期、证据不完整）→ 接口返回 200 + unavailable（2026-10-23 起，不再用 503），热榜没有接通，改用模拟数据展示并醒目标「模拟数据」；
 //   真实读取后没有合格话题 → 合法的空榜（接口 200、hot 为空、note 写原因）；
 //   其他读取失败 → 可以重新读取。
 // 日期和趋势只用接口给的真实值（sparkDates、spark），不补造固定的七天。
@@ -20,6 +17,7 @@ const TREND = { surge: ["急升", "is-surge"], rising: ["上升", "is-up"], up: 
 const COUNTRY = ["澳洲", "新西兰", "英国", "美国", "加拿大", "香港", "新加坡", "马来西亚"];
 
 export function voiceIssue(state) {
+  if (state.data?.unavailable) return { kind: "unavailable", title: "学生讨论来源不可用，热榜没有接通", text: state.data.error };
   if (!state.error) return null;
   if (state.code === "VOICE_NO_QUALIFIED_TOPICS") return { kind: "empty", title: "现在没有合格的话题", text: state.error };
   if (/^VOICE_/.test(state.code || "")) return { kind: "unavailable", title: "学生讨论来源不可用，热榜没有接通", text: state.error };
@@ -71,27 +69,12 @@ function VoiceBoard({ v, sample = false }) {
   const [kind, setKind] = useState("");
   const [word, setWord] = useState("");
   const [sel, setSel] = useState(v.hot[0]?.id);
-  // 转为主线需求草稿：写进交付月；已经转过的话题直接链到那条草稿，不重复转。
-  const month = deliveryMonth();
-  const drafts = useApi("/api/v3/manual-needs");
-  const [records, setRecords] = useState(null); // 保存后用回读到的记录，不再等重新读取
-  const [converting, setConverting] = useState("");
-  const [note, setNote] = useState("");
   const tags = [...new Set(v.hot.flatMap((t) => t.tags))];
   const countries = tags.filter((t) => COUNTRY.includes(t));
   const schools = tags.filter((t) => !COUNTRY.includes(t));
   const kinds = [...new Set(v.hot.map((t) => t.kind))];
   const list = v.hot.filter((t) => (!scope || t.tags.includes(scope)) && (!kind || t.kind === kind) && (!word || `${t.title}${t.summary}`.includes(word)));
   const cur = list.find((t) => t.id === sel) || list[0];
-  const draft = cur && (records || drafts.data?.records || []).find((r) => r.month === month && r.voice?.id === cur.id);
-  const converted = async (need) => {
-    const back = await apiSend("GET", "/api/v3/manual-needs");
-    const r = back.records.find((x) => x.need.id === need.id);
-    if (!r || JSON.stringify(r.need) !== JSON.stringify(need)) return false;
-    setRecords(back.records); setConverting(""); setNote(`已转为 ${month} 主线需求草稿，回读核对一致`);
-    return true;
-  };
-  const rereadDrafts = async () => setRecords((await apiSend("GET", "/api/v3/manual-needs")).records);
   const delta = (t) => (t.spark?.length >= 2 ? t.spark.at(-1) - t.spark.at(-2) : 0);
   const rising = [...v.hot].sort((a, b) => delta(b) - delta(a)).slice(0, 3);
   const s = v.stats;
@@ -131,7 +114,7 @@ function VoiceBoard({ v, sample = false }) {
           <ol className="hot-list">
             {list.map((t, i) => (
               <li key={t.id}>
-                <button type="button" className={t.id === cur?.id ? "is-sel" : ""} onClick={() => { setSel(t.id); setNote(""); }}>
+                <button type="button" className={t.id === cur?.id ? "is-sel" : ""} onClick={() => setSel(t.id)}>
                   <span className={`rank tnum${i === 0 ? " is-top" : ""}`}>{String(i + 1).padStart(2, "0")}</span>
                   <span className="hot-main">
                     <strong>{t.title}</strong>
@@ -159,14 +142,6 @@ function VoiceBoard({ v, sample = false }) {
                 <div className="ai-box"><span className="label"><PixelIcon name="spark" />共性摘要</span>{cur.summary}</div>
                 <div className="label">代表来源 · {(cur.sources || []).length}</div>
                 <ul className="src-list">{(cur.sources || []).map(([t, src]) => <li key={t}><q>{t}</q><span className="tnum small muted">{src}</span></li>)}</ul>
-                <div className="label">关联主线需求</div>
-                {cur.need ? <a className="chip" href={href("user", "strategy")}><PixelIcon name="link" />{cur.need}</a> : <span className="small muted">还没有对应的主线需求</span>}
-                <SavedNote text={note} onClose={() => setNote("")} />
-                {draft ? <a className="chip" href={href("user", "strategy", draft.need.id)}><PixelIcon name="link" />已转为 {month} 主线需求草稿：{draft.need.need}</a>
-                  : converting === cur.id ? <ManualNeedForm key={cur.id} embedded month={month} voiceId={cur.id} title="转为主线需求草稿"
-                    initial={{ seg: cur.tags.join(" · ").slice(0, 50), node: "Voice 话题", need: cur.title.slice(0, 500), pain: cur.summary.slice(0, 500) }}
-                    onSaved={converted} onReread={rereadDrafts} onClose={() => setConverting("")} />
-                  : <div className="row"><Button onClick={() => { setConverting(cur.id); setNote(""); }} disabled={sample || (!drafts.data && !records)} title={sample ? "模拟话题不能转为需求" : drafts.error ? `读取已转草稿失败：${drafts.error}` : undefined}><PixelIcon name="plus" />转为主线需求草稿</Button>{drafts.error && <span className="small risk-text">读取已转草稿失败，暂不能转</span>}</div>}
               </div>
             </section>
           )}

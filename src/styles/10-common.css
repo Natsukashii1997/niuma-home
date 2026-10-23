@@ -1,0 +1,111 @@
+/* v3（2026-10-16）：在 styles.css 之后加载，覆盖与新增。规则见 docs/STYLE-GUIDE.md v2.1 与 docs/design/diagnosis/。
+   要点：像素字体只用于每张卡的主数字；网点不压文字；表格数字一律等宽右对齐；图标 16px。只做电脑端（≥1280px）。 */
+
+[hidden] { display: none !important; }
+.pixel-icon { vertical-align: -2px; }
+.icon-btn { display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 1px solid transparent; background: none; color: var(--muted); cursor: pointer; }
+.icon-btn:hover { border-color: var(--text); color: var(--text); }
+.icon-btn.is-on { color: var(--signal); }
+.btn-sm { height: 28px; padding: 0 var(--s2); font-size: 12px; }
+.btn-xs { height: 24px; padding: 0 var(--s2); font-size: 12px; border-width: 1px; gap: var(--s1); }
+.btn .pixel-icon { margin-left: -2px; }
+.tnum, .grid td.r, .grid th.r { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.grid .num { font-family: var(--font-mono); }
+.label-row { display: flex; align-items: center; gap: var(--s2); }
+.sep-dot::before { content: "·"; margin: 0 var(--s1); color: var(--muted); }
+.clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.link-btn { border: 0; background: none; padding: 0; font: inherit; font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--text); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.link-btn:hover { color: var(--signal); }
+/* 卡头右侧：跳转用下划线链接 + 箭头（外链用 external），描边按钮只给真正的操作（二次评审 P2-3） */
+.card-extra .link { display: inline-flex; align-items: center; gap: var(--s1); }
+kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); border: 1px solid var(--line); border-bottom-width: 2px; color: var(--text-2); background: var(--panel); }
+
+/* ---------- 外框 ---------- */
+.chrome { gap: var(--s3); }
+.chrome-path { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chrome-btn { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 var(--s2); border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+.chrome-btn:hover, .chrome-btn[aria-expanded="true"] { background: var(--text); color: var(--panel); border-color: var(--text); }
+.chrome-btn b { min-width: 16px; padding: 0 3px; background: var(--signal); color: var(--panel); font-weight: 500; text-align: center; }
+.chrome-time { font-variant-numeric: tabular-nums; }
+.sidebar { overflow-y: auto; }
+.nav-group { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--s2); }
+.nav-group-label { padding: var(--s2) var(--s2) var(--s1); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--muted); }
+.sidebar a.active::after { right: auto; left: -12px; top: 0; width: 4px; height: 100%; margin: 0; }
+.sidebar a .pixel-icon { flex-shrink: 0; }
+
+/* ---------- 页面通用 ---------- */
+.page-header { margin-bottom: var(--s4); }
+/* 点阵只出现在卡片之间的缝隙和页面留白里；不在面板里的文字区给实底，避免圆点落进字行被读成标点（二次评审 P1-2） */
+.page-header, .home-hero, .tabs, .tab-desc, .toolbar, .filter-bar, .section-head, .tl-intro, .tl-legend, .price-note { background: var(--bg); }
+.page-header h1 { font-size: 22px; }
+.tabs { margin-bottom: var(--s4); overflow-x: auto; scrollbar-width: none; }
+.tabs a { white-space: nowrap; }
+.tabs a .tab-badge { margin-left: var(--s1); font-family: var(--font-mono); font-size: 11px; color: var(--signal); }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s3); }
+.toolbar .spacer { flex: 1; }
+.month-switch { display: inline-flex; align-items: stretch; border: var(--border) solid var(--text); background: var(--panel); height: 32px; }
+.month-switch button { display: grid; place-items: center; width: 30px; border: 0; background: none; color: var(--text); cursor: pointer; }
+.month-switch button:hover { background: var(--text); color: var(--panel); }
+.month-switch .is-cur { display: inline-flex; align-items: center; gap: var(--s2); padding: 0 var(--s2); border-left: 1px solid var(--line); border-right: 1px solid var(--line); font-family: var(--font-mono); font-size: 13px; }
+.month-switch em { font-style: normal; font-size: 11px; padding: 0 var(--s1); background: var(--signal); color: var(--panel); }
+.status-mark { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+.status-mark i { width: 10px; height: 10px; border: 2px solid var(--text); flex-shrink: 0; }
+.status-mark.is-done i { background: var(--text); }
+.status-mark.is-part i { background-image: var(--dither-ink-2); }
+.status-mark.is-todo i { border-color: var(--muted); }
+.status-mark.is-todo { color: var(--muted); }
+.status-mark.is-done i { border-color: var(--ok); background: var(--ok); }
+.status-mark.is-part i { border-color: var(--info); background-image: none; background: linear-gradient(90deg, var(--info) 50%, transparent 50%); }
+.status-mark.is-warn i { border-color: var(--risk); background: var(--risk); }
+.status-mark.is-warn { color: var(--risk); }
+.state { display: inline-flex; align-items: center; gap: var(--s1); padding: 0 var(--s1); font-size: 12px; white-space: nowrap; border: 1px solid var(--line); }
+.state::before { content: ""; width: 6px; height: 6px; background: var(--muted); }
+.state-done { border-color: var(--ok-soft); background: var(--ok-soft); color: var(--ok); }
+.state-done::before { background: var(--ok); }
+.state-doing { border-color: var(--info-soft); background: var(--info-soft); color: var(--info); }
+.state-doing::before { background: var(--info); }
+.state-todo::before { background: none; border: 1px solid var(--muted); }
+.state-block { border-color: var(--risk-soft); background: var(--risk-soft); color: var(--risk); }
+.state-block::before { background: var(--risk); }
+.placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s2); min-height: 160px; color: var(--muted); }
+.card .placeholder { min-height: 120px; border: 0; background: none; padding: var(--s3) var(--s4); } /* 卡片里不再套一层虚线框 */
+.placeholder.is-page { min-height: 360px; } /* 整页只有一个空状态时给足高度，不再只有窄窄一条 */
+.placeholder strong { color: var(--text); font-weight: 600; }
+.placeholder p { margin: 0; max-width: 46ch; font-size: 13px; line-height: 1.6; }
+.toast { position: fixed; left: 50%; bottom: 28px; z-index: 40; transform: translateX(-50%); display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--s3); background: var(--text); color: var(--panel); font-size: 13px; }
+.toast .pixel-icon { color: var(--signal); }
+.modal { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: var(--border) solid var(--text); background: var(--panel); color: var(--text); }
+.modal::backdrop { background-color: transparent; background-image: var(--dither-ink-1); }
+.modal.is-wide { width: min(1040px, calc(100vw - 32px)); }
+.modal > .card-head { position: sticky; top: 0; z-index: 2; background: var(--panel); }
+.modal-body { padding: var(--s4) var(--s4); }
+.modal-foot { display: flex; justify-content: flex-end; gap: var(--s2); padding: var(--s3) var(--s4); border-top: 1px solid var(--line); background: var(--panel-soft); }
+.field { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.field > span { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; color: var(--muted); }
+.field input, .field textarea, .field select { width: 100%; padding: var(--s2) var(--s2); border: var(--border) solid var(--text); background-color: var(--panel); color: var(--text); font: inherit; }
+.field input:focus, .field textarea:focus { outline: none; border-color: var(--signal); }
+
+/* ---------- 表格：网点不压文字 ---------- */
+.grid td.changed { background-image: none; background-color: var(--panel); position: relative; border-left: 0; }
+/* 「改」的橙线上下各内缩 4px，相邻几行不会连成一条竖线（P2-5） */
+.grid td.changed::before { content: ""; position: absolute; left: 0; top: var(--s1); bottom: var(--s1); width: 3px; background: var(--signal); }
+.grid td.changed::after { content: "改"; position: absolute; top: 0; right: 0; padding: 0 var(--s1); font-size: 11px; line-height: 16px; background: var(--signal); color: var(--panel); }
+.changed-dot { background-image: none; background-color: var(--panel); }
+.grid tbody tr:hover td { background-color: var(--panel-soft); }
+.grid tbody tr:hover td.changed { background-color: var(--panel-soft); }
+
+/* ---------- Markdown ---------- */
+.md { display: flex; flex-direction: column; gap: var(--s2); line-height: 1.7; }
+.md p { margin: 0; }
+.md ul, .md ol { margin: 0; padding-left: var(--s4); }
+.md .md-h { margin: var(--s2) 0 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: var(--s2); }
+.md .md-h1, .md .md-h2 { font-size: 18px; }
+.md .md-h3::before { content: ""; width: 4px; height: 14px; background: var(--text); }
+.md-table { overflow-x: auto; border: 1px solid var(--line); }
+.md-table .grid { background: var(--panel); }
+.md-table .grid td { min-width: 0; white-space: normal; font-size: 13px; }
+.md-table .grid td.nowrap { white-space: nowrap; }
+.md-table .grid td.md-id { font: 12px var(--font-mono); color: var(--muted); }
+.md-hr { margin: var(--s4) 0; border: 0; border-top: 1px solid var(--line); }
+.md-table .grid td:first-child { width: 32px; color: var(--muted); font-family: var(--font-mono); }
+

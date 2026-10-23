@@ -1,0 +1,29 @@
+/* ---------- 自言自语抽屉 ---------- */
+.selftalk { position: fixed; z-index: 8; top: 34px; right: 0; bottom: 0; width: 400px; display: flex; flex-direction: column; background: var(--panel); border-left: var(--border) solid var(--text); }
+@media (min-width: 1600px) { .app.drawer-open .main { margin-right: 400px; } }
+.st-head { display: flex; justify-content: space-between; align-items: flex-start; padding: var(--s3) var(--s4) var(--s2); border-bottom: 1px solid var(--line); }
+.st-head h2 { display: flex; align-items: center; gap: var(--s2); margin: 0 0 2px; font-size: 14px; }
+.st-digest { margin: var(--s3) var(--s4) 0; padding: var(--s2) var(--s3); border: 1px solid var(--line); border-left: 4px solid var(--text); }
+.st-digest .label { display: flex; align-items: center; gap: 6px; color: var(--text); }
+.st-digest p { margin: var(--s1) 0 0; font-size: 13px; line-height: 1.65; }
+.st-filter { padding: var(--s3) var(--s4) var(--s1); }
+.st-list { list-style: none; margin: 0; padding: 0 var(--s4) var(--s3); overflow-y: auto; flex: 1; }
+.st-day { padding: var(--s3) 0 var(--s1); }
+.st-item { position: relative; padding: var(--s2) var(--s3); margin-bottom: var(--s2); border: 1px solid var(--line); background: var(--panel); cursor: default; }
+.st-item.is-cur { border-color: var(--text); }
+.st-item.is-arch p { color: var(--muted); }
+.st-item p { margin: var(--s1) 0 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.st-meta { display: flex; align-items: center; gap: var(--s2); }
+.st-tag { padding: 0 var(--s1); font-size: 11px; border: 1px solid var(--line); color: var(--text-2); }
+.st-tag.is-star { border-color: var(--signal); color: var(--signal); }
+.st-tag.is-done { background: var(--text); color: var(--panel); border-color: var(--text); }
+.st-actions { position: absolute; top: 6px; right: 6px; display: none; gap: 2px; background: var(--panel); }
+.st-item:hover .st-actions, .st-item.is-cur .st-actions { display: inline-flex; }
+.st-actions button { display: inline-flex; align-items: center; height: 24px; padding: 0 var(--s2); border: 1px solid var(--line); background: var(--panel); font: inherit; font-size: 11px; color: var(--text-2); cursor: pointer; }
+.st-actions button:hover { border-color: var(--text); color: var(--text); }
+.st-actions button.is-on { color: var(--signal); border-color: var(--signal); }
+.st-empty { padding: var(--s5) 0; text-align: center; }
+.st-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--s2); padding: var(--s2) var(--s4); border-top: 1px solid var(--line); background: var(--panel-soft); }
+.st-foot > span { flex: 1 0 100%; }
+.st-foot > .link-btn { margin-left: auto; }
+

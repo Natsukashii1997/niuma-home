@@ -1,0 +1,32 @@
+/* ---------- 二次评审 P1-9 / P1-12 ---------- */
+/* 列表 + 详情：两栏框等高，较短一栏的内容吸顶 */
+.proj-items { position: sticky; top: var(--sticky-top); }
+/* 加载：卡片里是 3 行网点骨架（无字区域）；整页级用按帧加载 */
+.state-loading { max-width: 320px; padding: var(--s1) 0; }
+.state-loading.is-big { max-width: 320px; padding: var(--s4) 0; }
+/* 方案录入「解析预览」空态的装饰骨架条（不是加载） */
+.parse-empty .state-loading { display: flex; flex-direction: column; gap: var(--s2); max-width: none; }
+.parse-empty .state-loading i { height: 10px; background-image: var(--dither-1); }
+.parse-empty .state-loading i:nth-child(2) { width: 80%; }
+.parse-empty .state-loading i:nth-child(3) { width: 55%; }
+/* 报错：哪份数据 + 原因 + 重新读取 */
+.state-error { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); background: var(--panel); border: var(--border) solid var(--line); border-left: 4px solid var(--risk); }
+.state-error strong { color: var(--risk); white-space: nowrap; }
+.state-error .small { flex: 1; min-width: 0; color: var(--text-2); }
+.state-error .btn { height: var(--ctl-sm); }
+.placeholder .btn { margin-top: var(--s2); }
+/* 首页 Agent 卡：列表 + 常用开场 + 新对话（新对话贴卡底） */
+.agent-card { display: flex; flex-direction: column; gap: var(--s3); height: 100%; }
+/* 预设助手四宫格：像素牛 + 名字 + 一行职责；悬停或聚焦选中，下方开场句跟着换 */
+.agent-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s2); } /* 四个助手一行 */
+.agent-tile { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s1); padding: var(--s3); border: 1px solid var(--line); background: var(--panel); color: var(--text); text-decoration: none; min-width: 0; }
+.agent-tile:hover { border-color: var(--text); outline: 1px solid var(--text); } /* 规范：不用阴影，选中加粗墨框 */
+.agent-tile strong { font-size: 13px; white-space: nowrap; }
+.agent-tile small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; line-height: 1.4; color: var(--muted); } /* 职责说明一行，悬停看全文 */
+.agent-face { flex: none; display: block; }
+.chat-list-name { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.chat-list-name small { font-size: 11px; }
+.agent-card .agent-new { align-self: flex-start; margin-top: auto; }
+/* 首页 Agent 卡占 4 栏：1320px 以下四个一行会把名字挤出小卡，改两行两列（用户 2026-10-23）；900px 以下卡片占满一行，回到一行四个 */
+@media (min-width: 901px) and (max-width: 1320px) { .agent-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+

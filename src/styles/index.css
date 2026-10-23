@@ -1,0 +1,22 @@
+/* v3 页面样式：2026-10-23 从 styles-v3.css 按模块拆开，只切段不改规则。序号就是加载顺序（和原文件一致，层叠顺序不变）；
+   同模块的「V3 接线」段在 84-v3-wiring.css。改哪个模块改哪个文件；新模块按序号插入，并在这里登记。 */
+@import "./10-common.css";
+@import "./20-home.css";
+@import "./30-marketing.css";
+@import "./40-agent.css";
+@import "./41-reports.css";
+@import "./42-settings.css";
+@import "./50-user.css";
+@import "./55-voice.css";
+@import "./60-codex.css";
+@import "./61-selftalk.css";
+@import "./62-projects.css";
+@import "./70-kb.css";
+@import "./80-review-p1.css";
+@import "./81-command.css";
+@import "./82-statusbar.css";
+@import "./83-write-flow.css";
+@import "./84-v3-wiring.css";
+@import "./85-kb-v3.css";
+@import "./90-playbook.css";
+@import "./95-mentor-path.css";

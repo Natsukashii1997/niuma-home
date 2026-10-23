@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { apiSend, useApi } from "../../api.js";
-import { deliveryMonth } from "../../constants.js";
+import { currentMonth } from "../../constants.js";
 import { href } from "../../router.js";
 import { PixelIcon } from "../../ui/bitmap.jsx";
 import { Button, Loadable, MonthSwitch, PendingButton, Placeholder, Tag } from "../../ui/components.jsx";
@@ -41,7 +41,7 @@ function EvidenceNotice({ month, ev }) {
 }
 
 export function Strategy() {
-  const [month, setMonth] = useState(deliveryMonth);
+  const [month, setMonth] = useState(currentMonth); // 默认本月（用户 2026-10-23）
   const path = `/api/v3/user-strategy?month=${month}`;
   const state = useApi(path);
   const gen = useWriteFlow(), fin = useWriteFlow(), edit = useWriteFlow();

@@ -1,0 +1,17 @@
+/* ---------- 日/周报 ---------- */
+.report-toolbar { padding: var(--s2) var(--s3); background: var(--panel); border: var(--border) solid var(--line); }
+.reports-page .report-sources { margin: 0; padding: 0; border: 0; background: none; display: flex; gap: var(--s4); }
+.reports-page .report-sources .row { gap: var(--s2); }
+.reports-page .chat-layout { grid-template-columns: 220px minmax(0, 1fr); }
+.reports-page .chat-list a { gap: 2px; }
+.report-wd { font-family: var(--font-sans); font-weight: 400; font-size: 12px; color: var(--muted); }
+.chat-list a.active .report-wd, .chat-list a.active .report-sum { color: #9CA0A8; }
+.chat-list a.active .report-sum .signal { color: var(--signal); }
+.reports-page .report-body { padding: var(--s4) var(--s4) var(--s5); max-height: none; }
+.report-items-block { display: flex; flex-direction: column; gap: var(--s2); }
+.report-filter { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
+.report-search { flex: 1; min-width: 180px; height: 30px; padding: 0 var(--s2); border: var(--border) solid var(--line); background: var(--panel); font: inherit; font-size: 13px; }
+.report-search:focus { outline: none; border-color: var(--text); }
+.report-lines { align-items: center; }
+.reports-page .chat-list { position: sticky; top: var(--sticky-top); max-height: calc(100vh - var(--sticky-top) - 16px); }
+

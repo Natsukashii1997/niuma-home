@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { PixelIcon } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, Loadable, MonthSwitch, StatusMark, Tag, useToast } from "../../ui/components.jsx";
+import { Button, Loadable, Modal, MonthSwitch, StatusMark, Tag, useToast } from "../../ui/components.jsx";
 import { BriefAttachments } from "./BriefAttachments.jsx";
 import { BriefSync } from "./BriefSync.jsx";
 import Thumb from "../../ui/Thumb.jsx";
@@ -44,6 +44,7 @@ function Text({ value, onChange, placeholder = "待写", className = "" }) {
 function Brief({ brief, month, setMonth, journal }) {
   const [sec, setSec] = useState(1);
   const [all, setAll] = useState(true);
+  const [removing, setRemoving] = useState(null); // 待删物料的序号：用公共 Modal 确认，不用浏览器原生弹窗（2026-10-23）
   const saverRef=useRef(null);
   if(!saverRef.current)saverRef.current=createBriefAutosave({initial:brief,storage:journal.storage,journalId:journal.journalId,
     send:body=>apiSend('POST',`/api/v3/briefs/${month}/autosave`,body),read:()=>apiSend('GET',`/api/v3/briefs/${month}`)});
@@ -112,6 +113,10 @@ function Brief({ brief, month, setMonth, journal }) {
         <MonthSwitch month={month} onChange={async m=>{if(!locked){try{await attachments.flush();await saver.flush();setMonth(m);}catch{/* Preserve draft. */}}}} mark={month===currentMonth()?"本月":""}/>
         <Button onClick={copyBrief} title="复制全文"><PixelIcon name="copy"/></Button>
       </BriefSync>
+      <Modal open={removing !== null} onClose={() => setRemoving(null)} icon="alert" title="删除物料"
+        footer={<><Button onClick={() => setRemoving(null)}>取消</Button><Button variant="primary" onClick={() => { materialChange(draft.materials.filter((_, k) => k !== removing)); setRemoving(null); }}>确认删除</Button></>}>
+        <p>删除物料「{(removing !== null && draft.materials[removing]?.name) || "未命名"}」及对应的受众、交付安排和文案框架。只改本地草稿，同步到飞书前都可以再改。</p>
+      </Modal>
       {saving.error && <div className="brief-save-error" role="alert"><span>{saving.error.message} 填写内容仍在当前页面。</span>
         {saving.error.code==='BRIEF_SAVE_CONFLICT'?<><Button disabled={saving.resolving} onClick={()=>saver.resolve(true).catch(()=>{})}>保存我的草稿</Button><Button disabled={saving.resolving} onClick={()=>saver.resolve(false).catch(()=>{})}>使用另一页面的版本</Button></>:<Button onClick={()=>saver.flush().catch(()=>{})}>重试自动保存</Button>}
       </div>}
@@ -130,13 +135,13 @@ function Brief({ brief, month, setMonth, journal }) {
           <h2><Text value={draft.title} onChange={(v) => edit((d) => { d.title = v; })} placeholder="标题" className="is-title" /></h2>
           {show(1) && <section>{head(1)}{draft.background.from && <p className="small muted">来源：{draft.background.from}</p>}
             <Text value={draft.background.text} onChange={(v) => edit((d) => { d.background.text = v; })} placeholder="根据同月用户策略生成一段背景，也可以直接填写" />
-            <ol className="goals">{draft.background.goals.map((g, k) => <li key={k}><Text value={g} onChange={(v) => edit((d) => { d.background.goals[k] = v; })} /><button type="button" className="icon-btn" title="删掉这条目标" onClick={() => edit((d) => { d.background.goals.splice(k, 1); })}><PixelIcon name="close" /></button></li>)}</ol>
+            <ol className="goals">{draft.background.goals.map((g, k) => <li key={k}><Text value={g} onChange={(v) => edit((d) => { d.background.goals[k] = v; })} /><button type="button" className="icon-btn" title="删掉这条目标" aria-label="删掉这条目标" onClick={() => edit((d) => { d.background.goals.splice(k, 1); })}><PixelIcon name="close" /></button></li>)}</ol>
             <button type="button" className="link-btn" onClick={() => edit((d) => { d.background.goals.push(""); })}><PixelIcon name="plus" />加一条目标</button></section>}
           {show(2) && <section>{head(2)}
             <p className="small muted">先填写物料名称，再点右侧「内部生成建议」。名称会同步到第三、四部分。</p>
             <RowsTable widths={BRIEF_WIDTHS.audience} cols={BRIEF_HEADS.audience} rows={draft.audience} onChange={fn=>edit(d=>{const ms=[...d.materials];while(ms.length<3)ms.push({id:crypto.randomUUID(),name:''});Object.assign(d,syncBriefMaterials(d,ms));fn(d.audience);})} allowRows={false}
               onName={(i,name)=>{const ms=[...draft.materials];while(ms.length<=i)ms.push({id:crypto.randomUUID(),name:''});ms[i]={...ms[i],name};materialChange(ms);}}
-              onRemove={i=>{if(confirm_('删除这份物料及对应受众、交付安排和文案框架？'))materialChange(draft.materials.filter((_,k)=>k!==i));}} />
+              onRemove={i=>setRemoving(i)} />
             <Button disabled={locked} onClick={()=>materialChange([...draft.materials,{id:crypto.randomUUID(),name:''}])}><PixelIcon name="plus"/>添加物料</Button>
           </section>}
           {show(3) && <section>{head(3)}<RowsTable widths={BRIEF_WIDTHS.timeline} cols={BRIEF_HEADS.timeline} rows={draft.timeline} onChange={fn=>edit(d=>{const ms=[...d.materials];while(ms.length<3)ms.push({id:crypto.randomUUID(),name:''});Object.assign(d,syncBriefMaterials(d,ms));fn(d.timeline);})} allowRows={false} fixedFirst /></section>}
@@ -189,8 +194,6 @@ function CloudSupplement({entries,documentUrl}) {
   </details>;
 }
 
-const confirm_ = (text) => window.confirm(text);
-
 function RowsTable({ cols, rows, onChange, allowRows=true, fixedFirst=false, onName, onRemove, header=true, widths }) {
   const display=briefRows(rows,cols.length);
   const change=fn=>onChange(list=>{while(list.length<display.length)list.push(cols.map(()=>''));fn(list);});
@@ -203,7 +206,7 @@ function RowsTable({ cols, rows, onChange, allowRows=true, fixedFirst=false, onN
         <tbody>
           {display.map((r, i) => (
             <tr key={i}>{r.map((c, j) => <td key={j}>{j===0 && fixedFirst?<span>{c}</span>:j===0&&onName?<MaterialName value={c} index={i} onChange={v=>onName(i,v)} />:<Text value={c} placeholder="" onChange={v=>change(list=>{list[i][j]=v;})}/>}</td>)}
-              {(allowRows || onRemove) && <td className="row-del">{i<rows.length&&<button type="button" className="icon-btn" title="删掉这一行" onClick={() => onRemove?onRemove(i):onChange((list) => { list.splice(i, 1); })}><PixelIcon name="close" /></button>}</td>}</tr>
+              {(allowRows || onRemove) && <td className="row-del">{i<rows.length&&<button type="button" className="icon-btn" title="删掉这一行" aria-label="删掉这一行" onClick={() => onRemove?onRemove(i):onChange((list) => { list.splice(i, 1); })}><PixelIcon name="close" /></button>}</td>}</tr>
           ))}
         </tbody>
       </table>

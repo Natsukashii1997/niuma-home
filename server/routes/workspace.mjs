@@ -51,7 +51,12 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     validate: (key, value) => V3_SETTING_KEYS.has(key) ? validateV3Setting(key, value) : settingValue(key, value),
   });
   const calendar = createCalendarReader(calendarOptions);
-  const reports = createReportReader(() => getSettings(db), { staleWhileRevalidate: true, ...reportOptions, onSource: event => {
+  // 日/周报解析结果落库：v3_snapshots 的 kind 为 reports:<文档 URL>，重启后先回旧结果（2026-10-23）
+  const reportSnapshots = {
+    load: url => { const row = db.prepare('SELECT payload FROM v3_snapshots WHERE kind=?').get(`reports:${url}`); return row ? JSON.parse(row.payload) : null; },
+    save: (url, result) => db.prepare('INSERT INTO v3_snapshots (kind,payload,updated_at) VALUES (?,?,?) ON CONFLICT(kind) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at').run(`reports:${url}`, JSON.stringify(result), new Date(result.time).toISOString()),
+  };
+  const reports = createReportReader(() => getSettings(db), { staleWhileRevalidate: true, persist: reportSnapshots, ...reportOptions, onSource: event => {
     const settings = getSettings(db);
     const roles = event.single && (!event.ok || event.kinds?.includes('周报')) ? ['daily', 'weekly'] : [event.role];
     for (const role of roles) {
@@ -79,7 +84,11 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     route("GET", "/api/v3/status", handleV3(() => sourceStatus(db, { implemented:['daily','weekly','timeline','kb','nas', ...(voice.identity() ? ['voice'] : [])], voiceIdentity:voice.identity() }))),
     route('GET', '/api/v3/voice', async (req,res) => {
       try { json(res,200,await voice()); }
-      catch(error) { json(res,error.status||500,{error:error.status?error.message:'留学之声读取失败',code:error.code||'VOICE_READ_FAILED'}); }
+      // 来源未接通（503 + VOICE_*）改回 200 + unavailable（2026-10-23 审核第 8 条）：页面照常显示模拟数据并标明，控制台不再有红字。
+      catch(error) {
+        if (error.status===503 && /^VOICE_/.test(error.code||'')) return json(res,200,{unavailable:true,code:error.code,error:error.message});
+        json(res,error.status||500,{error:error.status?error.message:'留学之声读取失败',code:error.code||'VOICE_READ_FAILED'});
+      }
     }),
     route("GET", "/api/v3/settings", handleV3(() => settingsChanges.read())),
     route("POST", "/api/settings/:key/preview", handleV3(async (req, { params }) => settingsChanges.preview(params.key, await readJson(req)))),

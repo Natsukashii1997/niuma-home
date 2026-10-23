@@ -109,7 +109,7 @@ test('参考图片实际系统压缩为JPEG，拒绝伪造格式',async()=>{
 
 test('首页待办使用完整年份和异常，空门禁不误报，不再列主线需求，外部失败不返回假空',async t=>{
   const {db}=database(t),input={timeline:{anomalies:[{},{verification:{status:'confirmed'}},{ruling:{decision:'exclude'}}]},needs:{needs:[{status:'草稿'},{status:'待复核'}]},projects:[{name:'项目',nodes:[{t:'明年节点',due:'01-01',dueDate:'2027-01-01',done:false,owner:'人'},{t:'空门禁',gate:true,done:false},{t:'待审',gate:true,gateReady:true}]}],campaign:null,matrices:[],settings:{costPerHour:440,floorMargin:.25}};
-  const list=todoView(input,Date.parse('2026-12-31T12:00:00+08:00'));assert.ok(!list.some(x=>x.kind==='需求'));assert.equal(list.filter(x=>x.kind==='审核').length,1);assert.match(list.find(x=>x.kind==='项目').text,/1天内/);assert.equal(list.find(x=>x.kind==='项目').dueDate,'2027-01-01');
+  const list=todoView(input,Date.parse('2026-12-31T12:00:00+08:00'));assert.ok(!list.some(x=>x.kind==='需求'));assert.equal(list.filter(x=>x.kind==='审核').length,1);assert.match(list.find(x=>x.kind==='项目').sub,/1天内/);assert.equal(list.find(x=>x.kind==='项目').dueDate,'2027-01-01');
   assert.equal(list.find(x=>x.kind==='时间线').text,'1 条 AI 推测');
   const read=createTodoReader(db,{timeline:async()=>input.timeline,projects:{list:async()=>input.projects},now:()=>Date.parse('2026-12-31T12:00:00+08:00')});assert.equal((await read()).find(x=>x.kind==='项目').dueDate,'2027-01-01');
   await assert.rejects(createTodoReader(db,{timeline:async()=>{throw Error('source failed');},projects:{list:async()=>[]}})(),/source failed/);

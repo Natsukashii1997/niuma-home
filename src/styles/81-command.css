@@ -1,0 +1,35 @@
+/* ---------- ⌘K 命令面板（第三轮提案 2）：遮罩是墨色网点；选中行反色 + 左侧 4px 橙条，和侧栏选中一致 ---------- */
+.cmdk-dim { position: fixed; inset: 0; z-index: 30; background-image: var(--dither-ink-1); }
+.cmdk { position: fixed; z-index: 31; left: calc(50% + 104px); top: 96px; transform: translateX(-50%); width: min(820px, calc(100vw - 272px)); display: flex; flex-direction: column; background: var(--panel); border: var(--border) solid var(--text); }
+.cmdk-input { display: flex; align-items: center; gap: var(--s2); height: 56px; padding: 0 var(--s4); border-bottom: 1px solid var(--line); }
+.cmdk-input input { flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: none; font: inherit; font-size: 18px; color: var(--text); }
+.cmdk-input input::placeholder { font-size: 14px; color: var(--muted); }
+.cmdk-scopes { display: flex; align-items: center; gap: var(--s1); padding: var(--s2) var(--s4); border-bottom: 1px solid var(--line); }
+.cmdk-scopes button { height: 24px; padding: 0 var(--s2); border: 1px solid var(--line); background: var(--panel); font: inherit; font-size: 12px; color: var(--text-2); cursor: pointer; }
+.cmdk-scopes button:hover { border-color: var(--text); color: var(--text); }
+.cmdk-scopes button.is-on { background: var(--text); border-color: var(--text); color: var(--panel); }
+.cmdk-hint { margin-left: auto; font: 11px var(--font-mono); color: var(--muted); }
+.cmdk-body { display: grid; grid-template-columns: minmax(0, 1fr) 280px; height: min(420px, calc(100vh - 300px)); }
+.cmdk-list { overflow-y: auto; padding: var(--s2) 0; border-right: 1px solid var(--line); }
+.cmdk-group { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--s4) var(--s1); font: 11px var(--font-mono); letter-spacing: 0.06em; color: var(--muted); }
+.cmdk-row { position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; align-items: center; gap: var(--s3); min-height: 36px; padding: 0 var(--s4); cursor: pointer; }
+.cmdk-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cmdk-sub { margin-left: var(--s2); font-size: 12px; color: var(--muted); }
+.cmdk-row mark { padding: 0 1px; background: var(--warn-soft); color: inherit; }
+.cmdk-go { font: 11px var(--font-mono); color: var(--muted); white-space: nowrap; }
+.cmdk-row.is-sel { background: var(--text); color: var(--panel); }
+.cmdk-row.is-sel::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--signal); }
+.cmdk-row.is-sel .cmdk-sub, .cmdk-row.is-sel .cmdk-go { color: #9CA0A8; }
+.cmdk-row.is-sel mark { background: var(--signal); color: var(--panel); }
+.cmdk-empty { padding: var(--s5) var(--s4); color: var(--muted); }
+.cmdk-pre { display: flex; flex-direction: column; gap: var(--s3); min-height: 0; overflow-y: auto; padding: var(--s4); background: var(--panel-soft); }
+.cmdk-pre h3 { margin: 0; font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+.cmdk-pre .kv { grid-template-columns: 64px minmax(0, 1fr); font-size: 12px; }
+.cmdk-pre .kv dd { display: block; }
+.cmdk-pre .kv.is-dates { grid-template-columns: 104px minmax(0, 1fr); }
+.cmdk-acts { display: flex; flex-direction: column; gap: var(--s1); margin-top: auto; padding-top: var(--s2); border-top: 1px solid var(--line); }
+.cmdk-acts > * { display: flex; justify-content: space-between; align-items: center; min-height: 24px; font-size: 12px; color: var(--text); }
+.cmdk-acts a:hover { color: var(--signal); }
+.cmdk-foot { display: flex; align-items: center; gap: var(--s4); padding: var(--s2) var(--s4); border-top: 1px solid var(--line); background: var(--panel-soft); font: 11px var(--font-mono); color: var(--muted); }
+.cmdk-note { margin-left: auto; font-family: var(--font-sans); color: var(--text-2); }
+

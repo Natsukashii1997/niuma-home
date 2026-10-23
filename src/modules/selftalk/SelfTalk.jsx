@@ -3,13 +3,13 @@ import { PixelIcon } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { Button, Segmented } from "../../ui/components.jsx";
 import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
-import { deliveryMonth, isoWeek } from "../../constants.js";
+import { isoWeek } from "../../constants.js";
 
-// 自言自语（v3）：把发给自己的飞书消息（最近 10 天）拉回来回看。操作悬停才出现；键盘 J/K 上下，S 标记、E 归档、T 转待办、N 转主线需求。
+// 自言自语（v3）：把发给自己的飞书消息（最近 10 天）拉回来回看。操作悬停才出现；键盘 J/K 上下，S 标记、E 归档、T 转待办（「转主线需求」入口 2026-10-23 去掉，用户决定；历史上已转的仍显示标签）。
 // 每个处理都只存工作台本地：按键或点按钮只生成预览，确认后才保存并回读。图片等非文本消息只能标记或归档，不能转待办或需求。
 // 周汇总由 AI 起草，只在你点「生成周汇总」时调用一次本机 Codex；只汇总已经结束、而且最近 10 天完整覆盖的自然周。
 const TAG = { star: ["有价值", "is-star"], todo: ["已转待办", "is-done"], need: ["已转主线需求", "is-done"], archived: ["已归档", "is-arch"] };
-const ACTION = { star: "标记有价值", archived: "归档", todo: "转为待办", need: "转为主线需求草稿", "": "撤销处理" };
+const ACTION = { star: "标记有价值", archived: "归档", todo: "转为待办", "": "撤销处理" };
 const isText = (i) => ["text", "post"].includes(i.type);
 
 export function SelfTalkButton({ open, onToggle }) {
@@ -48,10 +48,10 @@ function Drawer({ initial, onClose }) {
   const act = (item, tag0) => run(item, item.tag === tag0 ? "" : tag0); // 再按一次是撤销
   const run = (item, tag) => {
     if (locked) return;
-    if (["todo", "need"].includes(tag) && !isText(item)) return;
+    if (tag === "todo" && !isText(item)) return;
     setPending({ item, tag });
     flow.reset();
-    flow.preview(() => apiSend("POST", `/api/v3/selftalk/${encodeURIComponent(item.id)}/preview`, { tag, ...(tag === "need" ? { month: deliveryMonth() } : {}) }));
+    flow.preview(() => apiSend("POST", `/api/v3/selftalk/${encodeURIComponent(item.id)}/preview`, { tag }));
   };
   const reload = async () => { const fresh = await apiSend("GET", "/api/v3/selftalk"); setData(fresh); return fresh; };
   const confirm = () => flow.confirm(
@@ -79,7 +79,6 @@ function Drawer({ initial, onClose }) {
       else if (it && e.key === "s") act(it, "star");
       else if (it && e.key === "e") act(it, "archived");
       else if (it && e.key === "t") act(it, "todo");
-      else if (it && e.key === "n") act(it, "need");
     };
     addEventListener("keydown", key);
     return () => removeEventListener("keydown", key);
@@ -106,7 +105,7 @@ function Drawer({ initial, onClose }) {
       <WriteBox flow={flow} title="处理预览" className="st-write" savedText={flow.receipt?.reversal?.length ? `处理已撤销；${flow.receipt.reversal.map((entry) => `${entry.label}${entry.action === "remove" ? "已撤回" : "已保留"}`).join("，")}` : "已保存，回读核对一致"} onConfirm={confirm} onRepreview={() => pending && run(pending.item, pending.tag)} onReread={reread}>
         {(pv) => pending && <dl className="kv">
           <dt>消息</dt><dd>{pending.item.text.length > 60 ? `${pending.item.text.slice(0, 60)}…` : pending.item.text}</dd>
-          <dt>处理</dt><dd><span className="diff-old">{pending.item.tag ? TAG[pending.item.tag][0] : "未处理"}</span> → <span className="diff-new">{ACTION[pending.tag]}</span>{pending.tag === "need" ? `（进入 ${deliveryMonth()} 主线需求，待你在用户策略里采纳）` : ""}</dd>
+          <dt>处理</dt><dd><span className="diff-old">{pending.item.tag ? TAG[pending.item.tag][0] : "未处理"}</span> → <span className="diff-new">{ACTION[pending.tag]}</span></dd>
           {pv.value?.reversal?.map((entry) => <span key={entry.kind} style={{ display: "contents" }}><dt>{entry.label}</dt><dd>{entry.action === "remove" ? "撤回" : "保留"}：{entry.reason}</dd></span>)}
           <dt>写到哪里</dt><dd>工作台本地，不改飞书消息</dd>
         </dl>}
@@ -125,14 +124,13 @@ function Drawer({ initial, onClose }) {
                 <button type="button" title="标记有价值（S）" className={i.tag === "star" ? "is-on" : ""} disabled={locked} onClick={() => act(i, "star")}><PixelIcon name="star" /></button>
                 <button type="button" title="归档（E）" disabled={locked} onClick={() => act(i, "archived")}><PixelIcon name="archive" /></button>
                 <button type="button" title={text ? "转为待办（T）" : "非文本消息请先在飞书查看"} disabled={locked || !text} onClick={() => act(i, "todo")}>转待办</button>
-                <button type="button" title={text ? "转为主线需求草稿（N）" : "非文本消息请先在飞书查看"} disabled={locked || !text} onClick={() => act(i, "need")}>转主线需求</button>
               </div>
             </li>
           )];
         })}
         {!list.length && <li className="small muted st-empty">这一栏没有消息</li>}
       </ol>
-      <div className="st-foot"><span className="small muted">{sync.note || <><kbd>J</kbd><kbd>K</kbd> 上下 · <kbd>S</kbd> 标记 · <kbd>E</kbd> 归档 · <kbd>T</kbd> 待办 · <kbd>N</kbd> 需求 · 都先预览</>}</span><button type="button" className="link-btn" onClick={pull} disabled={sync.busy}>{sync.busy ? "拉取中…" : "拉取新消息"}</button></div>
+      <div className="st-foot"><span className="small muted">{sync.note || <><kbd>J</kbd><kbd>K</kbd> 上下 · <kbd>S</kbd> 标记 · <kbd>E</kbd> 归档 · <kbd>T</kbd> 待办 · 都先预览</>}</span><button type="button" className="link-btn" onClick={pull} disabled={sync.busy}>{sync.busy ? "拉取中…" : "拉取新消息"}</button></div>
     </>
   );
 }

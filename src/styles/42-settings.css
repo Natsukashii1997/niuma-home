@@ -1,0 +1,20 @@
+/* ---------- 设置 ---------- */
+.set-groups { display: flex; flex-direction: column; gap: var(--gap); max-width: 1100px; }
+.set-groups .card-body { padding: 0 var(--s4); }
+.set-row { border-bottom: 1px solid var(--line); }
+.set-row:last-child { border-bottom: 0; }
+.set-row-head { display: grid; grid-template-columns: 180px minmax(0, 1fr) 88px 72px; align-items: center; gap: var(--s3); padding: var(--s3) 0; } /* 标签列放得下最长名称；状态、按钮两列定宽，没有按钮的行状态也对齐 */
+.set-row-head > .tag, .set-row-head > .sample-badge { justify-self: end; }
+.set-row-head > .btn { justify-self: end; }
+.set-label { font-weight: 600; font-size: 13px; }
+.set-value { font-family: var(--font-mono); font-size: 12px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-row-head .btn { height: 28px; font-size: 12px; }
+.set-row.is-open .settings-form { padding: 0 0 var(--s4) calc(180px + var(--s3)); } /* 与名称列 180 + 间距对齐 */
+.set-notice { margin: calc(-1 * var(--s1)) 0 var(--s2) calc(150px + var(--s3)); }
+.settings-page.set-groups { max-width: 1100px; }
+.set-groups > .stat-strip { margin-bottom: 0; } /* 列表已有 gap */
+.set-count { display: inline-flex; gap: var(--s3); font-family: var(--font-mono); font-size: 11px; color: var(--text-2); white-space: nowrap; }
+.set-pairing-code { display: flex; align-items: center; gap: var(--s3); }
+.set-push-kv { grid-template-columns: 180px minmax(0, 1fr); column-gap: var(--s3); } /* 与行头「名称｜值」两列对齐 */
+.set-pairing-foot .link-btn { margin-left: var(--s2); }
+
