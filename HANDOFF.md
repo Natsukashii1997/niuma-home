@@ -18,7 +18,8 @@
 - 所有飞书资源固定使用机械邪龙兽 `lark-cli --profile codex`，App ID `cli_aacf58ab61b85beb`；资源访问使用同应用 user，评论发送使用 bot。不回退其他机器人。
 - 真实验证只操作本轮明确标记的临时内容，保留已有数据；未知写入先回读，不重复创建或重发。
 - 当前 NAS 已挂载；真实 11 月样本识别、重复同步和清理通过，正式 5280 扫描回读通过。当前授权工作已完成；不自动开展其他预留功能。
-- 当前安装的 Chrome 插件来自相邻 `work-desk-t10/browser-extension/niuma-collect`。本轮只把主库已有的 `content.js`、`manifest.json` 说明同步到该安装目录并重载；原文件备份在 `/tmp/niuma-legacy-20261022/extension-before/`。不要误认为改主库文件就自动改变已安装插件。
+- Chrome 收藏插件安装位置（2026-10-23 起）：`~/Library/Application Support/NiumaHome/extension/niuma-collect/`，内容来自主库 `browser-extension/niuma-collect/`。改主库插件后要手动同步到该目录，再在 `chrome://extensions` 重新加载；不要误认为改主库文件就自动改变已安装插件。此前安装在 `work-desk-t10`（已停用），10-22 改前备份在 `~/Library/Application Support/NiumaHome/evidence/niuma-legacy-20261022/extension-before/`。
+- 验证证据（备份数据库、日志、截图原件）放 `~/Library/Application Support/NiumaHome/evidence/`，不放 `/tmp`；10-21 那批 `/tmp` 证据已被系统清理。
 
 ## 已完成事项与证据
 

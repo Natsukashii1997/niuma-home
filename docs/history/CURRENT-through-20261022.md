@@ -1,5 +1,7 @@
 # 当前状态
 
+> 2026-10-23 补注（Claude）：本文提到的 `/tmp/niuma-*` 证据目录中，10-22、10-23 的已搬到 `~/Library/Application Support/NiumaHome/evidence/`（同名目录，不含 release-checkout）；10-21 的（strategy-labels、business-charts、kb-switch、kb-sync、materials、brief、brief-autosave、brief-sync）已被系统清理，无法恢复。正文保持原样。
+
 ### 2026-10-22 · 旧入口防重复与真实集成验收 · Codex · 进行中
 
 - 用户授权：补旧入口防重复提交，真实验证NAS新月份、带教回复、Chrome收藏自动归类；清理本轮测试内容；冲突停止由用户选择。保留布局与原有内容，验证通过发布正式工作台；其他预留功能不做。

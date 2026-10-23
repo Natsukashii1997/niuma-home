@@ -51,7 +51,7 @@
   },
   "dataPreservation": {
     "checkedAt": "2026-10-23T02:29:05.671669+00:00",
-    "baseline": "/tmp/niuma-nas-20261023/pre-release.db",
+    "baseline": "~/Library/Application Support/NiumaHome/evidence/niuma-nas-20261023/pre-release.db",
     "database": "/Users/nat/Documents/ChatGPT/个人/work/work-desk/data/work-desk.db",
     "readOnly": true,
     "tables": [

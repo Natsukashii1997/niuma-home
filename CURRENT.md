@@ -40,7 +40,7 @@
 - 正式首页及 JS 回读匹配快照，带教日志正常加载；CSS 和 72 个 server 文件与上一版逐字节相同。临时服务已停止。
 - 发布后数据复核通过：人工表与全部 58 条本地文档相同，已核查日期保留；只有正常缓存窗口/读取时间更新，无冲突。
 - 本轮授权范围已完成，无待执行开发/发布；其他预留功能不做。
-- [验证与发布记录](docs/handoff/带教回复北京时间-20261023/验证记录.md)；原始证据与 SQLite 备份 `/tmp/niuma-mentor-time-20261023/`。
+- [验证与发布记录](docs/handoff/带教回复北京时间-20261023/验证记录.md)；原始证据与 SQLite 备份 `~/Library/Application Support/NiumaHome/evidence/niuma-mentor-time-20261023/`。
 
 ## 上一轮：旧入口保护与真实集成验证
 
@@ -63,7 +63,7 @@
 - [旧入口、带教及 Chrome 真实验证](docs/handoff/旧入口与真实集成-20261022/验证记录.md)
 - [接口合同](docs/API.md)
 - 临时验证 API 5309、页面 5310 已停止，验证标签已关闭，正式 5280 持续运行。
-- 备份与完整证据：`/tmp/niuma-nas-20261023/` 和 `/tmp/niuma-legacy-20261022/`，私人数据库/完整日志不加入仓库。
+- 备份与完整证据：`~/Library/Application Support/NiumaHome/evidence/niuma-nas-20261023/` 和 `~/Library/Application Support/NiumaHome/evidence/niuma-legacy-20261022/`，私人数据库/完整日志不加入仓库。
 
 ## 已发布成果
 

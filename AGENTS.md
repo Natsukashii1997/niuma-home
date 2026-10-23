@@ -1,19 +1,20 @@
 # work-desk 协作约定（Codex / Claude 必读）
 
-个人工作台，只有本人使用。需求以 [REQUIREMENTS.md](REQUIREMENTS.md) 为准，当前状态与唯一下一步见 [CURRENT.md](CURRENT.md)。所有面向用户的文字用简体中文。
+个人工作台「牛马之家」，只有本人使用。进入顺序：[HANDOFF.md](HANDOFF.md) → 本文件 → [CURRENT.md](CURRENT.md)（当前状态与唯一下一步）。需求以 [REQUIREMENTS.md](REQUIREMENTS.md) 为准。所有面向用户的文字用简体中文。
 
-## 分工
+## 分工（2026-10-23 更新）
 
-- **Claude**：结构与底层架构、视觉规范、**全部 UI 展现**（页面、组件、交互、示例数据；用户 2026-10-16 确认）、派单、验收。
-- **Codex**：按派单和接口清单（`docs/tasks/T*.md`、`docs/tasks/V3-接口清单.md`）实现功能与接口、补测试、回归、写交接；不改 UI 结构和视觉，需要改先在交接里提出。
-- 流程：Claude 派单 → Codex 认领（在 CURRENT.md 标「进行中」）→ 实现 + 测试 + 截图 → 写交接 → Claude 验收（通过 / 返修清单）→ 用户最终验收。返修仍由 Codex 做。
-- 一次只做一张派单；范围外的问题记进交接，不顺手修。
+- **以用户每轮明确授权的范围为准**。接手的一方（Claude 或 Codex）前后端都可以做，含接口、测试、发布和交接；授权外的预留功能不做。
+- 改动现有视觉要先问用户，保留原有风格基调、配色与强调色；大的视觉调整先给方向或样稿再动手。
+- 派单流程保留为可选：需要拆分时由一方写 `docs/tasks/T*.md`，另一方认领（在 CURRENT.md 标「进行中」）→ 实现 + 测试 + 截图 → 交接 → 验收 → 用户最终验收。
+- 一次只做一件授权的事；范围外的问题记进交接，不顺手修。
+- 历史：2026-10-16 起曾按「Claude 做 UI、Codex 做后端」分工，2026-10-18 起改为按授权前后端一起做。
 
 ## 运行
 
 ```sh
 npm install
-npm run build && npm start      # http://127.0.0.1:5280
+npm run build && npm start      # http://127.0.0.1:5280（开发目录直接起服务；正式环境见「发布」）
 npm run dev                     # 开发页 http://127.0.0.1:5281，/api 转给 5280
 npm test                        # 自动使用临时数据目录，不碰 data/
 npm run import:feishu           # 一次性迁移旧飞书表（已执行过，可重复执行）
@@ -24,6 +25,8 @@ npm run import:feishu           # 一次性迁移旧飞书表（已执行过，�
 ## 结构（不要改动骨架）
 
 ```
+HANDOFF.md           交接入口（最新一轮范围、固定身份、证据位置）
+CURRENT.md           当前状态与唯一下一步；旧记录在 docs/history/
 server/
   index.mjs          HTTP 服务：静态文件 + /api 路由分发
   http.mjs           json / readJson / route / match / pending(task)
@@ -33,17 +36,24 @@ src/
   App.jsx            左侧导航 + 模块登记（MODULES）
   router.js          #/ 路由：useRoute() / href()
   api.js             useApi(path, sample) / apiSend()
-  constants.js       业务线、促销字段、月份工具
-  samples.js         示例数据（接口 501 时显示）
+  constants.js       业务线、促销字段、月份工具、交付月环节
+  samples.js         示例数据（接口 501 时显示；目前为空）
   ui/components.jsx  公共组件
   ui/bitmap.jsx      位图风基础件：FlipNumber / DotMatrix / DitherBar / TypeText / StepProgress / PixelIcon / BitAvatar / dissolve
   assets/fonts/      Geist / Geist Mono / Geist Pixel（OFL）
-  styles.css         设计变量 + 全部样式
+  styles.css         设计变量 + 基础样式
+  styles-v3.css      v3 起各页面样式（大部分页面样式在这里）
+  styles-layout.css / styles-scrollbars.css  布局与滚动条
   modules/<模块>/     各模块页面
+browser-extension/niuma-collect/   Chrome 收藏插件源码（安装位置见 HANDOFF.md）
+scripts/
+  release-app.sh     发布 / 回滚正式 5280（launchd 常驻 + 固定快照）
 docs/
   API.md             接口约定
   STYLE-GUIDE.md     视觉规范
   tasks/T*.md        派单
+  handoff/           各轮验证记录与截图
+  history/           归档的旧 CURRENT / HANDOFF
 fixtures/            验收样例（飞书复制的方案原文）
 ```
 
@@ -51,19 +61,30 @@ fixtures/            验收样例（飞书复制的方案原文）
 
 - **接口占位机制**：未实现的接口在路由里写 `pending("T0x")`，返回 501；前端 `useApi(path, sample)` 收到 501 时显示示例并标「示例 · T0x」。实现接口 = 把 `pending(...)` 换成真实处理函数，前端示例自动消失。实现后删掉 `samples.js` 里对应的示例。
 - 未实现的按钮用 `<PendingButton task="T0x">`；实现时换成 `<Button>`。
-- 接口路径与数据形状以 [docs/API.md](docs/API.md) 为准；需要改，先在交接里说明理由，由 Claude 更新文档。
+- 接口路径与数据形状以 [docs/API.md](docs/API.md) 为准；改接口时同步更新文档，并在交接里说明理由。
 - 表结构只在 `server/db.mjs` 的 SCHEMA 里改；已有列不改名、不删。
-- 视觉以 [docs/STYLE-GUIDE.md](docs/STYLE-GUIDE.md)（v2 位图风）为准：新样式先用 `styles.css` 里的变量和已有类；图标只用 `PixelIcon`；动效只用 `src/ui/bitmap.jsx` 的按帧组件，不写 CSS transition。不引入 UI 框架、CSS-in-JS 或图标库。新增依赖须在交接里说明理由。
+- 视觉以 [docs/STYLE-GUIDE.md](docs/STYLE-GUIDE.md)（v2 位图风）为准：新样式先用已有变量和类；图标只用 `PixelIcon`；动效只用 `src/ui/bitmap.jsx` 的按帧组件，不写 CSS transition。不引入 UI 框架、CSS-in-JS 或图标库。新增依赖须在交接里说明理由。
 - 所有写入真实数据的操作必须「先预览、后确认」。唯一例外：知识库快捷收藏（T12，只新建指向原文的快捷方式）用户 2026-10-18 确认点击即收藏，但仍须只写一次、不自动重试、写后回读、结果不明时锁住核对。
-- 访问飞书一律用本机 `lark-cli`（`--as user`），不在代码里写 token。
+- 访问飞书一律用本机 `lark-cli`，固定 `--profile codex`（机械邪龙兽应用）：读写资源用该应用的 user 身份，发评论用 bot 身份；不回退其他机器人，不在代码里写 token。
 - 只监听 127.0.0.1。
+- 验证用的备份、日志等证据放 `~/Library/Application Support/NiumaHome/evidence/<目录名>/`，不要只留在 `/tmp`（会被系统清理）；私人数据库与完整日志不进仓库。
+
+## 发布
+
+- 正式环境是 launchd 常驻服务 `cn.niuma-home.server`（端口 5280），运行 `~/Library/Application Support/NiumaHome/releases/` 下的固定快照，数据目录是主工作区的 `data/`。
+- 只在用户同意后发布：在主工作区（`main`）执行 `bash scripts/release-app.sh`。脚本会先备份数据库，再生成快照、切换服务，并按保留策略清理旧快照。
+- 脚本要求工作区干净。主工作区有别人留下的未跟踪文件时，不要删改它们，只对这一次运行忽略未跟踪文件：`GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=status.showUntrackedFiles GIT_CONFIG_VALUE_0=no bash scripts/release-app.sh`。
+- 发布后回读：launchd 指向新快照；首页、JS、CSS 与快照逐字节一致；快照 `server/` 与提交一致；错误日志为空；本轮相关接口与页面实看；页脚版本号正确。
+- 回滚：`bash scripts/release-app.sh --use <上一份快照名>`，在交接里写明。
 
 ## 交接格式
 
-完成一张派单后，在 CURRENT.md 的「交接记录」追加：
+每轮完成后，在 CURRENT.md 顶部新增一节（旧节保留在下面，过长时归档到 `docs/history/`）：
 
-- 派单编号、完成日期
+- 标题写明内容、日期、谁做的、用户是否同意、发布状态
 - 改了哪些文件（一句话说明各自做了什么）
 - 测试：命令与结果（通过 / 失败数）
-- 截图：放在 `docs/handoff/T0x/`，列出文件名
-- 与派单不一致之处、遗留问题、范围外发现
+- 验证：隔离端口与数据、看了哪些宽度和页面
+- 截图：放在 `docs/handoff/<本轮名>/`，列出文件名；截图不提交进仓库（用户 2026-10-23 确认），只留在本地
+- 发布与回读、回滚命令（如已发布）
+- 与授权不一致之处、遗留问题、范围外发现
