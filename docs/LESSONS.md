@@ -111,3 +111,10 @@
 - 根因：只跑了 `bash -n` 和带 `NIUMA_SMOKE=1` 的那条路径，没跑「变量不设」的默认路径；`bash -n` 只查语法，查不出 `set -u` 下的未定义引用。
 - 正确做法：可选开关一律写 `${VAR:-}`；改带 `set -u` 的脚本后，开关设与不设各跑一遍；发布前先在主工作区单独跑一次 `bash scripts/verify-release.sh`。
 - 证据：`~/Library/Application Support/NiumaHome/evidence/全面优化-20261023/release.log`；修复提交号见 CURRENT.md「审核后一次性优化」的「发布」一行。
+
+## L-13 无头 Chrome 截图与合成事件不可靠：样式没加载完、焦点事件不发（2026-10-24）
+
+- 现象：折线图样稿用 `--headless=new --screenshot --virtual-time-budget=4000` 截图，有几张 `@import` 进来的页面样式没生效（Voice 折线糊成黑块、字号变大），有几张图干脆没画出来（顶层 `await fetch` 的模块还没跑完）；同一命令重跑结果不一样。核对键盘时用 `el.focus()` + 合成 `KeyboardEvent`，内置浏览器里 `onFocus` 根本不触发，无头里截出来停在 1 月，和真实按键（停在 9 月）对不上。
+- 根因：`--virtual-time-budget` 只是给虚拟时间一个上限，不保证 `@import` 链、字体和模块里的异步请求都完成；页面不在前台（`document.hasFocus()` 为假）时，程序调 `focus()` 只改 `activeElement`，不发 focus / focusin 事件，React 的 `onFocus` 收不到。合成事件为什么会落到 1 月，未核实。
+- 正确做法：要等页面画完再截的图，用调试协议（`--remote-debugging-port` + `Runtime.evaluate` 轮询「图已画出 + `document.fonts.status === "loaded"`」，再 `Page.captureScreenshot` 按元素区域截），`scripts/smoke-pages.mjs` 也是这个路子；键盘、鼠标交互一律用真实输入（`Input.dispatchKeyEvent` / `Input.dispatchMouseEvent`，或内置浏览器的真实按键），不拿合成事件的结果当证据。
+- 证据：`~/Library/Application Support/NiumaHome/evidence/折线图数值与悬停-20261024/` 里的 `cdp-shot.mjs`（截图）、`cdp-debug.mjs`（真实按键、鼠标逐步核对）；CURRENT.md「折线图每点数值 + 悬停竖线与数据卡」一节。

@@ -46,6 +46,14 @@ button.vw { border: 0; background: none; padding: 0; font-family: inherit; curso
 .trend-chart .end-label { font: 12px var(--font-sans); fill: var(--text-2); }
 .trend-chart .leader { stroke: var(--muted); stroke-width: 1; pointer-events: none; } /* 标签被推开时，从真实末点连到文字 */
 .trend-chart .series.is-top .leader { stroke: var(--signal); }
+/* 每点热度 + 悬停（用户 2026-10-24）：第一名墨色字、其余灰色字，套一圈面板底色描边；竖线、方框、数据卡见 10-common.css 的 .chart-* */
+.trend-host { position: relative; }
+.trend-chart .chart-val { font: 11px var(--font-mono); fill: var(--muted); paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; }
+.trend-chart .chart-val.is-top { fill: var(--text); }
+.trend-chart .chart-val.is-on { font-weight: 600; fill: var(--text-2); }
+.trend-chart .chart-val.is-top.is-on { fill: var(--text); }
+.trend-chart .chart-ring.is-top { stroke: var(--signal); }
+.trend-chart .chart-xon text { fill: var(--panel); font-weight: 600; }
 .trend-legend { list-style: none; margin: var(--s2) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); font-size: 12px; }
 .trend-legend li { display: inline-flex; align-items: center; gap: var(--s1); min-width: 0; }
 .trend-legend i { width: 12px; height: 0; border-top: 2px dashed var(--muted); }

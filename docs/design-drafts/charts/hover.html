@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>折线图 · 每点数值 + 悬停竖线与数据卡 样稿</title>
+<!-- 样稿（2026-10-24）：工作台三张折线图——业务页「月度」大图、「总转化率」小图、Voice「近 7 天热度走势」。
+     样式直接引用项目的 src/styles.css、src/styles/index.css 和业务页的 business-charts.css；SVG 结构照 BusinessCharts.jsx / VoicePage.jsx 的 TrendChart，
+     刻度、当月、推算、同比直接用 src/modules/business/chart-math.js 算。业务数据取自 docs/design-drafts/business/charts-data.json（10-23 15:25 的正式图表快照），
+     Voice 用 src/samples.js 的模拟数据（来源接通前线上也显示它）。由仓库根目录的只读静态服务打开（kb-drafts：python http.server 5297，只监听 127.0.0.1）。 -->
+<link rel="stylesheet" href="/src/styles.css">
+<link rel="stylesheet" href="/src/styles/index.css">
+<link rel="stylesheet" href="/src/styles-layout.css">
+<link rel="stylesheet" href="/src/modules/business/business-charts.css">
+<style>
+/* 样稿页自己的排版：宽度照线上主区（1440 屏 1170、1280 屏 1010），不写 transition / animation */
+body { background-color: var(--bg); }
+.lc-page { width: 1170px; margin: 0 auto; padding: 28px 0 56px; }
+.lc-page[data-w="1280"] { width: 1010px; }
+.lc-page > header { margin-bottom: var(--s5); }
+.lc-page > header h1 { font-size: 22px; }
+.lc-page > header p { margin: var(--s1) 0 0; font-size: 12px; color: var(--muted); max-width: 1010px; }
+.lc-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin-bottom: var(--s4); }
+.lc-sec { margin-top: var(--s6); }
+.lc-sec > h2 { font-size: 18px; margin-bottom: var(--s1); }
+.lc-sec > p { margin: 0 0 var(--s4); font-size: 12px; color: var(--muted); }
+.lc-notes { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.7; color: var(--text-2); }
+.lc-notes li + li { margin-top: var(--s2); }
+.lc-notes b { color: var(--text); font-weight: 600; }
+
+/* ── 新增（定稿后搬进 business-charts.css / 55-voice.css）：每点数值、竖线、方框、月份反色、数据卡 ── */
+.bc-chart-host, .trend-host { position: relative; }
+.chart-hit { fill: transparent; }
+/* 数值套一圈面板底色描边：压到网点列和折线时不糊（网点不压字） */
+.bc-svg text.chart-val, .trend-chart .chart-val { paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; }
+.bc-svg text.chart-val.is-last { fill: var(--muted); }
+.bc-svg text.chart-val.is-on { font-weight: 600; }
+.bc-svg text.chart-val.is-last.is-on { fill: var(--text-2); }
+.trend-chart .chart-val { font: 11px var(--font-mono); fill: var(--muted); }
+.trend-chart .chart-val.is-top { fill: var(--text); }
+.trend-chart .chart-val.is-on { font-weight: 600; fill: var(--text-2); }
+.trend-chart .chart-val.is-top.is-on { fill: var(--text); }
+.chart-cross { stroke: var(--text); stroke-width: 1; stroke-dasharray: 2 2; shape-rendering: crispEdges; }
+.chart-ring { fill: none; stroke: currentColor; stroke-width: 2; shape-rendering: crispEdges; }
+.chart-ring.is-last { stroke: var(--muted); stroke-width: 1.5; }
+.chart-ring.is-pace, .trend-chart .chart-ring.is-top { stroke: var(--signal); }
+.chart-xon rect { fill: var(--text); }
+.bc-svg .chart-xon text, .trend-chart .chart-xon text { fill: var(--panel); font-weight: 600; }
+/* 数据卡：直角、2px 墨框、面板底；浮起感用右下错位 6px 的墨色网点（同书架悬停卡 .kbs-tip），不用阴影 */
+.chart-tip { position: absolute; z-index: 3; width: 236px; pointer-events: none; }
+.chart-tip.is-wide { width: 300px; }
+.chart-tip-sh { position: absolute; left: 6px; top: 6px; right: -6px; bottom: -6px; background-image: var(--dither-ink-2); }
+.chart-tip-card { position: relative; padding: var(--s2) var(--s3); border: 2px solid var(--text); background: var(--panel); }
+.chart-tip-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); padding-bottom: var(--s2); border-bottom: 1px solid var(--line); }
+.chart-tip-head b { font-size: 14px; font-weight: 600; }
+.chart-tip-head span { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.chart-tip-row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; column-gap: 6px; padding-top: var(--s2); }
+.chart-tip-mk { box-sizing: border-box; width: 8px; height: 8px; background: currentColor; }
+.chart-tip-mk.is-part { background: var(--panel); border: 2px solid currentColor; }
+.chart-tip-mk.is-last { width: 5px; height: 5px; justify-self: center; background: var(--muted); }
+.chart-tip-mk.is-pace { background: var(--panel); border: 2px dashed var(--signal); }
+.chart-tip-mk.is-top { background: var(--signal); }
+.chart-tip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text-2); }
+.chart-tip-v { font-family: var(--font-mono); font-size: 14px; font-weight: 600; white-space: nowrap; text-align: right; }
+.chart-tip-x { grid-column: 2 / -1; font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-align: right; }
+.chart-tip-row.is-pace .chart-tip-name, .chart-tip-row.is-pace .chart-tip-v { color: var(--signal); }
+.chart-tip-foot { display: flex; justify-content: space-between; align-items: baseline; margin-top: var(--s2); padding-top: var(--s2); border-top: 1px solid var(--line); font-size: 12px; color: var(--text-2); }
+.chart-tip-foot b { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+</style>
+</head>
+<body>
+<main class="lc-page" id="page">
+  <header>
+    <h1>折线图 · 每点数值 + 悬停竖线与数据卡</h1>
+    <p>工作台一共三张折线图：业务页「月度」大图（总营收和三条业务线共用）、业务页「总转化率」、Voice「近 7 天热度走势」。这版给三张图统一加两样东西：每个点直接标数值；鼠标移进图里（或 Tab 到图上用 ← →）出现一条竖线和一张数据卡，列出这一列所有线的数值。配色、线型、网点列、「至今 / 推算」、线尾年份和下排同比都不动。</p>
+  </header>
+  <div class="lc-bar">
+    <div class="segmented" id="views"></div>
+    <span class="spacer"></span>
+    <span class="small muted">主区宽度</span>
+    <div class="segmented" id="widths"><button class="active" data-w="1440">1440 屏 · 1170</button><button data-w="1280">1280 屏 · 1010</button></div>
+  </div>
+
+  <div class="bc-focus">
+    <section class="card bc-trend">
+      <div class="card-head"><h2 id="big-title"></h2><div class="card-extra"><span class="small muted">每点标金额（万元）：黑字今年、灰字去年；下排为同比 · 实线今年、虚线去年、网点列为当月</span></div></div>
+      <div class="card-body"><div class="bc-chart-host" id="big"></div><details class="bc-source"><summary>数据口径与完整数值</summary><p class="small muted">（样稿不展开）</p></details></div>
+    </section>
+    <div class="bc-readout card" id="readout"></div>
+  </div>
+
+  <div class="bc-pair">
+    <section class="card bc-conv">
+      <div class="card-head"><h2>总转化率</h2><div class="card-extra"><span class="small muted" id="conv-extra"></span></div></div>
+      <div class="card-body"><div class="bc-chart-host" id="conv"></div><details class="bc-source"><summary>数据口径与完整数值</summary><p class="small muted">（样稿不展开）</p></details></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>这版怎么定的</h2><div class="card-extra"><span class="small muted">线上这里是「三条业务线」卡，样稿借位写说明</span></div></div>
+      <div class="card-body"><ol class="lc-notes">
+        <li><b>每点数值</b>：今年墨色、去年灰色，同一列谁高谁往上标、低的往下标。点挨得近或折线穿过数字时，标签在点四周换 8 个位置找空地；实在放不下的就不画，悬停卡里能看到。数字套一圈面板底色描边，压在网点列和折线上也不糊。</li>
+        <li><b>竖线与方框</b>：移进图里，离鼠标最近的一列出现墨色点线，这一列每个点套一个方框（今年同线色、去年灰、推算橙），月份反色。</li>
+        <li><b>数据卡</b>：弹在竖线右边，右边放不下换左边，始终在图框里。直角、2px 墨框，右下错位 6px 墨色网点（同书架悬停卡），不用阴影。一线一行，前面的方点照图上画法：实心今年、空心至今、橙色虚框推算、灰色小点去年；金额写万元一位小数，下面一行精确到分的元（原来鼠标停在点上才看得到）；底行同比，涨绿跌红。</li>
+        <li><b>键盘</b>：Tab 到图上默认停在当月，← → 逐月，Home / End 到头尾，Esc 收起；焦点框沿用全站橙色。</li>
+        <li><b>不加动效</b>：竖线和卡片随列跳，不滑、不渐显。</li>
+      </ol></div>
+    </section>
+  </div>
+
+  <section class="lc-sec">
+    <h2>Voice · 近 7 天热度走势</h2>
+    <p>同一套做法搬到 Voice：4 个话题每点标热度，第一名（橙色粗线）墨色字，其余灰色字；最后一天的值线尾标签里已有（「标题 · 92」），不重复标；卡片列 4 个话题当天的热度，第一名橙色方点。Voice 现在是模拟数据。</p>
+    <section class="card">
+      <div class="card-head"><h2>近 7 天热度走势</h2><div class="card-extra"><span class="small muted">前 4 个话题 · 粗线为第一名</span></div></div>
+      <div class="card-body"><div class="trend-host" id="voice"></div></div>
+    </section>
+  </section>
+</main>
+<script type="module">
+import { monthContext, yearTrend } from "/src/modules/business/chart-math.js";
+import { voiceSample } from "/src/samples.js";
+import * as K from "./line-hover.js";
+
+// 网点变量：线上由 bitmap.jsx 的 installBitmap() 启动时注入，这里照它的 ditherTile 注入同一套
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+const tile = (th, color) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" shape-rendering="crispEdges" fill="${color}">${BAYER.map((v, i) => v < th ? `<rect x="${(i % 4) * 2}" y="${Math.floor(i / 4) * 2}" width="2" height="2"/>` : "").join("")}</svg>`)}")`;
+const root = document.documentElement.style;
+[2, 4, 6, 8].forEach((t, i) => root.setProperty(`--dither-${i + 1}`, tile(t, "#C9CCD3")));
+[4, 8, 12, 16].forEach((t, i) => root.setProperty(`--dither-ink-${i + 1}`, tile(t, "#0D0E10")));
+[4, 8].forEach((t, i) => root.setProperty(`--dither-signal-${i + 1}`, tile(t, "#FF4F1F")));
+
+const data = await (await fetch("../business/charts-data.json")).json();
+const ctx = monthContext(data.period, data.updatedAt);
+const find = name => data.charts.find(c => c.name === name);
+const VIEWS = {
+  total: { name: "总营收", chart: "总营收" },
+  uni: { name: "大学辅导", chart: "大学辅导趋势 - 总营收", color: "var(--bc-uni)" },
+  intl: { name: "国际课程", chart: "国际课程趋势 - 总营收", color: "var(--bc-intl)" },
+  appeal: { name: "申诉服务", chart: "申诉趋势 - 总营收", color: "var(--bc-appeal)" },
+};
+const money = n => Math.abs(n) >= 1e8 ? `${K.nf(n / 1e8, 2)} 亿` : `${K.wan(n)} 万`;
+window.__drafts = {};
+// 截图用：?view=appeal&w=1280&big=8&conv=3&voice=6 直接停在某一列
+const preset = new URLSearchParams(location.search);
+if (preset.get("w") === "1280") document.getElementById("page").dataset.w = "1280";
+
+// 一张图：按宽度建模型，悬停只重画 SVG；换宽度时保留当前列
+function mount(key, host, { build, svg, tip, n, toPx = (m, v) => v, start, wide }) {
+  let m = null;
+  const draw = a => {
+    const html = svg(m, a), old = host.querySelector("svg");
+    if (old) { old.insertAdjacentHTML("afterend", html); old.remove(); } else host.insertAdjacentHTML("afterbegin", html);
+  };
+  const h = K.bindHover(host, { n, colX: i => m.x(i), colW: () => toPx(m, m.x(1)) - toPx(m, m.x(0)), toPx: v => toPx(m, v), draw, tip: i => tip(m, i), start });
+  if (wide) host.querySelector(".chart-tip")?.classList.add("is-wide");
+  let first = true;
+  new ResizeObserver(() => {
+    const w = Math.floor(host.clientWidth); if (!w) return;
+    m = build(w);
+    h.set(first && preset.has(key) ? Number(preset.get(key)) : h.active);
+    first = false;
+    if (wide) host.querySelector(".chart-tip").classList.add("is-wide");
+  }).observe(host);
+  window.__drafts[key] = h;
+  return h;
+}
+const startOf = t => t.cur >= 0 ? t.cur : t.now.reduce((a, v, i) => v != null ? i : a, 0);
+
+function mountTrend(key, t, { height, projection, color }) {
+  const old = document.getElementById(key), host = old.cloneNode(false);
+  old.replaceWith(host);
+  const dotsId = `dots-${key}`;
+  mount(key, host, {
+    n: t.categories.length, start: () => startOf(t),
+    build: w => K.trendModel(t, ctx, { w, height, projection }),
+    svg: (m, a) => K.trendSVG(m, { color, active: a, dotsId }),
+    tip: (m, i) => K.trendTip(m, i, { color }),
+  });
+}
+
+function readout(t, share) {
+  const range = t.ytdMonths ? `1–${ctx.month - 1} 月` : "";
+  return `<div class="bc-rk is-hero"><span class="label">${ctx.month} 月${t.partial >= 0 ? `至今 · 第 ${ctx.day}/${ctx.daysInMonth} 天` : ""}</span><span class="num">${t.value == null ? "—" : K.wan(t.value)}<small>万</small></span></div>`
+    + (t.pace != null ? `<div class="bc-rk"><span class="label">按日均推算月底</span><span class="bc-v bc-pace-text">≈ ${K.wan(t.pace)}<small>万（示意）</small></span>${t.lastSame != null ? `<span class="small muted">去年 ${ctx.month} 月 ${K.wan(t.lastSame)} 万 · <span class="${t.pace >= t.lastSame ? "bc-up" : "bc-down"}">${K.yoyText(t.pace / t.lastSame - 1, t.unit)}</span></span>` : ""}</div>` : "")
+    + (t.ytd != null ? `<div class="bc-rk"><span class="label">${range}累计</span><span class="bc-v">${money(t.ytd)}</span><span class="small muted">同比 <span class="${t.ytdYoY >= 0 ? "bc-up" : "bc-down"}">${K.yoyText(t.ytdYoY, t.unit)}</span> · 去年同期 ${money(t.ytdLast)}</span></div>` : "")
+    + (t.best >= 0 ? `<div class="bc-rk is-last"><span class="label">今年最高</span><span class="bc-v">${Number(t.categories[t.best])} 月 · ${K.wan(t.now[t.best])}<small>万</small></span>${share != null ? `<span class="small muted">占 ${ctx.month} 月总营收 ${K.pct(share, 0)}</span>` : ""}</div>` : "");
+}
+
+const total = yearTrend(find("总营收"), ctx);
+function showView(view) {
+  const v = VIEWS[view], t = yearTrend(find(v.chart), ctx);
+  document.getElementById("big-title").innerHTML = `${view !== "total" ? `<i class="bc-swatch" style="background:${v.color}"></i>` : ""}${v.name} · 月度`;
+  document.getElementById("readout").innerHTML = readout(t, view === "total" || !total.value ? null : t.value / total.value);
+  document.querySelectorAll("#views button").forEach(b => b.classList.toggle("active", b.dataset.v === view));
+  mountTrend("big", t, { height: 320, projection: true, color: v.color || "var(--text)" });
+}
+document.getElementById("views").innerHTML = Object.entries(VIEWS).map(([k, v]) => `<button data-v="${k}">${v.name}</button>`).join("");
+document.getElementById("views").addEventListener("click", e => { const b = e.target.closest("button"); if (b) showView(b.dataset.v); });
+document.getElementById("widths").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  document.getElementById("page").dataset.w = b.dataset.w;
+  document.querySelectorAll("#widths button").forEach(x => x.classList.toggle("active", x === b));
+});
+showView(VIEWS[preset.get("view")] ? preset.get("view") : "total");
+if (preset.get("w") === "1280") document.querySelectorAll("#widths button").forEach(x => x.classList.toggle("active", x.dataset.w === "1280"));
+
+const ct = yearTrend(find("总转化率趋势"), ctx);
+document.getElementById("conv-extra").textContent = `今年 1–${ctx.month - 1} 月均值 ${K.pct(ct.ytd)} · 去年 ${K.pct(ct.ytdLast)}`;
+mountTrend("conv", ct, { height: 220, projection: false });
+
+const topics = voiceSample(new Date(2026, 9, 24)).hot.slice(0, 4);
+mount("voice", document.getElementById("voice"), {
+  n: 7, start: () => 6, wide: true,
+  build: () => K.voiceModel(topics),
+  svg: (m, a) => K.voiceSVG(m, { active: a }),
+  tip: (m, i) => K.voiceTip(m, i),
+  toPx: (m, v) => v * document.getElementById("voice").clientWidth / m.W,
+});
+</script>
+</body>
+</html>

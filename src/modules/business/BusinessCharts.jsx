@@ -2,6 +2,8 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { apiRead } from "../../api.js";
 import { Button, Card, Loadable, Placeholder, Segmented, Tag } from "../../ui/components.jsx";
 import { LINES } from "../../constants.js";
+import { placeLabels } from "../../ui/chart-labels.js";
+import { ChartTip, ChartTipRow, useChartHover } from "../../ui/chart-hover.jsx";
 import { monthContext, niceScale, shareItems, squarify, topN, yearTrend, yoy } from "./chart-math.js";
 import "./business-charts.css";
 
@@ -94,7 +96,7 @@ function FocusView({ data, view }) {
   const totalChart = find(VIEWS.total.chart), total = totalChart && yearTrend(totalChart, ctx);
   return <>
     <div className="bc-focus">
-      <Card className="bc-trend" title={<>{view !== "total" && <i className="bc-swatch" style={{ background: VIEWS[view].color }} />}{VIEWS[view].name} · 月度</>} extra={<span className="small muted">每点标今年金额（万元）；下排为同比 · 实线今年、虚线去年、网点列为当月</span>}>
+      <Card className="bc-trend" title={<>{view !== "total" && <i className="bc-swatch" style={{ background: VIEWS[view].color }} />}{VIEWS[view].name} · 月度</>} extra={<span className="small muted">每点标金额（万元）：黑字今年、灰字去年；下排为同比 · 实线今年、虚线去年、网点列为当月</span>}>
         <TrendChart t={t} ctx={ctx} color={VIEWS[view].color} height={320} labels projection />
         <SourceDetails chart={chart} />
       </Card>
@@ -106,9 +108,11 @@ function FocusView({ data, view }) {
 
 // 今年 vs 去年折线：今年实线 + 实心方点，去年灰色虚线；线尾直接写年份，不用图例。
 // 当月未过完：空心方点 +「至今」，同一列虚线连到橙色「推算」空心点（示意，用户 2026-10-23 同意保留）。
+// 每点标数值（今年墨色、去年灰色）；悬停或 Tab 后按 ← → 看一列：竖线、方框、月份反色 + 数据卡（用户 2026-10-24 选定，稿件 docs/design-drafts/charts/hover.html）。
 function TrendChart({ t, ctx, color = "var(--text)", height = 240, labels = false, projection = false }) {
   const [ref, w] = useWidth(), dotsId = `bc-dots-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const isPct = t.unit === "percent", n = t.categories.length;
+  const { active, setActive, hostProps } = useChartHover(n, () => t.cur >= 0 ? t.cur : t.now.reduce((a, v, i) => v != null ? i : a, 0));
   const vals = [...t.now, ...t.last, ...(projection && t.pace != null ? [t.pace] : [])].filter(v => v != null);
   if (!vals.length) return <Placeholder icon="trend" title="原图暂无可绘制数据" />;
   const L = 44, R = 48, T = labels ? 26 : 22, B = 54, plotW = Math.max(0, w - L - R), plotH = height - T - B;
@@ -118,44 +122,93 @@ function TrendChart({ t, ctx, color = "var(--text)", height = 240, labels = fals
   const tick = v => isPct ? `${Math.round(v * 100)}%` : wan(v);
   const every = plotW / n < 34 ? 2 : 1, everyYoy = plotW / n < 44 ? 2 : 1;
   const path = arr => arr.map((v, i) => v == null ? "" : `${i === 0 || arr[i - 1] == null ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
-  const label = (c, i) => `${Number(c)}月${i === t.partial ? "（至今）" : ""}`;
   const lastIdx = arr => arr.reduce((a, v, i) => v != null ? i : a, -1);
   const ia = lastIdx(t.now), ib = lastIdx(t.last);
   let ya = ia >= 0 ? y(t.now[ia]) : 0, yb = ib >= 0 ? y(t.last[ib]) : 0;
   if (ia !== t.partial && Math.abs(ya - yb) < 14) [ya, yb] = ya < yb ? [ya - 7, yb + 7] : [ya + 7, yb - 7];
   const partialPrev = t.partial > 0 ? t.now[t.partial - 1] : null;
-  return <div ref={ref} className="bc-chart-host">{w > 0 && <svg className="bc-svg" width={w} height={height} role="img" aria-label={`${ctx.year} 与 ${ctx.year - 1} 年逐月对比，${isPct ? "百分比" : "单位万元"}；完整数值在下方展开`}>
+  const pace = projection ? t.pace : null, colW = plotW / n;
+  const vl = labels && w > 0 ? valueLabels(t, { x, y, fmt, w, L, T, plotH, pace, ia, ib, ya, yb }) : [];
+  const pick = e => setActive(Math.max(0, Math.min(n - 1, Math.floor((e.clientX - e.currentTarget.ownerSVGElement.getBoundingClientRect().left - L) / colW))));
+  const ring = (v, cls, style) => v != null && <rect className={`chart-ring ${cls}`} x={x(active) - 6} y={y(v) - 6} width="12" height="12" style={style} />;
+  return <div ref={ref} className="bc-chart-host" role="group" aria-label={`${ctx.year} 与 ${ctx.year - 1} 年逐月数值，按左右方向键逐月查看`} {...hostProps}>{w > 0 && <svg className="bc-svg" width={w} height={height} role="img" aria-label={`${ctx.year} 与 ${ctx.year - 1} 年逐月对比，${isPct ? "百分比" : "单位万元"}；完整数值在下方展开`}>
     {sc.ticks.map(v => <g key={v}><line className="bc-grid" x1={L} x2={w - R} y1={y(v)} y2={y(v)} /><text x={L - 6} y={y(v) + 4} textAnchor="end">{tick(v)}</text></g>)}
     {!isPct && <text x={L - 6} y={T - 14} textAnchor="end">万元</text>}
     <defs><pattern id={dotsId} width="8" height="8" patternUnits="userSpaceOnUse">{DOTS.map(([a, b]) => <rect key={`${a}-${b}`} x={a} y={b} width="2" height="2" className="bc-dot" />)}</pattern></defs>
     {t.partial >= 0 && <rect x={x(t.partial) - plotW / n / 2} y={T} width={plotW / n} height={plotH} fill={`url(#${dotsId})`} />}
-    {t.categories.map((c, i) => i % every ? null : <text key={c} x={x(i)} y={T + plotH + 16} textAnchor="middle" className={i === t.cur ? "bc-ink bc-b" : undefined}>{Number(c)}月</text>)}
+    {active >= 0 && <line className="chart-cross" x1={Math.round(x(active)) + 0.5} x2={Math.round(x(active)) + 0.5} y1={T} y2={T + plotH} />}
+    {/* 月份隔月显示时，悬停到被省掉的那个月就补出来，并让开左右两个 */}
+    {t.categories.map((c, i) => i !== active && (i % every || (every > 1 && active >= 0 && Math.abs(i - active) === 1)) ? null : <g key={c} className={i === active ? "chart-xon" : undefined}>
+      {i === active && <rect x={x(i) - 17} y={T + plotH + 4} width="34" height="17" />}
+      <text x={x(i)} y={T + plotH + 16} textAnchor="middle" className={i === t.cur ? "bc-ink bc-b" : undefined}>{Number(c)}月</text>
+    </g>)}
     <path d={path(t.last)} fill="none" className="bc-last" />
-    {t.last.map((v, i) => v == null ? null : <rect key={i} x={x(i) - 2.5} y={y(v) - 2.5} width="5" height="5" className="bc-last-dot"><title>{ctx.year - 1} 年 {label(t.categories[i], -1)} · {exact(v, t.unit)}</title></rect>)}
+    {t.last.map((v, i) => v == null ? null : <rect key={i} x={x(i) - 2.5} y={y(v) - 2.5} width="5" height="5" className="bc-last-dot" />)}
     <path d={path(t.now.map((v, i) => i === t.partial ? null : v))} fill="none" stroke="currentColor" strokeWidth="2" style={{ color }} />
     {t.partial >= 0 && partialPrev != null && <line x1={x(t.partial - 1)} y1={y(partialPrev)} x2={x(t.partial)} y2={y(t.now[t.partial])} stroke="currentColor" strokeWidth="2" strokeDasharray="2 3" style={{ color }} />}
     {t.now.map((v, i) => {
       if (v == null) return null;
-      const part = i === t.partial, above = t.last[i] == null || v >= t.last[i];
+      const part = i === t.partial;
       return <g key={i} style={{ color }}>
-        <rect x={x(i) - 4} y={y(v) - 4} width="8" height="8" fill={part ? "var(--panel)" : "currentColor"} stroke="currentColor" strokeWidth={part ? 2 : 0}><title>{ctx.year} 年 {label(t.categories[i], i)} · {exact(v, t.unit)}</title></rect>
-        {labels && !(part && projection) && <text x={x(i)} y={above ? y(v) - 9 : y(v) + 18} textAnchor="middle" className="bc-ink">{fmt(v)}</text>}
-        {part && <text x={x(i) + 8} y={y(v) + 4} className="bc-sans bc-colored">{projection ? `至今 ${fmt(v)}` : "至今"}</text>}
+        <rect x={x(i) - 4} y={y(v) - 4} width="8" height="8" fill={part ? "var(--panel)" : "currentColor"} stroke="currentColor" strokeWidth={part ? 2 : 0} />
+        {part && <text x={x(i) + 8} y={y(v) + 4} className={`bc-sans bc-colored chart-val${i === active ? " is-on" : ""}`}>{labels || projection ? `至今 ${fmt(v)}` : "至今"}</text>}
       </g>;
     })}
-    {projection && t.pace != null && <g className="bc-pace">
-      <line x1={x(t.partial)} x2={x(t.partial)} y1={y(t.value) - 5} y2={y(t.pace) + 5} stroke="currentColor" strokeWidth="1.5" strokeDasharray="2 2" style={{ color }} />
-      <rect x={x(t.partial) - 4} y={y(t.pace) - 4} width="8" height="8"><title>按日均推算月底（示意）· {exact(t.pace, t.unit)}</title></rect>
-      <text x={x(t.partial) + 8} y={y(t.pace) + 4} className="bc-sans">推算 {fmt(t.pace)}</text>
+    {pace != null && <g className="bc-pace">
+      <line x1={x(t.partial)} x2={x(t.partial)} y1={y(t.value) - 5} y2={y(pace) + 5} stroke="currentColor" strokeWidth="1.5" strokeDasharray="2 2" style={{ color }} />
+      <rect x={x(t.partial) - 4} y={y(pace) - 4} width="8" height="8" />
+      <text x={x(t.partial) + 8} y={y(pace) + 4} className="bc-sans chart-val">推算 {fmt(pace)}</text>
     </g>}
+    {vl.map(l => !l.hidden && <text key={`${l.kind}${l.i}`} x={l.x.toFixed(1)} y={l.y.toFixed(1)} className={`chart-val ${l.kind === "now" ? "bc-ink" : "is-last"}${l.i === active ? " is-on" : ""}`}>{l.text}</text>)}
     {ia >= 0 && ia !== t.partial && <text x={x(ia) + 8} y={ya + 4} className="bc-b bc-colored" style={{ color }}>{ctx.year}</text>}
     {ib >= 0 && <text x={x(ib) + 6} y={yb + 4}>{ctx.year - 1}</text>}
+    {active >= 0 && <>{ring(t.last[active], "is-last")}{ring(t.now[active], "", { color })}{active === t.partial && ring(pace, "is-pace")}</>}
     <text x={L - 6} y={T + plotH + 40} textAnchor="end">{isPct ? "差" : "同比"}</text>
     {t.categories.map((c, i) => {
       const r = i % everyYoy ? null : yoy(t, i);
-      return r && <text key={c} x={x(i)} y={T + plotH + 40} textAnchor="middle" className={r.value >= 0 ? "bc-up" : "bc-down"}>{yoyText(r.value, t.unit, r.estimated)}</text>;
+      return r && <text key={c} x={x(i)} y={T + plotH + 40} textAnchor="middle" className={`${r.value >= 0 ? "bc-up" : "bc-down"}${i === active ? " bc-b" : ""}`}>{yoyText(r.value, t.unit, r.estimated)}</text>;
     })}
-  </svg>}</div>;
+    <rect className="chart-hit" x={L} y="0" width={plotW} height={height} onPointerMove={pick} />
+  </svg>}
+    {w > 0 && <ChartTip x={active >= 0 ? x(active) : null} gap={Math.max(14, colW / 2 + 2)}>{active >= 0 && <TrendTip t={t} ctx={ctx} i={active} color={color} pace={pace} />}</ChartTip>}
+  </div>;
+}
+
+// 每点数值的摆放：两条线的每一段、每个方点、「至今 / 推算」与线尾年份都算障碍；同一列高的点往上标、低的往下标，今年先摆
+function valueLabels(t, { x, y, fmt, w, L, T, plotH, pace, ia, ib, ya, yb }) {
+  const segments = [], marks = [], boxes = [];
+  const w11 = s => [...s].reduce((a, c) => a + (/[　-鿿＀-￯]/.test(c) ? 11 : 6.6), 0); // 11px 字宽估算
+  [t.now, t.last].forEach(arr => arr.forEach((v, i) => { if (v != null && arr[i + 1] != null) segments.push([x(i), y(v), x(i + 1), y(arr[i + 1])]); }));
+  t.now.forEach((v, i) => v != null && marks.push({ x: x(i) - 4, y: y(v) - 4, w: 8, h: 8 }));
+  t.last.forEach((v, i) => v != null && marks.push({ x: x(i) - 2.5, y: y(v) - 2.5, w: 5, h: 5 }));
+  if (t.partial >= 0) boxes.push({ x: x(t.partial) + 8, y: y(t.now[t.partial]) - 5, w: w11(`至今 ${fmt(t.now[t.partial])}`), h: 11 });
+  if (pace != null) {
+    segments.push([x(t.partial), y(t.value) - 5, x(t.partial), y(pace) + 5]);
+    marks.push({ x: x(t.partial) - 4, y: y(pace) - 4, w: 8, h: 8 });
+    boxes.push({ x: x(t.partial) + 8, y: y(pace) - 5, w: w11(`推算 ${fmt(pace)}`), h: 11 });
+  }
+  if (ia >= 0 && ia !== t.partial) boxes.push({ x: x(ia) + 8, y: ya - 5, w: 27, h: 11 });
+  if (ib >= 0) boxes.push({ x: x(ib) + 6, y: yb - 5, w: 27, h: 11 });
+  const items = [];
+  t.now.forEach((v, i) => v != null && i !== t.partial && items.push({ i, kind: "now", x: x(i), y: y(v), r: 4, text: fmt(v), side: t.last[i] == null || v >= t.last[i] ? "up" : "down" }));
+  t.last.forEach((v, i) => v != null && items.push({ i, kind: "last", x: x(i), y: y(v), r: 4, text: fmt(v), side: t.now[i] != null && i !== t.partial && t.now[i] < v ? "up" : "down" }));
+  const pos = placeLabels(items, { segments, marks, boxes, bounds: { x: L - 4, y: 4, w: w - L, h: T + plotH - 4 } });
+  return items.map((it, k) => ({ ...it, ...pos[k] }));
+}
+
+// 数据卡：一列里每条线一行（方点照图上画法），金额写万元一位小数 + 精确到分的元，底行同比
+function TrendTip({ t, ctx, i, color, pace }) {
+  const isPct = t.unit === "percent", part = i === t.partial, future = t.now[i] == null && t.cur >= 0 && i > t.cur;
+  const main = v => v == null ? "—" : isPct ? exact(v, t.unit) : `${nf(v / 1e4, 1)} 万`;
+  const sub = v => v == null ? "还没有数据" : isPct ? null : exact(v, t.unit);
+  const r = yoy(t, i);
+  return <>
+    <div className="chart-tip-head"><b>{Number(t.categories[i])} 月</b><span>{part ? `至今 · 第 ${ctx.day}/${ctx.daysInMonth} 天` : future ? "还没到" : ""}</span></div>
+    <ChartTipRow mark={part ? "is-part" : "is-now"} color={color} name={`${ctx.year} ${part ? "至今" : "今年"}`} value={main(t.now[i])} sub={sub(t.now[i])} />
+    {part && pace != null && <ChartTipRow className="is-pace" mark="is-pace" name="推算月底（示意）" value={`≈ ${wan(pace)} 万`} sub="按日均外推，不含月底冲量" />}
+    <ChartTipRow mark="is-last" name={`${ctx.year - 1} 去年`} value={main(t.last[i])} sub={sub(t.last[i])} />
+    {r && <div className="chart-tip-foot"><span>{isPct ? "差" : "同比"}{r.estimated ? "（按推算）" : ""}</span><b className={r.value >= 0 ? "bc-up" : "bc-down"}>{yoyText(r.value, t.unit, r.estimated)}{isPct ? " 个点" : ""}</b></div>}
+  </>;
 }
 
 // 右侧读数栏：只有第一格用像素大数字（每卡最多 1 个主数字）
@@ -176,7 +229,7 @@ function TotalBelow({ data, ctx, find, total }) {
   const sum = parts.reduce((a, p) => a + (p.t.value || 0), 0);
   return <div className="bc-pair">
     {ct ? <Card className="bc-conv" title="总转化率" extra={ct.ytd != null && <span className="small muted">今年 1–{ctx.month - 1} 月均值 {pct(ct.ytd)} · 去年 {pct(ct.ytdLast)}</span>}>
-      <TrendChart t={ct} ctx={ctx} height={220} />
+      <TrendChart t={ct} ctx={ctx} height={220} labels />
       <SourceDetails chart={conv} />
     </Card> : <Placeholder icon="trend" title={`飞书里没有找到「${CONV}」`} />}
     <Card className="bc-mix" title={`${ctx.month} 月${total?.partial >= 0 ? "至今" : ""} · 三条业务线`} extra={<span className="small muted">条长 = 占三线合计的比例</span>}>

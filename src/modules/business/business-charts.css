@@ -8,7 +8,7 @@
 .bc-focus { display: grid; grid-template-columns: minmax(0, 9fr) minmax(0, 3fr); gap: var(--gap); align-items: stretch; }
 .bc-trend, .bc-conv { min-width: 0; }
 .bc-trend .card-body, .bc-conv .card-body { display: flex; flex-direction: column; }
-.bc-chart-host { width: 100%; min-width: 0; }
+.bc-chart-host { position: relative; width: 100%; min-width: 0; } /* 数据卡 .chart-tip 夹在这个框里 */
 .bc-svg { display: block; overflow: visible; }
 .bc-svg text { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
 .bc-svg text.bc-ink { fill: var(--text); }
@@ -17,6 +17,12 @@
 .bc-svg text.bc-colored { fill: currentColor; }
 .bc-svg text.bc-up { fill: var(--ok); }
 .bc-svg text.bc-down { fill: var(--risk); }
+/* 每点数值（用户 2026-10-24）：今年墨色、去年灰色，悬停列加粗；套一圈面板底色描边，压到网点列和折线上也不糊（网点不压字） */
+.bc-svg text.chart-val { paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; }
+.bc-svg text.chart-val.is-last { fill: var(--muted); }
+.bc-svg text.chart-val.is-on { font-weight: 600; }
+.bc-svg text.chart-val.is-last.is-on { fill: var(--text-2); }
+.bc-svg .chart-xon text { fill: var(--panel); font-weight: 600; }
 .bc-grid { stroke: var(--line); stroke-dasharray: 2 4; }
 .bc-dot { fill: var(--grid-dot); } /* 当月列浅网点：这一列还没过完 */
 .bc-last { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 3; }

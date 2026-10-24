@@ -5,6 +5,8 @@ import { href } from "../../router.js";
 import { Button, Card, Loadable, PageHeader, Placeholder, SampleBadge, StatStrip, Tag } from "../../ui/components.jsx";
 import { labelLayout, slotHeight } from "./label-layout.js";
 import { voiceSample } from "../../samples.js";
+import { placeLabels } from "../../ui/chart-labels.js";
+import { ChartTip, ChartTipRow, useChartHover } from "../../ui/chart-hover.jsx";
 
 // Voice · 留学之声（v3，侧栏独立模块）：留学生最近在讨论什么。基于本机运行的 AIHOT 引擎，免费英文信源；
 // 只看多数人的共性——同一人 / 同一矩阵只算一个来源，独立来源 ≥ 5 才上榜。
@@ -197,12 +199,25 @@ function TrendChart({ topics }) {
   }, [key]);
   const layout = labelLayout(topics, { H, T, B, h: slot });
   const pos = new Map(layout.mode === "labels" ? layout.labels.map((l) => [l.id, l]) : []);
+  // 每点标热度、悬停 / 键盘看一天的竖线与数据卡（用户 2026-10-24 选定，稿件 docs/design-drafts/charts/hover.html）；坐标都是 viewBox 单位，卡片位置换算成像素
+  const n = topics[0]?.spark.length || 0, step = (W - L - R) / 6;
+  const { active, setActive, hostProps } = useChartHover(n, () => n - 1);
+  const host = useRef(null);
+  const vl = pointLabels(topics, { x, y, pos, text, L, R, W, H, B });
+  const pick = (e) => { const r = e.currentTarget.ownerSVGElement.getBoundingClientRect(); setActive(Math.max(0, Math.min(n - 1, Math.round(((e.clientX - r.left) * W / r.width - L) / step)))); };
+  const px = (v) => v * (host.current?.clientWidth || W) / W;
+  const day = (i) => topics[0]?.sparkDates?.[i] ? String(topics[0].sparkDates[i]).slice(5, 10) : `第 ${i + 1} 天`;
   return (
     <>
+      <div ref={host} className="trend-host" role="group" aria-label="话题热度逐天数值，按左右方向键逐天查看" {...hostProps}>
       <svg viewBox={`0 0 ${W} ${H}`} className="trend-chart" role="img" aria-label="话题热度趋势" shapeRendering="crispEdges">
         <g ref={measure} visibility="hidden" aria-hidden="true">{topics.map((t) => <text key={t.id} x={0} y={0} className="end-label">{text(t)}</text>)}</g>
         {[0, 25, 50, 75, 100].map((v) => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} className="grid-line" /><text x={L - 8} y={y(v) + 4} textAnchor="end" className="axis">{v}</text></g>)}
-        {(topics[0]?.sparkDates || []).map((l, i) => <text key={l} x={x(i)} y={H - 6} textAnchor="middle" className="axis">{String(l).slice(5, 10)}</text>)}
+        {active >= 0 && <line className="chart-cross" x1={x(active)} x2={x(active)} y1={T} y2={H - B} />}
+        {(topics[0]?.sparkDates || []).map((l, i) => <g key={l} className={i === active ? "chart-xon" : undefined}>
+          {i === active && <rect x={x(i) - 22} y={H - 19} width="44" height="17" />}
+          <text x={x(i)} y={H - 6} textAnchor="middle" className="axis">{String(l).slice(5, 10)}</text>
+        </g>)}
         {/* 倒序绘制：第一名最后画、压在最上层，同值重合时粗线和橙点仍可见（只改绘制顺序，不改数据） */}
         {topics.map((t, k) => {
           const p = pos.get(t.id);
@@ -215,7 +230,17 @@ function TrendChart({ topics }) {
             </g>
           );
         }).reverse()}
+        {vl.map((l) => !l.hidden && <text key={l.key} x={l.x.toFixed(1)} y={l.y.toFixed(1)} className={`chart-val${l.k === 0 ? " is-top" : ""}${l.i === active ? " is-on" : ""}`}>{l.text}</text>)}
+        {active >= 0 && topics.map((t, k) => <rect key={t.id} className={`chart-ring ${k === 0 ? "is-top" : "is-last"}`} x={x(active) - 6} y={y(t.spark[active]) - 6} width="12" height="12" />)}
+        <rect className="chart-hit" x={L} y="0" width={W - R - L} height={H} onPointerMove={pick} />
       </svg>
+      <ChartTip x={active >= 0 ? px(x(active)) : null} gap={Math.max(14, px(step) / 2 + 2)} wide>
+        {active >= 0 && <>
+          <div className="chart-tip-head"><b>{day(active)}</b><span>热度 0–100</span></div>
+          {topics.map((t, k) => <ChartTipRow key={t.id} mark={k === 0 ? "is-top" : "is-last"} name={t.title} value={heatText(t.spark[active])} />)}
+        </>}
+      </ChartTip>
+      </div>
       {layout.mode === "legend" && (
         <ul className="trend-legend" aria-label="话题图例（末端放不下标签时显示）">
           {topics.map((t, k) => <li key={t.id} className={k === 0 ? "is-top" : undefined}><i aria-hidden="true" /><span>{t.title}</span><span className="tnum muted">{t.heat}</span></li>)}
@@ -223,4 +248,25 @@ function TrendChart({ topics }) {
       )}
     </>
   );
+}
+
+const heatText = (v) => Number.isInteger(v) ? String(v) : v.toFixed(1);
+
+// 每点热度的摆放：四条线的每一段、每个方点、线尾标签都算障碍；同一天上半往上标、下半往下标，第一名先摆。
+// 最后一天的值线尾标签里已有（「标题 · 92」），不重复标；线尾放不下改图例时照常标。
+function pointLabels(topics, { x, y, pos, text, L, R, W, H, B }) {
+  const segments = [], marks = [], boxes = [], items = [];
+  const w12 = (s) => [...s].reduce((a, c) => a + (/[　-鿿＀-￯]/.test(c) ? 12 : 6.7), 0); // 线尾标签 12px 字宽估算
+  topics.forEach((t) => t.spark.forEach((v, i) => {
+    marks.push({ x: x(i) - 4, y: y(v) - 4, w: 8, h: 8 });
+    if (i < t.spark.length - 1) segments.push([x(i), y(v), x(i + 1), y(t.spark[i + 1])]);
+  }));
+  topics.forEach((t) => { const p = pos.get(t.id); if (p) boxes.push({ x: W - R + 10, y: p.labelY - 6, w: w12(text(t)), h: 13 }); });
+  topics.forEach((t, k) => t.spark.forEach((v, i) => {
+    if (i === t.spark.length - 1 && pos.has(t.id)) return;
+    const higher = topics.filter((o) => o.spark[i] > v).length;
+    items.push({ key: `${t.id}-${i}`, i, k, x: x(i), y: y(v), r: 4, text: heatText(v), side: higher < topics.length / 2 ? "up" : "down" });
+  }));
+  const placed = placeLabels(items, { segments, marks, boxes, bounds: { x: L - 4, y: 0, w: W - R - L + 8, h: H - B - 2 } });
+  return items.map((it, j) => ({ ...it, ...placed[j] }));
 }

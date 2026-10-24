@@ -109,3 +109,31 @@ kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 var(--s1); bord
 .md-hr { margin: var(--s4) 0; border: 0; border-top: 1px solid var(--line); }
 .md-table .grid td:first-child { width: 32px; color: var(--muted); font-family: var(--font-mono); }
 
+
+/* 折线图悬停（2026-10-24 用户选定，稿件 docs/design-drafts/charts/hover.html；业务页趋势图与 Voice 热度走势共用，src/ui/chart-hover.jsx）：
+   悬停列一条墨色点线，列里每个点套一个方框，月份 / 日期反色；数据卡直角 2px 墨框，浮起感用右下错位 6px 的墨色网点（同书架悬停卡 .kbs-tip），不用阴影 */
+.chart-hit { fill: transparent; }
+.chart-cross { stroke: var(--text); stroke-width: 1; stroke-dasharray: 2 2; shape-rendering: crispEdges; }
+.chart-ring { fill: none; stroke: currentColor; stroke-width: 2; shape-rendering: crispEdges; }
+.chart-ring.is-last { stroke: var(--muted); stroke-width: 1.5; }
+.chart-ring.is-pace { stroke: var(--signal); }
+.chart-xon rect { fill: var(--text); }
+.chart-tip { position: absolute; z-index: 3; width: 236px; pointer-events: none; }
+.chart-tip.is-wide { width: 300px; }
+.chart-tip-sh { position: absolute; left: 6px; top: 6px; right: -6px; bottom: -6px; background-image: var(--dither-ink-2); }
+.chart-tip-card { position: relative; padding: var(--s2) var(--s3); border: 2px solid var(--text); background: var(--panel); }
+.chart-tip-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); padding-bottom: var(--s2); border-bottom: 1px solid var(--line); }
+.chart-tip-head b { font-size: 14px; font-weight: 600; }
+.chart-tip-head span { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.chart-tip-row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; column-gap: 6px; padding-top: var(--s2); }
+.chart-tip-mk { box-sizing: border-box; width: 8px; height: 8px; background: currentColor; } /* 行首方点照图上画法：实心今年、空心至今、橙色虚框推算、灰色小点去年 */
+.chart-tip-mk.is-part { background: var(--panel); border: 2px solid currentColor; }
+.chart-tip-mk.is-last { width: 5px; height: 5px; justify-self: center; background: var(--muted); }
+.chart-tip-mk.is-pace { background: var(--panel); border: 2px dashed var(--signal); }
+.chart-tip-mk.is-top { background: var(--signal); }
+.chart-tip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text-2); }
+.chart-tip-v { font-family: var(--font-mono); font-size: 14px; font-weight: 600; white-space: nowrap; text-align: right; }
+.chart-tip-x { grid-column: 2 / -1; font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-align: right; }
+.chart-tip-row.is-pace .chart-tip-name, .chart-tip-row.is-pace .chart-tip-v { color: var(--signal); }
+.chart-tip-foot { display: flex; justify-content: space-between; align-items: baseline; margin-top: var(--s2); padding-top: var(--s2); border-top: 1px solid var(--line); font-size: 12px; color: var(--text-2); }
+.chart-tip-foot b { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }

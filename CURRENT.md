@@ -2,6 +2,29 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 折线图每点数值 + 悬停竖线与数据卡（2026-10-24，Claude，用户选定样稿，三张折线图含 Voice 都按它改、卡片保留精确到分的元；未提交、未发布）
+
+- 时间：开工 `2026-10-24 09:06`（`date '+%F %H:%M'` 记录）。来由：用户要折线图每个点直接显示数值，鼠标移到图上出现竖线和一张列出这一列所有线数值的卡片；给了两张参考图（业务页「月度」现图、外部图表的悬停卡），要求重做成位图风，先出样稿再改页面。
+- 工作台的折线图共三张（改前查清）：业务页「月度」大图（`BusinessCharts.jsx` 的 `TrendChart`，总营收和三条业务线共用，原来只标今年）；业务页「总转化率」（同一组件，原来不标数值）；Voice「近 7 天热度走势」（`VoicePage.jsx` 的 `TrendChart`，原来只有线尾「标题 · 热度」）。悬停原来只有业务图点上的浏览器 `<title>` 小提示，Voice 没有。首页「促销变动」、Voice 7 天点阵柱不是折线图，价格页折线图早已换成空位，都不在本轮。
+- 改了哪些文件：
+  - 样稿：`docs/design-drafts/charts/hover.html`、`line-hover.js`、`point-labels.js`（新；静态页直接引用 `src/styles.css`、`src/styles/index.css`、`business-charts.css`，SVG 照两个 `TrendChart` 搬成字符串，刻度 / 当月 / 推算 / 同比直接用 `chart-math.js`；业务数据用已入库的 `docs/design-drafts/business/charts-data.json`，Voice 用 `samples.js`；由 `kb-drafts` 静态服务 5297 打开）。
+  - 公共件（新）：`src/ui/chart-labels.js`（每点数值摆放：在点四周按顺序试 8 个位置，避开别的标签、方点、固定文字、图框和折线，放不下的不画）；`src/ui/chart-hover.jsx`（`useChartHover` 悬停 / 键盘状态，`ChartTip` 数据卡定位——竖线右边让开半列宽、放不下换左边、夹在图框里，`ChartTipRow` 一线一行）；`tests/chart-labels.test.mjs`（新，5 项）。
+  - 业务页：`src/modules/business/BusinessCharts.jsx`（`TrendChart` 加每点数值、竖线、12px 方框、月份反色、透明命中层与数据卡；去掉点上的 `<title>`，精确到分的元挪进卡里；转化率图打开 `labels`，「至今」后带数值；新增 `valueLabels`、`TrendTip`；大图卡头说明改「每点标金额（万元）：黑字今年、灰字去年；…」）；`business-charts.css`（`.bc-chart-host` 加 `position: relative`，加数值描边与月份反色字色）。
+  - Voice：`src/modules/voice/VoicePage.jsx`（`TrendChart` 外包 `.trend-host`，加每点热度、竖线、方框、日期反色、数据卡；最后一天的值线尾标签里已有，不重复标；新增 `pointLabels`、`heatText`——热度整数原样、否则一位小数）；`src/styles/55-voice.css`（数值字色与描边、第一名方框橙色）。
+  - 公共样式：`src/styles/10-common.css` 末尾加 `.chart-*`（竖线、方框、月份反色底、数据卡与网点错位）。
+  - 文档：`docs/STYLE-GUIDE.md` 第 5 节加「折线图」一条；`docs/LESSONS.md` 末尾加 L-13（只加这一条，该文件里另一会话未提交的「提升为全局 G-xx」标注不是本轮的）。
+- 测试：改完 `npm test` 原样结果 `ℹ tests 742` / `ℹ pass 742` / `ℹ fail 0`（原 737 + 新增 5），`npm run check:style` 输出「样式检查通过」、退出码 0，`git diff --check` 通过，`npm run build` 通过（日志 `npm-test-1.log`、`check-style-1.log`）；加 L-13、写完本节后复跑 `npm test` 原样结果 `ℹ tests 742` / `ℹ pass 742` / `ℹ fail 0`，`npm run check:style` 退出码 0，`git diff --check` 通过（`npm-test-2.log`、`check-style-2.log`）。日志在 `~/Library/Application Support/NiumaHome/evidence/折线图数值与悬停-20261024/`。工作区含他人未提交改动：`.claude/launch.json`、`CURRENT.md` 一行、`docs/LESSONS.md` 的提升标注（L-07），与这三张图无关。
+- 验证：
+  - 样稿：内置浏览器 1440 宽实看；无头 Chrome 走调试协议按元素截 2 倍图（总营收 / 申诉 / 国课、转化率、Voice，1440 与 1280 两种主区宽度）；用户看图后选定。
+  - 改后在隔离 5290 实看：正式库（`WORKDESK_DATA_DIR` = 主工作区 `data/`）`sqlite3 .backup` 副本加 `images/` 放会话 scratch 目录，`integrity_check` 为 ok；假 `lark-cli` 前置 PATH（业务图表读副本里 09:08 的缓存，后台刷新失败显示黄条「更新未完成」，属隔离环境预期）；`npm run build` 后 `node server/index.mjs`（日志 `server-5290.log`），看完已停。
+  - 交互用真实输入核对（调试协议 `Input.dispatchKeyEvent` / `dispatchMouseEvent`，脚本 `cdp-debug.mjs`）：Tab 进图停当月 10 月，← 到 9 月，Esc 收起，收起后 → 回到 10 月，End 到 12 月，Tab 离开收起；鼠标到 3 月出卡、移出收起；Tab 进图有全站橙色焦点框。卡片在 9 月、10 月、12 月靠右放不下时换到左边，1 月、2 月在右边，都在图框内。
+  - 对照改前截图逐项核对（L-01，改前取自正式 5280 只读打开）：今年实线墨色 + 实心方点、去年灰色虚线 + 灰小方点、当月网点列、「至今」空心方点、「推算」橙色虚框与橙字、线尾年份灰字、当月月份加粗、同比行绿涨红跌、右侧读数栏（像素大数字、推算橙、同比绿）、营收完成度卡、三条业务线卡，颜色与强调全部一致；Voice 第一名橙线、其余灰虚线、线尾标签一致。有意的变化只有：去年每点灰字、转化率每点数值与「至今 37.9%」、大图卡头说明一句、点上的浏览器小提示换成数据卡。
+- 截图：`docs/handoff/折线图数值与悬停-20261024/`（不入库）：改前 2 张（`改前-正式5280-business-1440.png`、`改前-正式5280-voice-1440.png`）；样稿 11 张（`样稿-*.png`）；改后 15 张（`改后-隔离5290-*.png`：整页业务、整页 Voice，月度不悬停 / 悬停 2 月 / 9 月 / 10 月当月 / 键盘 Tab 后左键，申诉 9 月，大学 12 月，转化率 4 月，Voice 不悬停 / 第 3 天 / 最后一天，1280 宽月度 5 月与转化率 10 月）。
+- 提交（用户同意，`2026-10-24 09:53`）：只含本轮 14 个文件——`src/ui/chart-labels.js`、`src/ui/chart-hover.jsx`、`tests/chart-labels.test.mjs`、`docs/design-drafts/charts/hover.html`、`line-hover.js`、`point-labels.js`、`src/modules/business/BusinessCharts.jsx`、`business-charts.css`、`src/modules/voice/VoicePage.jsx`、`src/styles/10-common.css`、`src/styles/55-voice.css`、`docs/STYLE-GUIDE.md`、`docs/LESSONS.md`（只 L-13）、`CURRENT.md`（只本节）。暂存前每个文件看过 `git diff -U0` 分块；`CURRENT.md` 与 `docs/LESSONS.md` 里有另一会话未提交的改动（CURRENT 一行、LESSONS 的「提升为全局 G-xx」标注，其中 L-12 那行和 L-13 挨在同一块），这两个文件用 `git show HEAD:<文件>` 加本轮一段生成 blob 写暂存区，没带别人的改动；`.claude/launch.json` 与未跟踪的 `.DS_Store`、`docs/handoff/提示可关闭-20261023/` 不动（L-07）。提交号记在之后的记录提交里。
+- 发布与回读：未发布。
+- 与授权不一致 / 遗留 / 范围外发现：① 业务页原来点上的 `<title>` 小提示去掉了，精确值改在数据卡里看（同一信息换位置）；② 转化率「至今」原来只写「至今」，现在跟大图一样带数值；③ `kb-drafts` 静态服务（5297）是本会话用 `preview_start` 重新起的，还在跑；④ L-13 换项目也成立，建议提升为全局 G-xx，只提案，等用户批准；⑤ 构建有「chunk 大于 500 kB」提示，改前就有，没动。
+- 本轮新坑：L-13（无头 Chrome 截图与合成事件不可靠）。
+
 ## 书架「近 3 天更新」标记改腰封 + 促销打法去掉障碍筛选（2026-10-24，Claude，用户从三稿里选定 A 腰封、确认障碍筛选整块删除；已提交 `fcac8c6`，已发布 `nm-20261024-011154-fcac8c6` 回读通过）
 
 - 时间：开工 `2026-10-24 00:46`（`date '+%F %H:%M'` 记录）。来由：用户看到页面后提的两条新需求——书架近 3 天更新的橙色顶签想换一种版式（先看三稿再选），促销打法页圈了整个障碍筛选块要删；与当晚发布无关。
