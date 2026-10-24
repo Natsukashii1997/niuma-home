@@ -207,7 +207,7 @@ function TrendTip({ t, ctx, i, color, pace }) {
     <ChartTipRow mark={part ? "is-part" : "is-now"} color={color} name={`${ctx.year} ${part ? "至今" : "今年"}`} value={main(t.now[i])} sub={sub(t.now[i])} />
     {part && pace != null && <ChartTipRow className="is-pace" mark="is-pace" name="推算月底（示意）" value={`≈ ${wan(pace)} 万`} sub="按日均外推，不含月底冲量" />}
     <ChartTipRow mark="is-last" name={`${ctx.year - 1} 去年`} value={main(t.last[i])} sub={sub(t.last[i])} />
-    {r && <div className="chart-tip-foot"><span>{isPct ? "差" : "同比"}{r.estimated ? "（按推算）" : ""}</span><b className={r.value >= 0 ? "bc-up" : "bc-down"}>{yoyText(r.value, t.unit, r.estimated)}{isPct ? " 个点" : ""}</b></div>}
+    {r && <div className="chart-tip-foot"><span>{isPct ? "差" : "同比"}{r.estimated ? "（按推算）" : ""}</span><b className={r.value >= 0 ? "bc-up" : "bc-down"}>{yoyText(r.value, t.unit, r.estimated)}{isPct ? "%" : ""}</b></div>}
   </>;
 }
 
