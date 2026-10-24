@@ -2,7 +2,7 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## 三项遗留收尾：L-13 提升为全局 G-11、关掉 5297、读数栏同比去掉「个点」（2026-10-24，Claude 交接会话，用户逐项同意按推荐处理；改完只提交，未发布）
+## 三项遗留收尾：L-13 提升为全局 G-11、关掉 5297、读数栏同比去掉「个点」（2026-10-24，Claude 交接会话，用户逐项同意按推荐处理；已提交 `c261bd6`，已发布 `nm-20261024-103421-c261bd6` 回读通过）
 
 - 时间：开工 `2026-10-24 10:25`（收到答复时没跑 `date`，按会话时间回填；`10:28` 起跑测试时用 `date '+%F %H:%M'` 记录）。来由：上一轮交接留下三项待用户定：L-13 要不要提升为全局坑、样稿静态服务 5297 要不要关、`ytdText` 还写「个点」要不要改。
 - 改了哪些文件：`src/modules/business/BusinessCharts.jsx`（`ytdText` 转化率分支的「 个点」改成「%」，与数据卡「差 +5.6%」一致）；`docs/LESSONS.md`（L-13 末尾加「提升：已提升为全局 G-11（2026-10-24）」，只加这一行）。仓库外：`agent-kit/LESSONS.md` 末尾加 G-11（无头 Chrome 截图与合成事件不可靠，措辞去掉本项目名词，来源写 work-desk L-13），在 agent-kit 仓库单独提交。
@@ -10,8 +10,10 @@
 - 测试：`npm test` 原样结果 `ℹ tests 742` / `ℹ pass 742` / `ℹ fail 0`（含「现有代码不违反样式与监听硬规则」），`npm run check:style` 输出「样式检查通过」，`npm run build` 退出码 0，`git diff --check` 通过（`npm-test-ytd.log`、`build-ytd.log`）。工作区含他人未提交改动（`.claude/launch.json`、`CURRENT.md` 一行、`docs/LESSONS.md` 的 L-01 至 L-12 提升标注，L-07；状态见 `git-status-before-test-ytd.txt`）。
 - 验证：`ytdText` 只在 `Readout` 读数栏用，`Readout` 只挂在 `FocusView` 的四个营收视图（单位都是元），转化率图不带读数栏，所以百分比分支现在不会显示，没做页面实看。
 - 截图：无。
-- 提交：只含 `BusinessCharts.jsx`、`docs/LESSONS.md` 的 L-13 一行与 `CURRENT.md` 本节（两份文档都用 `git show HEAD:<文件>` 加本轮改动生成 blob 写暂存区，别人的改动没带，L-07）。
-- 发布与回读：未发布（用户要求发布前再问）。
+- 提交：`c261bd6`，只含 `BusinessCharts.jsx`、`docs/LESSONS.md` 的 L-13 一行与 `CURRENT.md` 本节（两份文档都用 `git show HEAD:<文件>` 加本轮改动生成 blob 写暂存区，别人的改动没带，L-07）；agent-kit 的 G-11 提交 `c64d12f`。提交后主工作区 `main` 即从 `b86020b` 快进到 `c261bd6`（早于发布，与前几轮「发布时才快进」不同，已告诉用户）。
+- 发布（用户同意，`2026-10-24 10:34:21` 开始）：发布前只读核对正式库没有 `kb-write-lock`、`kb-operation` 11 条 verified / 2 条 aborted；`GIT_CONFIG_*` 只对这次忽略他人未跟踪文件跑 `release-app.sh`，退出码 0，切到 `nm-20261024-103421-c261bd6`，自动备份 `backups/work-desk-20261024-103422-before-nm-20261024-103421-c261bd6.db`，保留策略清理 2 项（快照 `nm-20261024-002313-87c6e99`、备份 `work-desk-20261023-191139-before-nm-20261023-191138-96f1c71.db`）。日志 `release-4.log`。
+- 回读：脚本末尾自动回读 7 项全 ✓（进程 97536、153 个源码文件与 `c261bd6` 一致、版本号已写进构建）；`NIUMA_SMOKE=1 bash scripts/verify-release.sh` → 7 项 ✓ + 冒烟原样结果 `24 项，0 项有问题` → `回读通过：nm-20261024-103421-c261bd6`（`verify-smoke-4.log`，冒烟截图 `smoke-nm-20261024-103421-c261bd6/`）。改动在页面上不显示，改为查构建：快照 `dist/` 里「个点」出现 0 次（上一快照 `nm-20261024-102250-4bb6c0c` 是 1 次）。
+- 回滚：`bash scripts/release-app.sh --use nm-20261024-102250-4bb6c0c`。
 - 本轮新坑：无。
 
 ## 业务页占比面积块：大字固定给最大的两块（2026-10-24，Claude，用户指出 SKU 前两块没用大字、地区用了，要求按地区的样子固定规则、做好直接提交；已提交 `4bb6c0c`，已发布 `nm-20261024-102250-4bb6c0c` 回读通过）
