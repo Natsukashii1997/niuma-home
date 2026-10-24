@@ -2,7 +2,7 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## 折线图每点数值 + 悬停竖线与数据卡（2026-10-24，Claude，用户选定样稿，三张折线图含 Voice 都按它改、卡片保留精确到分的元；未提交、未发布）
+## 折线图每点数值 + 悬停竖线与数据卡（2026-10-24，Claude，用户选定样稿，三张折线图含 Voice 都按它改、卡片保留精确到分的元；已提交 `72de318`、`281604e`，已发布 `nm-20261024-095801-281604e` 回读通过）
 
 - 时间：开工 `2026-10-24 09:06`（`date '+%F %H:%M'` 记录）。来由：用户要折线图每个点直接显示数值，鼠标移到图上出现竖线和一张列出这一列所有线数值的卡片；给了两张参考图（业务页「月度」现图、外部图表的悬停卡），要求重做成位图风，先出样稿再改页面。
 - 工作台的折线图共三张（改前查清）：业务页「月度」大图（`BusinessCharts.jsx` 的 `TrendChart`，总营收和三条业务线共用，原来只标今年）；业务页「总转化率」（同一组件，原来不标数值）；Voice「近 7 天热度走势」（`VoicePage.jsx` 的 `TrendChart`，原来只有线尾「标题 · 热度」）。悬停原来只有业务图点上的浏览器 `<title>` 小提示，Voice 没有。首页「促销变动」、Voice 7 天点阵柱不是折线图，价格页折线图早已换成空位，都不在本轮。
@@ -22,7 +22,9 @@
 - 截图：`docs/handoff/折线图数值与悬停-20261024/`（不入库）：改前 2 张（`改前-正式5280-business-1440.png`、`改前-正式5280-voice-1440.png`）；样稿 11 张（`样稿-*.png`）；改后 15 张（`改后-隔离5290-*.png`：整页业务、整页 Voice，月度不悬停 / 悬停 2 月 / 9 月 / 10 月当月 / 键盘 Tab 后左键，申诉 9 月，大学 12 月，转化率 4 月，Voice 不悬停 / 第 3 天 / 最后一天，1280 宽月度 5 月与转化率 10 月）。
 - 提交（用户同意，`2026-10-24 09:53`）：只含本轮 14 个文件——`src/ui/chart-labels.js`、`src/ui/chart-hover.jsx`、`tests/chart-labels.test.mjs`、`docs/design-drafts/charts/hover.html`、`line-hover.js`、`point-labels.js`、`src/modules/business/BusinessCharts.jsx`、`business-charts.css`、`src/modules/voice/VoicePage.jsx`、`src/styles/10-common.css`、`src/styles/55-voice.css`、`docs/STYLE-GUIDE.md`、`docs/LESSONS.md`（只 L-13）、`CURRENT.md`（只本节）。暂存前每个文件看过 `git diff -U0` 分块；`CURRENT.md` 与 `docs/LESSONS.md` 里有另一会话未提交的改动（CURRENT 一行、LESSONS 的「提升为全局 G-xx」标注，其中 L-12 那行和 L-13 挨在同一块），这两个文件用 `git show HEAD:<文件>` 加本轮一段生成 blob 写暂存区，没带别人的改动；`.claude/launch.json` 与未跟踪的 `.DS_Store`、`docs/handoff/提示可关闭-20261023/` 不动（L-07）。提交 `72de318`（暂存区导出到临时目录复跑 `npm test` 原样结果 `ℹ tests 742` / `ℹ pass 742` / `ℹ fail 0`，`npm-test-index.log`）。
 - 补改（用户提交后指出，`2026-10-24 09:58`）：转化率数据卡底行「+5.6 个点」不正规，改成「+5.6%」（`BusinessCharts.jsx` 的 `TrendTip` 一处）；隔离 5290 复看截图 `改后-隔离5290-转化率-悬停7月-百分号.png`。读数栏的 `ytdText` 也写「个点」，但只在转化率视图的读数栏里用、现在不显示，没动。单独提交。
-- 发布与回读：未发布。
+- 发布（用户同意，`2026-10-24 09:58:01` 开始，`date` 记录）：发布前只读核对正式库——`v3_documents` 里没有 `kb-write-lock`，`kb-operation` 11 条 verified、2 条 aborted（与上一轮发布前相同）；先跑一遍 `verify-release.sh` 确认当时快照 `nm-20261024-011154-fcac8c6` 回读通过；主工作区 `main` 从 `5ec42b9` 快进到 `281604e`（`main..ui-v4` 只有本轮两个提交，已跟踪文件干净）；按 OPERATIONS「发布」用 `GIT_CONFIG_*` 只对这次忽略主工作区 4 个他人未跟踪文件跑 `release-app.sh`，退出码 0，切到 `nm-20261024-095801-281604e`，自动备份 `backups/work-desk-20261024-095802-before-nm-20261024-095801-281604e.db`，保留策略清理 2 项（快照 `nm-20261023-214602-5d45dce`、备份 `work-desk-20261023-154132-before-nm-20261023-154130-632cb0a.db`）。日志 `release.log`。
+- 回读：脚本末尾自动回读 7 项全 ✓（launchd 指向新快照、进程 97636、只监听 127.0.0.1、首页与 11 个构建文件一致、153 个源码文件与 `281604e` 一致、错误日志为空、版本号已写进构建）；主工作区再跑 `NIUMA_SMOKE=1 bash scripts/verify-release.sh` → 7 项 ✓ + 页面冒烟原样结果 `24 项，0 项有问题` → `回读通过：nm-20261024-095801-281604e`（`verify-smoke.log`，冒烟截图在证据目录 `smoke-nm-20261024-095801-281604e/`）。正式 5280 实看（只读，调试协议无头 Chrome 1440 宽）：业务页大图每点今年 / 去年数值、悬停 10 月的竖线 / 方框 / 数据卡（至今、推算、去年三行，精确到分的元，同比 ≈+14%）、转化率悬停 7 月卡片底行「差 +5.6%」、Voice 每点热度与悬停卡都正常，状态栏版本 `281604e`。截图 `发布后-正式5280-*.png` 5 张。
+- 回滚：`bash scripts/release-app.sh --use nm-20261024-011154-fcac8c6`。
 - 与授权不一致 / 遗留 / 范围外发现：① 业务页原来点上的 `<title>` 小提示去掉了，精确值改在数据卡里看（同一信息换位置）；② 转化率「至今」原来只写「至今」，现在跟大图一样带数值；③ `kb-drafts` 静态服务（5297）是本会话用 `preview_start` 重新起的，还在跑；④ L-13 换项目也成立，建议提升为全局 G-xx，只提案，等用户批准；⑤ 构建有「chunk 大于 500 kB」提示，改前就有，没动。
 - 本轮新坑：L-13（无头 Chrome 截图与合成事件不可靠）。
 
