@@ -60,14 +60,18 @@
 .bc-tm-host { width: 100%; min-width: 0; }
 .bc-tm { position: relative; }
 .bc-tile { position: absolute; display: flex; flex-direction: column; overflow: hidden; padding: var(--s1) 6px; color: var(--panel); }
-.bc-tile b { font-size: 12px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bc-tile b { font-size: 12px; line-height: 1.25; word-break: break-all; }
 .bc-tile span { font-family: var(--font-mono); font-size: 11px; line-height: 1.3; white-space: nowrap; }
 .bc-tile.is-big b { font-size: 14px; }
 .bc-tile.is-big .bc-tile-pct { font-size: 18px; font-weight: 600; }
 /* 「其他」铺墨色浅网点；名字放在实底小签上，网点不压文字 */
 .bc-tile.is-other { background-image: var(--dither-ink-1); border: 1px solid currentColor; }
 .bc-chip { align-self: flex-start; padding: 2px 6px; background: var(--panel); border: 1px solid var(--line); color: var(--text); line-height: 1.4 !important; }
-.bc-tm-rest { margin: var(--s2) 0 0; color: var(--text-2); line-height: 1.7; }
+/* 名字不用省略号，放不下就换行；小块字号由 Treemap 按块大小写在行内，这里只收紧留白 */
+.bc-tile.is-tiny { padding: 2px 3px; }
+.bc-tile.is-tiny b { line-height: 1.25; }
+.bc-tile.is-tiny span { line-height: 1.25; }
+.bc-chip.is-tiny { padding: 1px 2px; white-space: normal; word-break: break-all; line-height: 1.25 !important; }
 .bc-top10 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--s5); margin: 0; padding: 0; list-style: none; }
 .bc-top10 li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto auto; gap: var(--s2); align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .bc-rank { font-family: var(--font-mono); color: var(--muted); }

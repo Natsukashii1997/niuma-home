@@ -274,32 +274,45 @@ function ShareCard({ chart, title, color }) {
   </Card>;
 }
 
-// 面积块：前 9 项 +「其他」一起按真实占比排成方块（其他放最后、铺网点）；块太小写不下名字的，名字写在块下（不用图例对照）
+// 面积块：前 9 项 +「其他」一起按真实占比排成方块（其他放最后、铺网点）；每块都把名字写在块里，放不下就缩小字号、换行（用户 2026-10-24：不许写在块下）
 function Treemap({ items, color, height = 260 }) {
   const [ref, w] = useWidth();
   const tiles = w ? squarify(topN(items, 9), w, height) : [];
-  const unnamed = [];
   return <div ref={ref} className="bc-tm-host">
     <div className="bc-tm" style={{ height }}>{tiles.map(({ item: p, x, y, w: tw, h }, rank) => {
-      const gx = x ? 2 : 0, gy = y ? 2 : 0, nameFits = tw - 12 >= Math.min(textWidth(p.label), 72);
-      const full = nameFits && h >= 56, mid = !full && nameFits && h >= 36, pctOnly = !full && !mid && tw >= 36 && h >= 22;
-      const chip = p.other && tw >= 64 && h >= 40;
-      if (p.other ? !chip : !full && !mid) unnamed.push(p);
+      const gx = x ? 2 : 0, gy = y ? 2 : 0, nameFits = tw - gx - 14 >= textWidth(p.label);
+      const full = nameFits && h >= 56, mid = !full && nameFits && h >= 36;
+      // 「其他」实底小签：11px 等宽字 + 签内留白 14 + 块内留白 12 都放得下才用整签，否则走小块
+      const chip = p.other && tw - 26 >= textWidth(p.label) * 11 / 12 && h >= 40;
       const tip = `${p.label} · ${exact(p.value, "currency")} · ${pct(p.share, 2)}`;
       // 大字（名称 14、占比 18 加粗）固定给占比最大的两块（用户 2026-10-24）；块小到放不下（宽 < 84 或高 < 90）才退回普通字号。tiles 与 items 同序，rank 即名次
-      const big = full && !p.other && rank < 2 && tw >= 84 && h >= 90;
-      return <div key={p.label} className={`bc-tile${p.other ? " is-other" : ""}${big ? " is-big" : ""}`} title={tip} style={{ left: x + gx, top: y + gy, width: tw - gx, height: h - gy, ...(p.other ? { color } : { background: color }) }}>
-        {p.other ? chip && <span className="bc-chip">{p.label}<br />{pct(p.share)}</span>
+      const big = full && !p.other && rank < 2 && tw >= 84 && h >= 90 && tw - gx - 14 >= textWidth(p.label) * 14 / 12;
+      // 小块：名字可换行，字号从 11 往下试到 7，先保名字 + 占比，再只保名字
+      const tiny = p.other ? !chip && fitTiny(p.label, pct(p.share), tw - gx - 14, h - gy - 10) : !full && !mid && fitTiny(p.label, pct(p.share), tw - gx - 6, h - gy - 4);
+      return <div key={p.label} className={`bc-tile${p.other ? " is-other" : ""}${big ? " is-big" : ""}${tiny ? " is-tiny" : ""}`} title={tip} style={{ left: x + gx, top: y + gy, width: tw - gx, height: h - gy, ...(p.other ? { color } : { background: color }) }}>
+        {p.other ? chip ? <span className="bc-chip">{p.label}<br />{pct(p.share)}</span>
+            : <span className="bc-chip is-tiny" style={{ fontSize: tiny.f }}>{p.label}{tiny.pct && <><br />{pct(p.share)}</>}</span>
           : full ? <><b>{p.label}</b><span className="bc-tile-pct">{pct(p.share)}</span><span>{nf(p.value / 1e4, 1)} 万</span></>
           : mid ? <><b>{p.label}</b><span>{pct(p.share)}</span></>
-          : pctOnly ? <span>{pct(p.share, 0)}</span> : null}
+          : <><b style={{ fontSize: tiny.f }}>{p.label}</b>{tiny.pct && <span style={{ fontSize: tiny.f }}>{pct(p.share)}</span>}</>}
       </div>;
     })}</div>
-    {unnamed.length > 0 && <p className="small bc-tm-rest">块里没写名字的：{unnamed.map((p, i) => <span key={p.label}>{i > 0 && " · "}{p.label} <span className="tnum muted">{pct(p.share)}</span></span>)}</p>}
   </div>;
 }
 // 中文按 1 个字号、其他字符按 0.62 个字号估算宽度（12px 字）
-const textWidth = s => [...s].reduce((a, c) => a + (/[\u3000-\u9fff\uff00-\uffef]/.test(c) ? 12 : 7.4), 0);
+const charWidth = c => /[\u3000-\u9fff\uff00-\uffef]/.test(c) ? 12 : 7.4;
+const textWidth = s => [...s].reduce((a, c) => a + charWidth(c), 0);
+// 按字换行估算 f 号字要几行
+const lineCount = (s, f, w) => {
+  let n = 1, x = 0;
+  for (const c of s) { const cw = charWidth(c) * f / 12; if (x && x + cw > w) { n++; x = 0; } x += cw; }
+  return n;
+};
+// 占比是等宽字、不换行，按 0.6 个字号一个字符算宽；名字粗体比估算宽，按九成宽度排行
+const fitTiny = (label, share, w, h) => {
+  for (const withPct of [true, false]) for (let f = 11; f >= 7; f--) if ((lineCount(label, f, w * 0.9) + withPct) * f * 1.25 <= h && (!withPct || share.length * f * 0.6 <= w)) return { f, pct: withPct };
+  return { f: 7, pct: false };
+};
 
 function ThirdCard({ chart }) {
   const s = shareItems(chart), school = chart.dimension.includes("学校");
