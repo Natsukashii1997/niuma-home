@@ -84,7 +84,7 @@
 .bc-data { width: 100%; border-collapse: collapse; font-size: 12px; }
 .bc-data caption { text-align: left; padding: var(--s2) 0; }
 .bc-data th, .bc-data td { padding: var(--s2); border-bottom: 1px solid var(--line); text-align: left; }
-.bc-data td.tnum { text-align: right; white-space: nowrap; }
+.bc-data td.tnum, .bc-data th.tnum { text-align: right; white-space: nowrap; } /* 数字列表头跟数值一起右对齐 */
 .bc-data th { background: var(--panel-soft); }
 
 @media (max-width: 1180px) {
