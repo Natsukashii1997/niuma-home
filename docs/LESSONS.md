@@ -118,3 +118,4 @@
 - 根因：`--virtual-time-budget` 只是给虚拟时间一个上限，不保证 `@import` 链、字体和模块里的异步请求都完成；页面不在前台（`document.hasFocus()` 为假）时，程序调 `focus()` 只改 `activeElement`，不发 focus / focusin 事件，React 的 `onFocus` 收不到。合成事件为什么会落到 1 月，未核实。
 - 正确做法：要等页面画完再截的图，用调试协议（`--remote-debugging-port` + `Runtime.evaluate` 轮询「图已画出 + `document.fonts.status === "loaded"`」，再 `Page.captureScreenshot` 按元素区域截），`scripts/smoke-pages.mjs` 也是这个路子；键盘、鼠标交互一律用真实输入（`Input.dispatchKeyEvent` / `Input.dispatchMouseEvent`，或内置浏览器的真实按键），不拿合成事件的结果当证据。
 - 证据：`~/Library/Application Support/NiumaHome/evidence/折线图数值与悬停-20261024/` 里的 `cdp-shot.mjs`（截图）、`cdp-debug.mjs`（真实按键、鼠标逐步核对）；CURRENT.md「折线图每点数值 + 悬停竖线与数据卡」一节。
+- 提升：已提升为全局 G-11（2026-10-24）。

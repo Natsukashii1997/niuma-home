@@ -31,7 +31,7 @@ const yoyText = (r, unit, estimated) => {
   if (unit === "percent") return `${sign}${Math.abs(r * 100).toFixed(1)}`;
   return `${estimated ? "≈" : ""}${r >= 1 ? `×${nf(r + 1, r >= 9 ? 0 : 1)}` : `${sign}${Math.abs(r * 100).toFixed(0)}%`}`;
 };
-const ytdText = t => t.unit === "percent" ? `${t.ytdYoY >= 0 ? "+" : "−"}${Math.abs(t.ytdYoY * 100).toFixed(1)} 个点` : yoyText(t.ytdYoY, t.unit);
+const ytdText = t => t.unit === "percent" ? `${t.ytdYoY >= 0 ? "+" : "−"}${Math.abs(t.ytdYoY * 100).toFixed(1)}%` : yoyText(t.ytdYoY, t.unit);
 
 // 显式刷新直达飞书；后台刷新期间保留旧图，刷新完成后自动回读页面。
 function useCharts() {

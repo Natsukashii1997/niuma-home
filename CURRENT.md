@@ -2,6 +2,18 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 三项遗留收尾：L-13 提升为全局 G-11、关掉 5297、读数栏同比去掉「个点」（2026-10-24，Claude 交接会话，用户逐项同意按推荐处理；改完只提交，未发布）
+
+- 时间：开工 `2026-10-24 10:25`（收到答复时没跑 `date`，按会话时间回填；`10:28` 起跑测试时用 `date '+%F %H:%M'` 记录）。来由：上一轮交接留下三项待用户定：L-13 要不要提升为全局坑、样稿静态服务 5297 要不要关、`ytdText` 还写「个点」要不要改。
+- 改了哪些文件：`src/modules/business/BusinessCharts.jsx`（`ytdText` 转化率分支的「 个点」改成「%」，与数据卡「差 +5.6%」一致）；`docs/LESSONS.md`（L-13 末尾加「提升：已提升为全局 G-11（2026-10-24）」，只加这一行）。仓库外：`agent-kit/LESSONS.md` 末尾加 G-11（无头 Chrome 截图与合成事件不可靠，措辞去掉本项目名词，来源写 work-desk L-13），在 agent-kit 仓库单独提交。
+- 5297：进程 14446 是 `python -m http.server 5297 --bind 127.0.0.1`，工作目录是本仓库、09:34 起（上一轮为打开 `docs/design-drafts/charts/hover.html` 起的），不归任何预览会话管；`kill 14446` 后 `lsof` 回读 5297 已无监听。
+- 测试：`npm test` 原样结果 `ℹ tests 742` / `ℹ pass 742` / `ℹ fail 0`（含「现有代码不违反样式与监听硬规则」），`npm run check:style` 输出「样式检查通过」，`npm run build` 退出码 0，`git diff --check` 通过（`npm-test-ytd.log`、`build-ytd.log`）。工作区含他人未提交改动（`.claude/launch.json`、`CURRENT.md` 一行、`docs/LESSONS.md` 的 L-01 至 L-12 提升标注，L-07；状态见 `git-status-before-test-ytd.txt`）。
+- 验证：`ytdText` 只在 `Readout` 读数栏用，`Readout` 只挂在 `FocusView` 的四个营收视图（单位都是元），转化率图不带读数栏，所以百分比分支现在不会显示，没做页面实看。
+- 截图：无。
+- 提交：只含 `BusinessCharts.jsx`、`docs/LESSONS.md` 的 L-13 一行与 `CURRENT.md` 本节（两份文档都用 `git show HEAD:<文件>` 加本轮改动生成 blob 写暂存区，别人的改动没带，L-07）。
+- 发布与回读：未发布（用户要求发布前再问）。
+- 本轮新坑：无。
+
 ## 业务页占比面积块：大字固定给最大的两块（2026-10-24，Claude，用户指出 SKU 前两块没用大字、地区用了，要求按地区的样子固定规则、做好直接提交；已提交 `4bb6c0c`，已发布 `nm-20261024-102250-4bb6c0c` 回读通过）
 
 - 时间：开工 `2026-10-24 10:15`（收到需求时没跑 `date`，按会话时间回填；`10:20` 用 `date '+%F %H:%M'` 记录写交接时间）。来由：原规则是「宽 > 160 且高 > 90 才用大字」，申诉 SKU 前两块宽约 120px 没过门槛，同一页两张面积图字号不一致。
