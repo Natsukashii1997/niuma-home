@@ -141,7 +141,7 @@ export const mountAt = (g) => [[g.ai.base[0] - 6, g.ai.base[1] - 44], [g.biz.bas
 export function placeLabels(g, m, sizes, walkers) {
   const W = g.W, busy = [boxOf(g.xNow - 24, 0, 48, SUN_Y + 24)];   // 太阳
   const summit = g.biz.camps.at(-1);
-  busy.push(boxOf(summit.cx - 14, summit.cy - 20, 28, 24));
+  busy.push(boxOf(summit.cx - 15, summit.cy - 21, 30, 24));   // 皇冠
   const mounts = mountAt(g).map(([l, t], k) => { const b = boxOf(l, t, sizes.mounts[k].w, sizes.mounts[k].h); busy.push(b); return b; });
   // 钉在右端时的「计划已结束」：太阳左边，放不下就挪到太阳下面
   let end = null;

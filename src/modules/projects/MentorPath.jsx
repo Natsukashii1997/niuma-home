@@ -13,6 +13,7 @@ import { BAND1, BAND2, GROUND, H, L, SKY, STRIP, SUN_Y, bandRects, cellsOf, clip
 // 数据：GET /api/v3/mentor/path，每人一份按工作日排的路径（照飞书《管培生培养路径 V2.4》），只存工作台本地。
 // 写操作（MentorPathEdit.jsx）：工具栏「添加带教对象」「调整安排」，卡片和评审行「记录进度」，没有路径的人「按方案生成路径」；保存后按回读结果重画。
 const LOCKED = "#9CA0A8";
+const GOLD = "#FFC21A";   // 结业皇冠的填色
 const RESULT = { pass: ["通过", "green"], retest: ["限期复核", "amber"], fail: ["不通过", "red"] };
 const RESULT_COLOR = { pass: "var(--text)", retest: "var(--warn)", fail: "var(--risk)" };
 const pick = (t) => t?.closest?.("[data-id]")?.dataset.id ?? null;
@@ -119,7 +120,7 @@ function Legend() {
       <span><PixelSprite rows={SPRITES.flag} color="var(--text)" />已过营地</span>
       <span><PixelSprite rows={SPRITES.tent} color="var(--signal)" />正在爬</span>
       <span><PixelSprite rows={SPRITES.tent} color={LOCKED} />未到</span>
-      <span><PixelSprite rows={SPRITES.keep} color="var(--text)" />结业</span>
+      <span><PixelSprite rows={SPRITES.crown} color="var(--text)" fillColor={GOLD} />结业</span>
     </span>
   );
 }
@@ -167,8 +168,8 @@ function PathMap({ path, m, hl, onHover, onPick }) {
           {g.ai.camps.map((c) => <Camp key={c.x.id} c={c} hl={hl} color="var(--info)" />)}
           {g.biz.camps.slice(0, -1).map((c) => <Camp key={c.x.id} c={c} hl={hl} color="var(--text)" />)}
           <g className="hit" data-id={sc.summit.x.id}>
-            <SpriteCells rows={SPRITES.keep} x={sc.summit.cx - 10} y={sc.summit.cy - 15} cell={3} color={sc.summit.x.status === "todo" ? "var(--text)" : "var(--signal)"} outline />
-            <rect x={sc.summit.cx - 14} y={sc.summit.cy - 20} width="28" height="24" fill="transparent" />
+            <SpriteCells rows={SPRITES.crown} x={sc.summit.cx - 13} y={sc.summit.cy - 18} cell={3} color="var(--text)" fillColor={GOLD} outline />
+            <rect x={sc.summit.cx - 15} y={sc.summit.cy - 21} width="30" height="24" fill="transparent" />
           </g>
           <circle cx={g.xNow} cy={SUN_Y} r="21" fill="url(#mp-sun)" /><circle cx={g.xNow} cy={SUN_Y} r="11" fill="var(--signal)" />
           <line x1={g.xNow} y1={SUN_Y + 23} x2={g.xNow} y2={GROUND} stroke="var(--signal)" strokeWidth="2" strokeDasharray="2 5" />
@@ -392,7 +393,7 @@ function Reviews({ m, pass, onPick, onRecord }) {
           : <span className="small muted mono">{mmdd(s.dates[1])}</span>;
         return [
           <li key={s.id} className={r ? "" : isNext ? "is-next" : "is-future"} data-id={s.id} onClick={() => onPick(s.id)}>
-            <PixelSprite rows={s.id === m.summitId ? SPRITES.keep : SPRITES.flag} color={r ? RESULT_COLOR[r.result] : LOCKED} />
+            <PixelSprite rows={s.id === m.summitId ? SPRITES.crown : SPRITES.flag} color={r ? RESULT_COLOR[r.result] : LOCKED} />
             <span className="tnum mono">D{s.d[1]}</span><b>{s.review}</b>{right}
             <button type="button" className="icon-btn" title={r ? "改评审记录" : "记录评审"} aria-label={`${s.review}：${r ? "改评审记录" : "记录评审"}`} onClick={(e) => { e.stopPropagation(); onRecord(s.id); }}><PixelIcon name="edit" /></button>
           </li>,

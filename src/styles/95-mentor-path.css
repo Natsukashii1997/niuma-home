@@ -75,8 +75,8 @@
 .mpath-reviews li.is-future b { color: var(--muted); font-weight: 400; }
 .mpath-reviews li.is-next b { font-weight: 600; }
 .mpath-reviews li::before { display: none; }
-.mpath-reviews li .pixel-sprite { flex: none; }
-.mpath-reviews li.is-note { padding: 0 0 0 calc(14px + 32px + var(--s2) * 2); cursor: default; }
+.mpath-reviews li .pixel-sprite { flex: none; width: 18px; }   /* 旗和皇冠同宽占位（皇冠 9 格宽），文字列对齐 */
+.mpath-reviews li.is-note { padding: 0 0 0 calc(18px + 32px + var(--s2) * 2); cursor: default; }
 .mpath-record { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-top: var(--s1); }
 .mpath-record p { margin: 0; }
 .mpath-reviews li .icon-btn { width: 24px; height: 24px; margin-right: -6px; }

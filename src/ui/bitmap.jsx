@@ -368,12 +368,12 @@ export function PixelIcon({ name, size = 14, className = "" }) {
 
 /* ---------- 像素插画 ---------- */
 
-// 插画不是图标：用在整张图里（培养路径地图的旗子、帐篷、城堡、登山者等），按格画，cell 为每格的屏幕像素（整数）。
-// # = 主色，o = 底色（云的内部）。outline 时先在 8 个方向各错 2px 画一遍底色，像贴纸的白边，压在线和网点上也看得清。
+// 插画不是图标：用在整张图里（培养路径地图的旗子、帐篷、皇冠、登山者等），按格画，cell 为每格的屏幕像素（整数）。
+// # = 主色，o = 填色（默认底色，如云的内部；皇冠填金色）。outline 时先在 8 个方向各错 2px 画一遍底色，像贴纸的白边，压在线和网点上也看得清。
 export const SPRITES = {
   flag: ["#......", "#####..", "######.", "#####..", "#......", "#......", "#......"],
   tent: ["...#...", "..###..", "..#.#..", ".#...#.", ".#.#.#.", "#..#..#", "#######"],
-  keep: ["#..#..#", "##.#.##", "#######", "#######", ".#####.", ".......", "......."],
+  crown: ["#...#...#", "##.#o#.##", "#o#ooo#o#", "#ooooooo#", "#ooooooo#", "#########"],   // 结业：墨线勾边、o 填金（用户 10-26「重新画，用黄色，能看出来是个皇冠」）
   pine: ["..#..", ".###.", ".###.", "#####", "..#.."],   // 培养路径山脚的短松树（V11：2 倍格下 V7 那棵细高的像十字）
   bird: ["#...#", ".#.#."],
   cloud: ["......####......", "....##oooo##....", "..##oooooooo##..", ".#oooooooooooo#.", "################"],
@@ -387,24 +387,24 @@ const OUTLINE = [[-2, 0], [2, 0], [0, -2], [0, 2], [-2, -2], [2, -2], [-2, 2], [
 const spriteCells = (rows, ch) => rows.flatMap((row, y) => [...row].map((c, x) => (c === ch ? `M${x} ${y}h1v1h-1z` : ""))).join("");
 
 // 画在已有的 <svg> 里；左上角取整，格子不发虚
-export function SpriteCells({ rows, x, y, cell, color, outline = false, bg = "var(--panel)" }) {
+export function SpriteCells({ rows, x, y, cell, color, outline = false, bg = "var(--panel)", fillColor = bg }) {
   const ink = spriteCells(rows, "#"), fill = spriteCells(rows, "o");
   const at = (dx, dy) => `translate(${Math.round(x) + dx} ${Math.round(y) + dy}) scale(${cell})`;
   return (
     <g shapeRendering="crispEdges">
       {outline && OUTLINE.map(([dx, dy]) => <path key={`${dx},${dy}`} d={ink + fill} transform={at(dx, dy)} fill={bg} />)}
-      {fill && <path d={fill} transform={at(0, 0)} fill={bg} />}
+      {fill && <path d={fill} transform={at(0, 0)} fill={fillColor} />}
       <path d={ink} transform={at(0, 0)} fill={color} />
     </g>
   );
 }
 
 // 单独一张（图例、抽屉标题旁）
-export function PixelSprite({ rows, cell = 2, color = "currentColor", className = "" }) {
+export function PixelSprite({ rows, cell = 2, color = "currentColor", fillColor, className = "" }) {
   const w = rows[0].length * cell, h = rows.length * cell;
   return (
     <svg className={`pixel-sprite ${className}`} width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
-      <SpriteCells rows={rows} x={0} y={0} cell={cell} color={color} />
+      <SpriteCells rows={rows} x={0} y={0} cell={cell} color={color} fillColor={fillColor} />
     </svg>
   );
 }
