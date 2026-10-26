@@ -12,6 +12,7 @@
 
 - 同类坑第 2 次出现：把正确做法写进 AGENTS.md、docs/OPERATIONS.md 或 docs/STYLE-GUIDE.md（一句话硬约束进 AGENTS.md，操作细节进 OPERATIONS.md），条目的「升级」改成写到了哪里。
 - 能用机器判定的：写成测试或脚本（如 `tests/style-rules.test.mjs`、`scripts/verify-release.sh`），条目注明。
+- 换个项目也成立的（不依赖本项目的业务、页面、发布脚本）：提议提升到全局坑 `/Users/nat/Documents/ChatGPT/个人/work/agent-kit/LESSONS.md`，写成 G-xx；原条目保留，末尾加一行「提升：已提升为全局 G-xx（日期）」。只出提案，用户批准才写。
 - 条目超过约 30 条时整理一次：已升级、且之后没再犯的，归档到 `docs/history/`。每周五的定时整理提案（见 docs/OPERATIONS.md「每周整理」）会提醒漏记、该升级和该归档的条目。
 
 ---
@@ -23,6 +24,7 @@
 - 正确做法：只动用户点名的部分；改已有组件前先看清会影响哪些 className、条件、颜色；改完对照改前截图逐项核对颜色与强调。
 - 证据：用户 2026-10-18 当面反馈（原记在 Claude 记忆）；对应提交未核实。
 - 升级：已写进 AGENTS.md「分工」。
+- 提升：已提升为全局 G-09（2026-10-24）。
 
 ## L-02 验证证据放在 /tmp，被系统清理（2026-10-21 丢失，10-23 发现）
 
@@ -31,6 +33,7 @@
 - 正确做法：备份、日志等证据放 `~/Library/Application Support/NiumaHome/evidence/<目录名>/`；会话临时目录只放用完即弃的文件。
 - 证据：`docs/history/CURRENT-through-20261022.md` 开头的 2026-10-23 补注。
 - 升级：已写进 AGENTS.md「规则」。
+- 提升：已提升为全局 G-01（2026-10-24）。
 
 ## L-03 带教回复时间显示成 UTC（2026-10-23）
 
@@ -39,6 +42,7 @@
 - 正确做法：页面上的时间一律用 `src/constants.js` 的 `beijingTime` 按 `Asia/Shanghai` 格式化，测试覆盖跨日、跨年。
 - 证据：提交 `3200d0e`；`docs/history/CURRENT-through-20261023-am.md`「带教回复北京时间」一节。第 2 次：2026-10-23 每周整理首次试跑发现同一写法还在促销方案「录入」、飞书导出「核对于」、活动「归档于」3 处，正式页面把 10:46 录入的方案显示成 02:46。
 - 升级：已写进 docs/STYLE-GUIDE.md §7；已写成 `scripts/check-style.mjs` 的时间规则（`npm test` 里跑）。
+- 提升：已提升为全局 G-02（2026-10-24）。
 
 ## L-04 React 重复 key 只在开发模式报（2026-10-23）
 
@@ -63,6 +67,7 @@
 - 正确做法：改 `scripts/` 下任何脚本也要跑 `npm test`；`release-app.sh` 尾段新增外部命令时，在 T10 测试里补桩和事件断言。
 - 证据：提交 `b5c212d` 引入；CURRENT.md「常驻提示可关闭」一节的测试记录；修复是 T10 测试里的 `verify-release.sh` 桩。
 - 升级：未升级。
+- 提升：已提升为全局 G-03（2026-10-24）。
 
 ## L-07 两个会话共用一个工作区，测试结果互相污染（2026-10-23）
 
@@ -72,6 +77,7 @@
 - 证据：CURRENT.md「常驻提示可关闭」一节与本轮交接的测试记录。
 - 升级：已写进 AGENTS.md「分工」（2026-10-23 每周整理首次试跑提出，用户采纳）。
 - 2026-10-24 再犯：交接会话提交 `359ac18` 时整文件 `git add docs/LESSONS.md`，带上了另一会话在同一文件的 4 处未提交改动（当时 `git status` 刚核过是干净的，几分钟后对方又改了）。补做法：共用目录时每次 `git add` 前都看一遍 `git diff -U0 <文件>` 的分块，有别人的块就把自己的块写成补丁 `git apply --cached`，不整文件暂存；暂存后 `git diff --cached` 再核一遍。
+- 提升：已提升为全局 G-04（2026-10-24）。
 
 ## L-08 launchd 里用 /bin/bash 读不了「文稿」下的脚本（2026-10-23）
 
@@ -80,6 +86,7 @@
 - 正确做法：launchd 任务要读仓库或 `data/` 的，借服务外壳 `NiumaHomeServer.app` 里的 node 启动（它已能读文稿，`release-app.sh` 也是这样跑服务的）；装好后一定用 `launchctl kickstart` 真实触发一次再看日志，不能只在终端里试。
 - 证据：`scripts/health-check.sh` 的 `--install`；`~/Library/Application Support/NiumaHome/evidence/每日巡检-20261023/`。
 - 升级：已写进 `health-check.sh --install`。
+- 提升：已提升为全局 G-05（2026-10-24）。
 
 ## L-09 PlistBuddy 找不到文件时把提示打到标准输出（2026-10-23）
 
@@ -88,6 +95,7 @@
 - 正确做法：先 `[ -f "$plist" ]` 再读。
 - 证据：`scripts/health-check.sh` 读数据目录那几行；`verify-release.sh` 开头已先判断文件存在。
 - 升级：未升级。
+- 提升：已提升为全局 G-06（2026-10-24）。
 
 ## L-10 外部来源的 GET 每次现读，页面每次打开都要等（2026-10-23）
 
@@ -96,6 +104,7 @@
 - 正确做法：接外部只读来源一律用 `createConfiguredReader(db, kind, …, { staleWhileRevalidate: true })`（或同样的「先回落库快照、超时后台刷新、刷新接口现读」），页面用 `useFreshApi` 或照常读，不让用户等现读。
 - 证据：`docs/handoff/UI与功能审核-20261023/审核记录.md` 第 3、4 条；本轮修复见 CURRENT.md「审核后一次性优化」；`tests/mentor-snapshot.test.mjs`、`tests/reports-persist.test.mjs`。
 - 升级：已写进 docs/OPERATIONS.md「写接口与接外部来源」（2026-10-24 从 AGENTS.md「规则」搬来）。
+- 提升：已提升为全局 G-10（2026-10-24）。
 
 ## L-11 请求来源校验只做在一组接口上，其余接口裸奔（2026-10-23）
 
@@ -104,6 +113,7 @@
 - 正确做法：横切的保护（来源校验、正文大小、统一错误响应）放 `server/index.mjs` / `server/http.mjs` 对全部 `/api/` 生效，模块里只做自己的业务校验（如配对码）。
 - 证据：审核记录第 1 条；`server/http.mjs` `checkOrigin`、`tests/request-guard.test.mjs`。
 - 升级：已写进 docs/OPERATIONS.md「写接口与接外部来源」（2026-10-24 从 AGENTS.md「规则」搬来）。
+- 提升：已提升为全局 G-07（2026-10-24）。
 
 ## L-12 `set -u` 脚本里可选开关裸引用，变量不设就整段退出（2026-10-24）
 
@@ -111,6 +121,7 @@
 - 根因：只跑了 `bash -n` 和带 `NIUMA_SMOKE=1` 的那条路径，没跑「变量不设」的默认路径；`bash -n` 只查语法，查不出 `set -u` 下的未定义引用。
 - 正确做法：可选开关一律写 `${VAR:-}`；改带 `set -u` 的脚本后，开关设与不设各跑一遍；发布前先在主工作区单独跑一次 `bash scripts/verify-release.sh`。
 - 证据：`~/Library/Application Support/NiumaHome/evidence/全面优化-20261023/release.log`；修复提交号见 CURRENT.md「审核后一次性优化」的「发布」一行。
+- 提升：已提升为全局 G-08（2026-10-24）。
 
 ## L-13 无头 Chrome 截图与合成事件不可靠：样式没加载完、焦点事件不发（2026-10-24）
 
@@ -118,4 +129,5 @@
 - 根因：`--virtual-time-budget` 只是给虚拟时间一个上限，不保证 `@import` 链、字体和模块里的异步请求都完成；页面不在前台（`document.hasFocus()` 为假）时，程序调 `focus()` 只改 `activeElement`，不发 focus / focusin 事件，React 的 `onFocus` 收不到。合成事件为什么会落到 1 月，未核实。
 - 正确做法：要等页面画完再截的图，用调试协议（`--remote-debugging-port` + `Runtime.evaluate` 轮询「图已画出 + `document.fonts.status === "loaded"`」，再 `Page.captureScreenshot` 按元素区域截），`scripts/smoke-pages.mjs` 也是这个路子；键盘、鼠标交互一律用真实输入（`Input.dispatchKeyEvent` / `Input.dispatchMouseEvent`，或内置浏览器的真实按键），不拿合成事件的结果当证据。
 - 证据：`~/Library/Application Support/NiumaHome/evidence/折线图数值与悬停-20261024/` 里的 `cdp-shot.mjs`（截图）、`cdp-debug.mjs`（真实按键、鼠标逐步核对）；CURRENT.md「折线图每点数值 + 悬停竖线与数据卡」一节。
+- 升级：第 2 次出现（2026-10-26，培养路径「调整安排」弹窗用无头截图摆状态时，程序调 `blur()` 没触发 `onBlur`，改动没提交，截出「还没有改动」；交互本身已在内置浏览器用真实点击、打字核过）；已写进 docs/OPERATIONS.md「报告与验收」第 6 条。
 - 提升：已提升为全局 G-11（2026-10-24）。

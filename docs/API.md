@@ -303,29 +303,39 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `POST /api/v3/mentor/:name/items/:id/reply` 请求 `{ previewId, confirm: true }` → 回复记录（`state: "sent"`）。用 `lark-cli drive +add-comment --block-id <id>` 在原话那一段挂评论（user = 常浩本人，bot = 机械邪龙兽应用），只发一次，再按评论编号回读核对；同一预览重复确认返回同一回执。授权被拒（确定没执行）清掉记录；其他失败或回读不一致记为 `unknown` 并返回 502 `REPLY_UNKNOWN`。
 - `POST /api/v3/mentor/:name/items/:id/reply/reconcile` 请求 `{}`：只读翻这篇文档的划词评论，找到同一段、同样内容的评论记为 `sent`；没找到清掉记录（`{ state: "none", checked: true }`），可重新发送。
 
-## 带教 · 培养路径（T14，2026-10-23）
+## 带教 · 培养路径（T14；2026-10-26 改为按工作日排期，照飞书《管培生培养路径 V2.4》）
 
-数据全放工作台本地（用户 2026-10-23 确认），每位管培生一份路径：定义存 `v3_documents`（kind `mentor-path`，id 为姓名），每关的营地记录存 `v3_documents`（kind `mentor-camp`，id 为 `姓名:关卡编号`）。没有新表。
+数据全放工作台本地（用户 2026-10-23 确认），不回写飞书。每位带教对象一份路径：`v3_documents`（kind `mentor-path`，id 为姓名，`version: 2`）；每段一条进度记录：`v3_documents`（kind `mentor-stage`，id 为 `姓名:阶段编号`）。没有新表。
 
-- `GET /api/v3/mentor/path` → `{ today: "YYYY-MM-DD", trainees: [{ name, role, path: { season, lines, links } | null }] }`。
-  - 名单沿用带教来源（设置 `mentor_sources`，默认林瑶、胡贵兰）；没导入路径的人 `path` 为 null，页面把这个人的按钮置灰。
-  - `today` 按北京时间由后端给，页面不读浏览器时间。
-  - `season`：`{ name, start: "YYYY-MM-DD"（入职日）, weeks, pass, rank, next, reviewer }`。**2026-10-23 从顶层挪进每人的 `path` 里**：以后管培生入职日不同，第几周、超期都按各自的入职日算。
-  - `lines`：两条线，`key` 为 `biz`（业务线，前山）和 `ai`（AI 线，后山），各带 `code`、`name`、`desc`、`nodes`。
-  - `nodes[]`：`{ id, stage, title, week: [起, 止], boss?, goal, todo[], output[], rubric: [{ name, weight, score?, note? }], status, score?, at?, todoDone, todoChecked, outDone, outLinks, review }`；`week` 是第几周（入职日所在周为第 1 周），营地横坐标取 `week[1]`。
-  - 后面几项由营地记录推出，不另存：
-    - `score` = 各评分项之和，定义里每一项都有分才有；`at` = 最近一次评分的日期（MM-DD）。
-    - `status`：`score ≥ pass` 为 `done`；否则前一关和绳桥依赖都已通关为 `doing`；其余 `locked`。
-    - `todoDone` / `outDone`：要做的事勾了几项、产出物交了几份（有链接算交）；`todoChecked` 与 `todo`、`outLinks` 与 `output` 一一对应（没勾为 false，没交为 null）。
-    - `review`（待评分）：进行中、交了产出，且还没评过分或产出在最近一次评分之后又更新过。
-    - 记录按事项原文、产出物名、评分项名对应定义；定义里改了措辞的条目视为没有记录。
-  - `links[]`：跨线依赖 `{ from, to, note }`，`note` 写前一关的哪份产出被后一关用到。
-- 路径定义的来源是仓库里的 `docs/培养路径/<姓名>.json`，用 `npm run import:mentor-path -- <姓名> [--file 路径] [--confirm]` 导入：默认只预览（目标、赛季、关卡数、与现有定义的差异、失去对应关卡的营地记录），加 `--confirm` 才写入并回读。只换定义，不动营地记录。校验：两条线依次是 biz、ai；关卡 id 不重复；周次在赛季内且一关排在上一关之后；评分项不重名、权重合计 100；跨线依赖必须连接两条线。
-- `POST /api/v3/mentor/path/:name/nodes/:id/record/preview` 请求 `{ todoDone: [事项原文], outLinks: { 产出物名: 链接 }, rubric: { 评分项名: { score: 整数 | null, note } } }`（营地日志表单整份提交）→ `{ previewId, expiresAt, before, value, scored, node, effects }`：
-  - `value` 是要存的营地记录 `{ name, node, todoDone, outLinks, rubric, scoredAt?, outAt?, updatedAt, history? }`；`before` 是现有记录或 null；`node` 是这一关写入后的样子（与 GET 里的关卡同形，页面回读按它核对）；`effects` 是状态会变的关 `[{ id, title, from, to }]`；`scored` 表示这次算不算一次评分。
-  - 规则：每一项都打分才算一次评分，分数全部留空只更新进度；分数是 0 到该项满分的整数，评语最多 200 字；链接以 http:// 或 https:// 开头；评分项（分数或评语）有改动才更新 `scoredAt`，产出物链接有改动才更新 `outAt`；旧记录进 `history`（最近 20 条）。
-  - 错误：内容不合规或没有改动 400；没有这个人的路径或没有这一关 404；这一关还没解锁 409。
-- `POST /api/v3/mentor/path/:name/nodes/:id/record` 请求 `{ previewId, confirm: true }` → 保存后回读的营地记录；预览 10 分钟内有效，同一预览重复确认返回同一回执。预览之后路径定义或这个人的任何营地记录变了，返回 409，须重新预览。只写工作台本地，不回写飞书。
+- 工作日历在 `server/workdays.mjs`：跳过周末和法定节假日，调休上班日照常算（2026 年照国务院办公厅 2025-11-04 通知录入）；没录的年份只跳过周末，GET 返回 `missingYears` 提示。`D1` = 入职日（入职日不是工作日就从下一个工作日算起）。
+- 培养方案模板在 `server/mentor-plans.mjs`（目前只有 `v2.4`：业务线 P1–P10、技术线 T1–T6、65 个工作日、6 个评审节点、70 分合格）。新加的人整份复制模板，之后入职日、各段日期和安排文字各改各的，改模板不影响已有的人。
+- 旧版按周的路径（没有 `version`）GET 时 `path` 为 null 并标 `legacy: true`，页面给「按方案生成路径」；旧版营地记录（kind `mentor-camp`）不再读取，保留不删。
+
+### 读取
+
+- `GET /api/v3/mentor/path` → `{ today: "YYYY-MM-DD", plans: [{ id, name }], trainees: [{ name, role, hasLog, path | null, legacy? }] }`。
+  - 名单沿用带教来源（设置 `mentor_sources`，1–20 人，日志链接可不填）；`hasLog` 为 false 的人不进带教答疑。`today` 按北京时间由后端给，页面不读浏览器时间。
+  - `path`：`{ version: 2, plan: { id, name, source? }, start, pass, reviewer, days, end, todayD, calendar, missingYears, lines }`。`days` 是计划最后一天（结业）是第几个工作日，`end` 是那天的日期；`todayD` 是今天第几个工作日（入职前为 0）；`calendar[d - 1]` 是第 d 个工作日的日期，覆盖到 `max(days, todayD)`。
+  - `lines`：两条线依次是 `{ key: "biz", name: "业务线" }`、`{ key: "ai", name: "技术线" }`，各带 `stages`。
+  - `stages[]`：`{ id, short, title, d: [起, 止], dates: [起日期, 止日期], review?, pass?, with?, goal, steps: [{ d?, dates?, text }], out: [], status, late, record }`。`review` 是这一段末尾的评审节点名、`pass` 是合格标准；技术线的 `with` 是同期绑定的业务阶段；`steps` 的 `d` 可省略（整段都在做）。
+  - 后面几项由进度记录和今天推出，不另存：
+    - `status`：评审段结论为「通过」、其余段带教已确认完成为 `done`；每条线第一段没完成的为 `doing`，其后都是 `todo`。限期复核、不通过仍是 `doing`。
+    - `late`：`doing` 的段今天已过计划结束日时，超出的工作日数；否则 0。
+    - `record`：这一段的进度记录或 null（见下）。
+
+### 写入（都走预览 → 确认 → 回读）
+
+预览返回 `{ previewId, expiresAt, ..., view }`：`view` 是写入后这个人的 `path`（与 GET 同形），页面回读时重新 GET，这个人的 `path` 和 `view` 完全一致才算保存。确认请求都是 `{ previewId, confirm: true }`；预览 10 分钟内有效，同一预览重复确认返回同一回执；预览之后这个人的路径或任何进度记录变了，返回 409，须重新预览。
+
+- **添加带教对象**：`POST /api/v3/mentor/path/trainees/preview` 请求 `{ name, role = "管培生", start, logUrl?, plan = "v2.4" }` → `{ previewId, expiresAt, entry, view }`，`entry` 是要加进名单的一条 `{ name, role, year, url? }`。确认 `POST /api/v3/mentor/path/trainees`：名单和路径在同一个事务里写入，写完回读名单。重名、名单已满（20 人）、这个人已经有路径分别 409 / 400 / 409。
+- **按方案生成路径**：`POST /api/v3/mentor/path/:name/generate/preview` 请求 `{ start, plan = "v2.4" }` → `{ previewId, expiresAt, view, orphans }`，`orphans` 是新方案里对不上的旧进度记录的段编号。确认 `POST /api/v3/mentor/path/:name/generate`。只给名单里还没有路径、或还是旧版按周路径的人用：名单里没有 404，已有新版路径 409（改日期和安排走「调整安排」）。进度记录不动。
+- **调整安排**：`POST /api/v3/mentor/path/:name/plan/preview` 请求 `{ start?, lines? }`（改后的整份；段落的增删、换序、编号不能改）→ `{ previewId, expiresAt, moved, edited, startChanged, endBefore, endAfter, view }`：`moved` 是挪了日期的段，`edited` 是改了文字（简称、名称、目标、安排、产出、评审名称或合格标准）的段。确认 `POST /api/v3/mentor/path/:name/plan`。校验：同一条线各段按工作日先后排、不重叠（中间可空几天），安排的日期落在本段之内，没有改动 400。「后面的段一起顺延」由页面算好再整份提交（`src/modules/projects/mentor-path.js` 的 `moveStage`），后端不另做。旧路径进 `history`（最近 10 份）。
+- **记录进度**：`POST /api/v3/mentor/path/:name/stages/:id/record/preview` 请求
+  - 评审段：`{ kind: "review", score: 0–100 整数, result: "pass" | "retest" | "fail", at: "YYYY-MM-DD", note? }`，「通过」须达到合格分；
+  - 其余段：`{ kind: "complete", at, note? }`（带教确认完成）；
+  - 撤销：`{ clear: true }`。
+  - `at` 是实际发生的日期，可以补录过去，不能晚于今天；备注最多 200 字。→ `{ previewId, expiresAt, view, effects }`，`effects` 是状态会变的段 `[{ id, title, from, to }]`。确认 `POST /api/v3/mentor/path/:name/stages/:id/record`。存的记录 `{ name, stage, kind, at, note?, score?, result?, recordedAt, history? }`，旧记录进 `history`（最近 20 条）。错误：段落类型和请求不符、内容不合规、没有改动 400；没有这一段 404。
+- **命令行导入**：`npm run import:mentor-path -- <姓名> --start YYYY-MM-DD [--plan v2.4] [--confirm]`，和「按方案生成路径」用同一套预览（排期、评审日期、今天第几个工作日、现有路径），默认只预览，加 `--confirm` 才写入并回读；它也能替换已有的新版路径。
 
 ## 策略 · 月度用户策略（T13，2026-10-20）
 

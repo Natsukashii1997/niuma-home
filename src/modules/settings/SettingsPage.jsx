@@ -211,7 +211,7 @@ const V3_FIELDS = {
   project_table_id: { label: "项目推进数据表", hint: "以 tbl 开头" },
   kb_space_id: { label: "知识库空间", hint: "工作台当前连接的知识空间 ID（数字）" },
   kb_collect_space: { label: "收藏目标空间", hint: "快捷收藏建快捷方式的知识空间 ID（数字）；换空间后，收藏规则里的目录也要换成新空间的目录" },
-  mentor_sources: { label: "管培生日志来源", hint: "两位管培生：姓名、年份、日志文档链接（JSON）", json: true },
+  mentor_sources: { label: "带教名单与日志来源", hint: "带教对象：姓名、年份、日志文档链接（可不填）（JSON）；也可以在带教 · 培养路径页添加", json: true },
   campaign_table_id: { label: "营销战役模板表", hint: "以 tbl 开头" },
   price_sku_table_id: { label: "SKU 产品目录表", hint: "以 tbl 开头" },
   price_floor_margin: { label: "毛利底线", hint: "0 到 1 之间的小数，如 0.25" },

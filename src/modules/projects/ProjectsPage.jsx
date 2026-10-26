@@ -34,10 +34,10 @@ export default function ProjectsPage({ route }) {
   );
 }
 
-// 带教（侧栏单列）：带教答疑 = 管培生近 30 天日志里的提问；培养路径 = 两条培养线的远征地图（用户 2026-10-23 定稿 V7）。
+// 带教（侧栏单列）：带教答疑 = 管培生近 30 天日志里的提问；培养路径 = 两条培养线的远征地图（用户 2026-10-26 定稿 V11）。
 const MENTOR_TABS = [
   ["qa", "带教答疑", "管培生近 30 天日志里的提问：在右侧回复或让机械邪龙兽回答，确认后作为评论挂回飞书原话"],
-  ["path", "培养路径", "业务线和 AI 线两条培养路径：营地、进度和本周攀登"],
+  ["path", "培养路径", "两条培养线的阶段、评审节点和当前进度，按工作日排期；来源：飞书《管培生培养路径 V2.4》"],
 ].map(([key, label, desc]) => ({ key, label, desc, href: key === "qa" ? href("mentor") : href("mentor", key) }));
 
 export function MentorPage({ route = [] }) {

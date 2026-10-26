@@ -16,10 +16,11 @@ const clean = text => decode(text.replace(/<[^>]*>/g, '').replace(/\[([^\]]+)\]\
 export function mentorConfig(settings) {
   let sources;
   try { sources = settings.mentor_sources ? JSON.parse(settings.mentor_sources) : structuredClone(MENTOR_SOURCES); } catch { throw failure(400, '带教来源配置不是有效 JSON'); }
-  if (!Array.isArray(sources) || !sources.length || sources.length > 10 || new Set(sources.map(s => s?.name)).size !== sources.length) throw failure(400, '带教来源须为不重名的人员列表');
+  if (!Array.isArray(sources) || !sources.length || sources.length > 20 || new Set(sources.map(s => s?.name)).size !== sources.length) throw failure(400, '带教来源须为不重名的人员列表');
+  // 日志链接可以不填（培养路径里新加、还没有飞书日志的人）；带教答疑只读有链接的人
   return sources.map(source => {
     if (typeof source.name !== 'string' || !source.name.trim() || source.name.length > 50 || !Number.isInteger(source.year) || source.year < 2020 || source.year > 2099) throw failure(400, '带教来源须提供姓名及最新一篇日志所在年份');
-    return { name: source.name.trim(), role: typeof source.role === 'string' ? source.role : '管培生', url: reportDocumentUrl(source.url), year: source.year };
+    return { name: source.name.trim(), role: typeof source.role === 'string' ? source.role : '管培生', url: source.url ? reportDocumentUrl(source.url) : null, year: source.year };
   });
 }
 
@@ -123,7 +124,7 @@ const matchesReply = (comment, blockId, text) => Boolean(comment?.comment_id) &&
 
 // staleWhileRevalidate（2026-10-23 审核第 2 条）：GET 先回落库快照，超过 ttl 再后台读飞书；POST …/refresh 仍现读。
 export function createMentorService(db, { now = Date.now, readLogs = source => readMentorLogs(source, { now }), generate = createTextDraftGenerator(db, { now }), lark = runLark, staleWhileRevalidate = true, ...options } = {}) {
-  const config = () => mentorConfig(getSettings(db));
+  const config = () => mentorConfig(getSettings(db)).filter(s => s.url);
   const read = createConfiguredReader(db, 'mentor', config, sources => Promise.all(sources.map(readLogs)), { now, staleWhileRevalidate, ...options });
   const changes = createLocalChanges(db, { now });
   const draftPreviews = new Map();

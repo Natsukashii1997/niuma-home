@@ -49,10 +49,11 @@ export function validateV3Setting(key, raw) {
     if (!/^\d{10,30}$/.test(value)) bad('知识空间 ID 须为数字');
   } else if (key === 'mentor_sources') {
     let list; try { list = JSON.parse(value); } catch { bad('日志来源须为 JSON 数组'); }
-    if (!Array.isArray(list) || list.length !== 2 || new Set(list.map(x => x?.name)).size !== 2) bad('须配置两位不同管培生的日志');
+    // 带教名单 1–20 人（培养路径页可以加人）；日志链接可以不填，带教答疑只读有链接的人
+    if (!Array.isArray(list) || !list.length || list.length > 20 || new Set(list.map(x => x?.name)).size !== list.length) bad('带教名单须是 1–20 位不重名的人');
     return JSON.stringify(list.map(item => {
-      if (!item || typeof item.name !== 'string' || !item.name.trim() || !Number.isInteger(item.year) || item.year < 2020 || item.year > 2100 || item.role !== undefined && typeof item.role !== 'string') bad('日志来源须有姓名、年份及飞书链接');
-      return { name: item.name.trim(), role: item.role || '管培生', year: item.year, url: reportDocumentUrl(item.url) };
+      if (!item || typeof item.name !== 'string' || !item.name.trim() || !Number.isInteger(item.year) || item.year < 2020 || item.year > 2100 || item.role !== undefined && typeof item.role !== 'string') bad('每个人须有姓名和年份，飞书日志链接可以不填');
+      return { name: item.name.trim(), role: item.role || '管培生', year: item.year, ...(item.url && { url: reportDocumentUrl(item.url) }) };
     }));
   } else if (key === 'nas_root') {
     if (!path.isAbsolute(value) || value === '/' || value.split(path.sep).includes('..') || /[\x00-\x1f]/.test(value)) bad('NAS 目录须为明确的绝对目录，不能为根目录或包含上级路径');
