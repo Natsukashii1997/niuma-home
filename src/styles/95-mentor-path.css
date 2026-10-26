@@ -54,7 +54,7 @@
 .mpath-sec p { margin: var(--s1) 0 0; color: var(--text-2); }
 .mpath-sec ul { margin: var(--s1) 0 0; padding: 0; list-style: none; }
 .mpath-sec li { display: flex; gap: var(--s2); padding: 3px 0; color: var(--text-2); }
-.mpath-sec li .tnum { flex: none; width: 64px; color: var(--muted); }
+.mpath-sec li .tnum { flex: none; width: 64px; text-align: left; color: var(--muted); }   /* .tnum 自带右对齐，短日期 D2 会离勾框太远（用户 10-26） */
 .mpath-sec li.is-done { color: var(--muted); }
 .mpath-sec li.is-done::before { content: "✓"; flex: none; width: 12px; color: var(--ok); }
 .mpath-sec li.is-now { color: var(--text); font-weight: 600; }
