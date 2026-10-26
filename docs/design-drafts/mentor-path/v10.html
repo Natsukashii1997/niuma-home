@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V10 收进框里 · 培养路径</title>
+<link rel="stylesheet" href="../../../src/styles.css">
+<link rel="stylesheet" href="../../../src/styles/index.css">
+<link rel="stylesheet" href="../../../src/styles-layout.css">
+<link rel="stylesheet" href="_shared/draft.css">
+<style>
+/* V10 收进框里（2026-10-26，用户嫌 V7 和全站不融、有点夸张）：保留登山比喻，但不再整页铺满。
+   页头、页签、管培生选择和「带教答疑」完全一样；地图收进一张标准卡片，整段培养期一屏看全（按工作日，不横向滚动）；
+   山体只用浅灰 1-bit 网点；橙色只给「今天」：竖线、小太阳、登山者、当前阶段；标牌只留当前一张，其余靠下面两条阶段条读。
+   排期照飞书《管培生培养路径 V2.4》：业务线 P1–P10、技术线 T1–T6、六个评审节点；入职日与节假日是样稿假设。 */
+.v10-map { position: relative; }
+.v10-map svg { display: block; width: 100%; }
+.v10-map .hit { cursor: pointer; }
+.v10-map text { font-family: var(--font-sans); }
+.v10-map .mono { font-family: var(--font-mono); }
+.v10-legend { display: flex; align-items: center; gap: var(--s3); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.v10-legend i { display: inline-block; width: 14px; height: 2px; margin-right: 4px; vertical-align: 3px; background: var(--text); }
+.v10-legend i.is-ai { background: var(--info); }
+.v10-legend i.is-now { height: 10px; width: 2px; vertical-align: -1px; background: var(--signal); }
+.v10-legend .pixel-icon { width: 10px; height: 10px; margin-right: 4px; }
+
+.v10-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--gap); margin-top: var(--gap); align-items: start; }
+.v10-sec { padding: var(--s3) var(--s4); border-top: 1px solid var(--line); }
+.v10-sec:first-child { border-top: 0; }
+.v10-sec p { margin: var(--s1) 0 0; color: var(--text-2); }
+.v10-sec ul { margin: var(--s1) 0 0; padding: 0; list-style: none; }
+.v10-sec li { display: flex; gap: var(--s2); padding: 3px 0; color: var(--text-2); }
+.v10-sec li .tnum { flex: none; width: 64px; color: var(--muted); }
+.v10-sec li.is-done { color: var(--muted); }
+.v10-sec li.is-done::before { content: "✓"; flex: none; width: 12px; color: var(--ok); }
+.v10-sec li.is-now { color: var(--text); font-weight: 600; }
+.v10-sec li.is-now::before { content: ""; flex: none; width: 8px; height: 8px; margin: 6px 4px 0 0; background: var(--signal); }
+.v10-sec li.is-next::before { content: ""; flex: none; width: 8px; height: 8px; margin: 6px 4px 0 0; border: 1px solid var(--muted); }
+.v10-title { display: flex; flex-direction: column; gap: 2px; }
+.v10-title h3 { font-size: 16px; line-height: 1.35; }
+.v10-title .small { font-family: var(--font-mono); }
+.v10-reviews li { align-items: center; }
+.v10-reviews li b { flex: 1; font-weight: 500; color: var(--text); }
+.v10-reviews li .num { width: 28px; text-align: right; font-size: 16px; }
+.v10-reviews li.is-future b { color: var(--muted); font-weight: 400; }
+.v10-reviews li.is-next b { font-weight: 600; }
+.v10-reviews li::before { display: none; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { icon, mountShell, statStrip, tag } from "./_shared/draft.js";
+
+/* ---------- 工作日历（样稿假设：入职 09-01，跳过周末与 10-01–10-07） ---------- */
+const OFF = new Set(["10-01", "10-02", "10-03", "10-04", "10-05", "10-06", "10-07"]);
+const md = (d) => `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const DATES = [];   // DATES[d] = 第 d 个工作日的日期（d 从 1 起）
+for (let t = new Date(2026, 8, 1); DATES.length < 66; t.setDate(t.getDate() + 1)) {
+  if (t.getDay() % 6 && !OFF.has(md(t))) DATES.push(md(t));
+}
+DATES.unshift(null);
+const TODAY = "10-26", NOW = DATES.indexOf(TODAY);   // 35
+const TOTAL = 65;
+const span = (a, b) => (a === b ? `D${a} · ${DATES[a]}` : `D${a}–D${b} · ${DATES[a]} – ${DATES[b]}`);
+
+/* ---------- 排期（照飞书《管培生培养路径 V2.4》） ---------- */
+const BIZ = [
+  { id: "P1", short: "入职初筛", title: "入职培训与初轮筛选", d: [1, 2], review: "初轮筛选", out: ["《留学学业服务赛道调研报告》（HTML 10–15 页）"],
+    goal: "两天内建立对行业、赛道、用户与公司的全景认知，自主运用 AI 完成赛道调研报告，检验学习速度、信息整合与表达。", pass: "无否决项且评分 ≥ 70" },
+  { id: "P2", short: "流程认知", title: "业务流程认知与 AI 通识培训", d: [3, 3], out: [],
+    goal: "学习用户线与师资线的业务流程、关键角色职责与跨团队衔接机制，为模拟与轮岗建立观察框架。本阶段不设正式产出。" },
+  { id: "P3", short: "Roleplay", title: "真实用户模拟 Roleplay", d: [4, 4], out: ["《As-Is 用户旅程图》"],
+    goal: "以用户身份走一遍从首次咨询到付费决策，识别关键触点、信息需求与决策因素，转化为进入一线的待验证问题。" },
+  { id: "P4", short: "用户侧轮岗", title: "用户侧实地轮岗", d: [5, 11], out: ["《用户侧轮岗观察与记录分析》", "4 张岗位定义卡"],
+    goal: "客服 1 天、销售 3 天、班主任 2 天、用户运营 1 天，记录岗位动作、用户需求与交接节点，为诊断建立一手证据。",
+    steps: [["D5", "平台客服"], ["D6–D8", "产品销售"], ["D9–D10", "班主任"], ["D11", "用户运营"]] },
+  { id: "P5", short: "综合分析", title: "用户侧综合分析", d: [12, 14], review: "二轮筛选", out: ["《To-Be 企业服务蓝图》"],
+    goal: "把一线事实收敛为服务蓝图，定义并诊断核心问题，重塑服务链路，完成用户侧第一次完整循环。", pass: "二轮筛选 ≥ 70；4 张岗位定义卡齐全" },
+  { id: "P6", short: "侧边栏实战", title: "销售侧边栏 AI 实战", d: [15, 24], review: "侧边栏 Demo 评审", out: ["销售场景 AI 侧边栏 Demo"],
+    goal: "第一个实战项目，单岗位、10 天：从销售场景抽象需求、设计功能、搭原型，并经 2–3 位销售一线试用。", pass: "Demo 经一线试用；评分 ≥ 70" },
+  { id: "P7", short: "首课项目", title: "首课学情诊断与学习规划项目", d: [25, 44], review: "首课项目结项", out: ["《首课学情诊断与学习规划报告》定稿模板"],
+    goal: "第二个实战项目，跨部门、20 天：诊断首课现状，设计报告方案与 AI 生成流程，在真实首课中试点并以数据验证。", pass: "完成真实首课试点并有前后对比；评分 ≥ 70",
+    steps: [["D25–D30", "立项与现状诊断"], ["D31–D35", "报告方案设计"], ["D36–D40", "真实首课试点"], ["D41–D44", "效果验证与交付"]] },
+  { id: "P8", short: "师资侧轮岗", title: "师资侧实地轮岗", d: [45, 54], out: ["《导师侧轮岗观察与记录分析》", "3 张岗位定义卡"],
+    goal: "先梳理导师旅程，再轮岗师资招募、教务匹配、师资管理，把用户侧的方法迁移到师资侧。",
+    steps: [["D45–D46", "导师旅程梳理"], ["D47–D48", "师资招募"], ["D49–D51", "教务匹配"], ["D52–D54", "师资管理"]] },
+  { id: "P9", short: "导师字段", title: "ERP 导师字段梳理", d: [55, 64], review: "师资侧评审", out: ["《ERP 导师字段清单》"],
+    goal: "结合三岗轮岗记录，逐字段写明定义、取值规范、来源与维护人，经师资负责人确认。", pass: "字段清单经师资负责人确认；师资侧评审 ≥ 70" },
+  { id: "P10", short: "结业答辩", title: "结业答辩", d: [65, 65], review: "结业答辩", out: ["《管培生培养期综合评估答辩》"],
+    goal: "三轮筛选：30 分钟脱稿汇报 + 30 分钟问答，按六项核心能力陈述证据；通过者转入实地业务岗位。", pass: "无否决项且答辩 ≥ 70" },
+];
+const AI = [
+  { id: "T1", short: "自主运用", title: "AI 自主运用", d: [1, 2], with: "P1", out: ["AI 使用记录", "汇报材料末页 AI 使用说明"],
+    goal: "不提供培训，观察如何自主选用 AI，建立「AI 辅助、本人负责」的意识。", keys: [["D2", "初轮筛选时说明 AI 参与部分"]] },
+  { id: "T2", short: "通识", title: "AI 通识学习", d: [3, 3], with: "P2", out: ["学习笔记", "数据边界判断练习"],
+    goal: "认识 AI 能做什么、不能做什么、怎样用才安全可靠。", keys: [["D3", "AI 通识培训（0.5 天）"]] },
+  { id: "T3", short: "飞书机器人", title: "飞书机器人搭建", d: [5, 11], with: "P4", out: ["《飞书机器人协同需求清单》", "可运行的机器人功能"],
+    goal: "从轮岗中识别信息处理与协同需求，选一个场景做出推送或查询功能。", keys: [["D5", "开放平台与机器人讲解"], ["D11", "机器人成果检查"]] },
+  { id: "T4", short: "AI 技巧", title: "AI 使用技巧", d: [12, 14], with: "P5", out: ["《人与 AI 诊断差异记录》", "AI 介入诊断表"],
+    goal: "让 AI 承担整理、归纳与证据分析的重复工作，本人专注判断。", keys: [["D14", "二轮筛选时说明人机分工依据"]] },
+  { id: "T5", short: "Codex 实操", title: "Codex 项目实操", d: [15, 24], with: "P6", out: ["任务单与验收记录", "开发文档与使用说明"],
+    goal: "以 AI 辅助开发，把业务需求实现为可运行工具，理解需求、任务单与验收的关系。", keys: [["D15", "Codex 入门"], ["D16", "项目开发规范讲解"], ["D24", "Demo 演示"]] },
+  { id: "T6", short: "AI 进阶应用", title: "AI 进阶应用", d: [25, 44], with: "P7", out: ["报告 AI 生成流程", "评测集与评测结果", "AI 应用总结报告"],
+    goal: "用 AI 生成正式交付内容，设计可控的生成流程，用评测数据证明质量与效率。", keys: [["D35", "方案评审前完成上线前批量测试"], ["D44", "结项会提交评测结果与工时测算"]] },
+];
+const ALL = [...BIZ, ...AI], byId = (id) => ALL.find((x) => x.id === id);
+const pairOf = (x) => (x.with ? byId(x.with) : AI.find((t) => t.with === x.id));
+const REVIEWS = BIZ.filter((x) => x.review).map((x) => ({ at: x.d[1], name: x.review, id: x.id }));
+
+/* ---------- 两个人的样稿状态（分数、复核都是模拟） ---------- */
+const PEOPLE = [
+  { name: "林瑶", cur: { biz: "P7", ai: "T6" }, results: { 初轮筛选: [82, "pass"], 二轮筛选: [76, "pass"], "侧边栏 Demo 评审": [74, "pass"] } },
+  { name: "胡贵兰", cur: { biz: "P6", ai: "T5" }, results: { 初轮筛选: [78, "pass"], 二轮筛选: [72, "pass", "限期复核后通过"], "侧边栏 Demo 评审": [null, "retest", "未达一线试用条件，收窄场景后复核"] } },
+];
+const RESULT = { pass: ["通过", "green"], retest: ["限期复核", "amber"], fail: ["不通过", "red"] };
+
+let who = location.hash === "#2" ? 1 : 0, sel = null, hover = null;   // 地址带 #2 直接看第二个人（截图用）
+const person = () => PEOPLE[who];
+const stateOf = (x) => {
+  const cur = person().cur, line = x.id[0] === "P" ? BIZ : AI, ci = line.findIndex((y) => y.id === cur[x.id[0] === "P" ? "biz" : "ai"]);
+  const i = line.indexOf(x);
+  return i < ci ? "done" : i === ci ? "doing" : "todo";
+};
+const late = (x) => stateOf(x) === "doing" && x.d[1] < NOW;
+
+/* ---------- 页面外框：和「带教答疑」同一个页头、页签、管培生选择 ---------- */
+const page = mountShell({ version: "V10 收进框里", tab: "path", subtitle: "两条培养线的阶段、评审节点和当前进度，按工作日排期；来源：飞书《管培生培养路径 V2.4》" });
+const people = document.querySelector(".person-tabs");
+function renderPeople() {
+  people.innerHTML = PEOPLE.map((p, i) => {
+    const c = byId(p.cur.biz);
+    return `<button type="button" class="${i === who ? "active" : ""}" data-who="${i}"><span><strong>${p.name}</strong><span class="small">管培生 · D${NOW} · ${c.id} ${c.short}</span></span></button>`;
+  }).join("");
+}
+people.addEventListener("click", (e) => { const b = e.target.closest("[data-who]"); if (b) { who = +b.dataset.who; sel = null; render(); } });
+document.querySelector(".mp-toolbar .spacer").insertAdjacentHTML("afterend", `<span class="small muted">样稿假设：入职 09-01，跳过周末与国庆 10-01–10-07</span>`);
+
+page.innerHTML = `
+  <div id="kpi"></div>
+  <section class="card">
+    <div class="card-head"><h2>${icon("route")}<span id="map-title"></span></h2>
+      <span class="v10-legend"><span><i></i>业务线</span><span><i class="is-ai"></i>技术线</span><span>${icon("flag")}评审节点</span><span><i class="is-now"></i>今天</span></span></div>
+    <div class="v10-map" id="map"></div>
+  </section>
+  <div class="v10-grid">
+    <section class="card" id="detail"></section>
+    <section class="card" id="pair"></section>
+    <section class="card" id="reviews"></section>
+  </div>`;
+
+/* ---------- 地图 ---------- */
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+const dither = (id, n, color) => `<pattern id="${id}" width="8" height="8" patternUnits="userSpaceOnUse">${BAYER.map((v, i) => (v < n ? `<rect x="${(i % 4) * 2}" y="${Math.floor(i / 4) * 2}" width="2" height="2" fill="${color}"/>` : "")).join("")}</pattern>`;
+const px = (rows, x, y, s, fill) => rows.flatMap((r, j) => [...r].map((c, i) => (c === "#" ? `<rect x="${x + i * s}" y="${y + j * s}" width="${s}" height="${s}"/>` : ""))).join("").replace(/^/, `<g fill="${fill}" shape-rendering="crispEdges">`) + "</g>";
+const FLAG = ["#......", "#####..", "######.", "#####..", "#......", "#......", "#......"];
+const SUN = ["..#.#..", ".......", "#.###.#", "..###..", "#.###.#", ".......", "..#.#.."];
+const WALK = [
+  ["..##...", "..##...", ".####..", "#.##.#.", "..##...", ".#..#..", ".#..#.."],
+  ["..##...", "..##...", ".####..", ".###.#.", "#.##...", "..##...", ".#...#."],
+];
+let walk = 0;
+
+const H = 338, GROUND = 214, BAND1 = 226, BAND2 = 262, AXIS = 296, L = 64, R = 76;
+function geo(W) {
+  const cw = (W - L - R) / TOTAL;
+  const x0 = (d) => L + (d - 1) * cw, x1 = (d) => L + d * cw;
+  const ease = (d) => Math.pow(Math.max(0, d) / TOTAL, 0.8);
+  // 业务线越往后越陡，结业那天单独拔高成山尖；技术线在后山，到 D44 与业务线差不多高处汇合
+  const yBiz = (d) => 196 - 140 * Math.pow(Math.max(0, d) / TOTAL, 1.1) - (d >= TOTAL ? 22 : 0), yAi = (d) => 150 - 90 * ease(d);
+  return { W, cw, x0, x1, yBiz, yAi };
+}
+// 山脊：阶段终点是营地（落在曲线上），两营地之间加一小处起伏，像山不像折线
+function ridge(g, line, y) {
+  const pts = [[L - 8, y(0)]];
+  line.forEach((x, k) => {
+    const a = pts.at(-1), b = [g.x1(x.d[1]), y(x.d[1])], dx = b[0] - a[0];
+    if (dx > 40) { const s = (k % 2 ? 1 : -1); pts.push([a[0] + dx * 0.4, a[1] + (b[1] - a[1]) * 0.4 - 7 + s * 2], [a[0] + dx * 0.72, a[1] + (b[1] - a[1]) * 0.72 + 3]); }
+    pts.push(b);
+  });
+  return pts;
+}
+const path = (pts) => pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join("");
+const yOn = (pts, x) => { for (let k = 1; k < pts.length; k++) if (x <= pts[k][0]) { const [ax, ay] = pts[k - 1], [bx, by] = pts[k]; return ay + ((x - ax) / (bx - ax || 1)) * (by - ay); } return pts.at(-1)[1]; };
+const clipPts = (pts, xa, xb) => [[xa, yOn(pts, xa)], ...pts.filter((p) => p[0] > xa && p[0] < xb), [xb, yOn(pts, xb)]];
+
+function renderMap() {
+  const host = document.getElementById("map"), W = host.clientWidth;
+  if (!W) return;
+  const g = geo(W), p = person();
+  const biz = ridge(g, BIZ, g.yBiz), summit = biz.at(-1);
+  const ai = ridge(g, AI, g.yAi);
+  const aiEnd = ai.at(-1);
+  // 后山：技术线山脊到 D44 为止，之后缓缓落下，山顶只属于前山；前山：业务线山脊到山顶，再落到右边地面
+  const back = [...ai, [aiEnd[0] + 70, aiEnd[1] + 14], [summit[0] - 30, summit[1] + 56], [W - 40, GROUND]];
+  const front = [...biz, [summit[0] + 24, summit[1] + 30], [W - 30, GROUND]];
+  const xNow = g.x0(NOW) + g.cw / 2;
+  // 走到哪：按期就在今天；超期就停在当前阶段的营地前，和今天竖线之间的空当就是落后的距离
+  const at = (k) => { const c = byId(p.cur[k]); return late(c) ? g.x1(c.d[1]) - 6 : xNow; };
+  const xBiz = at("biz"), xAi = Math.min(at("ai"), ai.at(-1)[0]);
+  const hl = hover ?? sel;
+
+  const band = (line, y, h, cls) => line.map((x) => {
+    const st = stateOf(x), a = g.x0(x.d[0]) + 1, w = g.x1(x.d[1]) - g.x0(x.d[0]) - 2, isAi = cls === "ai";
+    const name = w > x.short.length * 12 + 34 ? `${x.id} ${x.short}` : w > x.id.length * 8 + 6 ? x.id : "";
+    const stroke = st === "doing" ? (late(x) ? "var(--risk)" : "var(--signal)") : st === "done" ? (isAi ? "var(--info)" : "var(--text)") : "#9CA0A8";
+    const fill = st === "done" ? (isAi ? "var(--info-soft)" : "var(--panel-soft)") : "var(--panel)";
+    const on = hl === x.id;
+    return `<g class="hit" data-id="${x.id}">
+      <rect x="${a}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="${st === "doing" || on ? 2 : 1}" ${st === "todo" ? 'stroke-dasharray="3 3"' : ""}/>
+      ${on ? `<rect x="${a - 3}" y="${y - 3}" width="${w + 6}" height="${h + 6}" fill="none" stroke="var(--text)" stroke-width="1"/>` : ""}
+      ${name ? `<text x="${a + 6}" y="${y + h / 2 + 4}" font-size="${isAi ? 11 : 12}" font-weight="${st === "doing" ? 600 : 400}" fill="${st === "todo" ? "var(--muted)" : "var(--text)"}">${name}</text>` : ""}
+    </g>`;
+  }).join("");
+
+  // 评审节点：插在业务线山脊上的小旗，结果写在旗旁
+  const flags = REVIEWS.map((r, k) => {
+    const x = g.x1(r.at) - 2, y = yOn(biz, x), res = p.results[r.name], last = k === REVIEWS.length - 1;
+    const color = res ? (res[1] === "pass" ? "var(--text)" : res[1] === "retest" ? "var(--warn)" : "var(--risk)") : "#9CA0A8";
+    const label = res ? `${r.name} ${res[0] ?? RESULT[res[1]][0]}` : `${r.name} · D${r.at}`;
+    const near = k === REVIEWS.length - 2;   // D64 与 D65 只差一天：师资侧评审的字写在旗左边
+    const tx = last ? x : near ? x - 10 : x + 12, anchor = last ? "middle" : near ? "end" : "start", ty = last ? y - 22 : y - 8;
+    return `<g class="hit" data-id="${r.id}">${px(FLAG, x - 1, y - 15, 2, color)}
+      <text x="${tx}" y="${ty}" font-size="11" text-anchor="${anchor}" fill="${res ? "var(--text-2)" : "var(--muted)"}" paint-order="stroke" stroke="var(--panel)" stroke-width="4">${label}</text></g>`;
+  }).join("");
+
+  // 当前高亮的那段坡
+  const hlX = hl && byId(hl), hlLine = hlX && (hlX.id[0] === "P" ? biz : ai);
+  const hlPath = hlX ? `<path d="${path(clipPts(hlLine, g.x0(hlX.d[0]), g.x1(hlX.d[1])))}" fill="none" stroke="${hlX.id[0] === "P" ? "var(--text)" : "var(--info)"}" stroke-width="5" stroke-linecap="square"/>` : "";
+
+  const bizNow = byId(p.cur.biz), aiNow = byId(p.cur.ai);
+  const plateW = 196, plateX = Math.max(L, Math.min(xNow - 14, xBiz + 60) - plateW), plateY = 30;   // 牌子放在今天左边、登山者上方：右边是未来的评审旗
+  const bizLate = late(bizNow) ? `已超出计划 ${NOW - bizNow.d[1]} 个工作日` : `第 ${NOW - bizNow.d[0] + 1} / ${bizNow.d[1] - bizNow.d[0] + 1} 天`;
+  const step = bizNow.steps?.find(([s]) => { const [a, b = a] = s.replace(/D/g, "").split("–").map(Number); return NOW >= a && NOW <= b; });
+
+  // 横轴：每 5 个工作日一格，月份换行处写月
+  const ticks = [];
+  for (let d = 1; d <= TOTAL; d++) {
+    const x = g.x0(d), first = d === 1 || DATES[d].slice(0, 2) !== DATES[d - 1].slice(0, 2);
+    if (d % 5 === 0 || d === 1) ticks.push(`<line x1="${x}" y1="${AXIS}" x2="${x}" y2="${AXIS + 5}" stroke="var(--line)"/><text x="${x + 2}" y="${AXIS + 17}" font-size="10" class="mono" fill="var(--muted)">D${d}</text>`);
+    if (first) ticks.push(`<text x="${x + 2}" y="${AXIS + 33}" font-size="11" fill="var(--text-2)">${+DATES[d].slice(0, 2)} 月</text><line x1="${x}" y1="${AXIS + 22}" x2="${x}" y2="${AXIS + 36}" stroke="var(--text)" stroke-width="2"/>`);
+  }
+
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}">
+    <defs>${dither("dBack", 2, "#C9CCD3")}${dither("dFront", 4, "#C9CCD3")}</defs>
+    <path d="${path(back)}L${L - 8} ${GROUND}Z" fill="url(#dBack)"/>
+    <path d="${path(front)}L${L - 8} ${GROUND}Z" fill="url(#dFront)"/>
+    <line x1="${L - 8}" y1="${GROUND}" x2="${W}" y2="${GROUND}" stroke="var(--line)" stroke-width="2"/>
+    <path d="${path(clipPts(ai, L - 8, xAi))}" fill="none" stroke="var(--info)" stroke-width="2"/>
+    ${xAi < aiEnd[0] ? `<path d="${path(clipPts(ai, xAi, aiEnd[0]))}" fill="none" stroke="var(--info)" stroke-width="1.5" stroke-dasharray="2 4" opacity=".7"/>` : ""}
+    <line x1="${aiEnd[0]}" y1="${aiEnd[1]}" x2="${aiEnd[0]}" y2="${yOn(biz, aiEnd[0])}" stroke="var(--info)" stroke-width="1.5" stroke-dasharray="1 3"/>
+    <path d="${path(clipPts(biz, L - 8, xBiz))}" fill="none" stroke="var(--text)" stroke-width="2"/>
+    <path d="${path(clipPts(biz, xBiz, summit[0]))}" fill="none" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="2 4" opacity=".55"/>
+    ${hlPath}
+    ${flags}
+    <line x1="${xNow}" y1="26" x2="${xNow}" y2="${AXIS}" stroke="var(--signal)" stroke-width="2" stroke-dasharray="2 4"/>
+    ${px(SUN, xNow - 7, 6, 2, "var(--signal)")}
+    <text x="${xNow - 12}" y="18" font-size="11" text-anchor="end" class="mono" fill="var(--signal)">今天 D${NOW} · ${TODAY}</text>
+    <g id="walker"></g>
+    <foreignObject x="${plateX}" y="${plateY}" width="${plateW}" height="58"><div xmlns="http://www.w3.org/1999/xhtml" class="v10-plate" data-id="${bizNow.id}" style="border:2px solid ${late(bizNow) ? "var(--risk)" : "var(--signal)"};background:var(--panel);padding:3px 7px;cursor:pointer;line-height:1.35">
+      <div class="mono" style="font-size:10px;color:var(--muted)">${bizNow.id} · 现在 · ${step ? step[1] : bizNow.short}</div>
+      <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${bizNow.title}</div>
+      <div style="font-size:11px;color:${late(bizNow) ? "var(--risk)" : "var(--signal)"};font-weight:600">${bizLate}</div></div></foreignObject>
+    <text x="${L - 10}" y="${BAND1 + 18}" font-size="11" text-anchor="end" fill="var(--text-2)">业务线</text>
+    <text x="${L - 10}" y="${BAND2 + 16}" font-size="11" text-anchor="end" fill="var(--info)">技术线</text>
+    ${band(BIZ, BAND1, 28, "biz")}
+    ${band(AI, BAND2, 24, "ai")}
+    <line x1="${L}" y1="${AXIS}" x2="${g.x1(TOTAL)}" y2="${AXIS}" stroke="var(--line)" stroke-width="2"/>
+    ${ticks.join("")}
+  </svg>`;
+  walkerAt = [[xBiz - 7, yOn(biz, xBiz) - 15], [xAi - 7, yOn(ai, xAi) - 15]];
+  drawWalker();
+}
+let walkerAt = [];
+const drawWalker = () => { const el = document.getElementById("walker"); if (el) el.innerHTML = walkerAt.map(([x, y]) => px(WALK[walk], x, y, 2, "var(--signal)")).join(""); };
+
+/* ---------- 下方三张卡 ---------- */
+const st = (x) => { const s = stateOf(x); return s === "done" ? tag("已完成", "green") : s === "doing" ? (late(x) ? tag(`超出 ${NOW - x.d[1]} 个工作日`, "red") : tag("进行中", "orange")) : tag("未开始"); };
+const stepState = (s) => { const [a, b = a] = s.replace(/D/g, "").split("–").map(Number); return NOW > b ? "is-done" : NOW >= a ? "is-now" : "is-next"; };
+function card(x, head) {
+  const isAi = x.id[0] === "T", doing = stateOf(x) === "doing";
+  const list = isAi ? x.keys : x.steps;
+  return `<div class="card-head"><h2>${head}</h2>${st(x)}</div>
+    <div class="v10-sec"><div class="v10-title"><span class="row" style="gap:6px">${tag(x.id, "frame")}<span class="label">${isAi ? "技术线" : "业务线"} · ${x.short}</span></span>
+      <h3>${x.title}</h3><span class="small muted">${span(...x.d)}</span></div>
+      <p>${x.goal}</p></div>
+    ${list ? `<div class="v10-sec"><span class="label">${isAi ? "关键事项" : x.id === "P7" ? "里程碑" : "安排"}</span><ul>${list.map(([d, t]) => `<li class="${doing || stateOf(x) === "done" ? (stateOf(x) === "done" ? "is-done" : stepState(d)) : "is-next"}"><span class="tnum mono">${d}</span>${t}</li>`).join("")}</ul></div>` : ""}
+    <div class="v10-sec"><span class="label">产出</span>${x.out.length ? `<ul>${x.out.map((o) => `<li>${o}</li>`).join("")}</ul>` : `<p class="muted">本阶段不设正式产出</p>`}</div>
+    ${x.pass ? `<div class="v10-sec"><span class="label">${x.review} · 合格标准</span><p>${x.pass}</p></div>` : ""}`;
+}
+function renderCards() {
+  const p = person(), x = byId(sel ?? p.cur.biz), pair = pairOf(x);
+  document.getElementById("map-title").textContent = `培养路径 · ${p.name}`;
+  document.getElementById("detail").innerHTML = card(x, sel ? "选中的阶段" : "当前阶段");
+  document.getElementById("pair").innerHTML = pair ? card(pair, x.id[0] === "P" ? "同期技术线" : "同期业务线")
+    : `<div class="card-head"><h2>同期技术线</h2></div><div class="v10-sec"><p class="muted">技术线到 D44（T6）结束，${x.id} 没有同期技术单元。</p></div>`;
+  const nextAt = REVIEWS.find((r) => !p.results[r.name])?.at;
+  document.getElementById("reviews").innerHTML = `<div class="card-head"><h2>${icon("flag")}评审与筛选</h2><span class="small muted">≥ 70 通过</span></div>
+    <div class="v10-sec v10-reviews"><ul>${REVIEWS.map((r) => {
+      const res = p.results[r.name], cls = res ? "" : r.at === nextAt ? "is-next" : "is-future";
+      const right = res ? `<span class="num">${res[0] ?? "—"}</span>${tag(RESULT[res[1]][0], RESULT[res[1]][1])}` : r.at === nextAt ? `<span class="small" style="color:var(--signal)">还有 ${r.at - NOW} 个工作日</span>` : `<span class="small muted mono">${DATES[r.at]}</span>`;
+      return `<li class="${cls}" data-id="${r.id}" style="cursor:pointer"><span class="tnum mono">D${r.at}</span><b>${r.name}</b>${right}</li>${res?.[2] ? `<li class="is-future" style="padding-top:0"><span class="tnum"></span><span class="small muted">${res[2]}</span></li>` : ""}`;
+    }).join("")}</ul></div>`;
+}
+function renderKpi() {
+  const p = person(), done = (line, k) => line.findIndex((x) => x.id === p.cur[k]);
+  const passed = REVIEWS.filter((r) => p.results[r.name]?.[1] === "pass").length, retest = REVIEWS.filter((r) => p.results[r.name]?.[1] === "retest").length;
+  const next = REVIEWS.find((r) => !p.results[r.name]);
+  document.getElementById("kpi").innerHTML = statStrip([
+    { label: "培养进度", value: `D${NOW}`, unit: ` / ${TOTAL} 工作日`, foot: `入职 09-01 · 今天 ${TODAY}` },
+    { label: "业务线", value: done(BIZ, "biz"), unit: ` / 10 阶段完成`, foot: `现在：${byId(p.cur.biz).id} ${byId(p.cur.biz).short}` },
+    { label: "技术线", value: done(AI, "ai"), unit: ` / 6 单元完成`, foot: `现在：${byId(p.cur.ai).id} ${byId(p.cur.ai).short}` },
+    { label: "评审", value: passed, unit: ` / 6 通过`, foot: retest ? `<span style="color:var(--warn)">${retest} 项限期复核</span>` : `下一个：D${next.at} ${next.name}` },
+  ]);
+}
+function render() { renderPeople(); renderKpi(); renderMap(); renderCards(); }
+
+const map = document.getElementById("map");
+map.addEventListener("mouseover", (e) => { const id = e.target.closest("[data-id]")?.dataset.id ?? null; if (id !== hover) { hover = id; renderMap(); } });
+map.addEventListener("mouseleave", () => { hover = null; renderMap(); });
+document.addEventListener("click", (e) => { const id = e.target.closest("#map [data-id], #reviews [data-id]")?.dataset.id; if (id) { sel = id === person().cur.biz ? null : id; renderMap(); renderCards(); } });
+new ResizeObserver(renderMap).observe(map);
+// 登山者原地踏步：两帧交替，约 2.5 帧/秒；减少动效时不动
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setInterval(() => { walk = 1 - walk; drawWalker(); }, 400);
+render();
+</script>
+</body>
+</html>

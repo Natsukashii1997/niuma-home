@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V11 框里的远征 · 培养路径</title>
+<link rel="stylesheet" href="../../../src/styles.css">
+<link rel="stylesheet" href="../../../src/styles/index.css">
+<link rel="stylesheet" href="../../../src/styles-layout.css">
+<link rel="stylesheet" href="_shared/draft.css">
+<style>
+/* V11 框里的远征（2026-10-26）：V10 的版式（标准页头 + 卡片、整段培养期一屏看全）不变，把 V7 的细节按比例找回来：
+   远山 / 后山 / 前山三层、越往下网点越密；营地是平台上的帐篷和旗，结业是积雪山尖上的城堡；山脚一排松树；
+   墨色地平线带写月份和工作日；天上两朵云、一对鸟、带网点光晕的小太阳；登山者是像素小人，按帧挥手。
+   橙色仍只给「现在」：太阳、竖线、登山者、正在爬的营地和标牌。排期照飞书《管培生培养路径 V2.4》，入职日与分数是样稿假设。 */
+.v11-map { position: relative; }
+.v11-map svg { display: block; width: 100%; }
+.v11-map .hit { cursor: pointer; }
+.v11-map text { font-family: var(--font-sans); }
+.v11-map .mono { font-family: var(--font-mono); }
+.v11-labels { position: absolute; inset: 0; pointer-events: none; }
+.v11-legend { display: flex; align-items: center; gap: var(--s3); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.v11-legend svg { margin-right: 4px; vertical-align: -2px; }
+
+/* 标牌：编号牌 + 阶段 + 工作日；当前阶段带逐日格子 */
+.v11-plate { position: absolute; width: 214px; padding: 5px 8px 6px; background: var(--panel); border: 2px solid var(--signal); pointer-events: auto; cursor: pointer; }
+.v11-plate.is-late { border-color: var(--risk); }
+.v11-plate .meta { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em; color: var(--muted); white-space: nowrap; }
+.v11-plate strong { display: block; margin-top: 1px; font-size: 13px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v11-plate .sc { margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--signal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v11-plate.is-late .sc { color: var(--risk); }
+.v11-id { display: inline-block; padding: 0 4px; font-family: var(--font-mono); font-size: 10px; font-style: normal; line-height: 15px; background: var(--text); color: var(--panel); }
+.v11-id.is-ai { background: var(--info); }
+.v11-cells { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 2px; margin-top: 4px; }
+.v11-cells i { height: 6px; background: var(--panel-soft); border: 1px solid var(--line); }
+.v11-cells i.on { background: var(--text); border-color: var(--text); }
+.v11-cells i.now { background: var(--signal); border-color: var(--signal); }
+.v11-plate.is-late .v11-cells i.now { background: var(--risk); border-color: var(--risk); }
+/* 评审小牌：插在评审营地下面 */
+.v11-tagplate { position: absolute; display: flex; align-items: center; gap: 5px; padding: 1px 6px 1px 4px; background: var(--panel); border: 1px solid var(--text); font-size: 11px; line-height: 17px; white-space: nowrap; pointer-events: auto; cursor: pointer; }
+.v11-tagplate b { font-family: var(--font-mono); font-weight: 600; }
+.v11-tagplate .mono { font-size: 10px; color: var(--muted); }
+.v11-tagplate.is-retest { border-color: var(--warn); }
+.v11-tagplate.is-retest b { color: var(--warn); }
+.v11-tagplate.is-future { border: 1px dashed #9CA0A8; color: var(--muted); }
+.v11-tagplate.is-hl, .v11-plate.is-hl { outline: 2px solid var(--text); outline-offset: 2px; }
+.v11-mount { position: absolute; padding: 0 6px; background: var(--panel); border: 1px solid var(--text); font-size: 11px; line-height: 18px; white-space: nowrap; }
+.v11-mount.is-ai { border-color: var(--info); color: var(--info); }
+
+.v10-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--gap); margin-top: var(--gap); align-items: start; }
+.v10-sec { padding: var(--s3) var(--s4); border-top: 1px solid var(--line); }
+.v10-sec:first-child { border-top: 0; }
+.v10-sec p { margin: var(--s1) 0 0; color: var(--text-2); }
+.v10-sec ul { margin: var(--s1) 0 0; padding: 0; list-style: none; }
+.v10-sec li { display: flex; gap: var(--s2); padding: 3px 0; color: var(--text-2); }
+.v10-sec li .tnum { flex: none; width: 64px; color: var(--muted); }
+.v10-sec li.is-done { color: var(--muted); }
+.v10-sec li.is-done::before { content: "✓"; flex: none; width: 12px; color: var(--ok); }
+.v10-sec li.is-now { color: var(--text); font-weight: 600; }
+.v10-sec li.is-now::before { content: ""; flex: none; width: 8px; height: 8px; margin: 6px 4px 0 0; background: var(--signal); }
+.v10-sec li.is-next::before { content: ""; flex: none; width: 8px; height: 8px; margin: 6px 4px 0 0; border: 1px solid var(--muted); }
+.v10-title { display: flex; flex-direction: column; gap: 2px; }
+.v10-title h3 { font-size: 16px; line-height: 1.35; }
+.v10-title .small { font-family: var(--font-mono); }
+.v10-title .v11-cells { margin-top: var(--s2); }
+.v10-title .v11-cells i { height: 8px; }
+.v10-progress { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: var(--muted); }
+.v10-progress b { color: var(--signal); font-weight: 600; }
+.v10-reviews li { align-items: center; }
+.v10-reviews li b { flex: 1; font-weight: 500; color: var(--text); }
+.v10-reviews li .num { width: 28px; text-align: right; font-size: 16px; }
+.v10-reviews li.is-future b { color: var(--muted); font-weight: 400; }
+.v10-reviews li.is-next b { font-weight: 600; }
+.v10-reviews li::before { display: none; }
+.v10-reviews li .pixel-sprite { flex: none; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { icon, mountShell, statStrip, tag } from "./_shared/draft.js";
+
+/* ---------- 工作日历（样稿假设：入职 09-01，跳过周末与 10-01–10-07） ---------- */
+const OFF = new Set(["10-01", "10-02", "10-03", "10-04", "10-05", "10-06", "10-07"]);
+const md = (d) => `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const DATES = [null];   // DATES[d] = 第 d 个工作日的日期（d 从 1 起）
+for (let t = new Date(2026, 8, 1); DATES.length < 67; t.setDate(t.getDate() + 1)) {
+  if (t.getDay() % 6 && !OFF.has(md(t))) DATES.push(md(t));
+}
+const TODAY = "10-26", NOW = DATES.indexOf(TODAY);   // 35
+const TOTAL = 65;
+const span = (a, b) => (a === b ? `D${a} · ${DATES[a]}` : `D${a}–D${b} · ${DATES[a]} – ${DATES[b]}`);
+
+/* ---------- 排期（照飞书《管培生培养路径 V2.4》） ---------- */
+const BIZ = [
+  { id: "P1", short: "入职初筛", title: "入职培训与初轮筛选", d: [1, 2], review: "初轮筛选", out: ["《留学学业服务赛道调研报告》（HTML 10–15 页）"],
+    goal: "两天内建立对行业、赛道、用户与公司的全景认知，自主运用 AI 完成赛道调研报告，检验学习速度、信息整合与表达。", pass: "无否决项且评分 ≥ 70" },
+  { id: "P2", short: "流程认知", title: "业务流程认知与 AI 通识培训", d: [3, 3], out: [],
+    goal: "学习用户线与师资线的业务流程、关键角色职责与跨团队衔接机制，为模拟与轮岗建立观察框架。本阶段不设正式产出。" },
+  { id: "P3", short: "Roleplay", title: "真实用户模拟 Roleplay", d: [4, 4], out: ["《As-Is 用户旅程图》"],
+    goal: "以用户身份走一遍从首次咨询到付费决策，识别关键触点、信息需求与决策因素，转化为进入一线的待验证问题。" },
+  { id: "P4", short: "用户侧轮岗", title: "用户侧实地轮岗", d: [5, 11], out: ["《用户侧轮岗观察与记录分析》", "4 张岗位定义卡"],
+    goal: "客服 1 天、销售 3 天、班主任 2 天、用户运营 1 天，记录岗位动作、用户需求与交接节点，为诊断建立一手证据。",
+    steps: [["D5", "平台客服"], ["D6–D8", "产品销售"], ["D9–D10", "班主任"], ["D11", "用户运营"]] },
+  { id: "P5", short: "综合分析", title: "用户侧综合分析", d: [12, 14], review: "二轮筛选", out: ["《To-Be 企业服务蓝图》"],
+    goal: "把一线事实收敛为服务蓝图，定义并诊断核心问题，重塑服务链路，完成用户侧第一次完整循环。", pass: "二轮筛选 ≥ 70；4 张岗位定义卡齐全" },
+  { id: "P6", short: "侧边栏实战", title: "销售侧边栏 AI 实战", d: [15, 24], review: "侧边栏 Demo 评审", out: ["销售场景 AI 侧边栏 Demo"],
+    goal: "第一个实战项目，单岗位、10 天：从销售场景抽象需求、设计功能、搭原型，并经 2–3 位销售一线试用。", pass: "Demo 经一线试用；评分 ≥ 70" },
+  { id: "P7", short: "首课项目", title: "首课学情诊断与学习规划项目", d: [25, 44], review: "首课项目结项", out: ["《首课学情诊断与学习规划报告》定稿模板"],
+    goal: "第二个实战项目，跨部门、20 天：诊断首课现状，设计报告方案与 AI 生成流程，在真实首课中试点并以数据验证。", pass: "完成真实首课试点并有前后对比；评分 ≥ 70",
+    steps: [["D25–D30", "立项与现状诊断"], ["D31–D35", "报告方案设计"], ["D36–D40", "真实首课试点"], ["D41–D44", "效果验证与交付"]] },
+  { id: "P8", short: "师资侧轮岗", title: "师资侧实地轮岗", d: [45, 54], out: ["《导师侧轮岗观察与记录分析》", "3 张岗位定义卡"],
+    goal: "先梳理导师旅程，再轮岗师资招募、教务匹配、师资管理，把用户侧的方法迁移到师资侧。",
+    steps: [["D45–D46", "导师旅程梳理"], ["D47–D48", "师资招募"], ["D49–D51", "教务匹配"], ["D52–D54", "师资管理"]] },
+  { id: "P9", short: "导师字段", title: "ERP 导师字段梳理", d: [55, 64], review: "师资侧评审", out: ["《ERP 导师字段清单》"],
+    goal: "结合三岗轮岗记录，逐字段写明定义、取值规范、来源与维护人，经师资负责人确认。", pass: "字段清单经师资负责人确认；师资侧评审 ≥ 70" },
+  { id: "P10", short: "结业答辩", title: "结业答辩", d: [65, 65], review: "结业答辩", out: ["《管培生培养期综合评估答辩》"],
+    goal: "三轮筛选：30 分钟脱稿汇报 + 30 分钟问答，按六项核心能力陈述证据；通过者转入实地业务岗位。", pass: "无否决项且答辩 ≥ 70" },
+];
+const AI = [
+  { id: "T1", short: "自主运用", title: "AI 自主运用", d: [1, 2], with: "P1", out: ["AI 使用记录", "汇报材料末页 AI 使用说明"],
+    goal: "不提供培训，观察如何自主选用 AI，建立「AI 辅助、本人负责」的意识。", keys: [["D2", "初轮筛选时说明 AI 参与部分"]] },
+  { id: "T2", short: "通识", title: "AI 通识学习", d: [3, 3], with: "P2", out: ["学习笔记", "数据边界判断练习"],
+    goal: "认识 AI 能做什么、不能做什么、怎样用才安全可靠。", keys: [["D3", "AI 通识培训（0.5 天）"]] },
+  { id: "T3", short: "飞书机器人", title: "飞书机器人搭建", d: [5, 11], with: "P4", out: ["《飞书机器人协同需求清单》", "可运行的机器人功能"],
+    goal: "从轮岗中识别信息处理与协同需求，选一个场景做出推送或查询功能。", keys: [["D5", "开放平台与机器人讲解"], ["D11", "机器人成果检查"]] },
+  { id: "T4", short: "AI 技巧", title: "AI 使用技巧", d: [12, 14], with: "P5", out: ["《人与 AI 诊断差异记录》", "AI 介入诊断表"],
+    goal: "让 AI 承担整理、归纳与证据分析的重复工作，本人专注判断。", keys: [["D14", "二轮筛选时说明人机分工依据"]] },
+  { id: "T5", short: "Codex 实操", title: "Codex 项目实操", d: [15, 24], with: "P6", out: ["任务单与验收记录", "开发文档与使用说明"],
+    goal: "以 AI 辅助开发，把业务需求实现为可运行工具，理解需求、任务单与验收的关系。", keys: [["D15", "Codex 入门"], ["D16", "项目开发规范讲解"], ["D24", "Demo 演示"]] },
+  { id: "T6", short: "AI 进阶应用", title: "AI 进阶应用", d: [25, 44], with: "P7", out: ["报告 AI 生成流程", "评测集与评测结果", "AI 应用总结报告"],
+    goal: "用 AI 生成正式交付内容，设计可控的生成流程，用评测数据证明质量与效率。", keys: [["D35", "方案评审前完成上线前批量测试"], ["D44", "结项会提交评测结果与工时测算"]] },
+];
+const ALL = [...BIZ, ...AI], byId = (id) => ALL.find((x) => x.id === id);
+const isAi = (x) => x.id[0] === "T";
+const pairOf = (x) => (x.with ? byId(x.with) : AI.find((t) => t.with === x.id));
+const REVIEWS = BIZ.filter((x) => x.review).map((x) => ({ at: x.d[1], name: x.review, id: x.id }));
+
+/* ---------- 两个人的样稿状态（分数、复核都是模拟） ---------- */
+const PEOPLE = [
+  { name: "林瑶", cur: { biz: "P7", ai: "T6" }, results: { 初轮筛选: [82, "pass"], 二轮筛选: [76, "pass"], "侧边栏 Demo 评审": [74, "pass"] } },
+  { name: "胡贵兰", cur: { biz: "P6", ai: "T5" }, results: { 初轮筛选: [78, "pass"], 二轮筛选: [72, "pass", "限期复核后通过"], "侧边栏 Demo 评审": [null, "retest", "未达一线试用条件，收窄场景后复核"] } },
+];
+const RESULT = { pass: ["通过", "green"], retest: ["限期复核", "amber"], fail: ["不通过", "red"] };
+
+let who = location.hash === "#2" ? 1 : 0, sel = null, hover = null;   // 地址带 #2 直接看第二个人（截图用）
+const person = () => PEOPLE[who];
+const stateOf = (x) => {
+  const line = isAi(x) ? AI : BIZ, ci = line.findIndex((y) => y.id === person().cur[isAi(x) ? "ai" : "biz"]), i = line.indexOf(x);
+  return i < ci ? "done" : i === ci ? "doing" : "todo";
+};
+const late = (x) => stateOf(x) === "doing" && x.d[1] < NOW;
+const lateDays = (x) => NOW - x.d[1];
+// 当前阶段已经走了几天（超期就算满）
+const walked = (x) => Math.min(x.d[1], NOW) - x.d[0] + 1;
+
+/* ---------- 页面外框：和「带教答疑」同一个页头、页签、管培生选择 ---------- */
+const page = mountShell({ version: "V11 框里的远征", tab: "path", subtitle: "两条培养线的阶段、评审节点和当前进度，按工作日排期；来源：飞书《管培生培养路径 V2.4》" });
+const people = document.querySelector(".person-tabs");
+function renderPeople() {
+  people.innerHTML = PEOPLE.map((p, i) => {
+    const c = byId(p.cur.biz);
+    return `<button type="button" class="${i === who ? "active" : ""}" data-who="${i}"><span><strong>${p.name}</strong><span class="small">管培生 · D${NOW} · ${c.id} ${c.short}</span></span></button>`;
+  }).join("");
+}
+people.addEventListener("click", (e) => { const b = e.target.closest("[data-who]"); if (b) { who = +b.dataset.who; sel = null; render(); } });
+document.querySelector(".mp-toolbar .spacer").insertAdjacentHTML("afterend", `<span class="small muted">样稿假设：入职 09-01，跳过周末与国庆 10-01–10-07</span>`);
+
+/* ---------- 像素图（与 src/ui/bitmap.jsx 的 SPRITES 一致） ---------- */
+const SPRITES = {
+  flag: ["#......", "#####..", "######.", "#####..", "#......", "#......", "#......"],
+  tent: ["...#...", "..###..", "..#.#..", ".#...#.", ".#.#.#.", "#..#..#", "#######"],
+  keep: ["#..#..#", "##.#.##", "#######", "#######", ".#####.", ".......", "......."],
+  pine: ["..#..", ".###.", ".###.", "#####", "..#.."],   // 卡片里的小号松树（V7 那棵缩到 2 倍格会像十字，这里改短）
+  bird: ["#...#", ".#.#."],
+  cloud: ["......####......", "....##oooo##....", "..##oooooooo##..", ".#oooooooooooo#.", "################"],
+  climb: [
+    ["...##..", "...##..", ".#####.", "#.###.#", "..###..", "..###..", "..#.#..", ".##.##.", ".#...#."],
+    ["...##.#", "...##.#", ".######", "#.###..", "..###..", "..###..", "..#.#..", ".#..##.", ".#...#."],
+  ],
+};
+const cellsOf = (rows, ch) => rows.flatMap((row, y) => [...row].map((c, x) => (c === ch ? `M${x} ${y}h1v1h-1z` : ""))).join("");
+const OUTLINE = [[-2, 0], [2, 0], [0, -2], [0, 2], [-2, -2], [2, -2], [-2, 2], [2, 2]];
+function sprite(rows, x, y, cell, color, { outline = false, bg = "var(--panel)" } = {}) {
+  const ink = cellsOf(rows, "#"), fill = cellsOf(rows, "o"), at = (dx, dy) => `translate(${Math.round(x) + dx} ${Math.round(y) + dy}) scale(${cell})`;
+  return `<g shape-rendering="crispEdges">${outline ? OUTLINE.map(([dx, dy]) => `<path d="${ink + fill}" transform="${at(dx, dy)}" fill="${bg}"/>`).join("") : ""}${fill ? `<path d="${fill}" transform="${at(0, 0)}" fill="${bg}"/>` : ""}<path d="${ink}" transform="${at(0, 0)}" fill="${color}"/></g>`;
+}
+const spriteSvg = (rows, cell, color) => `<svg class="pixel-sprite" width="${rows[0].length * cell}" height="${rows.length * cell}" aria-hidden="true">${sprite(rows, 0, 0, cell, color)}</svg>`;
+
+page.innerHTML = `
+  <div id="kpi"></div>
+  <section class="card">
+    <div class="card-head"><h2>${icon("route")}<span id="map-title"></span></h2>
+      <span class="v11-legend"><span>${spriteSvg(SPRITES.flag, 2, "var(--text)")}已过营地</span><span>${spriteSvg(SPRITES.tent, 2, "var(--signal)")}正在爬</span><span>${spriteSvg(SPRITES.tent, 2, "#9CA0A8")}未到</span><span>${spriteSvg(SPRITES.keep, 2, "var(--text)")}结业</span></span></div>
+    <div class="v11-map" id="map"></div>
+  </section>
+  <div class="v10-grid">
+    <section class="card" id="detail"></section>
+    <section class="card" id="pair"></section>
+    <section class="card" id="reviews"></section>
+  </div>`;
+
+/* ---------- 地图几何 ---------- */
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+const dither = (id, n, color) => `<pattern id="${id}" width="8" height="8" patternUnits="userSpaceOnUse">${BAYER.map((v, i) => (v < n ? `<rect x="${(i % 4) * 2}" y="${Math.floor(i / 4) * 2}" width="2" height="2" fill="${color}"/>` : "")).join("")}</pattern>`;
+const H = 386, GROUND = 280, STRIP = 24, BAND1 = GROUND + STRIP + 12, BAND2 = BAND1 + 34, L = 70, R = 100;
+function rng(seed) { let s = seed; return () => (s = (s * 9301 + 49297) % 233280) / 233280; }
+const path = (pts) => pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join("");
+const yOn = (pts, x) => { for (let k = 1; k < pts.length; k++) if (x <= pts[k][0]) { const [ax, ay] = pts[k - 1], [bx, by] = pts[k]; return ay + ((x - ax) / (bx - ax || 1)) * (by - ay); } return pts.at(-1)[1]; };
+const clipPts = (pts, xa, xb) => [[xa, yOn(pts, xa)], ...pts.filter((p) => p[0] > xa && p[0] < xb), [xb, yOn(pts, xb)]];
+
+function geo(W) {
+  const cw = (W - L - R) / TOTAL, x0 = (d) => L + (d - 1) * cw, x1 = (d) => L + d * cw;
+  // 前山（业务线）越往后越陡，结业那天单独拔成山尖；后山（技术线）起点更高，到 D44 收住
+  const yBiz = (d) => 262 - 168 * Math.pow(d / TOTAL, 1.15) - (d >= TOTAL ? 16 : 0);
+  const yAi = (d) => 214 - 112 * Math.pow(d / TOTAL, 0.85);
+  // 山脊：一段坡 + 一块营地平台；坡长时加一处小起伏，坡不往回掉
+  const ridge = (line, y, seed) => {
+    const r = rng(seed), base = [L - 8, y(0)], pts = [[0, y(0) + 26], [L - 34, y(0) + 8], [L - 18, y(0)], base];
+    const camps = [];
+    let prev = base[0] + 8;
+    pts.push([prev, y(0)]);
+    line.forEach((x, k) => {
+      const cx = x1(x.d[1]), cy = y(x.d[1]), last = x.id === "P10";
+      const half = last ? 0 : Math.max(2, Math.min(7, (cx - prev) / 4));
+      const a = pts.at(-1), b = [cx - half, cy], dx = b[0] - a[0];
+      if (dx > 70) { const rise = a[1] - b[1], bump = Math.min(10, rise * 0.25) * (0.6 + r() * 0.4); pts.push([a[0] + dx * 0.38, a[1] - rise * 0.38 - bump], [a[0] + dx * 0.62, a[1] - rise * 0.62 + bump * 0.5]); }
+      pts.push(b);
+      if (half) pts.push([cx + half, cy]);
+      camps.push({ x, cx, cy, gap: cx - (camps.at(-1)?.cx ?? base[0]) });
+      prev = cx + half;
+    });
+    return { pts, camps, base };
+  };
+  const biz = ridge(BIZ, yBiz, 7), ai = ridge(AI, yAi, 11);
+  return { W, cw, x0, x1, biz, ai };
+}
+
+function renderMap() {
+  const host = document.getElementById("map"), W = host.clientWidth;
+  if (!W) return;
+  const g = geo(W), p = person(), hl = hover ?? sel;
+  const biz = g.biz.pts, ai = g.ai.pts, summit = g.biz.camps.at(-1), aiEnd = g.ai.camps.at(-1);
+  const xNow = g.x0(NOW) + g.cw / 2;
+  // 走到哪：按期就在今天；超期停在当前营地前，和今天竖线之间的空当就是落后的距离
+  const at = (k, line) => { const c = byId(p.cur[k]), camp = line.camps.find((m) => m.x === c); return late(c) ? camp.cx - 22 : Math.min(xNow, camp.cx - 22); };
+  const xBiz = at("biz", g.biz), xAi = at("ai", g.ai);
+
+  // 三层山：远山（浅灰）→ 后山（灰网点，越往下越密）→ 前山（墨网点，越往下越密）；山尖立结业城堡
+  const r = rng(5), far = [[0, 190]];
+  for (let x = 60; x < W + 80; x += 70 + r() * 70) far.push([x, 128 + r() * 58]);
+  far.push([W, 170]);
+  const back = [...ai, [aiEnd.cx + 70, aiEnd.cy + 18], [aiEnd.cx + 150, aiEnd.cy + 62], [summit.cx - 60, GROUND - 60], [W - 20, GROUND]];
+  const front = [...biz, [summit.cx + 20, summit.cy + 20], [summit.cx + 44, summit.cy + 30], [summit.cx + 70, summit.cy + 56], [W, GROUND - 40]];
+  const area = (pts) => `${path(pts)}L${W} ${GROUND}L0 ${GROUND}Z`;
+  const banded = (id, pts, top, levels, color) => {
+    const h = (GROUND - top) / levels.length;
+    return `<clipPath id="c${id}"><path d="${area(pts)}"/></clipPath><path d="${area(pts)}" fill="var(--panel)"/>
+      <g clip-path="url(#c${id})">${levels.map((t, k) => `<rect x="0" y="${top + k * h}" width="${W}" height="${h + 1}" fill="url(#${id}${t})"/>`).join("")}</g>`;
+  };
+  const sx = summit.cx, sy = summit.cy;
+
+  // 营地：已过 = 旗，正在爬 = 橙色帐篷 + 虚线框，未到 = 灰帐篷；离上一个营地太近的只立一根桩
+  const camp = (line, c, color) => {
+    const st = stateOf(c.x), on = hl === c.x.id, cx = c.cx, cy = c.cy;
+    if (c.x.id === "P10") return "";
+    let g2;
+    if (c.gap < 26) g2 = `<rect x="${cx - 1}" y="${cy - 9}" width="2" height="9" fill="${st === "todo" ? "#9CA0A8" : color}"/><rect x="${cx - 3}" y="${cy - 11}" width="6" height="3" fill="${st === "todo" ? "#9CA0A8" : color}"/>`;
+    else if (st === "done") g2 = sprite(SPRITES.flag, cx - 3, cy - 17, 2, color, { outline: true });
+    else if (st === "doing") g2 = `<rect x="${cx - 11}" y="${cy - 22}" width="22" height="20" fill="var(--panel)" stroke="${late(c.x) ? "var(--risk)" : "var(--signal)"}" stroke-width="1.5" stroke-dasharray="3 2"/>${sprite(SPRITES.tent, cx - 7, cy - 19, 2, late(c.x) ? "var(--risk)" : "var(--signal)")}`;
+    else g2 = sprite(SPRITES.tent, cx - 7, cy - 16, 2, "#9CA0A8", { outline: true });
+    return `<g class="hit" data-id="${c.x.id}">${on ? `<rect x="${cx - 14}" y="${cy - 25}" width="28" height="27" fill="none" stroke="var(--text)" stroke-width="1"/>` : ""}${g2}<rect x="${cx - 12}" y="${cy - 24}" width="24" height="26" fill="transparent"/></g>`;
+  };
+
+  // 路：走过的粗实线，没走的虚线
+  const trail = (pts, xDone, end, color) => `${xDone > pts[4][0] ? `<path d="${path(clipPts(pts, pts[4][0], xDone))}" fill="none" stroke="${color}" stroke-width="3.5" stroke-linejoin="round"/>` : ""}
+    <path d="${path(clipPts(pts, xDone, end))}" fill="none" stroke="${color}" stroke-width="2" stroke-dasharray="5 4" opacity=".75"/>`;
+  const hlX = hl && byId(hl), hlPts = hlX && (isAi(hlX) ? ai : biz);
+  const hlPath = hlX ? `<path d="${path(clipPts(hlPts, g.x0(hlX.d[0]), g.x1(hlX.d[1])))}" fill="none" stroke="${isAi(hlX) ? "var(--info)" : "var(--text)"}" stroke-width="6" stroke-linecap="square" opacity=".35"/>` : "";
+
+  // 山脚松树：避开大本营与地平线标签，疏密不一
+  const pr = rng(23), pines = [];
+  for (let x = L + 30; x < W - 40; x += 26 + pr() * 46) if (pr() > 0.25) pines.push(x);
+
+  // 天空：太阳 = 今天；两朵云、一对鸟，避开太阳
+  const sunY = 26, clouds = [[W * 0.16, 30], [W * 0.62, 44], [W * 0.42, 24]].filter(([x]) => Math.abs(x + 16 - xNow) > 70).slice(0, 2);
+  const birdX = W * 0.36 + (Math.abs(W * 0.36 - xNow) < 70 ? 120 : 0);
+
+  // 地平线带：月份白字、每 5 个工作日一格；今天是一个橙格
+  const strip = [], monthAt = [];
+  for (let d = 1; d <= TOTAL; d++) if (d === 1 || DATES[d].slice(0, 2) !== DATES[d - 1].slice(0, 2)) monthAt.push(d);
+  for (let d = 1; d <= TOTAL; d++) {
+    const x = g.x0(d), first = d === 1 || DATES[d].slice(0, 2) !== DATES[d - 1].slice(0, 2);
+    if (first) strip.push(`<line x1="${x}" y1="${GROUND}" x2="${x}" y2="${GROUND + STRIP}" stroke="var(--panel)" stroke-width="2"/><text x="${x + 5}" y="${GROUND + 16}" font-size="11" fill="var(--panel)">${+DATES[d].slice(0, 2)} 月</text>`);
+    else if (d % 5 === 0 && Math.abs(d - NOW) > 2 && !monthAt.some((m) => Math.abs(d - m) <= 3)) strip.push(`<line x1="${x + g.cw / 2}" y1="${GROUND}" x2="${x + g.cw / 2}" y2="${GROUND + 4}" stroke="#686D76"/><text x="${x + g.cw / 2}" y="${GROUND + 16}" font-size="10" text-anchor="middle" class="mono" fill="#9CA0A8">D${d}</text>`);
+  }
+  const nowW = Math.max(g.cw, 34);
+
+  // 阶段条：编号牌 + 名称；正在做的那条用橙色网点铺到今天
+  const band = (line, y, h, ai) => line.map((x) => {
+    const st = stateOf(x), a = g.x0(x.d[0]) + 1, w = g.x1(x.d[1]) - g.x0(x.d[0]) - 2, on = hl === x.id, lt = late(x);
+    const idW = x.id.length * 6.2 + 8, full = w > idW + x.short.length * 12 + 14, idOnly = w > idW + 2;
+    const stroke = st === "doing" ? (lt ? "var(--risk)" : "var(--signal)") : st === "done" ? (ai ? "var(--info)" : "var(--text)") : "#9CA0A8";
+    const fill = st === "done" ? (ai ? "var(--info-soft)" : "var(--panel-soft)") : "var(--panel)";
+    const prog = st === "doing" ? `<rect x="${a}" y="${y}" width="${Math.min(w, (walked(x) / (x.d[1] - x.d[0] + 1)) * w)}" height="${h}" fill="url(#${lt ? "dRisk" : "dSig"})"/>` : "";
+    const idFill = st === "todo" ? "var(--panel)" : ai ? "var(--info)" : "var(--text)", idText = st === "todo" ? "var(--muted)" : "var(--panel)";
+    return `<g class="hit" data-id="${x.id}">
+      <rect x="${a}" y="${y}" width="${w}" height="${h}" fill="${fill}"/>${prog}
+      <rect x="${a}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${stroke}" stroke-width="${st === "doing" || on ? 2 : 1}" ${st === "todo" ? 'stroke-dasharray="3 3"' : ""}/>
+      ${on ? `<rect x="${a - 3}" y="${y - 3}" width="${w + 6}" height="${h + 6}" fill="none" stroke="var(--text)"/>` : ""}
+      ${idOnly ? `<rect x="${a + 4}" y="${y + h / 2 - 7}" width="${idW}" height="14" fill="${idFill}" ${st === "todo" ? 'stroke="#9CA0A8"' : ""}/><text x="${a + 8}" y="${y + h / 2 + 3.5}" font-size="10" class="mono" fill="${idText}">${x.id}</text>` : ""}
+      ${full ? `<text x="${a + idW + 10}" y="${y + h / 2 + 4}" font-size="12" font-weight="${st === "doing" ? 600 : 400}" fill="${st === "todo" ? "var(--muted)" : "var(--text)"}" paint-order="stroke" stroke="var(--panel)" stroke-width="${st === "doing" ? 4 : 0}">${x.short}</text>` : ""}
+    </g>`;
+  }).join("");
+
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}">
+    <defs>${dither("dFar", 2, "#C9CCD3")}${[1, 2, 4, 6].map((t) => dither(`dB${t}`, t, "#AEB3BB")).join("")}${[1, 2, 3, 4].map((t) => dither(`dF${t}`, t, "#0D0E10")).join("")}
+      ${dither("dSun", 5, "#FF4F1F")}${dither("dSig", 3, "#FF4F1F")}${dither("dRisk", 3, "#D92D20")}</defs>
+    ${clouds.map(([x, y], k) => sprite(SPRITES.cloud, x, y, k ? 2 : 3, "var(--text)")).join("")}
+    ${sprite(SPRITES.bird, birdX, 54, 2, "var(--text)")}${sprite(SPRITES.bird, birdX + 16, 62, 2, "var(--text)")}
+    <path d="${area(far)}" fill="url(#dFar)"/>
+    ${banded("dB", back, 110, [1, 2, 4, 6], "#AEB3BB")}
+    <path d="${path(back)}" fill="none" stroke="#9CA0A8" stroke-width="1.25"/>
+    ${banded("dF", front, 120, [1, 2, 3, 4], "#0D0E10")}
+    <path d="${path(front)}" fill="none" stroke="var(--text)" stroke-width="1.5"/>
+    ${pines.map((x) => sprite(SPRITES.pine, x, GROUND - 10, 2, "var(--text)")).join("")}
+    ${trail(ai, xAi, aiEnd.cx, "var(--info)")}
+    ${trail(biz, xBiz, summit.cx, "var(--text)")}
+    ${hlPath}
+    <path d="M${aiEnd.cx} ${aiEnd.cy + 2}Q${aiEnd.cx + 16} ${(aiEnd.cy + yOn(biz, aiEnd.cx)) / 2 + 4} ${aiEnd.cx + 2} ${yOn(biz, aiEnd.cx) - 4}" fill="none" stroke="var(--info)" stroke-width="1.5" stroke-dasharray="1 4" stroke-linecap="round"/>
+    ${sprite(SPRITES.tent, g.ai.base[0] - 7, g.ai.base[1] - 15, 2, "var(--info)", { outline: true })}
+    ${sprite(SPRITES.tent, g.biz.base[0] - 7, g.biz.base[1] - 15, 2, "var(--text)", { outline: true })}
+    ${g.ai.camps.map((c) => camp(g.ai, c, "var(--info)")).join("")}
+    ${g.biz.camps.map((c) => camp(g.biz, c, "var(--text)")).join("")}
+    <g class="hit" data-id="P10">${sprite(SPRITES.keep, sx - 10, sy - 15, 3, stateOf(byId("P10")) === "todo" ? "var(--text)" : "var(--signal)", { outline: true })}<rect x="${sx - 14}" y="${sy - 20}" width="28" height="24" fill="transparent"/></g>
+    <circle cx="${xNow}" cy="${sunY}" r="21" fill="url(#dSun)"/><circle cx="${xNow}" cy="${sunY}" r="11" fill="var(--signal)"/>
+    <line x1="${xNow}" y1="${sunY + 23}" x2="${xNow}" y2="${GROUND}" stroke="var(--signal)" stroke-width="2" stroke-dasharray="2 5"/>
+    <g id="walker"></g>
+    <rect x="0" y="${GROUND}" width="${W}" height="${STRIP}" fill="var(--text)"/>
+    ${strip.join("")}
+    <rect x="${xNow - nowW / 2}" y="${GROUND}" width="${nowW}" height="${STRIP}" fill="var(--signal)"/>
+    <text x="${xNow}" y="${GROUND + 16}" font-size="11" text-anchor="middle" class="mono" fill="var(--panel)" font-weight="600">D${NOW}</text>
+    <text x="${L - 10}" y="${BAND1 + 18}" font-size="11" text-anchor="end" fill="var(--text-2)">业务线</text>
+    <text x="${L - 10}" y="${BAND2 + 16}" font-size="11" text-anchor="end" fill="var(--info)">技术线</text>
+    ${band(BIZ, BAND1, 28, false)}
+    ${band(AI, BAND2, 24, true)}
+  </svg>
+  <div class="v11-labels" id="labels"></div>`;
+  walkerAt = [[xBiz, yOn(biz, xBiz)], [xAi, yOn(ai, xAi)]];
+  drawWalker();
+  placeLabels(g, { xNow, sunY, xBiz, xAi, biz, ai });
+}
+let walkerAt = [], walk = 0;
+const drawWalker = () => {
+  const el = document.getElementById("walker"), c = person().cur;
+  if (el) el.innerHTML = walkerAt.map(([x, y], k) => sprite(SPRITES.climb[walk], x - 7, y - 19, 2, late(byId(k ? c.ai : c.biz)) ? "var(--risk)" : "var(--signal)", { outline: true })).join("");
+};
+
+/* ---------- 标牌与小牌：先放进去量尺寸，再挑不压东西的位置 ---------- */
+const hit = (a, b, m = 4) => a.l < b.r + m && a.r > b.l - m && a.t < b.b + m && a.b > b.t - m;
+const overlap = (a, b, m = 4) => Math.max(0, Math.min(a.r, b.r) - Math.max(a.l, b.l) + m) * Math.max(0, Math.min(a.b, b.b) - Math.max(a.t, b.t) + m);
+// 候选位置里挑第一个不压东西的；都压就挑压得最少的
+const pickBox = (boxes, busy, m) => boxes.find((b) => !busy.some((o) => hit(b, o, m))) ?? boxes.reduce((best, b) => { const s = busy.reduce((t, o) => t + overlap(b, o, m), 0); return s < best.s ? { b, s } : best; }, { b: boxes[0], s: Infinity }).b;
+const boxOf = (l, t, w, h) => ({ l, t, r: l + w, b: t + h });
+function placeLabels(g, { xNow, sunY, xBiz, xAi, biz, ai }) {
+  const host = document.getElementById("labels"), p = person(), W = g.W, hl = hover ?? sel;
+  const busy = [boxOf(xNow - 24, 0, 48, sunY + 24)];   // 太阳
+  const sx = g.biz.camps.at(-1).cx, sy = g.biz.camps.at(-1).cy;
+  busy.push(boxOf(sx - 14, sy - 20, 28, 24));
+
+  // 两座山的名字（V7 的框签），立在大本营旁
+  const mount = [
+    { cls: "is-ai", text: "后山 · 技术线", x: g.ai.base[0] - 6, y: g.ai.base[1] - 44 },
+    { cls: "", text: "前山 · 业务线", x: g.biz.base[0] + 16, y: g.biz.base[1] - 12 },
+  ];
+  // 评审小牌：插在评审营地下方；结业写在山尖上方
+  const tags = REVIEWS.map((r) => {
+    const c = g.biz.camps.find((m) => m.x.id === r.id), res = p.results[r.name];
+    const cls = res ? (res[1] === "pass" ? "" : "is-retest") : "is-future";
+    const body = res ? `${r.name}<b>${res[0] ?? "—"}</b>${res[1] === "retest" ? `<span style="color:var(--warn)">限期复核</span>` : ""}` : `${r.name}<span class="mono">D${r.at} · ${DATES[r.at]}</span>`;
+    return { r, c, cls, body };
+  });
+  const cur = (k) => byId(p.cur[k]);
+  const plate = (x, xs) => {
+    const lt = late(x), n = x.d[1] - x.d[0] + 1, dn = walked(x);
+    const step = (x.steps ?? x.keys)?.find(([s]) => { const [a, b = a] = s.replace(/D/g, "").split("–").map(Number); return NOW >= a && NOW <= b; });
+    return `<div class="v11-plate${lt ? " is-late" : ""}${hl === x.id ? " is-hl" : ""}" data-id="${x.id}">
+      <div class="meta"><i class="v11-id${isAi(x) ? " is-ai" : ""}">${x.id}</i>${x.short} · D${x.d[0]}–D${x.d[1]}</div>
+      <strong>${x.title}</strong>
+      <div class="v11-cells" style="--n:${n}">${Array.from({ length: n }, (_, k) => `<i class="${k < dn - 1 ? "on" : k === dn - 1 ? "now" : ""}"></i>`).join("")}</div>
+      <div class="sc">${lt ? `超出计划 ${lateDays(x)} 个工作日` : `第 ${dn} / ${n} 天${step ? ` · ${step[1]}` : ""}`}</div></div>`;
+  };
+  host.innerHTML = mount.map((m) => `<span class="v11-mount ${m.cls}" style="left:${m.x}px;top:${m.y}px">${m.text}</span>`).join("")
+    + tags.map((t) => `<span class="v11-tagplate ${t.cls}${hl === t.r.id ? " is-hl" : ""}" data-id="${t.r.id}">${spriteSvg(SPRITES.flag, 1, t.cls === "is-future" ? "#9CA0A8" : t.cls ? "var(--warn)" : "var(--text)")}${t.body}</span>`).join("")
+    + plate(cur("biz")) + plate(cur("ai"));
+
+  const els = [...host.children];
+  els.slice(0, 2).forEach((el) => busy.push(boxOf(el.offsetLeft, el.offsetTop, el.offsetWidth, el.offsetHeight)));
+  // 小牌：营地下方偏右；放不下（出右界或压到别的牌）就挪到左边；结业放在山尖上方
+  els.slice(2, 2 + tags.length).forEach((el, k) => {
+    const { c } = tags[k], w = el.offsetWidth, h = el.offsetHeight, last = k === tags.length - 1;
+    const cands = last ? [[c.cx - w / 2 - 30, c.cy - 46], [c.cx - w - 14, c.cy - 30]] : [[c.cx - 8, c.cy + 12], [c.cx - w + 8, c.cy + 12], [c.cx - w - 12, c.cy - 8], [c.cx + 12, c.cy - h - 18]];
+    const ok = pickBox(cands.map(([l, t]) => boxOf(Math.max(4, Math.min(W - w - 4, l)), t, w, h)), busy, 4);
+    Object.assign(el.style, { left: `${ok.l}px`, top: `${ok.t}px` });
+    busy.push(ok);
+  });
+  // 两张当前标牌：技术线的放在后山上方，业务线的先试前山坡里、放不下再上天；先贴着登山者，再往两边挪
+  const [pb, pa] = els.slice(-2), leads = [];
+  // 登山者自己也占位，标牌不压人
+  busy.push(boxOf(xBiz - 10, yOn(biz, xBiz) - 22, 20, 22), boxOf(xAi - 10, yOn(ai, xAi) - 22, 20, 22));
+  [[pa, xAi, yOn(ai, xAi), "up"], [pb, xBiz, yOn(biz, xBiz), "down"]].forEach(([el, x, y, dir]) => {
+    const w = el.offsetWidth, h = el.offsetHeight, sky = yOn(ai, x);
+    const ys = dir === "up" ? [y - h - 34, y - h - 70, 6] : [y + 22, y + 46, sky - h - 34, 6];
+    const cands = ys.flatMap((t) => [[x - w + 26, t], [x - 26, t], [x - w - 40, t], [x + 40, t], [x - w - 110, t], [x + 110, t]]);
+    const ok = pickBox(cands.map(([l, t]) => boxOf(Math.max(4, Math.min(W - w - 4, l)), Math.max(4, Math.min(GROUND - h - 6, t)), w, h)), busy, 6);
+    const above = ok.b <= y - 20;
+    Object.assign(el.style, { left: `${ok.l}px`, top: `${ok.t}px` });
+    busy.push(ok);
+    const lx = Math.max(ok.l + 10, Math.min(ok.r - 10, x));
+    leads.push(above ? [lx, ok.b, x, y - 21] : [lx, ok.t, x, y + 2]);
+  });
+  // 引线：标牌到登山者
+  const svg = document.querySelector("#map svg");
+  svg.insertAdjacentHTML("beforeend", leads.map(([a, b, c, d], k) => `<path d="M${a} ${b}L${a} ${(b + d) / 2}L${c} ${(b + d) / 2}L${c} ${d}" fill="none" stroke="${late(byId(k ? person().cur.biz : person().cur.ai)) ? "var(--risk)" : "var(--signal)"}" stroke-width="1.5"/>`).join(""));
+}
+
+/* ---------- 下方三张卡 ---------- */
+const st = (x) => { const s = stateOf(x); return s === "done" ? tag("已完成", "green") : s === "doing" ? (late(x) ? tag(`超出 ${lateDays(x)} 个工作日`, "red") : tag("进行中", "orange")) : tag("未开始"); };
+const stepState = (s) => { const [a, b = a] = s.replace(/D/g, "").split("–").map(Number); return NOW > b ? "is-done" : NOW >= a ? "is-now" : "is-next"; };
+function card(x, head) {
+  const s = stateOf(x), list = isAi(x) ? x.keys : x.steps, n = x.d[1] - x.d[0] + 1, dn = walked(x);
+  const cells = s === "doing" ? `<div class="v11-cells" style="--n:${n}">${Array.from({ length: n }, (_, k) => `<i class="${k < dn - 1 ? "on" : k === dn - 1 ? "now" : ""}"></i>`).join("")}</div>
+    <div class="v10-progress"><span>D${x.d[0]}</span><b>${late(x) ? `计划 D${x.d[1]} 结束，已超出 ${lateDays(x)} 天` : `第 ${dn} / ${n} 天`}</b><span>D${x.d[1]}</span></div>` : "";
+  return `<div class="card-head"><h2>${head}</h2>${st(x)}</div>
+    <div class="v10-sec"><div class="v10-title"><span class="row" style="gap:6px"><i class="v11-id${isAi(x) ? " is-ai" : ""}">${x.id}</i><span class="label">${isAi(x) ? "技术线" : "业务线"} · ${x.short}</span></span>
+      <h3>${x.title}</h3><span class="small muted">${span(...x.d)}</span>${cells}</div>
+      <p>${x.goal}</p></div>
+    ${list ? `<div class="v10-sec"><span class="label">${isAi(x) ? "关键事项" : x.id === "P7" ? "里程碑" : "安排"}</span><ul>${list.map(([d, t]) => `<li class="${s === "done" ? "is-done" : s === "doing" ? stepState(d) : "is-next"}"><span class="tnum mono">${d}</span>${t}</li>`).join("")}</ul></div>` : ""}
+    <div class="v10-sec"><span class="label">产出</span>${x.out.length ? `<ul>${x.out.map((o) => `<li>${o}</li>`).join("")}</ul>` : `<p class="muted">本阶段不设正式产出</p>`}</div>
+    ${x.pass ? `<div class="v10-sec"><span class="label">${x.review} · 合格标准</span><p>${x.pass}</p></div>` : ""}`;
+}
+function renderCards() {
+  const p = person(), x = byId(sel ?? p.cur.biz), pair = pairOf(x);
+  document.getElementById("map-title").textContent = `培养路径 · ${p.name}`;
+  document.getElementById("detail").innerHTML = card(x, sel ? "选中的阶段" : "当前阶段");
+  document.getElementById("pair").innerHTML = pair ? card(pair, isAi(x) ? "同期业务线" : "同期技术线")
+    : `<div class="card-head"><h2>同期技术线</h2></div><div class="v10-sec"><p class="muted">技术线到 D44（T6）结束，${x.id} 没有同期技术单元。</p></div>`;
+  const nextAt = REVIEWS.find((r) => !p.results[r.name])?.at;
+  document.getElementById("reviews").innerHTML = `<div class="card-head"><h2>${icon("flag")}评审与筛选</h2><span class="small muted">≥ 70 通过</span></div>
+    <div class="v10-sec v10-reviews"><ul>${REVIEWS.map((r) => {
+      const res = p.results[r.name], cls = res ? "" : r.at === nextAt ? "is-next" : "is-future";
+      const right = res ? `<span class="num">${res[0] ?? "—"}</span>${tag(RESULT[res[1]][0], RESULT[res[1]][1])}` : r.at === nextAt ? `<span class="small" style="color:var(--signal)">还有 ${r.at - NOW} 个工作日</span>` : `<span class="small muted mono">${DATES[r.at]}</span>`;
+      const fl = spriteSvg(r.id === "P10" ? SPRITES.keep : SPRITES.flag, 2, res ? (res[1] === "pass" ? "var(--text)" : "var(--warn)") : "#9CA0A8");
+      return `<li class="${cls}" data-id="${r.id}" style="cursor:pointer">${fl}<span class="tnum mono">D${r.at}</span><b>${r.name}</b>${right}</li>${res?.[2] ? `<li class="is-future" style="padding-top:0"><span style="width:14px"></span><span class="tnum"></span><span class="small muted">${res[2]}</span></li>` : ""}`;
+    }).join("")}</ul></div>`;
+}
+function renderKpi() {
+  const p = person(), done = (line, k) => line.findIndex((x) => x.id === p.cur[k]);
+  const passed = REVIEWS.filter((r) => p.results[r.name]?.[1] === "pass").length, retest = REVIEWS.filter((r) => p.results[r.name]?.[1] === "retest").length;
+  const next = REVIEWS.find((r) => !p.results[r.name]);
+  document.getElementById("kpi").innerHTML = statStrip([
+    { label: "培养进度", value: `D${NOW}`, unit: ` / ${TOTAL} 工作日`, foot: `入职 09-01 · 今天 ${TODAY}` },
+    { label: "业务线", value: done(BIZ, "biz"), unit: ` / 10 阶段完成`, foot: `现在：${byId(p.cur.biz).id} ${byId(p.cur.biz).short}` },
+    { label: "技术线", value: done(AI, "ai"), unit: ` / 6 单元完成`, foot: `现在：${byId(p.cur.ai).id} ${byId(p.cur.ai).short}` },
+    { label: "评审", value: passed, unit: ` / 6 通过`, foot: retest ? `<span style="color:var(--warn)">${retest} 项限期复核</span>` : `下一个：D${next.at} ${next.name}` },
+  ]);
+}
+function render() { renderPeople(); renderKpi(); renderMap(); renderCards(); }
+
+const map = document.getElementById("map");
+map.addEventListener("mouseover", (e) => { const id = e.target.closest("[data-id]")?.dataset.id ?? null; if (id !== hover) { hover = id; renderMap(); } });
+map.addEventListener("mouseleave", () => { hover = null; renderMap(); });
+document.addEventListener("click", (e) => { const id = e.target.closest("#map [data-id], #reviews [data-id]")?.dataset.id; if (id) { sel = id === person().cur.biz ? null : id; renderMap(); renderCards(); } });
+new ResizeObserver(() => renderMap()).observe(map);
+// 登山者挥手：两帧交替，约 2.5 帧/秒；减少动效时不动
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setInterval(() => { walk = 1 - walk; drawWalker(); }, 400);
+render();
+</script>
+</body>
+</html>
