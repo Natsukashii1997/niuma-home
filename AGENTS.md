@@ -12,6 +12,7 @@
 | 发布、回读、回滚、巡检、每周整理 | [OPERATIONS](docs/OPERATIONS.md) 对应节 |
 | 写交接、验收别人的交接 | [docs/templates/handoff.md](docs/templates/handoff.md) 骨架；[OPERATIONS](docs/OPERATIONS.md)「交接写法」「报告与验收」 |
 | 拆派单 | `docs/tasks/T*.md`；[OPERATIONS](docs/OPERATIONS.md)「派单流程」 |
+| 开需求、拆任务、实现、审查 | 下面「Agent skills」一节 |
 
 ## 分工（2026-10-23 更新）
 
@@ -67,6 +68,7 @@ scripts/
   smoke-pages.mjs    页面冒烟（npm run smoke）：全部路由 + ⌘K + 抽屉，查 JS 异常、console 错误与非 GET 请求，截图；verify-release.sh 加 NIUMA_SMOKE=1 可选调用
   health-check.sh    每日巡检（只读；--install 装成 launchd 任务）
 docs/
+  agents/            Matt Pocock 技能读的约定：issue 看板、分流标签、领域文档
   LESSONS.md         开发实录与坑（排障、发布、改样式或脚本前先搜）
   API.md             接口约定
   STYLE-GUIDE.md     视觉规范
@@ -77,6 +79,24 @@ docs/
   history/           归档的旧 CURRENT / HANDOFF
 fixtures/            验收样例（飞书复制的方案原文）
 ```
+
+## Agent skills
+
+开发流程用 Matt Pocock skills（`~/.agents/skills/`）：大活走 `to-spec` → `to-tickets` → `implement` / `tdd` → `code-review` → PR；小改（一张 issue、一天内做完）跳过 `to-spec`。Claude 用 `/技能名`，Codex 用 `$技能名`；这几个技能只在点名时加载，不会自动触发。
+
+### Issue tracker
+
+需求、规格与任务用本仓库 GitHub Issues。见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+五个默认分流标签。见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+single-context：根目录 `GLOSSARY.md` 与 `docs/adr/`，用到时再建。见 `docs/agents/domain.md`。
+
+旧派单 `docs/tasks/T*.md` 留着不迁，新活开 issue。
 
 ## 规则
 
