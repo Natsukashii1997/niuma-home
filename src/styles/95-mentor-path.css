@@ -74,6 +74,8 @@
 .mpath-reviews li::before { display: none; }
 .mpath-reviews li .pixel-sprite { flex: none; }
 .mpath-reviews li.is-note { padding: 0 0 0 calc(14px + 32px + var(--s2) * 2); cursor: default; }
+.mpath-record { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-top: var(--s1); }
+.mpath-record p { margin: 0; }
 .mpath-reviews li .icon-btn { width: 24px; height: 24px; margin-right: -6px; }
 
 /* 写操作弹窗：添加带教对象、按方案生成路径、调整安排、记录进度（MentorPathEdit.jsx） */

@@ -348,7 +348,7 @@ function StageCard({ s, m, head, onRecord }) {
   const ai = m.isAi(s.id), n = lenOf(s), dn = walked(s, m.todayD), r = s.record, dated = s.steps.some((x) => x.d);
   return (
     <>
-      <div className="card-head"><h2>{head}</h2><span className="card-extra"><StatusTag s={s} /><Button variant="xs" onClick={() => onRecord(s.id)}><PixelIcon name="edit" />{s.record ? "改记录" : s.review ? "记录评审" : "确认完成"}</Button></span></div>
+      <div className="card-head"><h2>{head}</h2><StatusTag s={s} /></div>
       <div className="mpath-sec">
         <div className="mpath-title">
           <span className="row"><i className={`mpath-id${ai ? " is-ai" : ""}`}>{s.id}</i><span className="label">{ai ? "技术线" : "业务线"} · {s.short}</span></span>
@@ -368,12 +368,14 @@ function StageCard({ s, m, head, onRecord }) {
       )}
       <div className="mpath-sec"><span className="label">产出</span>{s.out.length ? <ul>{s.out.map((o) => <li key={o}>{o}</li>)}</ul> : <p className="muted">本阶段不设正式产出</p>}</div>
       {s.review && <div className="mpath-sec"><span className="label">{s.review} · 合格标准</span><p>{s.pass}</p></div>}
-      {r && (
-        <div className="mpath-sec"><span className="label">进度记录</span>
-          <p>{r.kind === "review" ? <>{r.score} 分 · {RESULT[r.result][0]} · {mmdd(r.at)}</> : <>带教确认完成 · {mmdd(r.at)}</>}</p>
-          {r.note && <p className="small muted">{r.note}</p>}
+      {/* 记录按钮放在卡底，不进卡头（1280 宽同期那张卡只有约 270px，卡头放不下标题 + 超期标签 + 按钮，用户 10-26） */}
+      <div className="mpath-sec"><span className="label">进度记录</span>
+        <div className="mpath-record">
+          <p className={r ? "" : "muted"}>{!r ? (s.review ? "还没有评审记录" : "带教还没确认完成") : r.kind === "review" ? <>{r.score} 分 · {RESULT[r.result][0]} · {mmdd(r.at)}</> : <>带教确认完成 · {mmdd(r.at)}</>}</p>
+          <Button variant="xs" onClick={() => onRecord(s.id)}><PixelIcon name="edit" />{r ? "改记录" : s.review ? "记录评审" : "确认完成"}</Button>
         </div>
-      )}
+        {r?.note && <p className="small muted">{r.note}</p>}
+      </div>
     </>
   );
 }
