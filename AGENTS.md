@@ -98,6 +98,8 @@ single-context：根目录 `GLOSSARY.md` 与 `docs/adr/`，用到时再建。见
 
 旧派单 `docs/tasks/T*.md` 留着不迁，新活开 issue。
 
+改动怎么走、分支怎么起名、交接写在哪、怎么合并：见 `/Users/nat/Documents/ChatGPT/个人/work/agent-kit/工程流程.md`。
+
 ## 规则
 
 - 未实现的接口在路由里写 `pending("T0x")`，未实现的按钮用 `<PendingButton task="T0x">`；占位与实现的做法见 [OPERATIONS](docs/OPERATIONS.md)「接口占位机制」。
