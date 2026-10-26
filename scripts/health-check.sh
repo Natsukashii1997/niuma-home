@@ -75,7 +75,7 @@ DATA_DIR=$([ -f "$SERVICE_PLIST" ] && /usr/libexec/PlistBuddy -c "Print :Environ
 DB="$DATA_DIR/work-desk.db"
 
 # 2. 数据库完整性（只读打开）
-if [ -z "$DATA_DIR" ]; then bad "读不到服务的数据目录（$SERVICE_PLIST）"
+if [ -z "$DATA_DIR" ]; then bad "读不到服务的数据目录（${SERVICE_PLIST}）"
 elif [ ! -f "$DB" ]; then bad "找不到数据库：$DB"
 else
   CHECK=$(sqlite3 -readonly "$DB" "PRAGMA quick_check;" 2>&1 | head -3 | tr '\n' ' ')
@@ -102,9 +102,9 @@ fi
 
 # 5. 昨天有没有巡检记录：巡检自己没跑（launchd 停了、路径变了）也得有人知道。首次运行之前没有记录，不查。
 YDAY=$(date -v-1d +%F)
-if grep -qs "^$YDAY " "$LOG_DIR/${YDAY%-??}.log"; then ok "昨天（$YDAY）有巡检记录"
+if grep -qs "^$YDAY " "$LOG_DIR/${YDAY%-??}.log"; then ok "昨天（${YDAY}）有巡检记录"
 elif [ -z "$(cat "$LOG_DIR"/20[0-9][0-9]-[0-9][0-9].log 2>/dev/null | awk -v y="$YDAY" '$1 < y' | head -1)" ]; then ok "首次运行，不查昨天的记录"
-else bad "昨天（$YDAY）没有巡检记录，launchd 可能没跑；看 $LAUNCHD_LOG"; fi
+else bad "昨天（${YDAY}）没有巡检记录，launchd 可能没跑；看 $LAUNCHD_LOG"; fi
 
 FAILS=$(grep '^✗' "$OUT")
 COUNT=$(grep -c '^✗' "$OUT")
