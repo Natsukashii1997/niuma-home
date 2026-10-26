@@ -4,7 +4,7 @@ import { useApi } from "../../api.js";
 import { Button, Loadable, PageHeader, Placeholder, StatStrip, Tabs, Tag } from "../../ui/components.jsx";
 import { SavedNote } from "../../ui/write-flow.jsx";
 import { AddTrainee, EditPlan, GeneratePath, PATH_API, RecordStage } from "./MentorPathEdit.jsx";
-import { BAND1, BAND2, GROUND, H, L, STRIP, SUN_Y, bandRects, cellsOf, clipPts, dayLabel, geo as layout, lenOf, mmdd, model, mountAt, placeLabels, polyline, scenery, stepAt, stepState, stripTicks, visibleClouds, walked, walkerAt, yOn } from "./mentor-path.js";
+import { BAND1, BAND2, GROUND, H, L, SKY, STRIP, SUN_Y, bandRects, cellsOf, clipPts, dayLabel, geo as layout, lenOf, mmdd, model, mountAt, placeLabels, polyline, scenery, stepAt, stepState, stripTicks, visibleClouds, walked, walkerAt, yOn } from "./mentor-path.js";
 
 // 带教 · 培养路径（定稿 V11 框里的远征，用户 2026-10-26）：页头、页签、管培生选择和「带教答疑」同一套；下面依次是关键数字、
 // 地图卡（远山 / 后山 = 技术线 / 前山 = 业务线，营地是每段的终点，结业是山尖上的城堡；太阳 = 今天；墨色地平线带写月份和工作日；
@@ -220,9 +220,9 @@ function Scenery({ g, sc, clouds }) {
       <SpriteCells rows={SPRITES.bird} x={sc.birdX} y={54} cell={2} color="var(--text)" />
       <SpriteCells rows={SPRITES.bird} x={sc.birdX + 16} y={62} cell={2} color="var(--text)" />
       <path d={area(sc.far)} fill="url(#mp-far)" />
-      {banded("B", sc.back, 110, [1, 2, 4, 6])}
+      {banded("B", sc.back, 110 + SKY, [1, 2, 4, 6])}
       <path d={polyline(sc.back)} fill="none" stroke={LOCKED} strokeWidth="1.25" />
-      {banded("F", sc.front, 120, [1, 2, 3, 4])}
+      {banded("F", sc.front, 120 + SKY, [1, 2, 3, 4])}
       <path d={polyline(sc.front)} fill="none" stroke="var(--text)" strokeWidth="1.5" />
       {sc.pines.map((x) => <SpriteCells key={x} rows={SPRITES.pine} x={x} y={GROUND - 10} cell={2} color="var(--text)" />)}
     </>
@@ -369,7 +369,7 @@ function StageCard({ s, m, head, onRecord }) {
       <div className="mpath-sec"><span className="label">产出</span>{s.out.length ? <ul>{s.out.map((o) => <li key={o}>{o}</li>)}</ul> : <p className="muted">本阶段不设正式产出</p>}</div>
       {s.review && <div className="mpath-sec"><span className="label">{s.review} · 合格标准</span><p>{s.pass}</p></div>}
       {/* 记录按钮放在卡底，不进卡头（1280 宽同期那张卡只有约 270px，卡头放不下标题 + 超期标签 + 按钮，用户 10-26） */}
-      <div className="mpath-sec"><span className="label">进度记录</span>
+      <div className="mpath-sec is-foot"><span className="label">进度记录</span>
         <div className="mpath-record">
           <p className={r ? "" : "muted"}>{!r ? (s.review ? "还没有评审记录" : "带教还没确认完成") : r.kind === "review" ? <>{r.score} 分 · {RESULT[r.result][0]} · {mmdd(r.at)}</> : <>带教确认完成 · {mmdd(r.at)}</>}</p>
           <Button variant="xs" onClick={() => onRecord(s.id)}><PixelIcon name="edit" />{r ? "改记录" : s.review ? "记录评审" : "确认完成"}</Button>

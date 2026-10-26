@@ -46,7 +46,10 @@
 .mpath-end { padding: 1px 6px; background: var(--panel); border: 2px solid var(--signal); font-size: 11px; font-weight: 600; line-height: 17px; color: var(--signal); white-space: nowrap; }
 
 /* 下方三张卡 */
-.mpath-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--gap); margin-top: var(--gap); align-items: start; }
+.mpath-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--gap); margin-top: var(--gap); }
+/* 三张卡等高、底边对齐，「进度记录」压到卡底（用户 10-26） */
+.mpath-grid > .card { display: flex; flex-direction: column; }
+.mpath-sec.is-foot { margin-top: auto; }
 .mpath-sec { padding: var(--s3) var(--s4); border-top: 1px solid var(--line); }
 .mpath-sec p { margin: var(--s1) 0 0; color: var(--text-2); }
 .mpath-sec ul { margin: var(--s1) 0 0; padding: 0; list-style: none; }

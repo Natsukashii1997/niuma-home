@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { GROUND, L, R, boxOf, cellsOf, draftOf, geo, model, moveStage, mountAt, placeLabels, scenery, stepState, stripTicks, visibleClouds, walked, walkerAt } from "../src/modules/projects/mentor-path.js";
+import { GROUND, L, R, boxOf, cellsOf, draftOf, geo, model, moveStage, mountAt, placeLabels, scenery, stepState, stripTicks, visibleClouds, walked, walkerAt, yOn } from "../src/modules/projects/mentor-path.js";
 import { onTrack, overdue } from "./helpers/mentor-path-sample.mjs";
 
 // 隔离 5290 上 Chrome 里量的尺寸（Geist 字体，2026-10-26）：地图宽 1440 窗口 1153、1280 窗口 993；当前标牌 214×78、山名框签 77×20、
@@ -110,10 +110,20 @@ test("标牌：按期和超期、1440 / 1280 两种宽度下互不相压，都�
   }
 });
 
-test("云：被标牌压住的不画；超期时林瑶的 P1 标牌在天上，压住的那朵云去掉", () => {
-  const { g, p } = place(1153, overdue()), clouds = scenery(g).clouds, boxes = [...Object.values(p.plates), ...p.tags, ...(p.end ? [p.end] : [])];
+test("当前标牌在天上：按期和超期、1440 / 1280 两种宽度下都不压远山、后山、前山的轮廓（用户 10-26）", () => {
+  for (const sample of [onTrack, overdue]) for (const W of [1153, 993]) {
+    const { g, p } = place(W, sample()), sc = scenery(g);
+    Object.entries(p.plates).forEach(([key, b]) => {
+      for (let x = b.l; x <= b.r; x += 2) [sc.far, sc.back, sc.front].forEach((pts) => assert.ok(b.b < yOn(pts, x), `${sample.name} ${W} ${key}：x=${x} 压到山 ${JSON.stringify(b)}`));
+    });
+  }
+});
+
+test("云：被标牌压住的不画（标牌 10-26 起贴着山顶放，云在更高处，这里另放一块压住第一朵）", () => {
+  const { g, p } = place(1153, overdue()), clouds = scenery(g).clouds, [cx, cy] = clouds[0];
+  const boxes = [...Object.values(p.plates), ...p.tags, ...(p.end ? [p.end] : []), boxOf(cx + 10, cy + 2, 60, 20)];
   const shown = visibleClouds(clouds, boxes);
-  assert.ok(shown.length < clouds.length);
+  assert.ok(!shown.includes(clouds[0]));
   shown.forEach(([x, y, cell]) => boxes.forEach((b) => assert.ok(!(x < b.r && x + 16 * cell > b.l && y < b.b && y + 5 * cell > b.t))));
   const a = place(1153, onTrack());
   assert.equal(visibleClouds(scenery(a.g).clouds, [...Object.values(a.p.plates), ...a.p.tags]).length, 2);

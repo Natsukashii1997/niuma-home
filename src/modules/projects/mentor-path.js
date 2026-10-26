@@ -2,7 +2,9 @@
 // 和地图宽度，算出山、路、营地、地平线带、阶段条和标牌的位置。页面 MentorPath.jsx 只负责画；这里不碰 DOM，tests/mentor-path.test.mjs 直接测。
 // 横轴按工作日：D1 在左、计划最后一天（结业）在右；今天超过计划结束时，「今天」钉在横轴右端（pinned）。
 
-export const H = 386, GROUND = 280, STRIP = 24, BAND1 = GROUND + STRIP + 12, BAND2 = BAND1 + 34, L = 70, R = 100;
+// 山整体往下挪 SKY，天上留出当前标牌的位置（用户 10-26「拉高一点，方框和山都重合了」）
+export const SKY = 40;
+export const H = 386 + SKY, GROUND = 280 + SKY, STRIP = 24, BAND1 = GROUND + STRIP + 12, BAND2 = BAND1 + 34, L = 70, R = 100;
 export const SUN_Y = 26;
 const PIN = 30;   // 钉在右端时太阳离右边的距离
 
@@ -49,8 +51,8 @@ export const cellsOf = (s, todayD) => { const n = lenOf(s), dn = walked(s, today
 export function geo(W, path) {
   const days = path.days, cw = (W - L - R) / days, x0 = (d) => L + (d - 1) * cw, x1 = (d) => L + d * cw;
   // 前山（业务线）越往后越陡，结业那天单独拔成山尖；后山（技术线）起点更高
-  const yBiz = (d) => 262 - 168 * Math.pow(d / days, 1.15) - (d >= days ? 16 : 0);
-  const yAi = (d) => 214 - 112 * Math.pow(d / days, 0.85);
+  const yBiz = (d) => 262 + SKY - 168 * Math.pow(d / days, 1.15) - (d >= days ? 16 : 0);
+  const yAi = (d) => 214 + SKY - 112 * Math.pow(d / days, 0.85);
   // 山脊：一段坡 + 一块营地平台；坡长时加一处小起伏，坡不往回掉
   const ridge = (stages, y, seed, summit) => {
     const r = rng(seed), base = [L - 8, y(0)], pts = [[0, y(0) + 26], [L - 34, y(0) + 8], [L - 18, y(0)], base];
@@ -86,9 +88,9 @@ export function walkerAt(g, key, s) {
 // 风景：三层山、松树、云、鸟。远山 / 后山 / 前山的轮廓都向右收到地平线
 export function scenery(g) {
   const { W } = g, summit = g.biz.camps.at(-1), aiEnd = g.ai.camps.at(-1);
-  const r = rng(5), far = [[0, 190]];
-  for (let x = 60; x < W + 80; x += 70 + r() * 70) far.push([x, 128 + r() * 58]);
-  far.push([W, 170]);
+  const r = rng(5), far = [[0, 190 + SKY]];
+  for (let x = 60; x < W + 80; x += 70 + r() * 70) far.push([x, 128 + SKY + r() * 58]);
+  far.push([W, 170 + SKY]);
   const back = [...g.ai.pts, [aiEnd.cx + 70, aiEnd.cy + 18], [aiEnd.cx + 150, aiEnd.cy + 62], [summit.cx - 60, GROUND - 60], [W - 20, GROUND]].filter((p, k, a) => k === 0 || p[0] > a[k - 1][0]);
   const front = [...g.biz.pts, [summit.cx + 20, summit.cy + 20], [summit.cx + 44, summit.cy + 30], [summit.cx + 70, summit.cy + 56], [W, GROUND - 40]];
   // 山脚松树：疏密不一
@@ -157,16 +159,17 @@ export function placeLabels(g, m, sizes, walkers) {
     busy.push(ok);
     return ok;
   });
-  // 两张当前标牌：技术线的放在后山上方，业务线的先试前山坡里、放不下再上天；先贴着登山者，再往两边挪。登山者自己也占位
+  // 两张当前标牌都放在天上，不压三层山（用户 10-26）：先贴着登山者、紧挨山顶那一档，再往两边挪，再往上一档到顶。登山者自己也占位
   Object.values(walkers).forEach(([x, y]) => busy.push(boxOf(x - 10, y - 22, 20, 22)));
+  const sc = scenery(g), ridge = (l, r) => { let top = GROUND; for (let x = l; x <= r + 2; x += 2) for (const pts of [sc.far, sc.back, sc.front]) top = Math.min(top, yOn(pts, Math.min(x, r))); return top; };
   const plates = {}, leads = [];
-  [["ai", "up"], ["biz", "down"]].forEach(([key, dir]) => {
+  ["ai", "biz"].forEach((key) => {
     if (!sizes.plates[key]) return;
-    const { w, h } = sizes.plates[key], [x, y] = walkers[key], sky = yOn(g.ai.pts, x);
-    const ys = dir === "up" ? [y - h - 34, y - h - 70, 6] : [y + 22, y + 46, sky - h - 34, 6];
+    const { w, h } = sizes.plates[key], [x, y] = walkers[key];
     // 再放不下（超期时两张都挤在起点附近）就往右多挪几档
-    const cands = ys.flatMap((t) => [[x - w + 26, t], [x - 26, t], [x - w - 40, t], [x + 40, t], [x - w - 110, t], [x + 110, t], [x + 200, t], [x + 290, t]]);
-    const ok = pickBox(cands.map(([l, t]) => boxOf(Math.max(4, Math.min(W - w - 4, l)), Math.max(4, Math.min(GROUND - h - 6, t)), w, h)), busy, 6);
+    const xs = [x - w + 26, x - 26, x - w - 40, x + 40, x - w - 110, x + 110, x + 200, x + 290].map((l) => Math.max(4, Math.min(W - w - 4, l)));
+    const cands = [0, 1, 2].flatMap((row) => xs.map((l) => { const low = ridge(l, l + w) - h - 8; return boxOf(l, row === 2 ? 6 : low - row * (h + 10), w, h); })).filter((b) => b.t >= 4);
+    const ok = pickBox(cands.length ? cands : xs.map((l) => boxOf(l, 6, w, h)), busy, 6);
     busy.push(ok);
     plates[key] = ok;
     const lx = Math.max(ok.l + 10, Math.min(ok.r - 10, x)), [a, b, d] = ok.b <= y - 20 ? [lx, ok.b, y - 21] : [lx, ok.t, y + 2];
