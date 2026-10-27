@@ -5,8 +5,9 @@ import { getSettings } from './db.mjs';
 import { codexResetView, endpoint, isTime, monthDay, stages, userAgent } from './codex-reset.mjs';
 import { SELF_APP_ID, SELF_USER_ID } from './selftalk.mjs';
 import { beijingText } from './v3-common.mjs';
+import { LARK_PROFILE } from './lark-identity.mjs';
 
-// 机械邪龙兽推送 Codex 重置（用户 2026-10-18 确定）：每 4 小时检查一次；同一次重置（同一事件）只推一次；
+// 猛鬼兽推送 Codex 重置（用户 2026-10-18 确定）：每 4 小时检查一次；同一次重置（同一事件）只推一次；
 // 开启推送时已有的事件不推；一次检查发现多条新事件只推最新一条。
 // 发送失败：飞书明确拒绝的记原因，下次检查再试，最多 3 次；超时、输出无法确认的记为「结果不明」，不自动重试。
 export const PUSH_INTERVAL = 4 * 3600_000;
@@ -84,10 +85,10 @@ export function resetCard(c) {
 const parse = text => { try { return JSON.parse(text); } catch { return null; } };
 const reason = out => String(out?.error?.message || out?.error?.msg || out?.msg || JSON.stringify(out?.error || out)).slice(0, 300);
 
-// 机器人身份发给本人；只用本机 codex 配置，不在代码里写 token。返回 sent / failed（明确没发出）/ unknown（结果不明）。
+// 机器人身份发给本人；只用本机猛鬼兽配置，不在代码里写 token。返回 sent / failed（明确没发出）/ unknown（结果不明）。
 export async function sendResetCard(card, eventId, { run = execute } = {}) {
   const key = `codex-reset-${createHash('sha256').update(eventId).digest('hex').slice(0, 32)}`;
-  const args = ['--profile', 'codex', 'im', '+messages-send', '--as', 'bot', '--user-id', SELF_USER_ID, '--msg-type', 'interactive', '--content', JSON.stringify(card), '--idempotency-key', key, '--format', 'json'];
+  const args = ['--profile', LARK_PROFILE, 'im', '+messages-send', '--as', 'bot', '--user-id', SELF_USER_ID, '--msg-type', 'interactive', '--content', JSON.stringify(card), '--idempotency-key', key, '--format', 'json'];
   let stdout;
   try {
     ({ stdout } = await run('lark-cli', args, { encoding: 'utf8', timeout: 60_000, maxBuffer: 1024 * 1024, shell: false, env: { ...process.env, LARKSUITE_CLI_NO_UPDATE_NOTIFIER: '1', LARKSUITE_CLI_NO_SKILLS_NOTIFIER: '1' } }));
@@ -160,7 +161,7 @@ export function codexPushStatus(db) {
   const last = db.prepare("SELECT * FROM codex_push WHERE status <> 'skipped' ORDER BY updated_at DESC, event_id LIMIT 1").get();
   const time = ms => (Number.isFinite(ms) ? beijingText(new Date(ms).toISOString()) : null);
   return {
-    enabled, interval: '每 4 小时', sender: `机械邪龙兽（${SELF_APP_ID}，机器人身份）`, recipient: '常浩本人（飞书私聊）',
+    enabled, interval: '每 4 小时', sender: `猛鬼兽（${SELF_APP_ID}，机器人身份）`, recipient: '常浩本人（飞书私聊）',
     enabledSince: enabled ? time(state.enabledSince) : null,
     lastCheck: state.lastCheckAt ? { at: time(state.lastCheckAt), error: state.lastCheckError || null } : null,
     nextCheck: enabled ? (state.enabledSince && state.lastCheckAt ? time(state.lastCheckAt + PUSH_INTERVAL) : '10 分钟内') : null,

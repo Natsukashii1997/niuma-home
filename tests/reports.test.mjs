@@ -14,7 +14,7 @@ const response = extra => ({ stdout: JSON.stringify({ ok: true, identity: "user"
 test("飞书读取固定 profile、用户身份、Markdown；参数独立传递且去掉选区锚点", async () => {
   const result = await readReportDocument(link + "?from=test#part", { run: async (command, args, options) => {
     assert.equal(command, "lark-cli");
-    assert.deepEqual(args, ["--profile", "codex", "docs", "+fetch", "--as", "user", "--doc", link, "--doc-format", "markdown"]);
+    assert.deepEqual(args, ["--profile", "cli_a96f5f9ac63adcd4", "docs", "+fetch", "--as", "user", "--doc", link, "--doc-format", "markdown"]);
     assert.equal(options.shell, false);assert.ok(options.maxBuffer > 1_000_000);assert.equal(options.timeout, 60_000);
     return response();
   } });

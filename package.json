@@ -14,7 +14,8 @@
     "check:style": "node scripts/check-style.mjs",
     "smoke": "node scripts/smoke-pages.mjs",
     "import:feishu": "node scripts/import-feishu.mjs",
-    "import:mentor-path": "node scripts/import-mentor-path.mjs"
+    "import:mentor-path": "node scripts/import-mentor-path.mjs",
+    "migrate:lark-identity": "node scripts/migrate-lark-identity.mjs"
   },
   "dependencies": {
     "react": "19.2.0",

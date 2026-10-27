@@ -63,7 +63,7 @@ test('恢复数据库缺状态行时，时间线成功快照仍须核对来源�
   assert.deepEqual(sourceStatus(db).sources.timeline,{state:'ok',at:'2026-10-16 12:00'});
 });
 
-test('设置接口先预览后确认，绑定内容、拒绝并发旧值，固定机械邪龙兽身份',async t=>{
+test('设置接口先预览后确认，绑定内容、拒绝并发旧值，固定猛鬼兽身份',async t=>{
   const {db}=database(t),all=routes(db);
   assert.equal((await invoke(all,'GET','/api/v3/settings')).body.values.voice_budget,'10');
   assert.equal((await invoke(all,'PUT','/api/settings/voice_budget',{value:'5'})).status,400);
