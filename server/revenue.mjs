@@ -27,15 +27,30 @@ function monthValue(data, year, month) {
   return key ? num(row[key].value) : null;
 }
 
-export async function readRevenueSource(cfg, { run, now = Date.now } = {}) {
+// 飞书仪表盘接口偶发返回通用错误码 1，马上重读就好（2026-10-27 实测）；只读，可以安全重试。仍失败就说清是哪一步、哪个错误码。
+const RETRIES = 2;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function readLark(args, run, what, pause) {
+  for (let attempt = 0; ; attempt++) {
+    try { return await runLark(args, run); }
+    catch (error) {
+      if (error.status !== 502 && error.status !== 429) throw error;
+      if (attempt < RETRIES) { await pause(error.retryAfterMs || 1500); continue; }
+      if (error.larkCode == null) throw error;
+      throw failure(502, `读取${what}时飞书接口出错（错误码 ${error.larkCode}），已重试 ${RETRIES} 次，请稍后点「重新读取」`);
+    }
+  }
+}
+
+export async function readRevenueSource(cfg, { run, now = Date.now, pause = sleep } = {}) {
   const common = ['--base-token', cfg.base, '--dashboard-id', cfg.dashboard];
-  const listed = await runLark(['base', '+dashboard-block-list', ...common], run);
+  const listed = await readLark(['base', '+dashboard-block-list', ...common], run, '仪表盘「当月策略盘」的组件列表', pause);
   const blocks = Array.isArray(listed.blocks) ? listed.blocks : Array.isArray(listed.items) ? listed.items : null;
   if (!blocks) throw failure(502, '仪表盘「当月策略盘」的组件列表不完整');
   const blockData = (name) => {
     const block = blocks.find((b) => b?.name === name);
     if (!block) throw failure(502, `仪表盘「当月策略盘」里找不到组件「${name}」`);
-    return runLark(['base', '+dashboard-block-get-data', ...common, '--block-id', block.block_id || block.id], run);
+    return readLark(['base', '+dashboard-block-get-data', ...common, '--block-id', block.block_id || block.id], run, `仪表盘组件「${name}」`, pause);
   };
 
   const groups = [];

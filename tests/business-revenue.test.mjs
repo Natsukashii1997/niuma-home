@@ -48,3 +48,27 @@ test("营收：1 月的上月取去年 12 月；本月还没有转化率就不�
 test("营收：仪表盘少了进度组件就报错，不返回半截数据", async () => {
   await assert.rejects(readRevenueSource(REVENUE_SOURCE, { run: fakeLark({ missing: "申诉 - 总营收" }).run, now }), (e) => e.status === 502 && /申诉 - 总营收/.test(e.message));
 });
+
+test("营收：飞书偶发错误码 1 时自动重试；一直失败就说清是哪个组件、哪个错误码", async () => {
+  const flaky = (times) => {
+    const { run, calls } = fakeLark();
+    let left = times;
+    return { calls, run: async (cmd, args) => {
+      if (args.includes("b1") && left-- > 0) { calls.push(args); throw Object.assign(new Error("exit 1"), { stderr: JSON.stringify({ ok: false, error: { type: "api", subtype: "unknown", code: 1 } }) }); }
+      return run(cmd, args);
+    } };
+  };
+  const pauses = [];
+  const pause = async (ms) => { pauses.push(ms); };
+  const once = flaky(2);
+  const v = await readRevenueSource(REVENUE_SOURCE, { run: once.run, now, pause });
+  assert.equal(v.groups[0].items[1].current, 200, "重试后读到新签进度");
+  assert.equal(once.calls.filter((a) => a.includes("b1")).length, 3);
+  assert.deepEqual(pauses, [1500, 1500]);
+  await assert.rejects(readRevenueSource(REVENUE_SOURCE, { run: flaky(3).run, now, pause }),
+    (e) => e.status === 502 && e.message === "读取仪表盘组件「当月新签营收进度」时飞书接口出错（错误码 1），已重试 2 次，请稍后点「重新读取」");
+  const denied = async (cmd, args) => { throw Object.assign(new Error("exit 1"), { stderr: JSON.stringify({ ok: false, error: { type: "api", subtype: "permission_denied", code: 91403 } }) }); };
+  pauses.length = 0;
+  await assert.rejects(readRevenueSource(REVENUE_SOURCE, { run: denied, now, pause }), (e) => e.status === 403);
+  assert.deepEqual(pauses, [], "无权限不重试");
+});

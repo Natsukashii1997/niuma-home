@@ -277,9 +277,11 @@ export function MarkType({ text, onDone }) {
 const withNums = (s) => s.split(/(\d+(?:[.,:]\d+)*%?)/).map((part, i) => (i % 2 ? <span key={i} className="type-num">{part}</span> : part));
 
 // 多段逐字输出：几段文字共用一个方块光标依次打出，每段仍放在页面原来的元素里（保留各自的样式和排版）。
-// 开始前光标闪两次，之后每 every 帧出一个字；打完光标消失。打完后文字再变（如每分钟刷新的时长）直接显示全文。
+// 开始前光标闪两次，之后每帧出几个字，不论多长都在 TYPE_FRAMES 帧（约 1.3 秒）内打完（用户 2026-10-27 嫌一字一字太慢）；打完光标消失。
+// 打完后文字再变（如每分钟刷新的时长）直接显示全文。
 // ready 为 false（数据还没到）时不开始。part(i) 返回第 i 段此刻该显示的内容；这段还没轮到时返回 null，调用方据此不渲染这一段。
-export function useTypeOut(texts, { every = 2, ready = true } = {}) {
+const TYPE_FRAMES = 20;
+export function useTypeOut(texts, { ready = true } = {}) {
   const reduced = useReducedMotion();
   const total = texts.reduce((n, t) => n + t.length, 0);
   const totalRef = useRef(total);
@@ -290,13 +292,12 @@ export function useTypeOut(texts, { every = 2, ready = true } = {}) {
     let shown = 0;
     return frames((frame) => {
       if (frame <= 16) { setState({ shown: 0, blinkOn: Math.floor((frame - 1) / 4) % 2 === 1, done: false }); return true; } // 亮灭两次
-      if ((frame - 16) % every) return true;
-      shown += 1;
+      shown += Math.max(1, Math.ceil(totalRef.current / TYPE_FRAMES));
       const done = shown >= totalRef.current;
       setState({ shown, blinkOn: true, done });
       if (done) return false;
     });
-  }, [ready, reduced, every]);
+  }, [ready, reduced]);
   const finished = reduced || state.done;
   let start = 0;
   const parts = texts.map((t) => { const from = start; start += t.length; return from; });
