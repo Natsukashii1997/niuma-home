@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { GROUND, L, R, boxOf, cellsOf, draftOf, geo, model, moveStage, mountAt, placeLabels, scenery, stepState, stripTicks, visibleClouds, walked, walkerAt, yOn } from "../src/modules/projects/mentor-path.js";
+import { GROUND, L, R, boxOf, cellsOf, draftOf, geo, model, moveStage, placeLabels, scenery, stepState, stripTicks, visibleClouds, walked, walkerAt, yOn } from "../src/modules/projects/mentor-path.js";
 import { onTrack, overdue } from "./helpers/mentor-path-sample.mjs";
 
 // 隔离 5290 上 Chrome 里量的尺寸（Geist 字体，2026-10-26）：地图宽 1440 窗口 1153、1280 窗口 993；当前标牌 214×78、山名框签 77×20、
@@ -48,11 +48,11 @@ test("进度格与安排：按期的 P7 第 11 / 20 天；超期的 P1 走满、
   assert.equal(stepState(a.byId.P2.steps[0], a.byId.P2, 35), "is-done");
 });
 
-test("地图：营地落在每段最后一天的右边线，越往右越高，结业是前山最高点", () => {
+test("地图：营地落在每段最后一天的右边线（结业山尖再往右让出一截，见「山顶不挤」），越往右越高，结业是前山最高点", () => {
   for (const W of [1153, 993]) {
     const g = geo(W, onTrack().path), cw = (W - L - R) / 65;
     assert.ok(near(g.cw, cw));
-    g.biz.camps.forEach((c) => assert.ok(near(c.cx, L + c.x.d[1] * cw)));
+    g.biz.camps.slice(0, -1).forEach((c) => assert.ok(near(c.cx, L + c.x.d[1] * cw)));
     for (const line of [g.biz, g.ai]) line.camps.slice(1).forEach((c, k) => { assert.ok(c.cx > line.camps[k].cx); assert.ok(c.cy < line.camps[k].cy); });
     const summit = g.biz.camps.at(-1);
     assert.equal(summit.x.id, "P10");
@@ -96,8 +96,7 @@ test("地平线带：每月第一个工作日写月份，D 刻度离月份和今
 test("标牌：按期和超期、1440 / 1280 两种宽度下互不相压，都在图内、地平线以上", () => {
   for (const sample of [onTrack, overdue]) for (const W of [1153, 993]) {
     const { g, m, p } = place(W, sample());
-    const mounts = mountAt(g).map(([l, t]) => boxOf(l, t, MOUNT.w, MOUNT.h));
-    const boxes = [...mounts, ...p.tags, ...Object.values(p.plates), ...(p.end ? [p.end] : [])];
+    const boxes = [...p.mounts, ...p.tags, ...Object.values(p.plates), ...(p.end ? [p.end] : [])];
     assert.equal(p.tags.length, m.reviews.length);
     assert.equal(Object.keys(p.plates).length, 2);
     assert.equal(Boolean(p.end), g.pinned);
@@ -119,6 +118,83 @@ test("当前标牌在天上：按期和超期、1440 / 1280 两种宽度下都�
   }
 });
 
+// 山的细节（用户 10-27「蓝色的技术线都没有通到山顶，半路没了。你注意细节」）
+const SAMPLES = [onTrack, overdue], WIDTHS = [1153, 993];
+const inRange = (pts, x) => x >= pts[0][0] && x <= pts.at(-1)[0];
+// 后山脊在前山脊下面的部分被前山挡住，看不见，不算
+const crosses = (b, pts, front) => { for (let x = b.l; x <= b.r; x += 2) if (inRange(pts, x)) { const y = yOn(pts, x); if (y > b.t - 2 && y < b.b + 2 && !(front && y >= yOn(front, x) - 1)) return true; } return false; };
+const campBox = (c) => boxOf(c.cx - 11, c.cy - 22, 22, 22);
+
+test("后山：技术线每个营地都比同一处的前山路高出 30px 以上，两条线的帐篷不叠", () => {
+  for (const sample of SAMPLES) for (const W of WIDTHS) {
+    const g = geo(W, sample().path);
+    g.ai.camps.forEach((c) => assert.ok(yOn(g.biz.pts, c.cx) - c.cy >= 30, `${sample.name} ${W} ${c.x.id}：只高出 ${yOn(g.biz.pts, c.cx) - c.cy}`));
+  }
+});
+
+test("技术线一路爬到皇冠：最后一个技术营地之后只过一道浅鞍部（≤ 14px），过了鞍部一路往上，在皇冠脚下和业务线汇合；皇冠以前后山路处处高于前山路（用户 10-27，同 V7 稿）", () => {
+  for (const sample of SAMPLES) for (const W of WIDTHS) {
+    const g = geo(W, sample().path), top = g.biz.camps.at(-1), end = g.ai.camps.at(-1), pts = g.ai.pts, last = pts.at(-1);
+    assert.ok(Math.abs(last[0] - top.cx) <= 16 && last[1] <= top.cy + 6, `${sample.name} ${W}：后山路停在 ${last}，没到皇冠 ${[top.cx, top.cy]}`);
+    const after = pts.filter(([x]) => x >= end.cx), low = after.reduce((k, p, i) => (p[1] > after[k][1] ? i : k), 0);
+    assert.ok(after[low][1] - end.cy <= 14, `${sample.name} ${W}：T6 之后往下掉了 ${after[low][1] - end.cy}`);
+    after.slice(low + 1).forEach(([x, y], k) => assert.ok(y <= after[low + k][1] + 0.01, `${sample.name} ${W}：过了鞍部 ${after[low + k]} → ${[x, y]} 又往下掉`));
+    for (let x = L; x < top.cx - 14; x += 4) assert.ok(yOn(pts, x) < yOn(g.biz.pts, x), `${sample.name} ${W}：x=${x} 后山路不高于前山路`);
+  }
+});
+
+test("山顶不挤：皇冠对准结业那天；前一个营地在主峰左肩，靠高低和皇冠拉开（帐篷顶比皇冠底低 ≥ 16px）；蓝线从帐篷上方 ≥ 8px 过去；两条线都爬到皇冠脚下（用户 10-27，审核 10-27：不挪日期）", () => {
+  for (const sample of SAMPLES) for (const W of WIDTHS) {
+    const g = geo(W, sample().path), top = g.biz.camps.at(-1), prev = g.biz.camps.at(-2);
+    assert.ok(near(top.cx, g.x1(top.x.d[1])), `${sample.name} ${W}：皇冠没对准 D${top.x.d[1]}`);
+    assert.ok(prev.cy - 22 - (top.cy + 3) >= 16, `${sample.name} ${W}：${prev.x.id} 帐篷离皇冠只低 ${prev.cy - 22 - (top.cy + 3)}`);
+    assert.ok(prev.cy - 22 - yOn(g.ai.pts, prev.cx) >= 8, `${sample.name} ${W}：蓝线压在 ${prev.x.id} 帐篷上`);
+    [g.biz.pts.at(-1), g.ai.pts.at(-1)].forEach(([x, y]) => assert.ok(Math.abs(x - top.cx) <= 16 && y <= top.cy + 8, `${sample.name} ${W}：路线停在 ${[x, y]}`));
+  }
+});
+
+test("评审小牌和山名框：不压山脊线和路线，不压营地；引线不穿过山名框和评审小牌", () => {
+  for (const sample of SAMPLES) for (const W of WIDTHS) {
+    const { g, p } = place(W, sample()), sc = scenery(g), lines = [[sc.front], [sc.back, sc.front]];
+    const camps = [...g.biz.camps, ...g.ai.camps].map(campBox);
+    [...p.mounts, ...p.tags].forEach((b, i) => {
+      lines.forEach(([pts, front], j) => assert.ok(!crosses(b, pts, front), `${sample.name} ${W}：第 ${i} 块压到第 ${j} 条线 ${JSON.stringify(b)}`));
+      camps.forEach((c) => assert.ok(!hit(b, c), `${sample.name} ${W}：第 ${i} 块压到营地 ${JSON.stringify(c)}`));
+    });
+    p.leads.forEach((l) => l.pts.slice(1).forEach(([x, y], k) => {
+      const [px, py] = l.pts[k], seg = { l: Math.min(x, px) - 1, r: Math.max(x, px) + 1, t: Math.min(y, py) - 1, b: Math.max(y, py) + 1 };
+      [...p.mounts, ...p.tags].forEach((b) => assert.ok(!hit(seg, b), `${sample.name} ${W} ${l.key}：引线穿过 ${JSON.stringify(b)}`));
+    }));
+  }
+});
+
+test("当前标牌的引线：不穿过另一张标牌、营地和另一个登山者；评审小牌贴着自己的营地，离得远的有竖引线连上营地（审核 10-27）", () => {
+  for (const sample of SAMPLES) for (const W of WIDTHS) {
+    const { g, m, walkers, p } = place(W, sample()), camps = [...g.biz.camps, ...g.ai.camps];
+    p.leads.forEach((l) => {
+      const other = l.key === "biz" ? "ai" : "biz", [ox, oy] = walkers[other];
+      const blocks = [...(p.plates[other] ? [p.plates[other]] : []), boxOf(ox - 10, oy - 22, 20, 22), ...camps.map(campBox)];
+      l.pts.slice(1).forEach(([x, y], k) => {
+        const [px, py] = l.pts[k], seg = { l: Math.min(x, px), r: Math.max(x, px), t: Math.min(y, py) + (k === 0 ? 4 : 0), b: Math.max(y, py) - (k === l.pts.length - 2 ? 4 : 0) };
+        if (seg.t <= seg.b) blocks.forEach((b) => assert.ok(!hit(seg, b), `${sample.name} ${W} ${l.key}：引线穿过 ${JSON.stringify(b)}`));
+      });
+    });
+    m.reviews.forEach((s, k) => {
+      if (s.id === m.summitId) return;
+      const c = camps.find((x) => x.x.id === s.id), b = p.tags[k];
+      const close = b.t <= c.cy + 14 && b.l <= c.cx + 14 && b.r >= c.cx - 14, pin = p.pins.find(([x, , y1]) => near(x, c.cx) && near(y1, b.t));
+      assert.ok(close || (pin && b.l < c.cx && c.cx < b.r), `${sample.name} ${W} ${s.id}：小牌 ${JSON.stringify(b)} 离营地 ${[c.cx, c.cy]} 远，又没有引线`);
+    });
+  }
+});
+
+test("山尖右侧缓下，没有断崖：皇冠往右每段坡度不超过 3", () => {
+  for (const sample of SAMPLES) for (const W of WIDTHS) {
+    const g = geo(W, sample().path), top = g.biz.camps.at(-1), tail = scenery(g).front.filter(([x]) => x >= top.cx);
+    tail.slice(1).forEach(([x, y], k) => assert.ok(Math.abs(y - tail[k][1]) / (x - tail[k][0]) <= 3, `${sample.name} ${W}：${tail[k]} → ${[x, y]} 太陡`));
+  }
+});
+
 test("云：被标牌压住的不画（标牌 10-26 起贴着山顶放，云在更高处，这里另放一块压住第一朵）", () => {
   const { g, p } = place(1153, overdue()), clouds = scenery(g).clouds, [cx, cy] = clouds[0];
   const boxes = [...Object.values(p.plates), ...p.tags, ...(p.end ? [p.end] : []), boxOf(cx + 10, cy + 2, 60, 20)];
@@ -126,7 +202,7 @@ test("云：被标牌压住的不画（标牌 10-26 起贴着山顶放，云在�
   assert.ok(!shown.includes(clouds[0]));
   shown.forEach(([x, y, cell]) => boxes.forEach((b) => assert.ok(!(x < b.r && x + 16 * cell > b.l && y < b.b && y + 5 * cell > b.t))));
   const a = place(1153, onTrack());
-  assert.equal(visibleClouds(scenery(a.g).clouds, [...Object.values(a.p.plates), ...a.p.tags]).length, 2);
+  assert.ok(visibleClouds(scenery(a.g).clouds, [...Object.values(a.p.plates), ...a.p.tags]).length >= 1);   // 按期时至少留一朵（10-27 起结业小牌先放，可能压掉一朵）
 });
 
 test("调整安排：止日推后 3 天时，后面开始的段（两条线）一起顺延，同期还没结束的不动；不顺延只改这一段，安排日期收进新起止", () => {

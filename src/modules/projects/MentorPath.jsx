@@ -4,7 +4,7 @@ import { useApi } from "../../api.js";
 import { Button, Loadable, PageHeader, Placeholder, StatStrip, Tabs, Tag } from "../../ui/components.jsx";
 import { SavedNote } from "../../ui/write-flow.jsx";
 import { AddTrainee, EditPlan, GeneratePath, PATH_API, RecordStage } from "./MentorPathEdit.jsx";
-import { BAND1, BAND2, GROUND, H, L, SKY, STRIP, SUN_Y, bandRects, cellsOf, clipPts, dayLabel, geo as layout, lenOf, mmdd, model, mountAt, placeLabels, polyline, scenery, stepAt, stepState, stripTicks, visibleClouds, walked, walkerAt, yOn } from "./mentor-path.js";
+import { BAND1, BAND2, GROUND, H, L, STRIP, SUN_Y, bandRects, cellsOf, clipPts, dayLabel, geo as layout, lenOf, mmdd, model, placeLabels, polyline, scenery, stepAt, stepState, stripTicks, visibleClouds, walked, walkerAt } from "./mentor-path.js";
 
 // 带教 · 培养路径（定稿 V11 框里的远征，用户 2026-10-26）：页头、页签、管培生选择和「带教答疑」同一套；下面依次是关键数字、
 // 地图卡（远山 / 后山 = 技术线 / 前山 = 业务线，营地是每段的终点，结业是山尖上的城堡；太阳 = 今天；墨色地平线带写月份和工作日；
@@ -159,10 +159,12 @@ function PathMap({ path, m, hl, onHover, onPick }) {
       {g && (
         <svg viewBox={`0 0 ${g.W} ${H}`} height={H}>
           <Scenery g={g} sc={sc} clouds={P ? visibleClouds(sc.clouds, [...Object.values(P.plates), ...P.tags, ...(P.end ? [P.end] : [])]) : sc.clouds} />
-          <Trail pts={g.ai.pts} xDone={walkers.ai[0]} end={sc.aiEnd.cx} color="var(--info)" />
-          <Trail pts={g.biz.pts} xDone={walkers.biz[0]} end={sc.summit.cx} color="var(--text)" />
+          <Trail pts={g.ai.pts} xDone={m.cur.ai ? walkers.ai[0] : Math.min(g.xNow, g.ai.pts.at(-1)[0])} end={g.ai.pts.at(-1)[0]} color="var(--info)" />
+          <Trail pts={g.biz.pts} xDone={m.cur.biz ? walkers.biz[0] : Math.min(g.xNow, sc.summit.cx)} end={sc.summit.cx} color="var(--text)" />
           <Highlight g={g} m={m} id={hl} />
-          <path d={`M${sc.aiEnd.cx} ${sc.aiEnd.cy + 2}Q${sc.aiEnd.cx + 16} ${(sc.aiEnd.cy + yOn(g.biz.pts, sc.aiEnd.cx)) / 2 + 4} ${sc.aiEnd.cx + 2} ${yOn(g.biz.pts, sc.aiEnd.cx) - 4}`} fill="none" stroke="var(--info)" strokeWidth="1.5" strokeDasharray="1 4" strokeLinecap="round" />
+          {/* 引线画在营地、登山者下面：两人叠在同一处时，线从后面穿过，不划过图标（用户 10-27） */}
+          {P?.pins.map(([x, y0, y1]) => <g key={x}><line x1={x} y1={y0} x2={x} y2={y1} stroke="var(--panel)" strokeWidth="3" /><line x1={x} y1={y0} x2={x} y2={y1} stroke="var(--text-2)" strokeWidth="1" /></g>)}
+          {P?.leads.map((l) => <path key={l.key} d={polyline(l.pts)} fill="none" stroke={lineColor(l.key)} strokeWidth="1.5" />)}
           <SpriteCells rows={SPRITES.tent} x={g.ai.base[0] - 7} y={g.ai.base[1] - 15} cell={2} color="var(--info)" outline />
           <SpriteCells rows={SPRITES.tent} x={g.biz.base[0] - 7} y={g.biz.base[1] - 15} cell={2} color="var(--text)" outline />
           {g.ai.camps.map((c) => <Camp key={c.x.id} c={c} hl={hl} color="var(--info)" />)}
@@ -179,12 +181,11 @@ function PathMap({ path, m, hl, onHover, onPick }) {
           <text x={L - 10} y={BAND2 + 16} fontSize="11" textAnchor="end" fill="var(--info)">技术线</text>
           <Bands g={g} stages={m.biz} todayD={m.todayD} y={BAND1} h={28} hl={hl} />
           <Bands g={g} stages={m.ai} todayD={m.todayD} y={BAND2} h={24} hl={hl} ai />
-          {P?.leads.map((l) => <path key={l.key} d={polyline(l.pts)} fill="none" stroke={lineColor(l.key)} strokeWidth="1.5" />)}
         </svg>
       )}
       {g && (
         <div className="mpath-labels" ref={labRef}>
-          {["后山 · 技术线", "前山 · 业务线"].map((text, k) => <span key={text} className={`mpath-mount${k ? "" : " is-ai"}`} style={P ? at(P.mounts[k]) : { left: mountAt(g)[k][0], top: mountAt(g)[k][1] }}>{text}</span>)}
+          {["后山 · 技术线", "前山 · 业务线"].map((text, k) => <span key={text} className={`mpath-mount${k ? "" : " is-ai"}`} style={at(P?.mounts[k])}>{text}</span>)}
           {g.pinned && <span className="mpath-end" style={at(P?.end)}>今天 D{m.todayD} · 计划已结束 {m.over} 个工作日</span>}
           {m.reviews.map((s, k) => <ReviewTag key={s.id} s={s} path={path} hl={hl} style={at(P?.tags[k])} />)}
           {["biz", "ai"].filter((key) => m.cur[key]).map((key) => <Plate key={key} line={key} s={m.cur[key]} m={m} hl={hl} style={at(P?.plates[key])} />)}
@@ -197,6 +198,8 @@ function PathMap({ path, m, hl, onHover, onPick }) {
 // 天空、三层山、松树（越往下网点越密）
 function Scenery({ g, sc, clouds }) {
   const { W } = g, area = (pts) => `${polyline(pts)}L${W} ${GROUND}L0 ${GROUND}Z`;
+  // 网点从这座山的最高处开始分层（主峰拉高后，固定起点会让山尖和后山上部空白）
+  const top = (pts) => Math.min(...pts.map(([, y]) => y)) - 2;
   const banded = (id, pts, top, levels) => {
     const h = (GROUND - top) / levels.length;
     return (
@@ -221,9 +224,9 @@ function Scenery({ g, sc, clouds }) {
       <SpriteCells rows={SPRITES.bird} x={sc.birdX} y={54} cell={2} color="var(--text)" />
       <SpriteCells rows={SPRITES.bird} x={sc.birdX + 16} y={62} cell={2} color="var(--text)" />
       <path d={area(sc.far)} fill="url(#mp-far)" />
-      {banded("B", sc.back, 110 + SKY, [1, 2, 4, 6])}
+      {banded("B", sc.back, top(sc.back), [1, 2, 4, 6])}
       <path d={polyline(sc.back)} fill="none" stroke={LOCKED} strokeWidth="1.25" />
-      {banded("F", sc.front, 120 + SKY, [1, 2, 3, 4])}
+      {banded("F", sc.front, top(sc.front), [1, 2, 3, 4])}
       <path d={polyline(sc.front)} fill="none" stroke="var(--text)" strokeWidth="1.5" />
       {sc.pines.map((x) => <SpriteCells key={x} rows={SPRITES.pine} x={x} y={GROUND - 10} cell={2} color="var(--text)" />)}
     </>
@@ -248,13 +251,14 @@ function Highlight({ g, m, id }) {
   return <path d={polyline(clipPts(g[ai ? "ai" : "biz"].pts, g.x0(s.d[0]), g.x1(s.d[1])))} fill="none" stroke={ai ? "var(--info)" : "var(--text)"} strokeWidth="6" strokeLinecap="square" opacity=".35" />;
 }
 
-// 营地：已过 = 旗，正在爬 = 帐篷 + 虚线框（超期红色），未到 = 灰帐篷；离上一个营地太近的只立一根桩
+// 营地：已过 = 旗，正在爬 = 帐篷 + 虚线框（超期红色），未到 = 灰帐篷；离上一个营地太近的只立一根桩，近到会碰上旁边图标（< 18px）的桩也不立；正在爬的营地不管多近都画框
 function Camp({ c, hl, color }) {
   const s = c.x, { cx, cy } = c, now = s.late ? "var(--risk)" : "var(--signal)";
   let body;
-  if (c.gap < 26) { const f = s.status === "todo" ? LOCKED : color; body = <><rect x={cx - 1} y={cy - 9} width="2" height="9" fill={f} /><rect x={cx - 3} y={cy - 11} width="6" height="3" fill={f} /></>; }
+  if (s.status === "doing") body = <><rect x={cx - 11} y={cy - 22} width="22" height="20" fill="var(--panel)" stroke={now} strokeWidth="1.5" strokeDasharray="3 2" /><SpriteCells rows={SPRITES.tent} x={cx - 7} y={cy - 19} cell={2} color={now} /></>;
+  else if (c.gap < 18) body = null;
+  else if (c.gap < 26) { const f = s.status === "todo" ? LOCKED : color; body = <><rect x={cx - 1} y={cy - 9} width="2" height="9" fill={f} /><rect x={cx - 3} y={cy - 11} width="6" height="3" fill={f} /></>; }
   else if (s.status === "done") body = <SpriteCells rows={SPRITES.flag} x={cx - 3} y={cy - 17} cell={2} color={color} outline />;
-  else if (s.status === "doing") body = <><rect x={cx - 11} y={cy - 22} width="22" height="20" fill="var(--panel)" stroke={now} strokeWidth="1.5" strokeDasharray="3 2" /><SpriteCells rows={SPRITES.tent} x={cx - 7} y={cy - 19} cell={2} color={now} /></>;
   else body = <SpriteCells rows={SPRITES.tent} x={cx - 7} y={cy - 16} cell={2} color={LOCKED} outline />;
   return (
     <g className="hit" data-id={s.id}>
