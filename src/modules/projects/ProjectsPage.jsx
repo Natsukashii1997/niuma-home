@@ -36,7 +36,7 @@ export default function ProjectsPage({ route }) {
 
 // 带教（侧栏单列）：带教答疑 = 管培生近 30 天日志里的提问；培养路径 = 两条培养线的远征地图（用户 2026-10-26 定稿 V11）。
 const MENTOR_TABS = [
-  ["qa", "带教答疑", "管培生近 30 天日志里的提问：在右侧回复或让机械邪龙兽回答，确认后作为评论挂回飞书原话"],
+  ["qa", "带教答疑", "管培生近 30 天日志里的提问：在右侧回复或让猛鬼兽回答，确认后作为评论挂回飞书原话"],
   ["path", "培养路径", "两条培养线的阶段、评审节点和当前进度，按工作日排期；来源：飞书《管培生培养路径 V2.4》"],
 ].map(([key, label, desc]) => ({ key, label, desc, href: key === "qa" ? href("mentor") : href("mentor", key) }));
 
@@ -279,15 +279,15 @@ function DueInput({ node, disabled, onCommit }) {
 
 /* ================= 管培带教 ================= */
 // 管培带教（用户 2026-10-19 重做）：左侧是日志里的提问原话（可跳回飞书那一段），右侧是反馈栏。
-// 点左侧一条，右侧打开反馈：人工填写，或让机械邪龙兽回答（逐字打出）；预览确认后作为评论挂在飞书原话那一段，回读核对。
-// 人工回复用常浩本人身份，机械邪龙兽的回答用应用身份；结果不明时锁住这一条，只能只读核对，不自动重发。
+// 点左侧一条，右侧打开反馈：人工填写，或让猛鬼兽回答（逐字打出）；预览确认后作为评论挂在飞书原话那一段，回读核对。
+// 人工回复用常浩本人身份，猛鬼兽的回答用应用身份；结果不明时锁住这一条，只能只读核对，不自动重发。
 function Mentor() {
   const state = useApi("/api/v3/mentor");
   return <Loadable state={state} name="带教日志" big>{(list) => <MentorBoard initial={list} />}</Loadable>;
 }
 
 const KIND_TONE = { 提问: "blue" };
-const AS_TEXT = { user: "常浩", bot: "机械邪龙兽" };
+const AS_TEXT = { user: "常浩", bot: "猛鬼兽" };
 
 function MentorBoard({ initial }) {
   const [list, setList] = useState(initial);
@@ -351,14 +351,14 @@ function MentorBoard({ initial }) {
 function Feedback({ person, item, onReread }) {
   const [text, setText] = useState("");
   const [as, setAs] = useState("user");
-  const [typing, setTyping] = useState(false); // 机械邪龙兽的回答正在逐字打出
+  const [typing, setTyping] = useState(false); // 猛鬼兽的回答正在逐字打出
   const [editing, setEditing] = useState(true);
   const [ai, setAi] = useState({ busy: false, error: "" });
   const [check, setCheck] = useState({ busy: false, error: "" });
   const flow = useWriteFlow();
   if (!item) return (
     <section className="card mq-feedback">
-      <Placeholder icon="mentor" title="点左侧一条提问">右侧写回复，或让机械邪龙兽回答；确认后作为评论挂在飞书原话那一段。</Placeholder>
+      <Placeholder icon="mentor" title="点左侧一条提问">右侧写回复，或让猛鬼兽回答；确认后作为评论挂在飞书原话那一段。</Placeholder>
     </section>
   );
   const base = `/api/v3/mentor/${encodeURIComponent(person.name)}/items/${encodeURIComponent(item.id)}`;
@@ -405,23 +405,23 @@ function Feedback({ person, item, onReread }) {
       </div>}
       <div className="mq-editor">
         <div className="mq-editor-head">
-          <span className="label">{typing ? "机械邪龙兽正在回答" : as === "bot" && !editing ? "机械邪龙兽的回答" : "回复内容"}</span>
+          <span className="label">{typing ? "猛鬼兽正在回答" : as === "bot" && !editing ? "猛鬼兽的回答" : "回复内容"}</span>
           <span className="spacer" />
           {!editing && !typing && <button type="button" className="link-btn" onClick={() => setEditing(true)}><PixelIcon name="edit" />编辑</button>}
         </div>
         {typing || !editing
           ? <div className="ai-box mq-answer">{typing ? <MarkType text={text} onDone={() => setTyping(false)} /> : <MarkText text={text} />}</div>
           : <textarea className="review-box" value={text} disabled={locked || flow.busy} onChange={(e) => change(e.target.value)} placeholder={`写给 ${person.name} 的回复：会作为评论挂在飞书里这句原话旁边。**两个星号**包住的是重点`} />}
-        {ai.busy && <StepProgress label="机械邪龙兽正在读这一天的日志" />}
+        {ai.busy && <StepProgress label="猛鬼兽正在读这一天的日志" />}
         {ai.error && <p className="risk-text small">没有拿到回答：{ai.error}（不会自动重试）</p>}
         <div className="row">
-          <Button onClick={askAi} disabled={busy || locked}><PixelIcon name="spark" />机械邪龙兽回答</Button>
+          <Button onClick={askAi} disabled={busy || locked}><PixelIcon name="spark" />猛鬼兽回答</Button>
           <span className="spacer" />
           <span className="small muted">发送身份</span>
-          <Segmented options={[["user", "常浩"], ["bot", "机械邪龙兽"]]} value={as} onChange={(v) => { if (!busy) { setAs(v); flow.reset(); } }} />
+          <Segmented options={[["user", "常浩"], ["bot", "猛鬼兽"]]} value={as} onChange={(v) => { if (!busy) { setAs(v); flow.reset(); } }} />
           <Button variant="primary" disabled={!text.trim() || busy || locked} onClick={preview}><PixelIcon name="eye" />预览发送</Button>
         </div>
-        <p className="small muted">机械邪龙兽点一次调用一次本机 Codex，只读这一天的日志；回答先显示在这里，确认后才发到飞书。</p>
+        <p className="small muted">猛鬼兽点一次调用一次本机 Codex，只读这一天的日志；回答先显示在这里，确认后才发到飞书。</p>
       </div>
       <WriteBox flow={flow} title="发送到飞书预览" confirmLabel="确认发送" savedText="已发到飞书，回读核对：评论挂在原话那一段，内容一致" onConfirm={confirm} onRepreview={preview} onReread={reconcile}>
         {(pv) => <dl className="kv">

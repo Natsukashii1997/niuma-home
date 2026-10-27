@@ -52,7 +52,7 @@ test('开启后第一次检查只记基线不推；满 4 小时才再查；新�
   assert.equal(env.fetches, 2); assert.equal(env.sends.length, 1);
   const args = env.sends[0].args;
   assert.equal(env.sends[0].command, 'lark-cli');
-  assert.deepEqual(args.slice(0, 10), ['--profile', 'codex', 'im', '+messages-send', '--as', 'bot', '--user-id', 'ou_77e999422389255555be6df48a3ed1a1', '--msg-type', 'interactive']);
+  assert.deepEqual(args.slice(0, 10), ['--profile', 'cli_a96f5f9ac63adcd4', 'im', '+messages-send', '--as', 'bot', '--user-id', 'ou_5ad2ac4359de95dc41b5e89edd68ae6a', '--msg-type', 'interactive']);
   assert.match(args[args.indexOf('--idempotency-key') + 1], /^codex-reset-[0-9a-f]{32}$/);
   assert.equal(JSON.parse(args[args.indexOf('--content') + 1]).header.text_tag_list[0].text.content, '已确认');
   assert.equal(rows(db).e3.status, 'sent'); assert.equal(rows(db).e3.message_id, 'om_1');
@@ -157,5 +157,5 @@ test('开关配置只接受 0 / 1，默认关；状态接口可读', async () =>
   const status = (await call('GET', '/api/v3/codex-push')).body;
   assert.equal(status.enabled, true); assert.equal(status.nextCheck, '10 分钟内');
   assert.equal(status.baseline, true, '已开启、还没做第一次检查时提示只记基线');
-  assert.match(status.sender, /cli_aacf58ab61b85beb/);
+  assert.match(status.sender, /cli_a96f5f9ac63adcd4/);
 });

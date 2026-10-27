@@ -65,7 +65,7 @@ test('V3 飞书读取强制codex/user并拒绝非用户身份、截断结果', a
   let called;
   const run = async (command, args, options) => { called = { command, args, options }; return { stdout: JSON.stringify({ ok: true, identity: 'user', data: { items: [] } }) }; };
   assert.deepEqual(await runLark(['wiki', '+node-list'], run), { items: [] });
-  assert.deepEqual(called.args.slice(0, 2), ['--profile', 'codex']); assert.ok(called.args.includes('user')); assert.equal(called.options.shell, false);
+  assert.deepEqual(called.args.slice(0, 2), ['--profile', 'cli_a96f5f9ac63adcd4']); assert.ok(called.args.includes('user')); assert.equal(called.options.shell, false);
   await assert.rejects(runLark([], async () => ({ stdout: JSON.stringify({ ok: true, identity: 'bot', data: {} }) })), /用户身份/);
 });
 

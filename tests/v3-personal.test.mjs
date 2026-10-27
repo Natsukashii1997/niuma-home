@@ -12,14 +12,14 @@ import { routes as knowledgeRoutes } from '../server/routes/assistant-knowledge.
 import { routes as selftalkRoutes } from '../server/routes/selftalk.mjs';
 
 const instant = Date.parse('2026-10-16T15:00:00+08:00');
-const identity = { profile: 'codex', appId: SELF_APP_ID, identity: 'user', onBehalfOf: { openId: SELF_USER_ID } };
+const identity = { profile: 'cli_a96f5f9ac63adcd4', appId: SELF_APP_ID, identity: 'user', onBehalfOf: { openId: SELF_USER_ID } };
 const raw = (id, content = '真实路径的合成测试文字', extra = {}) => ({ message_id: id, msg_type: 'text', create_time: '2026-10-16 11:07', sender: { id: SELF_USER_ID, sender_type: 'user' }, content, deleted: false, ...extra });
 const normalized = (id = 'om_personal') => ({ id, createdAt: '2026-10-16T03:07:00.000Z', text: '跟进测试事项', type: 'text', link: false });
 function cli(pages, who = identity) {
   let calls = 0;
   const run = async (exe, args, options) => {
     assert.equal(exe, 'lark-cli');
-    assert.deepEqual(args.slice(0, 4), ['--profile', 'codex', '--as', 'user']);
+    assert.deepEqual(args.slice(0, 4), ['--profile', 'cli_a96f5f9ac63adcd4', '--as', 'user']);
     assert.equal(options.shell, false);
     if (args[4] === 'whoami') return { stdout: JSON.stringify(who) };
     assert.ok(args.includes('--no-reactions')); assert.ok(!args.includes('--download-resources'));

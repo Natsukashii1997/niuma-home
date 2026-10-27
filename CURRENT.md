@@ -2,6 +2,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 服务端飞书身份从机械邪龙兽迁到猛鬼兽（2026-10-27，Claude，用户同意迁移方案与 4 条决定：猛鬼兽机器人发推送、带教机器人评论署名猛鬼兽、历史记录不改写、codex 登录保留；已提交未合并、未发布）
+
+- 时间：开工 `2026-10-27 19:52`（迁移开始时按会话时间估记）。★ 来由：常浩定「飞书统一都用猛鬼兽」，服务端 11 个模块仍写死 `--profile codex` 与机械邪龙兽下的本人 open_id（issue #5）。
+- 改了哪些文件：新建 `server/lark-identity.mjs`（profile / App ID / 本人 open_id 唯一出处）；`server/projects.mjs`（runLark，品牌、经营图表、带教、知识库收藏都经它）、`calendar`、`campaigns`、`reports`、`timeline`、`timeline-years`、`feishu-export`、`brief-sync`、`knowledge-tree`、`selftalk`、`codex-push`、`v3-settings` 改为引用常量，错误提示改「猛鬼兽配置」；`server/mentor.mjs` 带教回答人设、`db.mjs` / `index.mjs` / `ai-draft.mjs` 注释改猛鬼兽；前端 `SettingsPage.jsx`（飞书身份显示猛鬼兽、推送文案）、`ProjectsPage.jsx`（带教回答署名）、`CodexStrip.jsx`、`bitmap.jsx` 注释；14 个测试文件的身份断言；新增 `scripts/migrate-lark-identity.mjs` 与 `npm run migrate:lark-identity`；文档 AGENTS / HANDOFF / REQUIREMENTS / docs/API.md / LESSONS L-15。
+- 测试：`npm test` 原样结果 `ℹ tests 748` / `ℹ pass 748` / `ℹ fail 0`（变基到含 8 个新提交的 main 后复跑；变基前 739 / 739 / 0，与改前基线一致）；`npm run check:style` 通过、`npm run build` 通过；`npm run smoke` 24 项 0 项有问题（证据 `~/Library/Application Support/NiumaHome/evidence/smoke-20261027-1205/`）。★
+- 验证：猛鬼兽 `whoami` 为 user、tokenStatus ready、本人 open_id `ou_5ad2ac4359de95dc41b5e89edd68ae6a`；用猛鬼兽只读探测日历 agenda、日报文档 fetch、品牌多维表 table-list、项目多维表 record-list、知识库 node-get、自言自语 chat-messages-list、文档评论 list-comments 全部成功；两应用读到的自言自语是同一会话（`oc_57f3…`）同样的消息；写入所需权限（wiki 建节点、文档导入、上传、评论）猛鬼兽均有。迁移脚本在正式库副本上演练：预览 1 条（`brief-feishu-link/2026-10`，旧来源指纹 `82aa9f7f` 与库内一致）→ 备份 → 写入 → 回读一致，再跑显示 0 条待迁移。
+- 截图：无界面结构改动，仅文案；发布后正式实看再补。
+- 发布与回读：未发布。发布前要做：① 问常浩同意；② 正式库跑 `npm run migrate:lark-identity`（预览给常浩看）后 `-- --confirm`；③ `bash scripts/release-app.sh` 与回读；④ 经同意后让猛鬼兽机器人发 1 条测试推送卡片；⑤ 带教机器人第一次回复时若被拒，请常浩把猛鬼兽机器人加进两份管培生日志。回滚：`release-app.sh` 退回上一快照 + 用迁移备份还原数据库。
+- 与授权不一致之处、遗留问题、范围外发现：历史记录（1 条导出回执、5 条知识库操作、13 条过期导出预览）按决定保留旧身份；`scripts/import-feishu.mjs`（已执行过的一次性迁移）未带 `--profile`，用默认配置，没动；猛鬼兽同时被 Hermes 使用，共享应用调用额度，工作台调用量小。
+- 本轮新坑：L-15。★
+
 ## 合并 main 并发布：NAS 自动挂载、营收重试、首页打字提速（2026-10-27，Claude 子会话，用户说「合并到 main 并发布到正式 5280，发布后回读、实看（含卸载 NAS 再点同步）并补记录」；已发布 `nm-20261027-161356-e3d22fe` 回读与冒烟通过）
 
 - 时间：开工 `2026-10-27 16:13`（发布前核对开始时间）。来由：把下面两节（`b2e414b`、`e3d22fe`）上线。
