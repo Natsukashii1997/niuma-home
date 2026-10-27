@@ -429,3 +429,8 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `GET /api/v3/home/todo`：每项 `{ kind, text, sub?, due, dueDate?, href, urgent? }`。`text` 是主行（节点名 / 方案名），`sub` 是次行小字（项目 · 负责人 · 到期，或 SKU 名）；原先拼在 `text` 里的项目名移到 `sub`。
 - `GET /api/v3/mentor`：先回落库快照（`v3_snapshots.mentor`），超过 5 分钟后台重读飞书；`POST /api/v3/mentor/refresh` 仍现读。
 - `GET /api/reports`：解析结果落库（`v3_snapshots` 的 `reports:<文档 URL>`），服务重启后先回上次完整结果，再按 staleWhileRevalidate 刷新。
+
+## 2026-10-27 NAS 同步自动挂载
+
+- `POST /api/v3/nas/scan`（以及首次 `GET /api/v3/nas` 触发的扫描）：NAS 目录不在、且目录位于 `/Volumes/跨部门综合资料` 下时，先用系统 NetFS 不弹框挂载 `smb://172.16.1.10/跨部门综合资料`，挂上后接着扫描。账号密码只用钥匙串里 Finder 存过的那份，代码与数据库都不存。其他目录不自动挂载。
+- 挂载失败仍是 `503 { error }`，`error` 以「NAS 未挂载，自动挂载失败：」开头，后接原因与下一步：钥匙串没密码或密码已改（去 Finder ⌘K 登录一次并记住密码）、连不上 172.16.1.10（连公司网络）、找不到共享、超时或其他错误码。上次快照照常显示。

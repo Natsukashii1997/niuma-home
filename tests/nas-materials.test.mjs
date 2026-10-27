@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { openDb, saveSetting } from '../server/db.mjs';
 import { sourceStatus } from '../server/source-status.mjs';
-import { activityName, createNasMaterials, monthKey, recognize } from '../server/nas-materials.mjs';
+import { activityName, createNasMaterials, monthKey, mountReason, recognize } from '../server/nas-materials.mjs';
 
 test('活动名去掉版本后缀，同名活动归为一组', () => {
   assert.equal(activityName('a/现金赠礼活动海报1.jpg'), '现金赠礼活动海报');
@@ -83,9 +83,42 @@ test('扫描：不扫营销物料和其他业务线，存快照、只缓存缩�
   const off = await nas.read();
   assert.equal(off.reachable, false);
   assert.equal(off.lines.国际课程.cells['2026-09|价格图'][0].id, card.id);
-  await assert.rejects(nas.scan(), (e) => e.status === 503 && /未挂载/.test(e.message));
+  await assert.rejects(nas.scan(), (e) => e.status === 503 && /未挂载/.test(e.message) && /不在公司 NAS 共享下，不自动挂载/.test(e.message), '测试目录不触发真实挂载');
   assert.throws(() => nas.original(card.id), (e) => e.status === 503);
   assert.equal(db.prepare("SELECT error FROM v3_source_status WHERE kind='nas'").get().error.includes('未挂载'), true);
+});
+
+test('同步时 NAS 没挂载先自动挂载再扫描；挂载失败说明原因和下一步', async (t) => {
+  const { db, root } = fixture(t);
+  const moved = `${root}-offline`;
+  renameSync(root, moved);
+  const calls = [];
+  const opts = { makeThumb: async (src, out) => copyFileSync(src, out), now: () => Date.parse('2026-10-27T10:00:00+08:00') };
+  const nas = createNasMaterials(db, { ...opts, mount: async (base) => { calls.push(base); renameSync(moved, root); return null; } });
+  const r = await nas.scan();
+  assert.deepEqual(calls, [root], '没挂载时挂一次');
+  assert.equal(r.reachable, true);
+  assert.deepEqual(r.months, ['2026-09']);
+  await nas.scan();
+  assert.equal(calls.length, 1, '已挂载不再挂');
+
+  renameSync(root, moved);
+  const reason = mountReason(60);
+  const failing = createNasMaterials(db, { ...opts, mount: async () => reason });
+  await assert.rejects(failing.scan(), (e) => e.status === 503 && e.message === `NAS 未挂载，自动挂载失败：${reason}`);
+  assert.equal(db.prepare("SELECT error FROM v3_source_status WHERE kind='nas'").get().error.includes('连公司网络'), true);
+  const emptyShare = createNasMaterials(db, { ...opts, mount: async () => null });
+  await assert.rejects(emptyShare.scan(), (e) => e.status === 503 && e.message.includes(`找不到目录 ${root}`));
+  assert.equal((await failing.read()).lines.国际课程.cells['2026-09|价格图'].length, 1, '失败后仍显示上次快照');
+});
+
+test('NetFS 返回码转成原因与下一步', () => {
+  assert.equal(mountReason(0), null);
+  assert.equal(mountReason(17), null, '已挂载算成功');
+  assert.match(mountReason(80), /钥匙串.*⌘K 连接 smb:\/\/172\.16\.1\.10.*记住此密码/);
+  assert.match(mountReason(60), /连不上 172\.16\.1\.10.*公司网络/);
+  assert.match(mountReason(2), /找不到共享「跨部门综合资料」/);
+  assert.match(mountReason(99), /错误码 99.*手动挂载/);
 });
 
 test('新增11月和跨年月份同步后自动入列，月份别名合并，旧月与快照回读保留', async (t) => {
