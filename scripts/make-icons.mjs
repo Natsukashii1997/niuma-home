@@ -28,8 +28,10 @@ function run([src, out, x, y, w, h]) {
   return rep.representationUsingTypeProperties($.NSBitmapImageFileTypePNG, $()).writeToFileAtomically(out, true);
 }`;
 execFileSync("osascript", ["-l", "JavaScript", "-e", FULL_BLEED, SOURCE, "desktop/macos/AppIcon-1024.png", ...PLATE.map(String)], { stdio: "ignore" });
-// 侧栏品牌标（BrandMark，显示 28px）：取满版方图，方角与原来的像素品牌标一致；按 4 倍出图。
-sips("-z", "112", "112", "desktop/macos/AppIcon-1024.png", "--out", "public/icons/brand-mark.png");
+// 侧栏品牌标（BrandMark，显示 40px、圆角由 CSS 切）：用户 2026-10-28 嫌整张图缩小后「看不清、太方正」，
+// 从满版图中间裁 800 方块（去掉黑边和外圈描边，只留牛和文件夹），按 4 倍出 160。
+sips("-c", "800", "800", "--cropOffset", "120", "115", "desktop/macos/AppIcon-1024.png", "--out", "public/icons/brand-mark.png");
+sips("-z", "160", "160", "public/icons/brand-mark.png");
 // 浏览器标签页图标（用户 2026-10-28 要求也换成新图，替换原 16×16 的 favicon.svg）。
 sips("-z", "64", "64", "desktop/macos/AppIcon-1024.png", "--out", "public/icons/favicon.png");
 console.log("已生成 public/icons/icon-192.png、icon-512.png、apple-touch-icon.png、brand-mark.png、favicon.png、desktop/macos/AppIcon-1024.png");

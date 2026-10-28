@@ -415,7 +415,7 @@ export function PixelSprite({ rows, cell = 2, color = "currentColor", fillColor,
 // 由名称生成左右对称的 5×5 黑白像素头像，外围留 1 格边。
 // 品牌标「牛马之家」：与应用图标同一张图（用户 2026-10-28 换成「牛趴文件夹」），由 scripts/make-icons.mjs 生成 public/icons/brand-mark.png。
 // 浏览器标签页图标 public/icons/favicon.png 也取同一张图。
-export function BrandMark({ size = 28, className = "" }) {
+export function BrandMark({ size = 40, className = "" }) {
   return <img className={`brand-mark ${className}`} src="/icons/brand-mark.png" width={size} height={size} alt="" aria-hidden="true" />;
 }
 
