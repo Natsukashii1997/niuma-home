@@ -2,15 +2,15 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## 浏览器标签页图标也换成新图（2026-10-28，Claude 子会话，用户说「也换掉」；发布结果见本节「发布与回读」）
+## 浏览器标签页图标也换成新图（2026-10-28，Claude 子会话，用户说「也换掉」；已提交 `ccc8d5f`，已发布 `nm-20261028-112538-ccc8d5f` 回读与冒烟通过）
 
 - 时间：开工 `2026-10-28 11:27`（收到消息时的大致时间）。来由：上一轮只剩标签页图标还是 16×16「低电量牛」。
 - 改了哪些文件：`scripts/make-icons.mjs`（再用 `sips` 从满版 `AppIcon-1024.png` 生成 `public/icons/favicon.png` 64×64）、`public/icons/favicon.png`（新增）、`index.html`（`<link rel="icon">` 改引用 `/icons/favicon.png`）、`public/favicon.svg`（删除，已无引用）、`src/ui/bitmap.jsx`（只改注释）。
 - 测试：`npm test` 原样结果 `ℹ tests 748` / `ℹ pass 748` / `ℹ fail 0`；`npm run build` 通过，产物里没有旧 `favicon.svg`。工作区含他人未提交改动（`.claude/launch.json`，L-07），未提交它。
 - 验证：隔离 5290 首页，`link[rel=icon]` 指向 `/icons/favicon.png`，取回 200、`image/png`、64×64；`/favicon.svg` 不再返回图片。
 - 截图：无。
-- 发布与回读：发布后在本节补记。
-- 遗留：无。
+- 发布与回读（`2026-10-28 11:25:36` 开始）：发布前只读核对——没有 `kb-write-lock`，`kb-operation` 12 条 verified、2 条 aborted，无挂起；当时快照 `nm-20261028-112309-ad64b2c` 回读通过。`main` 无新提交，快进到 `ccc8d5f`；`release-app.sh`（忽略他人未跟踪文件）退出码 0，切到 `nm-20261028-112538-ccc8d5f`，自动备份 `backups/work-desk-20261028-112539-before-nm-20261028-112538-ccc8d5f.db`，保留策略清理 2 项（快照 `nm-20261027-133320-b89001a`、备份 `work-desk-20261026-172515-before-nm-20261026-172514-efee62c.db`）。回读 7 项全 ✓（进程 71451）；`NIUMA_SMOKE=1` → `24 项，0 项有问题` → `回读通过：nm-20261028-112538-ccc8d5f`。正式首页 `<link rel="icon">` 指向 `/icons/favicon.png`，与仓库 sha256 一致（证据目录 `~/Library/Application Support/NiumaHome/evidence/标签页图标-20261028/`）。回滚：`bash scripts/release-app.sh --use nm-20261028-112309-ad64b2c`。
+- 遗留：用户随后说侧栏品牌标「看不清，太小了，而且太方正」，要求重新设计，另起一轮。
 - 本轮新坑：无。
 
 ## 应用图标修正：程序坞仍显示旧图、去掉系统灰底板、侧栏品牌标换新（2026-10-28，Claude 子会话，用户截图程序坞和侧栏说「现在还是旧版啊」；沿用上一轮「合并并发布」的授权一并发布；已提交 `ad64b2c`，已发布 `nm-20261028-112309-ad64b2c` 回读与冒烟通过）
