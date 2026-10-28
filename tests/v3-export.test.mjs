@@ -14,17 +14,17 @@ import { routes as marketingRoutes } from '../server/routes/v3-marketing.mjs';
 import { userRoutes } from '../server/routes/user.mjs';
 import { match } from '../server/http.mjs';
 
-const FOLDER = 'https://example.feishu.cn/drive/folder/Folder123', APP = 'cli_aacf58ab61b85beb';
+const FOLDER = 'https://example.feishu.cn/drive/folder/Folder123', APP = 'cli_a96f5f9ac63adcd4';
 const confirmBody = p => ({ previewId: p.previewId, confirm: true });
 function setup(t) {
   assert.ok(process.env.WORKDESK_DATA_DIR, '导出测试必须使用隔离目录');
   const dir = mkdtempSync(path.join(process.env.WORKDESK_DATA_DIR, 'export-')), db = openDb(dir);
   t.after(() => { db.close(); rmSync(dir, { recursive: true, force: true }); });
   let clock = Date.parse('2026-10-16T12:00:00+08:00');
-  const state = { calls: [], creates: 0, user: 'ou_test', app: APP, profile: 'codex', identity: 'user', folderTitle: '已确认交付目录', fail: '', content: null, warnings: [], onDry: null, onCreate: null };
+  const state = { calls: [], creates: 0, user: 'ou_test', app: APP, profile: 'cli_a96f5f9ac63adcd4', identity: 'user', folderTitle: '已确认交付目录', fail: '', content: null, warnings: [], onDry: null, onCreate: null };
   const documents = new Map();
   const run = async (command, args, options) => {
-    assert.equal(command, 'lark-cli'); assert.deepEqual(args.slice(0, 2), ['--profile', 'codex']);
+    assert.equal(command, 'lark-cli'); assert.deepEqual(args.slice(0, 2), ['--profile', 'cli_a96f5f9ac63adcd4']);
     assert.deepEqual(args.slice(-2), ['--as', 'user']); assert.equal(options.shell, false);
     const arg = flag => args[args.indexOf(flag) + 1];
     const result = data => ({ stdout: JSON.stringify({ ok: true, identity: state.identity, data }) });

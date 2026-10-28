@@ -5,6 +5,7 @@ import { getSettings } from './db.mjs';
 import { getRecord, putRecord, listRecords, createLocalChanges, fingerprint } from './local-records.mjs';
 import { failure, validMonth } from './v3-common.mjs';
 import { assertLocalLifecycle, createLocalDeletions, deletionFailure, deletionRevision, deletionState, externalOrigin } from './local-deletions.mjs';
+import { LARK_PROFILE } from './lark-identity.mjs';
 
 const execute = promisify(execFile);
 export const MARKETING_BASE = 'https://vm94j8bzy7.feishu.cn/base/MxB8biSR2aJKenszh4CcprRenmf';
@@ -27,15 +28,15 @@ export function marketingSource(db, tableKey, defaultTable) {
   return { url: `${url.origin}/base/${token}`, token, table, identity: `${url.origin}/base/${token}|${table}` };
 }
 
-// 固定使用机械邪龙兽的 user 身份，只读取指定列；检查分页和修订号后才允许缓存。
+// 固定使用猛鬼兽的 user 身份，只读取指定列；检查分页和修订号后才允许缓存。
 export async function readMarketingTable(source, fields, { run = execute } = {}) {
   const rows = [], ids = new Set(); let rev;
   for (let offset = 0; offset < 10000; offset += 200) {
     let result;
     try {
-      const { stdout } = await run('lark-cli', ['--profile', 'codex', 'base', '+record-list', '--as', 'user', '--base-token', source.token, '--table-id', source.table, ...fields.flatMap(f => ['--field-id', f]), '--format', 'json', '--limit', '200', '--offset', String(offset)], { shell: false, encoding: 'utf8', timeout: 60000, maxBuffer: 4 * 1024 * 1024 });
+      const { stdout } = await run('lark-cli', ['--profile', LARK_PROFILE, 'base', '+record-list', '--as', 'user', '--base-token', source.token, '--table-id', source.table, ...fields.flatMap(f => ['--field-id', f]), '--format', 'json', '--limit', '200', '--offset', String(offset)], { shell: false, encoding: 'utf8', timeout: 60000, maxBuffer: 4 * 1024 * 1024 });
       result = JSON.parse(stdout);
-    } catch { throw marketingFailure(502, 'MARKETING_SOURCE_UNAVAILABLE', '飞书模板读取失败，请检查 codex 用户登录、权限和网络'); }
+    } catch { throw marketingFailure(502, 'MARKETING_SOURCE_UNAVAILABLE', '飞书模板读取失败，请检查猛鬼兽用户登录、权限和网络'); }
     const d = result.data;
     if (result.ok !== true || result.identity !== 'user' || !d || !Array.isArray(d.fields) || !Array.isArray(d.data) || !Array.isArray(d.record_id_list) || d.record_id_list.length !== d.data.length || typeof d.has_more !== 'boolean' || d.rev === undefined || fields.some(f => !d.fields.includes(f)) || new Set(d.fields).size !== d.fields.length) throw marketingFailure(502, 'MARKETING_SOURCE_INCOMPLETE', '飞书表格返回不完整或字段已变更，未更新本地记录');
     if (rev !== undefined && rev !== d.rev) throw marketingFailure(409, 'MARKETING_SOURCE_CHANGED', '读取期间来源表格发生变化，请重新读取');

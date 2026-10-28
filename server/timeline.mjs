@@ -4,6 +4,7 @@ import { beijingText, failure, saveSnapshot } from './v3-common.mjs';
 import { getSettings } from './db.mjs';
 import { timelineMonthHints, parseDateSegments } from './timeline-dates.mjs';
 import { readCalendarEntries } from './timeline-calendar.mjs';
+import { LARK_PROFILE } from './lark-identity.mjs';
 
 const execute = promisify(execFile);
 export const TIMELINE_SOURCE = { title: '2026海外大学时间线', token: 'BRzDsSWKGh8sMgtI2AocU42qnlg', url: 'https://vm94j8bzy7.feishu.cn/wiki/ZWx9wzNaCiNMsqkAhCtc7lfgnIm' };
@@ -214,9 +215,9 @@ export async function readTimelineSheets({ run = execute, source = TIMELINE_SOUR
   async function call(command, args) {
     let result;
     try {
-      const { stdout } = await run('lark-cli', ['--profile', 'codex', 'sheets', command, '--as', 'user', '--spreadsheet-token', source.token, '--format', 'json', ...args], { encoding: 'utf8', timeout: 60_000, maxBuffer: 8 * 1024 * 1024, shell: false });
+      const { stdout } = await run('lark-cli', ['--profile', LARK_PROFILE, 'sheets', command, '--as', 'user', '--spreadsheet-token', source.token, '--format', 'json', ...args], { encoding: 'utf8', timeout: 60_000, maxBuffer: 8 * 1024 * 1024, shell: false });
       result = JSON.parse(stdout);
-    } catch (error) { throw failure(error.killed ? 504 : 502, '时间线读取失败，请检查 codex 配置的 lark-cli 用户登录、权限和网络'); }
+    } catch (error) { throw failure(error.killed ? 504 : 502, '时间线读取失败，请检查猛鬼兽配置的 lark-cli 用户登录、权限和网络'); }
     if (result.ok !== true || result.identity !== 'user' || !result.data || result.truncated || result.data.truncated) throw failure(502, '飞书未返回完整的用户身份数据');
     return result.data;
   }

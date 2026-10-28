@@ -55,7 +55,7 @@ test("官方结构人工样例：开始时间排序、全天、时区换算与�
   const expected=[{time:"全天",title:"人工样例：全天事项",place:""},{time:"09:00–09:30",title:"人工样例：上午沟通",place:""},{time:"14:00–15:00",title:"人工样例：下午评审",place:"测试会议室"}];
   assert.deepEqual(agendaRows(fixture,calendarDay(start)),expected);
   assert.deepEqual(await readCalendarAgenda(calendarDay(start),{run:async(command,args,options)=>{
-    assert.equal(command,"lark-cli");assert.deepEqual(args,["--profile","codex","calendar","+agenda","--as","user","--start","2026-10-14T00:00:00+08:00","--end","2026-10-15T00:00:00+08:00","--format","json"]);
+    assert.equal(command,"lark-cli");assert.deepEqual(args,["--profile","cli_a96f5f9ac63adcd4","calendar","+agenda","--as","user","--start","2026-10-14T00:00:00+08:00","--end","2026-10-15T00:00:00+08:00","--format","json"]);
     assert.equal(options.shell,false);return {stdout:JSON.stringify(fixture)};
   }}),expected);
   const error=readFileSync(new URL("../fixtures/calendar-error-recorded.json",import.meta.url),"utf8");

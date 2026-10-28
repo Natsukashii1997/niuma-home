@@ -44,10 +44,10 @@ const GROUPS = [
   { id: "project", title: "项目与用户", icon: "project", use: "项目页、用户页、管培生", items: [["v3", "project_base_url"], ["v3", "project_table_id"], ["v3", "timeline_source"], ["v3", "timeline_years"], ["v3", "mentor_sources"]] },
   { id: "kb", title: "知识库收藏", icon: "kb", use: "知识库页、Chrome 扩展", items: [["v3", "kb_space_id"], ["v3", "kb_collect_space"], ["rules"], ["pairing"]] },
   { id: "marketing", title: "营销与品牌", icon: "marketing", use: "营销页、品牌页、价格", items: [["old", "brand_base_url"], ["old", "material_types"], ["v3", "campaign_table_id"], ["v3", "price_sku_table_id"], ["v3", "price_floor_margin"], ["v3", "price_cost_per_hour"]] },
-  { id: "push", title: "推送与预算", icon: "send", use: "机械邪龙兽、留学之声", items: [["push"], ["v3", "voice_budget"]] },
+  { id: "push", title: "推送与预算", icon: "send", use: "猛鬼兽、留学之声", items: [["push"], ["v3", "voice_budget"]] },
   { id: "fixed", title: "只读与暂缓", icon: "lock", use: "固定身份、暂缓接入", items: [["v3", "lark_profile"], ["v3", "lark_app_id"], ["nas"]] },
 ];
-const ITEM_LABEL = { rules: "收藏规则", pairing: "扩展配对码", push: "机械邪龙兽推送", nas: "NAS 物料目录" };
+const ITEM_LABEL = { rules: "收藏规则", pairing: "扩展配对码", push: "猛鬼兽推送", nas: "NAS 物料目录" };
 const itemLabel = ([type, key]) => type === "old" ? fields.find((f) => f.key === key).label : type === "v3" ? V3_FIELDS[key].label : ITEM_LABEL[type];
 
 // 行状态：ok 已保存/已配置，default 用默认值，demo 演示口径待确定，missing 未配置，fixed 只读/暂缓/未启用。
@@ -96,7 +96,7 @@ export default function SettingsPage() {
           { label: "已保存", value: count("ok"), tone: "ok", foot: "你保存过的值" },
           { label: "默认值", value: count("default"), foot: "未改过，用工作台内置值" },
           { label: "待你确定", value: todo.length, tone: todo.length ? "signal" : "muted", foot: todo.map((r) => r.label).join("、") || "没有待处理项" },
-          { label: "飞书身份", value: "codex", foot: "机械邪龙兽 · 固定只读" },
+          { label: "飞书身份", value: "猛鬼兽", foot: "cli_a96f5f9ac63adcd4 · 固定只读" },
         ]} />
         {cards(groups)}
       </div>;
@@ -216,8 +216,8 @@ const V3_FIELDS = {
   price_sku_table_id: { label: "SKU 产品目录表", hint: "以 tbl 开头" },
   price_floor_margin: { label: "毛利底线", hint: "0 到 1 之间的小数，如 0.25" },
   price_cost_per_hour: { label: "课时成本（元）", hint: "每课时成本" },
-  lark_profile: { label: "飞书 profile", hint: "固定为 codex，不能在这里切换" },
-  lark_app_id: { label: "飞书应用（机械邪龙兽）", hint: "固定应用身份，不能在这里切换" },
+  lark_profile: { label: "飞书 profile", hint: "固定为猛鬼兽应用，不能在这里切换" },
+  lark_app_id: { label: "飞书应用（猛鬼兽）", hint: "固定应用身份，不能在这里切换" },
   voice_budget: { label: "留学之声月预算上限（元）", hint: "0 到 10；当前免费试运行，模型和付费采集都没开" },
 };
 const pretty = (k, v) => { if (!V3_FIELDS[k]?.json) return v; try { return JSON.stringify(JSON.parse(v), null, 2); } catch { return v; } };
@@ -377,7 +377,7 @@ function PairingRow() {
   );
 }
 
-// 机械邪龙兽推送 Codex 重置：开关写 V3 配置 codex_push_enabled，走预览 → 确认 → 回读；下面照实显示检查与推送记录。
+// 猛鬼兽推送 Codex 重置：开关写 V3 配置 codex_push_enabled，走预览 → 确认 → 回读；下面照实显示检查与推送记录。
 const PUSH_KEY = "codex_push_enabled";
 const PUSH_STATUS = { sent: "已推送", failed: "推送失败", unknown: "结果不明" };
 function PushRow({ v3 }) {
@@ -403,7 +403,7 @@ function PushRow({ v3 }) {
   return (
     <div className="set-row">
       <div className="set-row-head">
-        <span className="set-label">机械邪龙兽推送</span>
+        <span className="set-label">猛鬼兽推送</span>
         <span className="set-value">{on ? "已开启 · 每 4 小时检查 Codex 重置，有新重置时私聊发给你" : <span className="muted">未开启：不检查、不推送</span>}</span>
         <Tag tone={on ? "green" : "neutral"}>{on ? "已开启" : "未开启"}</Tag>
         <Button onClick={preview} disabled={flow.busy || flow.phase === "unknown"}><PixelIcon name={on ? "close" : "send"} />{on ? "关闭" : "开启"}</Button>
@@ -415,9 +415,9 @@ function PushRow({ v3 }) {
           <dt>上次推送</dt><dd>{last ? <><span>{last.at}</span><Tag tone={last.status === "sent" ? "green" : last.status === "failed" ? "red" : "amber"}>{PUSH_STATUS[last.status]}</Tag><span>{last.summary}</span></> : <span className="muted">{on ? (push.baseline ? "刚开启：第一次检查只记下已有的重置，不推" : "还没有新的重置需要推送") : "没有推送记录"}</span>}</dd>
           {last?.error && <><dt>失败原因</dt><dd className="warn-text">{last.error}</dd></>}
         </dl>}
-        <WriteBox flow={flow} title={`${on ? "关闭" : "开启"}机械邪龙兽推送 · 预览`} confirmLabel={`确认${on ? "关闭" : "开启"}`} savedText={`已${on ? "开启" : "关闭"}推送，回读一致`} onConfirm={confirm} onRepreview={preview} onReread={reread}>
+        <WriteBox flow={flow} title={`${on ? "关闭" : "开启"}猛鬼兽推送 · 预览`} confirmLabel={`确认${on ? "关闭" : "开启"}`} savedText={`已${on ? "开启" : "关闭"}推送，回读一致`} onConfirm={confirm} onRepreview={preview} onReread={reread}>
           {(pv) => <dl className="kv"><dt>原值</dt><dd>{pv.before === "1" ? "开启" : "关闭"}{pv.before === null && "（默认）"}</dd><dt>新值</dt><dd><code className="diff-new">{pv.value === "1" ? "开启" : "关闭"}</code></dd>
-            <dt>之后</dt><dd>{pv.value === "1" ? "10 分钟内做第一次检查，只记下已有的重置、不推；之后每 4 小时检查一次，同一次重置只推一次，由机械邪龙兽（机器人身份）私聊发给你本人。" : "不再检查、不再推送；已有的推送记录保留。"}</dd>
+            <dt>之后</dt><dd>{pv.value === "1" ? "10 分钟内做第一次检查，只记下已有的重置、不推；之后每 4 小时检查一次，同一次重置只推一次，由猛鬼兽（机器人身份）私聊发给你本人。" : "不再检查、不再推送；已有的推送记录保留。"}</dd>
             <dt>写到哪里</dt><dd>工作台本地配置，不改飞书</dd></dl>}
         </WriteBox>
       </div>

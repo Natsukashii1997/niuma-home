@@ -8,11 +8,11 @@ export function fixture(dir){
   const db=openDb(dir),documents=new Map(),state={creates:0,updates:0,calls:[],failAfterUpdate:false,parent:WIKI.token,user:'ou_isolated'};
   const stamp=doc=>{let n=0;return doc.content.replace(/\s+id="[^"]*"/g,'').replace(/<(title|h[1-6]|p|li|table)(?=[\s>])/g,(_,tag)=>`<${tag} id="${tag==='title'?doc.id:`b${state.stableIds?'stable':doc.revision}_${++n}`}"`);};
   const run=async(command,args,options)=>{
-    assert.equal(command,'lark-cli');assert.deepEqual(args.slice(0,2),['--profile','codex']);assert.deepEqual(args.slice(-2),['--as','user']);
+    assert.equal(command,'lark-cli');assert.deepEqual(args.slice(0,2),['--profile','cli_a96f5f9ac63adcd4']);assert.deepEqual(args.slice(-2),['--as','user']);
     const arg=k=>args[args.indexOf(k)+1],result=(data,more={})=>({stdout:JSON.stringify({ok:true,identity:'user',...more,data})});
-    const dry=api=>result({context:{app_id:'cli_aacf58ab61b85beb',user_open_id:state.user},api:[api]},{dry_run:true});
+    const dry=api=>result({context:{app_id:'cli_a96f5f9ac63adcd4',user_open_id:state.user},api:[api]},{dry_run:true});
     state.calls.push({args,input:options.input});
-    if(args.includes('whoami'))return{stdout:JSON.stringify({profile:'codex',appId:'cli_aacf58ab61b85beb',identity:'user',available:true,tokenStatus:'ready',onBehalfOf:{openId:state.user}})};
+    if(args.includes('whoami'))return{stdout:JSON.stringify({profile:'cli_a96f5f9ac63adcd4',appId:'cli_a96f5f9ac63adcd4',identity:'user',available:true,tokenStatus:'ready',onBehalfOf:{openId:state.user}})};
     if(args.includes('+node-get')){const id=arg('--node-token'),doc=documents.get(id);return result(doc?{node_token:'Wiki'+id,obj_token:id,obj_type:'docx',node_type:'origin',title:doc.title,space_id:WIKI.spaceId,parent_node_token:state.parent}:{...WIKI,node_token:WIKI.token,obj_token:'ParentDoc',obj_type:'docx',node_type:'origin',space_id:WIKI.spaceId});}
     if(args.includes('+create')){
       if(args.includes('--dry-run'))return dry({method:'POST',url:'/open-apis/docs_ai/v1/documents',body:{parent_token:WIKI.token,format:'xml',content:options.input}});

@@ -36,7 +36,7 @@ test('GET和同步不生成AI；完整自然周只生成预览，确认后回读
   assert.equal(calls, 0);
   const preview = await service.previewDigest({ week });
   assert.equal(calls, 1); assert.equal(saved(db), null); assert.equal((await service.list()).digest, '');
-  assert.equal(evidence.source.userId, SELF_USER_ID); assert.equal(evidence.source.profile, 'codex');
+  assert.equal(evidence.source.userId, SELF_USER_ID); assert.equal(evidence.source.profile, 'cli_a96f5f9ac63adcd4');
   assert.deepEqual(evidence.counts, { total: 2, text: 1, nonText: 1 });
   assert.match(preview.value.text, /非文本 1 条/); assert.match(preview.value.text, /附件内容未读取/);
   const readsBefore = reads;
@@ -82,7 +82,7 @@ test('不完整分页或身份未知时不以旧快照生成，原始错误不�
   const service = createSelfTalkService(db, { now: () => instant, readMessages: async () => { if (ok) return [row()]; throw new Error('private text must not escape'); }, generate: async () => { calls++; } });
   await service.list(); ok = false;
   await assert.rejects(service.previewDigest({ week }), error => error.status === 502 && !error.message.includes('private text'));
-  const cli = createSelfTalkService(db, { now: () => instant, generate: async () => { calls++; }, run: async (_exe, args) => ({ stdout: JSON.stringify(args[4] === 'whoami' ? { profile: 'codex', appId: SELF_APP_ID, identity: 'user', onBehalfOf: { openId: SELF_USER_ID } } : { ok: true, identity: 'user', data: { messages: [], has_more: true } }) }) });
+  const cli = createSelfTalkService(db, { now: () => instant, generate: async () => { calls++; }, run: async (_exe, args) => ({ stdout: JSON.stringify(args[4] === 'whoami' ? { profile: 'cli_a96f5f9ac63adcd4', appId: SELF_APP_ID, identity: 'user', onBehalfOf: { openId: SELF_USER_ID } } : { ok: true, identity: 'user', data: { messages: [], has_more: true } }) }) });
   await assert.rejects(cli.previewDigest({ week }), error => error.status === 502);
   assert.equal(calls, 0); assert.equal(saved(db), null);
 });
