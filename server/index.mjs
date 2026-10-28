@@ -26,7 +26,9 @@ async function serveStatic(res, urlPath) {
   const file = asked.startsWith(dist + path.sep) && path.extname(asked) ? asked : path.join(dist, "index.html");
   const body = await readFile(file).catch(() => null);
   if (!body) return json(res, 404, { error: "文件不存在；首次运行请先 npm run build" });
-  res.writeHead(200, { "content-type": `${types[path.extname(file)] || "application/octet-stream"}; charset=utf-8` });
+  // 首页不落盘：Safari 网页应用恢复窗口会直接用磁盘里的旧首页，发布后旧哈希资源已不在，打开即黑屏。
+  const cache = file === path.join(dist, "index.html") ? { "cache-control": "no-store" } : {};
+  res.writeHead(200, { "content-type": `${types[path.extname(file)] || "application/octet-stream"}; charset=utf-8`, ...cache });
   res.end(body);
 }
 
