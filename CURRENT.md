@@ -2,6 +2,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 浏览器标签页图标也换成新图（2026-10-28，Claude 子会话，用户说「也换掉」；发布结果见本节「发布与回读」）
+
+- 时间：开工 `2026-10-28 11:27`（收到消息时的大致时间）。来由：上一轮只剩标签页图标还是 16×16「低电量牛」。
+- 改了哪些文件：`scripts/make-icons.mjs`（再用 `sips` 从满版 `AppIcon-1024.png` 生成 `public/icons/favicon.png` 64×64）、`public/icons/favicon.png`（新增）、`index.html`（`<link rel="icon">` 改引用 `/icons/favicon.png`）、`public/favicon.svg`（删除，已无引用）、`src/ui/bitmap.jsx`（只改注释）。
+- 测试：`npm test` 原样结果 `ℹ tests 748` / `ℹ pass 748` / `ℹ fail 0`；`npm run build` 通过，产物里没有旧 `favicon.svg`。工作区含他人未提交改动（`.claude/launch.json`，L-07），未提交它。
+- 验证：隔离 5290 首页，`link[rel=icon]` 指向 `/icons/favicon.png`，取回 200、`image/png`、64×64；`/favicon.svg` 不再返回图片。
+- 截图：无。
+- 发布与回读：发布后在本节补记。
+- 遗留：无。
+- 本轮新坑：无。
+
 ## 应用图标修正：程序坞仍显示旧图、去掉系统灰底板、侧栏品牌标换新（2026-10-28，Claude 子会话，用户截图程序坞和侧栏说「现在还是旧版啊」；沿用上一轮「合并并发布」的授权一并发布；已提交 `ad64b2c`，已发布 `nm-20261028-112309-ad64b2c` 回读与冒烟通过）
 
 - 时间：开工 `2026-10-28 11:20`（收到消息时的大致时间）。来由：程序坞和侧栏品牌标都还是旧图。
