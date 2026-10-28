@@ -2,14 +2,14 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## 首页改为 no-store，防 Safari 网页应用打开黑屏（2026-10-28，Claude，用户在数码世界同类修复后说「一并改」；已提交、发布见下）
+## 首页改为 no-store，防 Safari 网页应用打开黑屏（2026-10-28，Claude，用户在数码世界同类修复后说「一并改」；已提交 `533cb89`，已发布 `nm-20261028-224906-533cb89` 回读与冒烟通过）
 
 - 时间：开工 `2026-10-28 22:50`。★ 来由：数码世界每次打开黑屏，查明是 Safari 网页应用用磁盘里的旧首页；牛马之家也是网页应用，首页原来不写任何缓存头，同样有风险。
 - 改了哪些文件：`server/index.mjs`（`serveStatic` 返回 `index.html`——含前端路由回落——时加 `cache-control: no-store`，其余构建文件不变）、`tests/static-cache.test.mjs`（新增：临时 dist + 临时数据目录起真实服务，查 `/`、`/marketing` 为 no-store、构建文件不是 no-store；先确认改前失败）、`docs/LESSONS.md`（L-16）。
 - 测试：`npm test` 原样结果 `ℹ tests 749` / `ℹ pass 749` / `ℹ fail 0`。工作区含他人未提交改动（`.claude/launch.json`，L-07），未提交它。
 - 验证：新测试在隔离端口和临时数据目录里起服务，没碰 `data/`。真实网页应用里的效果未验证：修好后第一次打开可能还会黑一次（磁盘里还有改前的旧首页），之后再发布打开不黑才算验证。
 - 截图：无（无界面改动）。
-- 发布与回读：见下一行补记。
+- 发布与回读（`2026-10-28 22:49:06` 开始）：发布前只读核对——没有 `kb-write-lock`，`kb-operation` 12 条 verified、2 条 aborted，无挂起。`main` 无新提交，快进到 `533cb89`；`release-app.sh`（忽略他人未跟踪文件，`NIUMA_SMOKE=1`）退出码 0，切到 `nm-20261028-224906-533cb89`，自动备份 `backups/work-desk-20261028-224907-before-nm-20261028-224906-533cb89.db`，保留策略清理 2 项（快照 `nm-20261027-201723-54309fe`、备份 `work-desk-20261026-190751-before-nm-20261026-190749-d2a1ba8.db`）。回读 7 项全 ✓（进程 67241）；冒烟 `24 项，0 项有问题` → `回读通过：nm-20261028-224906-533cb89`。正式实看：`/` 与 `/marketing` 返回 `cache-control: no-store`，构建 JS 200 且不带缓存头（与改前一致）。证据目录 `~/Library/Application Support/NiumaHome/evidence/首页no-store-20261028/`、冒烟截图 `evidence/smoke-nm-20261028-224906-533cb89/`。回滚：`bash scripts/release-app.sh --use nm-20261028-122805-49b5d8d`（数据库不用还原）。
 - 遗留：无。范围外：数码世界同样改了，记在它自己的 CURRENT.md（`wb-20261028-671`）。
 - 本轮新坑：L-16。
 
