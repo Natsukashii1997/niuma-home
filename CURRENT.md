@@ -2,6 +2,18 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 应用图标修正：程序坞仍显示旧图、去掉系统灰底板、侧栏品牌标换新（2026-10-28，Claude 子会话，用户截图程序坞和侧栏说「现在还是旧版啊」；沿用上一轮「合并并发布」的授权一并发布，见本节「发布与回读」）
+
+- 时间：开工 `2026-10-28 11:20`（收到消息时的大致时间）。来由：程序坞和侧栏品牌标都还是旧图。
+- 原因：① 程序坞：用户 11:19 已重开应用，装好的 `AppIcon.icns` 也是新图，是系统图标缓存没刷新；`lsregister -f` 重新登记并重启程序坞后，`NSWorkspace iconForFile` 拿到新图，但被系统缩小并套上灰色底板——macOS 26 起，四周透明、带阴影的图标不算标准形状。② 侧栏：`BrandMark` 是手画的 16×16「低电量牛」SVG，不由应用图标生成，上一轮没动。
+- 改了哪些文件：`scripts/make-icons.mjs`（`AppIcon-1024.png` 改为经 `osascript` 调 AppKit 裁出原图圆角底板 `PLATE`，透明处铺底板同色黑，画满 1024 方图，圆角交给系统切；另用 `sips` 生成侧栏用的 `public/icons/brand-mark.png` 112×112）、`desktop/macos/AppIcon-1024.png`（重新生成）、`public/icons/brand-mark.png`（新增）、`src/ui/bitmap.jsx`（`BrandMark` 改为显示 `brand-mark.png`，删掉用不到的 `BRAND_WHITE` / `BRAND_ORANGE`；方角与原品牌标一致，固定黑底，不随深色模式反色）。`favicon.svg`（标签页图标）没动。
+- 测试：`npm test` 原样结果 `ℹ tests 748` / `ℹ pass 748` / `ℹ fail 0`；`npm run build` 通过。工作区含他人未提交改动（`.claude/launch.json`，L-07），未提交它。
+- 验证：`bash scripts/build-mac-app.sh` 重装后 `lsregister -f` + `killall Dock`，`NSWorkspace iconForFile` 取到的是满版新图、无灰底板（`改前-系统图标带灰底板.png`、`改后-系统图标满版.png`）；没截程序坞本身。隔离 5290 首页：`.brand-mark` 是 `IMG`、28×28、原图 112 像素已加载，侧栏显示新图（`改后-隔离5290-侧栏.jpg`）。证据目录 `~/Library/Application Support/NiumaHome/evidence/应用图标修正-20261028/`。
+- 截图：见上面证据目录。
+- 发布与回读：见下一次补记（发布后在本节补「已发布 …」）。
+- 遗留：① 标签页图标仍是「低电量牛」，与新图标不一致，待用户定。② `PLATE` 是按这张 512 原图量的坐标，换原图要重量。
+- 本轮新坑：无。
+
 ## 应用图标换成「牛趴文件夹」（2026-10-28，Claude 子会话，用户上传新图说「把牛马之家的应用图标改成最新，如上传所示」，之后说「合并并发布」；已提交 `13cdcf4`、合并 `0d4cef9`，macOS 应用已重装，已发布 `nm-20261028-111515-0d4cef9` 回读与冒烟通过）
 
 - 时间：开工 `2026-10-28 11:05`（收到消息时的大致时间，没单独记）。来由：用户给了新的应用图标原图（512×512 PNG，圆角黑底板外透明、带橙色描边和阴影）。

@@ -413,17 +413,10 @@ export function PixelSprite({ rows, cell = 2, color = "currentColor", fillColor,
 /* ---------- 1-bit 头像 ---------- */
 
 // 由名称生成左右对称的 5×5 黑白像素头像，外围留 1 格边。
-// 品牌标「牛马之家 · 低电量牛」：16×16，长了牛角和四条腿的电池，只剩一格橙色的电。浏览器标签页图标 public/favicon.svg 用同一张图。
-const BRAND_WHITE = "M2 2h1v1h-1zM13 2h1v1h-1zM2 3h2v1h-2zM12 3h2v1h-2zM3 4h2v1h-2zM11 4h2v1h-2zM2 5h12v1h-12zM2 6h1v1h-1zM13 6h1v1h-1zM2 7h1v1h-1zM13 7h2v1h-2zM2 8h1v1h-1zM13 8h2v1h-2zM2 9h1v1h-1zM13 9h2v1h-2zM2 10h1v1h-1zM13 10h1v1h-1zM2 11h12v1h-12zM3 13h1v1h-1zM6 13h1v1h-1zM9 13h1v1h-1zM12 13h1v1h-1zM3 14h1v1h-1zM6 14h1v1h-1zM9 14h1v1h-1zM12 14h1v1h-1z";
-const BRAND_ORANGE = "M4 7h2v1h-2zM4 8h2v1h-2zM4 9h2v1h-2z";
+// 品牌标「牛马之家」：与应用图标同一张图（用户 2026-10-28 换成「牛趴文件夹」），由 scripts/make-icons.mjs 生成 public/icons/brand-mark.png。
+// 浏览器标签页图标 public/favicon.svg 仍是 16×16 的「低电量牛」。
 export function BrandMark({ size = 28, className = "" }) {
-  return (
-    <svg className={`brand-mark ${className}`} width={size} height={size} viewBox="0 0 16 16" shapeRendering="crispEdges" aria-hidden="true">
-      <rect width="16" height="16" fill="var(--text)" />
-      <path d={BRAND_WHITE} fill="var(--panel)" />
-      <path d={BRAND_ORANGE} fill="var(--signal)" />
-    </svg>
-  );
+  return <img className={`brand-mark ${className}`} src="/icons/brand-mark.png" width={size} height={size} alt="" aria-hidden="true" />;
 }
 
 export function BitAvatar({ seed, size = 28 }) {
