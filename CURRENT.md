@@ -2,14 +2,14 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## 应用图标换成「牛趴文件夹」（2026-10-28，Claude 子会话，用户上传新图说「把牛马之家的应用图标改成最新，如上传所示」；已提交（只含本轮文件），macOS 应用已重装，网页图标未发布）
+## 应用图标换成「牛趴文件夹」（2026-10-28，Claude 子会话，用户上传新图说「把牛马之家的应用图标改成最新，如上传所示」，之后说「合并并发布」；已提交 `13cdcf4`、合并 `0d4cef9`，macOS 应用已重装，已发布 `nm-20261028-111515-0d4cef9` 回读与冒烟通过）
 
 - 时间：开工 `2026-10-28 11:05`（收到消息时的大致时间，没单独记）。来由：用户给了新的应用图标原图（512×512 PNG，圆角黑底板外透明、带橙色描边和阴影）。
 - 改了哪些文件：`desktop/macos/AppIcon-source.png`（新增，用户原图原样保存）；`scripts/make-icons.mjs`（原来由 16×16 的 `favicon.svg` 按像素放大，改成用 `sips` 从原图生成：`public/icons/icon-192.png`、`icon-512.png`、`apple-touch-icon.png` 直接缩放；`desktop/macos/AppIcon-1024.png` 缩到 988 再四周补透明到 1024，圆角底板约 824 宽，与原来的程序坞图标尺寸一致）；上面四个 PNG 重新生成。浏览器标签页图标 `public/favicon.svg` 和侧栏品牌标「低电量牛」没动。
 - 测试：`npm test` 原样结果 `ℹ tests 748` / `ℹ pass 748` / `ℹ fail 0`。工作区含他人未提交改动（`.claude/launch.json`，L-07），未提交它。
 - 验证：`bash scripts/build-mac-app.sh` 重装 `~/Applications/牛马之家.app`，`codesign -v` 通过；把装好的 `AppIcon.icns` 拆开有 16–1024 全部 10 个尺寸，转 PNG 看是新图。原图只有 512，1024 那档是放大的，略软。应用当时开着（进程 40217），正在运行的程序坞图标要退出重开才换，没替用户重开。
 - 截图：无（图标见 `desktop/macos/AppIcon-1024.png`）。
-- 发布与回读：网页的 PWA / apple-touch 图标要发布到正式 5280 才生效，未发布；macOS 应用壳不随 5280 发布，已本机重装。
+- 发布与回读（`2026-10-28 11:14:52` 开始）：发布前只读核对正式库——没有 `kb-write-lock`，`kb-operation` 12 条 verified、2 条 aborted，无挂起；当时快照 `nm-20261027-201723-54309fe` 先跑 `verify-release.sh` 回读通过（`发布前-核对.log`、`发布前-verify.log`）。`main` 上多出别的会话已发布的两个提交（`54309fe` 飞书身份迁猛鬼兽、`512db26` 其记录），先合进 `ui-v4`（`0d4cef9`，只有 `CURRENT.md` 顶部两节冲突，两节都保留；合并后 `npm test` 748 全过），主工作区 `main` 从 `512db26` 快进到 `0d4cef9`；`GIT_CONFIG_*` 只对这次忽略他人未跟踪文件跑 `release-app.sh`，退出码 0，切到 `nm-20261028-111515-0d4cef9`，自动备份 `backups/work-desk-20261028-111516-before-nm-20261028-111515-0d4cef9.db`，保留策略清理 2 项（快照 `nm-20261026-233411-8570c55`、备份 `work-desk-20261024-103422-before-nm-20261024-103421-c261bd6.db`）。脚本末尾回读 7 项全 ✓（进程 65003、156 个源码文件与 `0d4cef9` 一致、版本号已写进构建）；`NIUMA_SMOKE=1 bash scripts/verify-release.sh` → 原样结果 `24 项，0 项有问题` → `回读通过：nm-20261028-111515-0d4cef9`。正式实看：`curl` 取 `icons/icon-192.png`、`icon-512.png`、`apple-touch-icon.png` 与仓库新图 sha256 一致，`favicon.svg` 未变；内置浏览器打开 `/icons/icon-512.png` 是新图（`发布后-图标核对.log`、`发布后-正式icon-512.jpg`）。证据目录 `~/Library/Application Support/NiumaHome/evidence/应用图标发布-20261028/`。回滚：`bash scripts/release-app.sh --use nm-20261027-201723-54309fe`（数据库不用还原；只退掉网页图标）。macOS 应用壳不随 5280 发布，已本机重装。
 - 遗留：① 标签页图标 `favicon.svg` 仍是 16×16「低电量牛」，与新应用图标不是同一张图，要不要也换待用户定。② 如有 1024 以上的原图，替换 `desktop/macos/AppIcon-source.png` 后跑 `node scripts/make-icons.mjs` 和 `bash scripts/build-mac-app.sh` 即可更清楚。
 - 本轮新坑：无。
 
