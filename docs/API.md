@@ -10,6 +10,24 @@
 - 请求正文：写了 `content-type` 的必须是 `application/json`，否则 `415`（浏览器跨站简单请求带的 `text/plain` 会被拒）；不带 content-type 的（curl、脚本）按 JSON 解析；超过 2MB 返回 `413`。
 - 处理失败：带状态码的预期拒绝原样返回；其余返回 `500 { error: "服务内部错误，详情见服务日志", code: "INTERNAL" }`，细节只进服务日志。
 
+## 智能体接入（workdesk MCP，2026-11-02，第一期只读）
+
+给亚古兽等智能体用的通用接口。智能体跑 `server/mcp-workdesk.mjs`（stdio MCP），它只做协议转换，授权和记录都在这里。
+
+- 凭据：每个 agent 一个，请求头 `Authorization: Bearer wdk_…`；库里只存 sha256（`agent_access`）。签发 / 轮换 / 撤销：`node scripts/agent-token.mjs issue <agent> <工具,工具> [--write-env <.env>]`、`revoke <agent>`、`list`（`WORKDESK_DATA_DIR` 指向要改的数据目录）。再签发即作废旧凭据。凭据缺失或无效 `401 AGENT_UNAUTHORIZED`，不记调用。
+- `GET /api/v3/agent/tools` → `{ agent, tools: [{ name, description, inputSchema }] }`，只列本 agent 被授权的工具。
+- `POST /api/v3/agent/tools/:tool` 请求 `{ arguments, caller }` → `{ result }`。`caller` 是提问人，必须带非空 `userId`（如 `{ platform, chatType, userId }`），由 agent 一侧可信地填入（Hermes 由插件按飞书发送人覆盖写入），缺了 `400 CALLER_REQUIRED`；未授权 `403 TOOL_FORBIDDEN`；没有这个工具 `404 TOOL_UNKNOWN`；参数不对 `400`。凭据通过之后的每次调用（含被拒的）都记进 `agent_calls`（agent、工具、caller、状态码、错误、时间）。
+- MCP 侧：调用参数里的 `_caller` 被取出作为 `caller` 上送；服务端拒绝时返回 `isError: true` 和中文原因。环境变量 `WORKDESK_AGENT_TOKEN`（必填）、`WORKDESK_URL`（默认 `http://127.0.0.1:5280`）。
+
+| 工具 | 参数 | 返回 |
+|---|---|---|
+| `mentor_trainees` | 无 | `{ today, trainees: [{ name, role, log, logCount, latestLog, unanswered, path: { plan, start, end, day, days, pass, reviewer, lines: [{ name, stages: [{ id, title, from, to, status, late?, review?, passRule?, record }] }] } | null }] }` |
+| `mentor_questions` | `name`，`since?`（YYYY-MM-DD） | `{ name, log, logs: [{ date, title, src }], items: [{ id, kind, text, date, log, src, reply: { text, state, at } | null }] }`；查无此人 `404` |
+| `project_list` | 无 | `[{ id, name, status, phase, completion, tasks: { total, done }, nodes: [{ title, phase, owner, done, start, due, doneAt, overdue, gate, milestone, deliverables }] }]` |
+| `strategy_month` | `month`（YYYY-MM） | 同 `GET /api/v3/user-strategy?month=`；未准备返回 `{ month, status: "未准备" }` |
+
+数据与页面同源（同一组服务、同一份缓存），不另外读飞书。写入类工具不在第一期。
+
 ## 旧写入口保存保护（2026-10-22）
 
 以下 9 个写入口必须带 `X-Workdesk-Request-Id`（8–128 位字母、数字、`_`、`-`）：助手新建、助手 PATCH、会话导入；物料新建、PATCH、DELETE、上传图片、删除图片；方案 PUT。每次用户操作在发送前持久保存编号和原草稿，同一操作恢复时沿用编号。
