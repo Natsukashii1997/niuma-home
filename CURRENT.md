@@ -2,14 +2,14 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## 新增 ASCII 鲨鱼登录页（2026-11-02，Claude，常浩看过多版预览后定稿「C3 白雾」+ 单行登录框 + 终端标题细光标，并定了三点：账号密码放数据目录不进仓库、每个新标签页过一次、标题用终端版；分支 feat/login-page 已提交、PR 待合并、未发布）
+## 新增 ASCII 鲨鱼登录页（2026-11-02，Claude，常浩看过多版预览后定稿「C3 白雾」+ 单行登录框 + 终端标题细光标，并定了三点：账号密码放数据目录不进仓库、每个新标签页过一次、标题用终端版；PR #12 squash 合并为 `d69f706`；常浩说「合并并发布」，已发布 nm-20261102-224152-d69f706 回读通过）
 
 - 时间：开工 `2026-11-02 22:05`（开工时没跑 `date`，按本轮开始时刻估；收尾 `2026-11-02 22:38`）。来由：常浩要把预览里的鲨鱼登录页作为牛马之家的登录页，账号密码默认填好，回车或点箭头进入。
 - 改了哪些文件：`src/vendor/ascii-sharks/`（新：第三方 MIT 源码原样复制，提交 `a0074c1`，附 LICENSE 与说明，Vite 直接编译，不加依赖）；`src/modules/login/LoginPage.jsx`（新：鲨鱼背景、终端标题、单行登录框；读 `/api/login` 预填，前端比对，通过后写 `sessionStorage`；光标用 `frames()` 按帧亮灭；焦点不在框里时按回车也能进）；`src/styles/96-login.css`（新：登录页整页样式，类名都带 `login-`）、`src/styles/index.css`（登记）；`src/main.jsx`（先显示登录页，进入后渲染原 `App`）；`server/routes/login.mjs`（新：`GET /api/login` 读数据目录 `login.json`）、`server/index.mjs`（登记路由）；`tests/login.test.mjs`（新）；`scripts/smoke-pages.mjs`（先过登录页再巡检，登录页单独记一项）；`docs/API.md`、`docs/STYLE-GUIDE.md`（登录页整页例外）。正式数据目录 `data/login.json` 已写入（权限 600，被 gitignore）。
 - 测试：`npm test` 原样结果 `ℹ pass 759` / `ℹ fail 0`；`npm run build` 通过（体积超 500 kB 的提示是原有的）；`npm run smoke` `25 项，0 项有问题`（含新加的「登录页」一项）。
 - 验证：隔离端口 5293、临时数据目录，`login.json` 用测试密码（不是真密码）；1280×800 下看了登录页：账号与密码已预填；改错密码回车提示「账号或密码不对」、改回后提示消失；回车进入工作台；同一标签页刷新、切到 `#/settings` 不再出现登录页。
 - 截图：`~/Library/Application Support/NiumaHome/evidence/smoke-login-page/00-login.png` 等冒烟截图（不入库）。
-- 发布与回读：未发布（等常浩同意后在 `main` 跑 `bash scripts/release-app.sh`）。
+- 发布与回读（`2026-11-02 22:41:52` 开始，常浩说「合并并发布」）：发布前只读核对——没有 `kb-write-lock`，`kb-operation` 12 条 verified、2 条 aborted，无挂起。PR #12 squash 合并为 `d69f706`，`main` 快进；`release-app.sh`（忽略他人未跟踪文件，`NIUMA_SMOKE=1`）切到 `nm-20261102-224152-d69f706`，自动备份 `backups/work-desk-20261102-224153-before-nm-20261102-224152-d69f706.db`，保留策略清理 2 项（快照 `nm-20261028-112538-ccc8d5f`、备份 `work-desk-20261027-133322-before-nm-20261027-133320-b89001a.db`）；冒烟 `25 项，0 项有问题`（「登录页」一项 ok、回车后进入）→ `回读通过：nm-20261102-224152-d69f706`。正式实看 `http://127.0.0.1:5280/`：新标签页出现登录页，账号 `nat`、密码已预填（来自 `data/login.json`），点箭头进入首页，状态栏版本 `d69f706`。回滚：`bash scripts/release-app.sh --use nm-20261102-201455-38ea63d`（登录页无数据库改动，不用还原）。
 - 与授权不一致之处、遗留问题、范围外发现：① 服务只监听本机、密码又是预填的，登录页只是进门仪式，不是安全防护，已向常浩说明。② `/api/login` 会把密码明文返回给本机页面（预填所需）。③ 登录页刻意不走位图风变量，已在 STYLE-GUIDE 记为整页例外。
 - 本轮新坑：无
 
