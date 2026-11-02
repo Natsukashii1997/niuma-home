@@ -2,14 +2,14 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## 飞书默认身份改为亚古兽，猛鬼兽保留自言自语与推送（2026-11-02，Claude，常浩确认清单后说「按推荐开工」；分支 `claude/8-agumon-identity` 走 PR，未合并、未发布）
+## 飞书默认身份改为亚古兽，猛鬼兽保留自言自语与推送（2026-11-02，Claude，常浩确认清单后说「按推荐开工」；常浩说「合并并发布」「确认写入」；PR #9 合并为 `38ea63d`，已发布 `nm-20261102-201455-38ea63d` 回读与冒烟通过，正式库迁移已写入）
 
 - 时间：开工 `2026-11-02 19:20`。来由：亚古兽是牛马之家配套的企业分身，常浩定两个应用都接入，默认亚古兽，猛鬼兽也要能读；每次调用记下用的身份（issue #8）。
 - 改了哪些文件：`server/lark-identity.mjs`（两个身份 `AGUMON` / `MENGGUI` + 唯一调用入口 `larkRun`，每次调用追加一行到 `<数据目录>/logs/lark-calls.jsonl`，只记应用、身份、命令、成败、耗时）；`calendar` `timeline` `timeline-years` `campaigns` `reports` `projects`（`runLark`，带教、营收、业务图表、品牌、知识库收藏都经它）`knowledge-tree` `feishu-export` `brief-sync` `v3-settings` 切亚古兽，报错里的「猛鬼兽」同步改；`selftalk` `codex-push` 显式留猛鬼兽；`mentor.mjs`、`ai-draft.mjs`、`ProjectsPage.jsx`、`SettingsPage.jsx`、`bitmap.jsx` 带教与设置页文字「猛鬼兽」→「亚古兽」（只改字，推送相关文字不动）；`scripts/migrate-lark-identity.mjs` 改为猛鬼兽 → 亚古兽；测试 11 个文件换 profile，新增 `tests/lark-identity.test.mjs`（调用记录 + 各模块身份分配）；`AGENTS.md` `HANDOFF.md` `REQUIREMENTS.md` `docs/API.md` `docs/LESSONS.md`（L-15 记第 2 次）。
 - 测试：`npm test` 原样结果 `ℹ pass 757` / `ℹ fail 0`（独立 worktree `work-desk-agumon`，不含他人改动）；`npm run check:style` 通过。
 - 验证：正式库用 `sqlite3 -readonly … VACUUM INTO` 复制到临时目录演练迁移：预览「待迁移 1 条（brief-feishu-link/2026-10，actor `ou_5ad2…` → `ou_6fac…`），跳过 0 条」→ `--confirm`「已写入 1 条，回读一致」→ 再预览「待迁移 0 条」；演练备份改名为 `evidence/lark-agumon-副本演练-2026-11-02T11-24-00-567Z/`。全新临时数据目录在 5290 起服务：`/api/v3/settings` 的 `lark_profile` / `lark_app_id` 为 `cli_a965c429ef785bd3`；`/api/calendar/today` 返回「请使用亚古兽配置完成用户登录」，`lark-calls.jsonl` 记下 `亚古兽 / user / calendar +agenda / ok:false`。常浩重配亚古兽 Secret 并完成 user 登录后（`20:10` 授权，bot 回读应用名「亚古兽-Hermes」），正式库再复制一份、推送开关置 0、跑完迁移，在 5290 起服务做真实只读探测：日历、日报、时间线、促销、项目、带教、营收、业务图表、品牌、知识库树、自言自语、10 月简报共 12 个 GET 全部 200；调用记录 14 类命令全部 `ok:true`，其中 13 类为「亚古兽 / user」，自言自语为「猛鬼兽 / user」（`im +chat-messages-list`、`whoami`）。`POST /api/v3/briefs/2026-10/export-preview` 通过身份核对（迁移后的 actor 与亚古兽 whoami 一致），飞书侧只有带 `--dry-run` 的预演，没有确认。两份管培生日志用亚古兽 user 与 bot 都能读评论（bot 已有文档权限）；以 bot 发评论未实测（会写真实文档）。探测备份改名为 `evidence/lark-agumon-探测副本-2026-11-02T12-11-11-390Z/`。没碰 `data/`。
 - 截图：无（只改文字，没截图）。
-- 发布与回读：未发布。前置已完成（常浩重配亚古兽并登录、权限齐全、机器人有带教文档权限、只读探测通过）。发布后紧接着在正式库跑 `npm run migrate:lark-identity`（先预览，确认后 `--confirm`），否则已绑定的 10 月简报同步会报「身份已变化」。
+- 发布与回读（`2026-11-02 20:14:55` 开始）：发布前只读核对——没有 `kb-write-lock`、`mentor-reply`，`kb-operation` 12 条 verified、2 条 aborted，`feishu-export` 10 条均 success，无挂起。PR #9 squash 合并为 `38ea63d`，`main` 快进；`release-app.sh`（忽略他人未跟踪文件，`NIUMA_SMOKE=1`）切到 `nm-20261102-201455-38ea63d`，自动备份 `backups/work-desk-20261102-201456-before-nm-20261102-201455-38ea63d.db`，保留策略清理 2 项（快照 `nm-20261028-112309-ad64b2c`、备份 `work-desk-20261027-105608-before-nm-20261027-105607-14d5642.db`）；冒烟 `24 项，0 项有问题` → `回读通过：nm-20261102-201455-38ea63d`。正式实看：`/api/v3/settings` 身份为 `cli_a965c429ef785bd3`，`/api/calendar/today`、`/api/v3/mentor` 200，`data/logs/lark-calls.jsonl` 记为「亚古兽 / user」且 `ok:true`。迁移（常浩「确认写入」）：预览待迁 1 条 → `--confirm` 备份到 `evidence/lark-agumon-2026-11-02T12-17-44-398Z/work-desk.db`，「已写入 1 条，回读一致」→ 再预览 0 条。正式环境未再点简报同步（会产生预览记录），身份核对沿用副本探测结果。回滚：`bash scripts/release-app.sh --use nm-20261102-174752-ee743c9`，再用上面的迁移备份还原那一条绑定。
 - 与授权不一致之处、遗留问题、范围外发现：隔离服务用后台 node 进程起（主目录预览配置是另一个仓库的受跟踪文件，没改）。`scripts/import-feishu.mjs` 是已执行过的一次性脚本，没带 `--profile`，未改。调用记录文件不做轮转，量大时再定。
 - 本轮新坑：无。
 
