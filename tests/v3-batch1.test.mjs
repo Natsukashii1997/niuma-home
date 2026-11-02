@@ -162,7 +162,7 @@ test('V3 数据库写入故障回滚，不污染其他需求', async t => {
 test('V3 飞书读取固定 codex user、四张地区表和十二张月历完整范围', async () => {
   const calls = [], info = {title:'2026海外大学时间线',revision:8,sheets:[...REGION_SHEETS,...Array.from({length:12},(_,i)=>`${i+1}月`)].map((name,i)=>({sheet_name:name,sheet_id:`s${i}`,resource_type:'sheet',is_hidden:false,row_count:2,column_count:2}))};
   const run = async (command,args,options) => {
-    calls.push(args); assert.equal(command,'lark-cli'); assert.equal(options.shell,false); assert.equal(args[1],'cli_a96f5f9ac63adcd4'); assert.equal(args[5],'user');
+    calls.push(args); assert.equal(command,'lark-cli'); assert.equal(options.shell,false); assert.equal(args[1],'cli_a965c429ef785bd3'); assert.equal(args[5],'user');
     return {stdout:JSON.stringify({ok:true,identity:'user',data:args[3]==='+workbook-info'?info:{actual_range:'A1:B2',revision:8,row_count:2,col_count:2,col_indices:['A','B'],row_indices:[1,2],has_more:false,annotated_csv:'[row=1] 澳洲,Final\n[row=2] 学校,11.1\n'}})};
   };
   assert.equal((await readTimelineSheets({run})).length,16); assert.equal(calls.length,18);

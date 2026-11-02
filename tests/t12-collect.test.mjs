@@ -21,9 +21,9 @@ function setup(t){
   let clock=1792281600000;
   const state={nodes:rules.map(r=>node(r.nodeToken,SPACE,{title:r.title})),source:node('source',SOURCE,{title:'营销 brief'}),writes:[],calls:[],lost:false,mismatch:null,readFail:false,sourceError:null,hold:null};
   const run=async(command,args,options)=>{
-    assert.equal(command,'lark-cli');assert.deepEqual(args.slice(0,2),['--profile','cli_a96f5f9ac63adcd4']);assert.equal(args[args.indexOf('--as')+1],'user');assert.equal(options.shell,false);
+    assert.equal(command,'lark-cli');assert.deepEqual(args.slice(0,2),['--profile','cli_a965c429ef785bd3']);assert.equal(args[args.indexOf('--as')+1],'user');assert.equal(options.shell,false);
     state.calls.push(args);const arg=k=>args[args.indexOf(k)+1],ok=data=>({stdout:JSON.stringify({ok:true,identity:'user',data})});
-    if(args.includes('whoami')){if(state.hold)await state.hold;return{stdout:JSON.stringify({profile:'cli_a96f5f9ac63adcd4',appId:state.badIdentity?'bad':'cli_a96f5f9ac63adcd4',identity:'user'})};}
+    if(args.includes('whoami')){if(state.hold)await state.hold;return{stdout:JSON.stringify({profile:'cli_a965c429ef785bd3',appId:state.badIdentity?'bad':'cli_a965c429ef785bd3',identity:'user'})};}
     if(args.includes('+node-get')){
       const id=arg('--node-token');
       if(state.onRead)await state.onRead(id);

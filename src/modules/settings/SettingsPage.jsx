@@ -96,7 +96,7 @@ export default function SettingsPage() {
           { label: "已保存", value: count("ok"), tone: "ok", foot: "你保存过的值" },
           { label: "默认值", value: count("default"), foot: "未改过，用工作台内置值" },
           { label: "待你确定", value: todo.length, tone: todo.length ? "signal" : "muted", foot: todo.map((r) => r.label).join("、") || "没有待处理项" },
-          { label: "飞书身份", value: "猛鬼兽", foot: "cli_a96f5f9ac63adcd4 · 固定只读" },
+          { label: "飞书身份", value: "亚古兽", foot: "cli_a965c429ef785bd3 · 固定只读" },
         ]} />
         {cards(groups)}
       </div>;
@@ -216,8 +216,8 @@ const V3_FIELDS = {
   price_sku_table_id: { label: "SKU 产品目录表", hint: "以 tbl 开头" },
   price_floor_margin: { label: "毛利底线", hint: "0 到 1 之间的小数，如 0.25" },
   price_cost_per_hour: { label: "课时成本（元）", hint: "每课时成本" },
-  lark_profile: { label: "飞书 profile", hint: "固定为猛鬼兽应用，不能在这里切换" },
-  lark_app_id: { label: "飞书应用（猛鬼兽）", hint: "固定应用身份，不能在这里切换" },
+  lark_profile: { label: "飞书 profile", hint: "默认固定为亚古兽应用，不能在这里切换；自言自语和推送仍用猛鬼兽" },
+  lark_app_id: { label: "飞书应用（亚古兽）", hint: "固定应用身份，不能在这里切换" },
   voice_budget: { label: "留学之声月预算上限（元）", hint: "0 到 10；当前免费试运行，模型和付费采集都没开" },
 };
 const pretty = (k, v) => { if (!V3_FIELDS[k]?.json) return v; try { return JSON.stringify(JSON.parse(v), null, 2); } catch { return v; } };

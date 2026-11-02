@@ -104,10 +104,10 @@ export async function readMentorLogs(source, { run, now = Date.now } = {}) {
   return value;
 }
 
-// 猛鬼兽作答：直接回复管培生，不写「AI草稿」开头；重点用 **…** 包起来，工作台里显示为橙色字，发到飞书前去掉记号。
+// 亚古兽作答：直接回复管培生，不写「AI草稿」开头；重点用 **…** 包起来，工作台里显示为橙色字，发到飞书前去掉记号。
 // 带教回答规则（用户 2026-10-19 嫌回答笼统、排版乱）：像带教人当面回答，固定四段、每段一行起头，重点只包 1 至 2 个短语。
 const ANSWER_RULES = [
-  '你是猛鬼兽，常浩带教管培生的助手，用带教人的口吻对管培生说话（称「你」）。只根据本轮提供的这条提问和它所在那天的日志原文作答。',
+  '你是亚古兽，常浩带教管培生的助手，用带教人的口吻对管培生说话（称「你」）。只根据本轮提供的这条提问和它所在那天的日志原文作答。',
   '回答要具体到这个人这件事：先看懂他真正卡在哪里，给一个明确的判断，不要罗列几种方案让他自己选，不要讲放之四海皆准的道理。',
   '严格按下面四段输出，段与段之间空一行，不加标题符号、不写开场白和署名：',
   '结论：一句话，直接说该怎么做或怎么判断。',
@@ -206,12 +206,12 @@ export function createMentorService(db, { now = Date.now, readLogs = source => r
     },
     confirm(name, body) { return changes.confirm('mentor-record', key(name, body?.week), body); },
 
-    // 猛鬼兽回答一条提问：点一次调用一次本机 Codex，只读这条所在那天的日志；只返回文字，不保存、不发送。
+    // 亚古兽回答一条提问：点一次调用一次本机 Codex，只读这条所在那天的日志；只返回文字，不保存、不发送。
     async answer(name, itemId, body = {}) {
       if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length) throw failure(400, 'AI 回答只使用这条所在的日志，不接受替换来源');
       const { item, log } = itemFor(name, itemId);
       if (!log?.text?.trim()) throw failure(409, '这条所在的日志正文不可用，不能生成回答');
-      const result = await generate({ title: `猛鬼兽回答 · ${name} · ${item.date}`, instructions: ANSWER_RULES,
+      const result = await generate({ title: `亚古兽回答 · ${name} · ${item.date}`, instructions: ANSWER_RULES,
         task: `管培生 ${name} 在 ${item.date} 的日志里写了一条${item.kind}，原话是：「${item.text}」。请回答这一条。`,
         evidence: { item: { kind: item.kind, text: item.text, date: item.date }, log: { date: log.date, title: log.title, text: log.text } } });
       if (typeof result.text !== 'string' || !result.text.trim()) throw failure(502, '模型没有返回可用回答');

@@ -18,9 +18,9 @@ function setup(t) {
   const state={nodes:[{id:'root',name:'目录',parentId:''},{id:'child',name:'文档',parentId:'root'},{id:'peer',name:'同级',parentId:''}],writes:[],reads:0,failAfterWrite:false,failReadback:false,badIdentity:false,hold:null};
   const nodes=()=>state.nodes.map(n=>({node_token:n.id,obj_token:`doc${n.id}`,space_id:KB_SPACE,obj_type:'docx',node_type:'origin',title:n.name,parent_node_token:n.parentId,has_child:state.nodes.some(c=>c.parentId===n.id)}));
   const run=async(command,args,options)=>{
-    assert.equal(command,'lark-cli');assert.deepEqual(args.slice(0,2),['--profile','cli_a96f5f9ac63adcd4']);assert.equal(args[args.indexOf('--as')+1],'user');assert.equal(options.shell,false);
+    assert.equal(command,'lark-cli');assert.deepEqual(args.slice(0,2),['--profile','cli_a965c429ef785bd3']);assert.equal(args[args.indexOf('--as')+1],'user');assert.equal(options.shell,false);
     const arg=key=>args[args.indexOf(key)+1],ok=data=>({stdout:JSON.stringify({ok:true,identity:'user',data})});
-    if(args.includes('whoami')){assert.deepEqual(args,['--profile','cli_a96f5f9ac63adcd4','--as','user','whoami']);if(state.hold)await state.hold;return{stdout:JSON.stringify({profile:'cli_a96f5f9ac63adcd4',appId:state.badIdentity?'other':'cli_a96f5f9ac63adcd4',identity:'user'})};}
+    if(args.includes('whoami')){assert.deepEqual(args,['--profile','cli_a965c429ef785bd3','--as','user','whoami']);if(state.hold)await state.hold;return{stdout:JSON.stringify({profile:'cli_a965c429ef785bd3',appId:state.badIdentity?'other':'cli_a965c429ef785bd3',identity:'user'})};}
     if(args.includes('+node-list')){state.reads++;if(state.failReadback&&state.writes.length)throw Error('模拟回读失败');const parent=args.includes('--parent-node-token')?arg('--parent-node-token'):'';return ok({nodes:nodes().filter(n=>n.parent_node_token===parent),has_more:false});}
     if(args.includes('+node-get'))return ok(nodes().find(n=>n.node_token===arg('--node-token'))||{});
     let result;

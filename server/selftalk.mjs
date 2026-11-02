@@ -4,11 +4,12 @@ import { createLocalChanges, fingerprint, getRecord, listRecords } from './local
 import { createTextDraftGenerator } from './ai-draft.mjs';
 import { recordSource } from './source-status.mjs';
 import { beijingText, failure, requireMonth, saveSnapshot } from './v3-common.mjs';
-import { LARK_APP_ID, LARK_PROFILE, LARK_SELF_USER_ID } from './lark-identity.mjs';
+import { MENGGUI, larkRun } from './lark-identity.mjs';
 
 const execute = promisify(execFile);
-export const SELF_USER_ID = LARK_SELF_USER_ID;
-export const SELF_APP_ID = LARK_APP_ID;
+// 自言自语读的是常浩与猛鬼兽的私聊，必须留在猛鬼兽（常浩 2026-11-02）。
+export const SELF_USER_ID = MENGGUI.selfUserId;
+export const SELF_APP_ID = MENGGUI.appId;
 const localKinds = ['selftalk-tag', 'selftalk-todo', 'selftalk-need'];
 const dayText = value => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value));
 const sourceError = () => failure(502, '自言自语读取不完整，请检查猛鬼兽配置的用户登录、权限和网络');
@@ -40,7 +41,7 @@ function digestEvidence(data, week, now) {
   }).map(({ id, createdAt, type, text }) => ({ id, createdAt, type, text })).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
   const textCount = messages.filter(row => ['text', 'post'].includes(row.type)).length;
   return {
-    source: { profile: LARK_PROFILE, identity: 'user', appId: SELF_APP_ID, userId: SELF_USER_ID, complete: true },
+    source: { profile: MENGGUI.profile, identity: 'user', appId: SELF_APP_ID, userId: SELF_USER_ID, complete: true },
     period, counts: { total: messages.length, text: textCount, nonText: messages.length - textCount }, messages,
   };
 }
@@ -84,12 +85,12 @@ export async function readSelfTalkMessages({ run = execute, now = Date.now() } =
   const call = async args => {
     let stdout;
     try {
-      ({ stdout } = await run('lark-cli', ['--profile', LARK_PROFILE, '--as', 'user', ...args], { encoding: 'utf8', timeout: 60000, maxBuffer: 8 * 1024 * 1024, shell: false, env: { ...process.env, LARKSUITE_CLI_NO_UPDATE_NOTIFIER: '1', LARKSUITE_CLI_NO_SKILLS_NOTIFIER: '1' } }));
+      ({ stdout } = await larkRun(run, MENGGUI, ['--as', 'user', ...args], { encoding: 'utf8', timeout: 60000, maxBuffer: 8 * 1024 * 1024, shell: false, env: { ...process.env, LARKSUITE_CLI_NO_UPDATE_NOTIFIER: '1', LARKSUITE_CLI_NO_SKILLS_NOTIFIER: '1' } }));
       return JSON.parse(stdout);
     } catch { throw sourceError(); }
   };
   const identity = await call(['whoami']);
-  if (identity.profile !== LARK_PROFILE || identity.appId !== SELF_APP_ID || identity.identity !== 'user' || identity.onBehalfOf?.openId !== SELF_USER_ID) throw failure(403, '自言自语只允许猛鬼兽配置下常浩本人的用户身份');
+  if (identity.profile !== MENGGUI.profile || identity.appId !== SELF_APP_ID || identity.identity !== 'user' || identity.onBehalfOf?.openId !== SELF_USER_ID) throw failure(403, '自言自语只允许猛鬼兽配置下常浩本人的用户身份');
   const rows = new Map(), tokens = new Set();
   let token;
   for (let page = 0; page < 200; page++) {

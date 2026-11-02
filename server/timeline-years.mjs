@@ -4,7 +4,7 @@ import { promisify } from 'node:util';
 import { beijingText, failure } from './v3-common.mjs';
 import { getSettings, saveSetting } from './db.mjs';
 import { REGION_SHEETS, parseTimeline, readTimelineSheets, timelineSources } from './timeline.mjs';
-import { LARK_PROFILE } from './lark-identity.mjs';
+import { AGUMON, larkRun } from './lark-identity.mjs';
 
 const execute = promisify(execFile);
 const LINK = /^https:\/\/[\w.-]+\.(?:feishu\.cn|larksuite\.com)\/(wiki|sheets)\/([A-Za-z0-9]+)/;
@@ -15,8 +15,8 @@ export async function resolveTimelineLink(url, { run = execute } = {}) {
   if (!match) throw failure(400, '请粘贴飞书时间线表的链接（/wiki/ 或 /sheets/ 开头）');
   const cli = async args => {
     let out;
-    try { out = JSON.parse((await run('lark-cli', ['--profile', LARK_PROFILE, ...args, '--as', 'user', '--format', 'json'], { encoding: 'utf8', timeout: 60_000, maxBuffer: 4 * 1024 * 1024 })).stdout); }
-    catch (error) { throw failure(error.killed ? 504 : 502, '读取飞书链接失败，请检查猛鬼兽配置的 lark-cli 用户登录、权限和网络'); }
+    try { out = JSON.parse((await larkRun(run, AGUMON, [...args, '--as', 'user', '--format', 'json'], { encoding: 'utf8', timeout: 60_000, maxBuffer: 4 * 1024 * 1024 })).stdout); }
+    catch (error) { throw failure(error.killed ? 504 : 502, '读取飞书链接失败，请检查亚古兽配置的 lark-cli 用户登录、权限和网络'); }
     if (out.ok !== true || out.identity !== 'user' || !out.data) throw failure(502, '飞书未返回完整的用户身份数据');
     return out.data;
   };

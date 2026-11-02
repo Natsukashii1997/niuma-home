@@ -243,7 +243,7 @@ export function MarkText({ text }) {
   return <>{markSegments(text).map((x, i) => (x.hot ? <mark key={i} className="type-hot">{x.t}</mark> : <span key={i}>{x.t}</span>))}</>;
 }
 
-// 猛鬼兽回答的逐字输出（用户 2026-10-19）：开始前橙色方块光标闪两次，然后每 1 帧出一个字；
+// 亚古兽回答的逐字输出（用户 2026-10-19）：开始前橙色方块光标闪两次，然后每 1 帧出一个字；
 // **…** 包住的重点一出现就是橙色字；全部打完光标消失，调 onDone。减少动态效果时直接显示全文。
 export function MarkType({ text, onDone }) {
   const reduced = useReducedMotion();

@@ -218,17 +218,17 @@ for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
 
 async function strategyExportFixture(t) {
   const db = database(t), clock = { value: instant }, state = { creates: 0, calls: 0 };
-  const folder = 'https://example.feishu.cn/drive/folder/T10Folder', appId = 'cli_a96f5f9ac63adcd4';
+  const folder = 'https://example.feishu.cn/drive/folder/T10Folder', appId = 'cli_a965c429ef785bd3';
   const docs = new Map();
   const run = async (command, args, options) => {
     state.calls++;
     assert.equal(command, 'lark-cli');
-    assert.deepEqual(args.slice(0, 2), ['--profile', 'cli_a96f5f9ac63adcd4']);
+    assert.deepEqual(args.slice(0, 2), ['--profile', 'cli_a965c429ef785bd3']);
     assert.deepEqual(args.slice(-2), ['--as', 'user']);
     assert.equal(options.shell, false);
     const arg = flag => args[args.indexOf(flag) + 1];
     const result = data => ({ stdout: JSON.stringify({ ok: true, identity: 'user', data }) });
-    if (args.includes('whoami')) return { stdout: JSON.stringify({ profile: 'cli_a96f5f9ac63adcd4', appId, identity: 'user', available: true, tokenStatus: 'ready', onBehalfOf: { openId: 'ou_t10_synthetic' } }) };
+    if (args.includes('whoami')) return { stdout: JSON.stringify({ profile: 'cli_a965c429ef785bd3', appId, identity: 'user', available: true, tokenStatus: 'ready', onBehalfOf: { openId: 'ou_t10_synthetic' } }) };
     if (args.includes('+inspect')) {
       const url = arg('--url');
       if (url === folder) return result({ type: 'folder', token: 'T10Folder', title: '合成导出目录', url });

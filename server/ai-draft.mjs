@@ -6,7 +6,7 @@ import { failure } from './v3-common.mjs';
 // 只由明确的人工 POST 触发；GET、同步和服务启动均不得调用模型。
 export function createTextDraftGenerator(db, { client = codex, now = Date.now } = {}) {
   const active = new Set();
-  // instructions：可选，替换默认的「AI草稿」写作规则（如带教回答以猛鬼兽口吻直接作答）。
+  // instructions：可选，替换默认的「AI草稿」写作规则（如带教回答以亚古兽口吻直接作答）。
   return async ({ title, task, evidence, instructions }) => {
     const source = JSON.stringify(evidence);
     if (typeof title !== 'string' || !title.trim() || title.length > 200 || typeof task !== 'string' || !task.trim() || !source) throw failure(400, '请提供草稿任务和完整来源');

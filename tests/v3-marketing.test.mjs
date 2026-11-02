@@ -346,7 +346,7 @@ test('飞书读取使用codex/user，固定字段投影和完整分页，拒绝b
   const source = { token: 'base123', table: 'tblCampaign', url: MARKETING_BASE };
   let calls = 0;
   const run = async (command, args, options) => {
-    calls++; assert.equal(command, 'lark-cli'); assert.deepEqual(args.slice(0, 6), ['--profile', 'cli_a96f5f9ac63adcd4', 'base', '+record-list', '--as', 'user']); assert.equal(options.shell, false);
+    calls++; assert.equal(command, 'lark-cli'); assert.deepEqual(args.slice(0, 6), ['--profile', 'cli_a965c429ef785bd3', 'base', '+record-list', '--as', 'user']); assert.equal(options.shell, false);
     return { stdout: JSON.stringify({ ok: true, identity: 'user', data: { fields: CAMPAIGN_FIELDS, data: [[10, '立项', ['普通任务'], ['启动阶段'], null, null, null]], record_id_list: ['r1'], rev: 4, has_more: false } }) };
   };
   const result = await readMarketingTable(source, CAMPAIGN_FIELDS, { run }); assert.equal(result.rows[0].任务事项, '立项'); assert.equal(calls, 1);
