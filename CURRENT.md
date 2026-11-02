@@ -2,6 +2,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 收藏插件图标放大到工具栏标准尺寸（2026-11-02，Claude，常浩看了三版方案后说「牛马之家不改，还用原来的图标，但放大到符合 Chrome 插件图标的大小」；PR 待合并、无需发布）
+
+- 时间：开工 `2026-11-02 21:20`。来由：原插件图标的黑底板在 128 图里只占 104px（四周各留 12px 透明），工具栏里比别的插件小一圈（issue #10）。
+- 改了哪些文件：`browser-extension/niuma-collect/icons/icon.svg`（新：把原 PNG 按 18×18 像素格还原，图案、颜色、圆角比例不变，底板放大到 120px、四周留 4px，和 ChatGPT 回答收藏器同尺寸）；`scripts/make-extension-icons.mjs`（新：本机 Chrome 无头截图出 512 透明底图，sips 缩成 16/32/48/128，不加依赖）；`browser-extension/niuma-collect/icons/icon-16/32/48/128.png`（由脚本重新生成）。`manifest.json` 原本就引用这四个文件，没改。
+- 测试：`npm test` 原样结果 `ℹ pass 757` / `ℹ fail 0`（独立 worktree `work-desk-ext-icon`，不含他人改动）。用 Playwright Chromium 加载插件：manifest 有效，`icons` 与 `action.default_icon` 四个尺寸都返回 200。
+- 验证：新 PNG 透明边 128→4px、48/32→1px、16→0px；前后对比图看了浅色、深色工具栏。
+- 截图：`~/Library/Application Support/NiumaHome/evidence/插件图标放大-20261102/after.png`（不入库）。
+- 发布与回读：无需发布（插件不在 5280 服务里）。已安装的插件在 `~/Library/Application Support/NiumaHome/extension/niuma-collect/`，合并后需把 `icons/` 同步过去，再到 `chrome://extensions` 点重新加载，这一步等常浩同意，未做。
+- 与授权不一致之处、遗留问题、范围外发现：无。
+- 本轮新坑：无。
+
 ## 飞书默认身份改为亚古兽，猛鬼兽保留自言自语与推送（2026-11-02，Claude，常浩确认清单后说「按推荐开工」；常浩说「合并并发布」「确认写入」；PR #9 合并为 `38ea63d`，已发布 `nm-20261102-201455-38ea63d` 回读与冒烟通过，正式库迁移已写入）
 
 - 时间：开工 `2026-11-02 19:20`。来由：亚古兽是牛马之家配套的企业分身，常浩定两个应用都接入，默认亚古兽，猛鬼兽也要能读；每次调用记下用的身份（issue #8）。
