@@ -2,7 +2,7 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## 新增 ASCII 鲨鱼登录页（2026-11-02，Claude，常浩看过多版预览后定稿「C3 白雾」+ 单行登录框 + 终端标题细光标，并定了三点：账号密码放数据目录不进仓库、每个新标签页过一次、标题用终端版；分支 feat/login-page 未提交、未发布）
+## 新增 ASCII 鲨鱼登录页（2026-11-02，Claude，常浩看过多版预览后定稿「C3 白雾」+ 单行登录框 + 终端标题细光标，并定了三点：账号密码放数据目录不进仓库、每个新标签页过一次、标题用终端版；分支 feat/login-page 已提交、PR 待合并、未发布）
 
 - 时间：开工 `2026-11-02 22:05`（开工时没跑 `date`，按本轮开始时刻估；收尾 `2026-11-02 22:38`）。来由：常浩要把预览里的鲨鱼登录页作为牛马之家的登录页，账号密码默认填好，回车或点箭头进入。
 - 改了哪些文件：`src/vendor/ascii-sharks/`（新：第三方 MIT 源码原样复制，提交 `a0074c1`，附 LICENSE 与说明，Vite 直接编译，不加依赖）；`src/modules/login/LoginPage.jsx`（新：鲨鱼背景、终端标题、单行登录框；读 `/api/login` 预填，前端比对，通过后写 `sessionStorage`；光标用 `frames()` 按帧亮灭；焦点不在框里时按回车也能进）；`src/styles/96-login.css`（新：登录页整页样式，类名都带 `login-`）、`src/styles/index.css`（登记）；`src/main.jsx`（先显示登录页，进入后渲染原 `App`）；`server/routes/login.mjs`（新：`GET /api/login` 读数据目录 `login.json`）、`server/index.mjs`（登记路由）；`tests/login.test.mjs`（新）；`scripts/smoke-pages.mjs`（先过登录页再巡检，登录页单独记一项）；`docs/API.md`、`docs/STYLE-GUIDE.md`（登录页整页例外）。正式数据目录 `data/login.json` 已写入（权限 600，被 gitignore）。
