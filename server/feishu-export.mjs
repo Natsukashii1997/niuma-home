@@ -5,9 +5,9 @@ import { getSettings } from './db.mjs';
 import { V3_DEFAULTS } from './v3-settings.mjs';
 import { fingerprint, getRecord, listRecords, putRecord } from './local-records.mjs';
 import { failure, requireMonth } from './v3-common.mjs';
-import { LARK_APP_ID, LARK_PROFILE } from './lark-identity.mjs';
+import { AGUMON, larkRun } from './lark-identity.mjs';
 
-const APP_ID = LARK_APP_ID;
+const APP_ID = AGUMON.appId;
 const PREVIEWS = 'feishu-export-preview', RECEIPTS = 'feishu-export';
 const plain = value => value && typeof value === 'object' && !Array.isArray(value);
 const error = (status, code, message, receipt) => Object.assign(failure(status, message), { code, ...(receipt && { receipt }) });
@@ -21,7 +21,7 @@ export const markdownTable = (heads, rows) => [heads, heads.map(() => '---'), ..
 
 function exportSourceConfig(db) {
   const settings = { ...V3_DEFAULTS, ...getSettings(db) };
-  if (settings.lark_profile !== LARK_PROFILE || settings.lark_app_id !== APP_ID) throw error(503, 'EXPORT_IDENTITY_INVALID', '导出仅允许猛鬼兽的用户身份');
+  if (settings.lark_profile !== AGUMON.profile || settings.lark_app_id !== APP_ID) throw error(503, 'EXPORT_IDENTITY_INVALID', '导出仅允许亚古兽的用户身份');
   return Object.fromEntries(['timeline_source', 'project_base_url', 'price_sku_table_id', 'price_floor_margin', 'price_cost_per_hour', 'lark_profile', 'lark_app_id'].map(k => [k, settings[k]]));
 }
 export const exportSourceIdentity = db => fingerprint(exportSourceConfig(db));
@@ -120,7 +120,7 @@ export function createFeishuClient(run = runFeishuCommand) {
     let result;
     let output;
     try {
-      output = await run('lark-cli', ['--profile', LARK_PROFILE, ...args, '--as', 'user'], { input, shell: false, encoding: 'utf8', timeout: 60000, maxBuffer: 8 * 1024 * 1024 });
+      output = await larkRun(run, AGUMON, [...args, '--as', 'user'], { input, shell: false, encoding: 'utf8', timeout: 60000, maxBuffer: 8 * 1024 * 1024 });
     } catch (cause) {
       const envelopes = [parseCliJson(cause?.stderr), parseCliJson(cause?.stdout)];
       const candidates = envelopes.filter(value => plain(value) && (value.ok === false && plain(value.error) || cliResultFailed(value)));
@@ -140,7 +140,7 @@ export function createFeishuClient(run = runFeishuCommand) {
   }
   async function whoami() {
     const result = await invoke(['whoami']);
-    if (result?.profile !== LARK_PROFILE || result.appId !== APP_ID || result.identity !== 'user' || result.available !== true || result.tokenStatus !== 'ready' || typeof result.onBehalfOf?.openId !== 'string' || !result.onBehalfOf.openId) throw error(503, 'EXPORT_IDENTITY_INVALID', '请先确认猛鬼兽 codex 的 user 身份已就绪；不会切换机器人');
+    if (result?.profile !== AGUMON.profile || result.appId !== APP_ID || result.identity !== 'user' || result.available !== true || result.tokenStatus !== 'ready' || typeof result.onBehalfOf?.openId !== 'string' || !result.onBehalfOf.openId) throw error(503, 'EXPORT_IDENTITY_INVALID', '请先确认亚古兽的 user 身份已就绪；不会切换机器人');
     return result.onBehalfOf.openId;
   }
   return {cli,whoami};
@@ -169,7 +169,7 @@ export function createFeishuExporter(db, { now = Date.now, run = runFeishuComman
   async function actor(p) {
     const user = await whoami();
     const result = await cli([...createArgs(p), '--dry-run'], bodyContent(p.document)), context = result.data.context;
-    if (result.dry_run !== true || context?.app_id !== APP_ID || context.user_open_id !== user) throw error(503, 'EXPORT_IDENTITY_INVALID', '无法核对猛鬼兽应用与当前用户，未创建文档');
+    if (result.dry_run !== true || context?.app_id !== APP_ID || context.user_open_id !== user) throw error(503, 'EXPORT_IDENTITY_INVALID', '无法核对亚古兽应用与当前用户，未创建文档');
     const writes = result.data.api?.filter(api => !['GET', 'HEAD'].includes(api.method));
     const expected = format(p.document)==='xml'?p.document.xml:`<title>${xmlText(p.document.title)}</title>\n${bodyContent(p.document)}`;
     if (writes?.length !== 1 || writes[0].method !== 'POST' || writes[0].url !== '/open-apis/docs_ai/v1/documents' || writes[0].body?.parent_token !== p.target.token || writes[0].body?.format !== format(p.document) || writes[0].body?.content !== expected) throw error(503, 'EXPORT_PROTOCOL_CHANGED', '飞书创建命令的预演内容或目录与预览不一致，未创建文档');
@@ -256,7 +256,7 @@ export function createFeishuExporter(db, { now = Date.now, run = runFeishuComman
       const p = getRecord(db, PREVIEWS, receipt.previewId);
       if (!p || p.operationId !== operationId || p.scope.kind !== kind || p.scope.id !== String(id)) throw error(409, 'EXPORT_RESULT_UNKNOWN', '原预览记录缺失，无法核对；请人工检查收据中的目标文件夹，不会再次创建', receiptView(receipt));
       if (!receipt.document?.id || !receipt.document?.url) throw error(409, 'EXPORT_RESULT_UNKNOWN', '尚未取得可核对的文档地址；请人工检查原目标文件夹，不会按标题猜测或再次创建', receiptView(receipt));
-      if (await whoami() !== p.actor) throw error(409, 'EXPORT_IDENTITY_CHANGED', '请切回原预览的猛鬼兽用户后核对；不会切换机器人或重新创建', receiptView(receipt));
+      if (await whoami() !== p.actor) throw error(409, 'EXPORT_IDENTITY_CHANGED', '请切回原预览的亚古兽用户后核对；不会切换机器人或重新创建', receiptView(receipt));
       try { return receiptView(await verify(p, receipt)); }
       catch { return receiptView(unknown(receipt)); }
     },

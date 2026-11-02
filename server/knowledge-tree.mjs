@@ -7,7 +7,7 @@ import { beijingText, failure } from './v3-common.mjs';
 import { recordSource } from './source-status.mjs';
 import { createConfiguredReader, runLark } from './projects.mjs';
 import { createKnowledgeCollectService } from './kb-collect.mjs';
-import { LARK_APP_ID, LARK_PROFILE } from './lark-identity.mjs';
+import { AGUMON, larkRun } from './lark-identity.mjs';
 
 export const KB_SPACE = '7620758074885835965';
 const textContent = value => value.replace(/<[^>]+>/g, ' ').replace(/!\[[^\]]*\]\([^)]+\)/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/^[#>*\-\s]+/gm, '').replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim();
@@ -192,10 +192,10 @@ async function assertWriterIdentity(run = execute) {
   let identity;
   try {
     // whoami 返回根对象，不支持普通资源命令的 --format json 信封。
-    const {stdout}=await run('lark-cli',['--profile',LARK_PROFILE,'--as','user','whoami'],{encoding:'utf8',timeout:30000,maxBuffer:1024*1024,shell:false});
+    const {stdout}=await larkRun(run,AGUMON,['--as','user','whoami'],{encoding:'utf8',timeout:30000,maxBuffer:1024*1024,shell:false});
     identity=JSON.parse(stdout);
-  } catch { throw failure(403,'无法核验猛鬼兽用户身份，请先检查本机登录状态'); }
-  if(identity.profile!==LARK_PROFILE||identity.appId!==LARK_APP_ID||identity.identity!=='user')throw failure(403,'知识库写入仅允许猛鬼兽用户身份');
+  } catch { throw failure(403,'无法核验亚古兽用户身份，请先检查本机登录状态'); }
+  if(identity.profile!==AGUMON.profile||identity.appId!==AGUMON.appId||identity.identity!=='user')throw failure(403,'知识库写入仅允许亚古兽用户身份');
 }
 const operationKind = 'kb-operation', lockKind = 'kb-write-lock';
 // 结果未核实：带错误码和操作编号，前端据此锁住页面并只读核对，不靠文案判断。

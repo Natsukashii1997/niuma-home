@@ -107,7 +107,7 @@ single-context：根目录 `GLOSSARY.md` 与 `docs/adr/`，用到时再建。见
 - 表结构只在 `server/db.mjs` 的 SCHEMA 里改；已有列不改名、不删。
 - 视觉以 [docs/STYLE-GUIDE.md](docs/STYLE-GUIDE.md)（v2 位图风）为准：新样式先用已有变量和类；图标只用 `PixelIcon`；动效只用 `src/ui/bitmap.jsx` 的按帧组件，不写 CSS transition。不引入 UI 框架、CSS-in-JS 或图标库。新增依赖须先改 `scripts/check-style.mjs` 的 `ALLOWED_DEPS` 白名单（否则 `npm test` 不过），并在交接里说明理由。
 - 所有写入真实数据的操作必须「先预览、后确认」。唯一例外：知识库快捷收藏（T12，只新建指向原文的快捷方式）用户 2026-10-18 确认点击即收藏，但仍须只写一次、不自动重试、写后回读、结果不明时锁住核对。
-- 访问飞书一律用本机 `lark-cli`，固定猛鬼兽应用 `--profile cli_a96f5f9ac63adcd4`（常浩 2026-10-27 定：飞书统一用猛鬼兽）：读写资源用该应用的 user 身份，发评论、推送用 bot 身份；不回退其他机器人，不在代码里写 token。服务端的 profile、App ID、本人 open_id 只在 `server/lark-identity.mjs` 里定义；换应用时 open_id 会变，见 [LESSONS](docs/LESSONS.md) L-15。
+- 访问飞书一律用本机 `lark-cli`，默认亚古兽应用 `cli_a965c429ef785bd3`；只有自言自语（读常浩与猛鬼兽的私聊）和 Codex 重置推送留在猛鬼兽 `cli_a96f5f9ac63adcd4`（常浩 2026-11-02 定）。读写资源用 user 身份，带教评论可选 bot，推送用 bot；不回退其他机器人，不在代码里写 token。两个身份（profile、App ID、本人 open_id）只在 `server/lark-identity.mjs` 定义，服务端一律经 `larkRun(run, 身份, args)` 调用，每次调用记一行到 `<数据目录>/logs/lark-calls.jsonl`（应用、身份、命令、成败、耗时，不记内容）；换应用时 open_id 会变，见 [LESSONS](docs/LESSONS.md) L-15。
 - 只监听 127.0.0.1。
 - 验证用的备份、日志等证据放 `~/Library/Application Support/NiumaHome/evidence/<目录名>/`，不要只留在 `/tmp`（会被系统清理）；私人数据库与完整日志不进仓库。
 

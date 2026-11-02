@@ -316,9 +316,9 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 
 - `GET /api/v3/mentor` 每人新增 `items: [{ id, kind: "提问", text, date, log, src, reply }]`：`id` 是飞书文档里原话所在段落的 block ID，`src` 是 `文档链接#blockId`；`reply` 为本机回复记录 `{ state: "sent" | "sending" | "unknown", as, text, display, commentId?, at, error? }` 或 null。
 - 只列提问，旧快照中普通卡点陈述不再列出；实际含问句的旧条目保留原文及原段落 ID。兼容字段 `blocks` 返回空数组，`asks` 为提问摘要。完整日志证据、历史回复和周记录不删除。
-- `POST /api/v3/mentor/:name/items/:id/answer` 请求 `{}` → `{ text, generatedAt, model }`：猛鬼兽（本机 Codex）只读这条所在那天的日志作答；`**…**` 为重点。不保存、不发送。
+- `POST /api/v3/mentor/:name/items/:id/answer` 请求 `{}` → `{ text, generatedAt, model }`：亚古兽（本机 Codex）只读这条所在那天的日志作答；`**…**` 为重点。不保存、不发送。
 - `POST /api/v3/mentor/:name/items/:id/reply/preview` 请求 `{ text, as: "user" | "bot" }` → `{ previewId, expiresAt, value: { quote, date, log, doc, as, text, display } }`；`text` 去掉 `**` 记号后发送。这一条结果不明时返回 409 `REPLY_UNKNOWN`。
-- `POST /api/v3/mentor/:name/items/:id/reply` 请求 `{ previewId, confirm: true }` → 回复记录（`state: "sent"`）。用 `lark-cli drive +add-comment --block-id <id>` 在原话那一段挂评论（user = 常浩本人，bot = 猛鬼兽应用），只发一次，再按评论编号回读核对；同一预览重复确认返回同一回执。授权被拒（确定没执行）清掉记录；其他失败或回读不一致记为 `unknown` 并返回 502 `REPLY_UNKNOWN`。
+- `POST /api/v3/mentor/:name/items/:id/reply` 请求 `{ previewId, confirm: true }` → 回复记录（`state: "sent"`）。用 `lark-cli drive +add-comment --block-id <id>` 在原话那一段挂评论（user = 常浩本人，bot = 亚古兽应用；2026-11-02 前为猛鬼兽），只发一次，再按评论编号回读核对；同一预览重复确认返回同一回执。授权被拒（确定没执行）清掉记录；其他失败或回读不一致记为 `unknown` 并返回 502 `REPLY_UNKNOWN`。
 - `POST /api/v3/mentor/:name/items/:id/reply/reconcile` 请求 `{}`：只读翻这篇文档的划词评论，找到同一段、同样内容的评论记为 `sent`；没找到清掉记录（`{ state: "none", checked: true }`），可重新发送。
 
 ## 带教 · 培养路径（T14；2026-10-26 改为按工作日排期，照飞书《管培生培养路径 V2.4》）

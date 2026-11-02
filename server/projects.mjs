@@ -5,16 +5,16 @@ import { randomUUID } from 'node:crypto';
 import { createLocalChanges, fingerprint, getRecord, listRecords } from './local-records.mjs';
 import { failure, saveSnapshot } from './v3-common.mjs';
 import { assertLocalLifecycle, createLocalDeletions, deletionFailure, deletionRevision, deletionState, externalOrigin } from './local-deletions.mjs';
-import { LARK_PROFILE } from './lark-identity.mjs';
+import { AGUMON, larkRun } from './lark-identity.mjs';
 
 const execute = promisify(execFile);
 // 真实推进记在「📑 任务事项」表（用户 2026-10-19）；「🅰️ 项目推进」只是空白模板，不再读取。
 export const PROJECT_SOURCE = { url: 'https://vm94j8bzy7.feishu.cn/base/MxB8biSR2aJKenszh4CcprRenmf', table: 'tblc3pkZfjaOnOwY' };
-// as：默认用户身份（常浩）；带教的 AI 回答用应用身份 bot（猛鬼兽）发评论。
+// as：默认用户身份（常浩）；带教的 AI 回答用应用身份 bot（亚古兽）发评论。
 export async function runLark(args, run = execute, { as = 'user' } = {}) {
   let result;
   try {
-    const { stdout } = await run('lark-cli', ['--profile', LARK_PROFILE, ...args, '--as', as, '--format', 'json'], { encoding: 'utf8', timeout: 90_000, maxBuffer: 16 * 1024 * 1024, shell: false });
+    const { stdout } = await larkRun(run, AGUMON, [...args, '--as', as, '--format', 'json'], { encoding: 'utf8', timeout: 90_000, maxBuffer: 16 * 1024 * 1024, shell: false });
     result = JSON.parse(stdout);
   } catch (error) {
     let detail;
@@ -22,9 +22,9 @@ export async function runLark(args, run = execute, { as = 'user' } = {}) {
     if (detail?.subtype === 'rate_limit') throw Object.assign(failure(429, '飞书读取触发限流，请稍后重试'), { retryAfterMs: 3000 });
     const safeCode = Number.isInteger(detail?.code) ? { larkCode: detail.code } : {};
     // 授权被拒（缺权限范围 / 无权限）发生在执行之前：rejected 表示飞书确定没有执行，写入方据此不锁。
-    if (detail?.subtype === 'missing_scope') throw Object.assign(failure(403, `猛鬼兽用户缺少飞书权限 ${(detail.missing_scopes || []).join('、') || ''}，需要先授权`), safeCode, { rejected: true });
-    if (detail?.subtype === 'permission_denied') throw Object.assign(failure(403, '当前猛鬼兽用户无权读取此飞书资源'), safeCode, { rejected: true });
-    throw Object.assign(failure(502, '飞书读取失败，请检查猛鬼兽用户登录、读取权限和网络'), safeCode);
+    if (detail?.subtype === 'missing_scope') throw Object.assign(failure(403, `亚古兽用户缺少飞书权限 ${(detail.missing_scopes || []).join('、') || ''}，需要先授权`), safeCode, { rejected: true });
+    if (detail?.subtype === 'permission_denied') throw Object.assign(failure(403, '当前亚古兽用户无权读取此飞书资源'), safeCode, { rejected: true });
+    throw Object.assign(failure(502, '飞书读取失败，请检查亚古兽用户登录、读取权限和网络'), safeCode);
   }
   if (result.ok !== true || result.identity !== as || !result.data || result.truncated || result.data.truncated) throw failure(502, as === 'user' ? '飞书没有返回完整的用户身份数据' : '飞书没有返回完整的应用身份数据');
   return result.data;

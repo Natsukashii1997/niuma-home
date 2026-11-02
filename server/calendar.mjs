@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { LARK_PROFILE } from './lark-identity.mjs';
+import { AGUMON, larkRun } from './lark-identity.mjs';
 
 const execute = promisify(execFile);
 const failure = (status, message) => Object.assign(new Error(message), { status });
@@ -57,7 +57,7 @@ export function agendaRows(result, day) {
 }
 
 function readFailure(error) {
-  if (error.code === "ENOENT") return failure(503, "未找到 lark-cli，请安装并完成猛鬼兽配置的用户登录后重新打开首页");
+  if (error.code === "ENOENT") return failure(503, "未找到 lark-cli，请安装并完成亚古兽配置的用户登录后重新打开首页");
   if (/MAXBUFFER/i.test(String(error.code))) return failure(502, "飞书日历返回不完整，请稍后重新打开首页");
   if (error.killed || error.code === "ETIMEDOUT") return failure(504, "飞书日历读取超时，请稍后重新打开首页");
   let detail;
@@ -65,10 +65,10 @@ function readFailure(error) {
   detail ||= error;
   const text = `${detail.type || ""} ${detail.subtype || ""} ${detail.code || ""} ${detail.message || ""}`;
   if (/missing_scope|permission|forbidden|access.?denied|权限|403|99991679/i.test(text)) {
-    return failure(403, "缺少日历读取权限，请为猛鬼兽配置授权 calendar:calendar.event:read 后重新打开首页");
+    return failure(403, "缺少日历读取权限，请为亚古兽配置授权 calendar:calendar.event:read 后重新打开首页");
   }
   if (/authentication|unauth|not.?logged|token.*(expired|invalid)|login|未登录|401/i.test(text)) {
-    return failure(401, "lark-cli 尚未登录或登录已过期，请使用猛鬼兽配置完成用户登录后重新打开首页");
+    return failure(401, "lark-cli 尚未登录或登录已过期，请使用亚古兽配置完成用户登录后重新打开首页");
   }
   return failure(502, "飞书日历读取失败，请检查网络与 lark-cli 状态后重新打开首页");
 }
@@ -76,7 +76,7 @@ function readFailure(error) {
 export async function readCalendarAgenda(day, { run = execute } = {}) {
   let stdout;
   try {
-    ({ stdout } = await run("lark-cli", ["--profile", LARK_PROFILE, "calendar", "+agenda", "--as", "user", "--start", day.start, "--end", day.end, "--format", "json"],
+    ({ stdout } = await larkRun(run, AGUMON, ["calendar", "+agenda", "--as", "user", "--start", day.start, "--end", day.end, "--format", "json"],
       { encoding: "utf8", timeout: 60_000, maxBuffer: 8 * 1024 * 1024, shell: false }));
   } catch (error) { throw readFailure(error); }
   let result;

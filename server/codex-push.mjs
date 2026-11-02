@@ -5,7 +5,7 @@ import { getSettings } from './db.mjs';
 import { codexResetView, endpoint, isTime, monthDay, stages, userAgent } from './codex-reset.mjs';
 import { SELF_APP_ID, SELF_USER_ID } from './selftalk.mjs';
 import { beijingText } from './v3-common.mjs';
-import { LARK_PROFILE } from './lark-identity.mjs';
+import { MENGGUI, larkRun } from './lark-identity.mjs';
 
 // 猛鬼兽推送 Codex 重置（用户 2026-10-18 确定）：每 4 小时检查一次；同一次重置（同一事件）只推一次；
 // 开启推送时已有的事件不推；一次检查发现多条新事件只推最新一条。
@@ -88,10 +88,10 @@ const reason = out => String(out?.error?.message || out?.error?.msg || out?.msg 
 // 机器人身份发给本人；只用本机猛鬼兽配置，不在代码里写 token。返回 sent / failed（明确没发出）/ unknown（结果不明）。
 export async function sendResetCard(card, eventId, { run = execute } = {}) {
   const key = `codex-reset-${createHash('sha256').update(eventId).digest('hex').slice(0, 32)}`;
-  const args = ['--profile', LARK_PROFILE, 'im', '+messages-send', '--as', 'bot', '--user-id', SELF_USER_ID, '--msg-type', 'interactive', '--content', JSON.stringify(card), '--idempotency-key', key, '--format', 'json'];
+  const args = ['im', '+messages-send', '--as', 'bot', '--user-id', SELF_USER_ID, '--msg-type', 'interactive', '--content', JSON.stringify(card), '--idempotency-key', key, '--format', 'json'];
   let stdout;
   try {
-    ({ stdout } = await run('lark-cli', args, { encoding: 'utf8', timeout: 60_000, maxBuffer: 1024 * 1024, shell: false, env: { ...process.env, LARKSUITE_CLI_NO_UPDATE_NOTIFIER: '1', LARKSUITE_CLI_NO_SKILLS_NOTIFIER: '1' } }));
+    ({ stdout } = await larkRun(run, MENGGUI, args, { encoding: 'utf8', timeout: 60_000, maxBuffer: 1024 * 1024, shell: false, env: { ...process.env, LARKSUITE_CLI_NO_UPDATE_NOTIFIER: '1', LARKSUITE_CLI_NO_SKILLS_NOTIFIER: '1' } }));
   } catch (error) {
     if (error.code === 'ENOENT') return { status: 'failed', error: '未找到 lark-cli，没有发出' };
     if (error.killed) return { status: 'unknown', error: 'lark-cli 超时，发送结果不明，请到飞书核对' };

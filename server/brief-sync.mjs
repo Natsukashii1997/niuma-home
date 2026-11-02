@@ -3,7 +3,7 @@ import {createFeishuClient,createFeishuExporter,exportSourceIdentity,validateExp
 import {fingerprint,getRecord,listRecords,putRecord} from './local-records.mjs';
 import {failure} from './v3-common.mjs';
 import {exactBriefXml,planBriefSync,applyBriefEdit,refreshBriefEdit,captureBriefAnchors} from './brief-sync-plan.mjs';
-import { LARK_APP_ID } from './lark-identity.mjs';
+import { AGUMON } from './lark-identity.mjs';
 
 const LINKS='brief-feishu-link',PREVIEWS='feishu-export-preview',RECEIPTS='feishu-export';
 const fail=(code,message,status=409,extra={})=>Object.assign(failure(status,message),{code,...extra});
@@ -47,10 +47,10 @@ export function createBriefSync(db,{now=Date.now,run,fixedTarget,project,adopt,.
     const result=await cli([...args(p,edit,revision),'--dry-run'],edit.content),ctx=result.data.context;
     const writes=result.data.api?.filter(a=>!['GET','HEAD'].includes(a.method)),body=writes?.[0]?.body;
     if(edit.key==='title'){
-      if(!result.dry_run||ctx?.app_id!==LARK_APP_ID||ctx.user_open_id!==p.actor||writes?.length!==1||writes[0].method!=='PATCH'||writes[0].url!==`/open-apis/drive/v1/files/${p.link.document.id}`||writes[0].params?.type!=='docx'||body?.new_title!==p.document.title)throw fail('EXPORT_PROTOCOL_CHANGED','飞书改名预演与原文档不一致，未执行',503);
+      if(!result.dry_run||ctx?.app_id!==AGUMON.appId||ctx.user_open_id!==p.actor||writes?.length!==1||writes[0].method!=='PATCH'||writes[0].url!==`/open-apis/drive/v1/files/${p.link.document.id}`||writes[0].params?.type!=='docx'||body?.new_title!==p.document.title)throw fail('EXPORT_PROTOCOL_CHANGED','飞书改名预演与原文档不一致，未执行',503);
       return fingerprint(writes[0]);
     }
-    if(!result.dry_run||ctx?.app_id!==LARK_APP_ID||ctx.user_open_id!==p.actor||writes?.length!==1||writes[0].method!=='PUT'||writes[0].url!==`/open-apis/docs_ai/v1/documents/${p.link.document.id}`||body?.command!==(edit.command||'block_replace')||(edit.command!=='block_delete'&&body.content!==edit.content)||(edit.command!=='block_delete'&&body.format!=='xml')||body.revision_id!==revision||(edit.start===edit.end?body.block_id!==edit.start:body.start_block_id!==edit.start||body.end_block_id!==edit.end))throw fail('EXPORT_PROTOCOL_CHANGED','飞书更新预演与目标文档或修改范围不一致，未执行',503);
+    if(!result.dry_run||ctx?.app_id!==AGUMON.appId||ctx.user_open_id!==p.actor||writes?.length!==1||writes[0].method!=='PUT'||writes[0].url!==`/open-apis/docs_ai/v1/documents/${p.link.document.id}`||body?.command!==(edit.command||'block_replace')||(edit.command!=='block_delete'&&body.content!==edit.content)||(edit.command!=='block_delete'&&body.format!=='xml')||body.revision_id!==revision||(edit.start===edit.end?body.block_id!==edit.start:body.start_block_id!==edit.start||body.end_block_id!==edit.end))throw fail('EXPORT_PROTOCOL_CHANGED','飞书更新预演与目标文档或修改范围不一致，未执行',503);
     return fingerprint(writes[0]);
   }
   async function source(p,load){

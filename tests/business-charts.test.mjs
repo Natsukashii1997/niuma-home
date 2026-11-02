@@ -12,7 +12,7 @@ function fake({ mutate = () => {}, missing, page = false } = {}) {
   return { calls, run: async (command, args) => {
     calls.push(args);
     assert.equal(command, 'lark-cli');
-    assert.ok(args.includes('cli_a96f5f9ac63adcd4') && args.includes('user'));
+    assert.ok(args.includes('cli_a965c429ef785bd3') && args.includes('user'));
     const op = args[3];
     if (op === '+dashboard-block-list') {
       const all = blocks.filter(b => b.name !== missing);
