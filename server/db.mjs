@@ -120,6 +120,25 @@ const SCHEMA = `
     updated_at TEXT NOT NULL
   );
 
+  -- 智能体接入（workdesk MCP）：每个 agent 一个服务端凭据，只存哈希；tools 是允许调用的工具名 JSON 数组。
+  CREATE TABLE IF NOT EXISTS agent_access (
+    agent TEXT PRIMARY KEY,
+    token_sha256 TEXT NOT NULL UNIQUE,
+    tools TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL
+  );
+
+  -- 智能体调用记录：哪个 agent 替谁（caller）在什么时候调了哪个工具，结果状态码。凭据不对的请求不记。
+  CREATE TABLE IF NOT EXISTS agent_calls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT NOT NULL,
+    tool TEXT NOT NULL,
+    caller TEXT NOT NULL DEFAULT '{}',
+    status INTEGER NOT NULL,
+    error TEXT,
+    at TEXT NOT NULL
+  );
+
   -- V3：本地业务记录；外部原件只读，用户确认后保存本地版本。
   CREATE TABLE IF NOT EXISTS v3_documents (
     kind TEXT NOT NULL,

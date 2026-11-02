@@ -6,6 +6,7 @@ import { createCodexResetReader } from "../codex-reset.mjs";
 import { codexPushStatus } from "../codex-push.mjs";
 import { createUserServices, userRoutes, handleV3 } from "./user.mjs";
 import { deliveryRoutes } from "./delivery.mjs";
+import { agentRoutes } from "./agent.mjs";
 import { recordSource, sourceStatus, reportIdentity } from "../source-status.mjs";
 import { createSettingsChanges, V3_SETTING_KEYS, validateV3Setting } from "../v3-settings.mjs";
 import { routes as selftalkRoutes } from "./selftalk.mjs";
@@ -100,6 +101,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     route('GET', '/api/v3/business/charts', handleV3((req, { url }) => businessCharts.get({ refresh: url.searchParams.get('refresh') === '1' }))),
     ...deliveryRoutes(userServices.needs, db),
     ...projectRoutes(projectServices),
+    ...agentRoutes(db, { ...projectServices, userStrategy: userServices.userStrategy }),
     ...brandRoutes(db, v3Options.brand),
     ...marketingRoutes(db, v3Options),
     ...selftalkRoutes(db, v3Options.selftalk),

@@ -2,6 +2,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 智能体接入第一期：workdesk MCP（只读 4 个工具）（2026-11-02，Claude，常浩说「按推荐开工」；分支 `feat/workdesk-mcp`，待合并与发布）
+
+- 时间：开工 `2026-11-02 17:35`。来由：亚古兽（企业数字分身）要读牛马之家的带教、项目、策略数据，常浩要求做成多个 agent 共用的通用接口，技术上限定渠道和身份，不能只靠提示词。
+- 改了哪些文件：`server/db.mjs`（新表 `agent_access`、`agent_calls`）、`server/agent-access.mjs`（新：凭据签发 / 校验 / 撤销、调用记录）、`server/agent-tools.mjs`（新：4 个只读工具，复用现有服务出精简视图）、`server/routes/agent.mjs`（新：`/api/v3/agent/tools*`，凭据 → 按工具授权 → 提问人必填 → 记录）、`server/routes/workspace.mjs`（登记路由）、`server/mcp-workdesk.mjs`（新：stdio MCP，只做协议转换）、`scripts/agent-token.mjs`（新：签发 / 撤销 / 列出，可直接写进 .env 不上屏）、`tests/agent-mcp.test.mjs`（新 6 项）、`docs/API.md`（「智能体接入」一节）。
+- 测试：`npm test` 原样结果 `ℹ tests 755` / `ℹ pass 755` / `ℹ fail 0`（独立 worktree `work-desk-mcp`，不含他人改动）。
+- 验证：正式库用 `sqlite3 .backup` 复制到临时目录，隔离 5290 起服务；`agent-token.mjs issue agumon … --write-env` 写入临时 .env（权限 600）；真实 MCP 子进程握手 → 列出 4 个工具 → 逐个调用全部成功（`mentor_trainees` 4894 字、`mentor_questions` 845 字、`project_list` 8959 字、`strategy_month` 9445 字），`agent_calls` 4 条都带提问人。没碰 `data/`。
+- 截图：无（无界面改动）。
+- 发布与回读：未发布，等常浩批准合并。
+- 遗留：第 2 批在 Hermes 一侧（亚古兽接入 MCP、按「飞书私聊 + 常浩本人」拦截的插件、HERMES.md §0 改状态），记在 digital-twin。注意：`/api/v3/*` 原有读接口对本机进程不设凭据，本接口的凭据只约束走 MCP 的智能体；亚古兽没有终端和本机文件工具，绕不过去。数据观察（非本轮问题）：两位管培生两条线的第一阶段（P1、T1）都显示「进行中」、超期 118 天，没有评审记录；胡贵兰后面的 P6、T5、T6 已有完成记录，所以多半是第一阶段漏录，不是进度真的停住。
+- 本轮新坑：无。
+
 ## 首页改为 no-store，防 Safari 网页应用打开黑屏（2026-10-28，Claude，用户在数码世界同类修复后说「一并改」；已提交 `533cb89`，已发布 `nm-20261028-224906-533cb89` 回读与冒烟通过）
 
 - 时间：开工 `2026-10-28 22:50`。★ 来由：数码世界每次打开黑屏，查明是 Safari 网页应用用磁盘里的旧首页；牛马之家也是网页应用，首页原来不写任何缓存头，同样有风险。
