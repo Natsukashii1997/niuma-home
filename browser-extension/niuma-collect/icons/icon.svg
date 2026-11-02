@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- 插件图标：原黑底位图机器牛按 18×18 像素格还原，图案、颜色、圆角比例都不变；底板从 104px 放大到 120px（四周只留 4px），
+       工具栏里和别的插件一样大（用户 2026-11-02 要求「图标不换，放大到符合 Chrome 插件图标的大小」）。改完运行 node scripts/make-extension-icons.mjs -->
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="#0D0E10"/>
+  <svg x="4" y="4" width="120" height="120" viewBox="0 0 18 18" shape-rendering="crispEdges">
+    <g fill="#FBFBFC">
+      <rect x="3" y="3" width="1" height="1"/><rect x="14" y="3" width="1" height="1"/>
+      <rect x="3" y="4" width="2" height="1"/><rect x="13" y="4" width="2" height="1"/>
+      <rect x="4" y="5" width="2" height="1"/><rect x="12" y="5" width="2" height="1"/>
+      <rect x="3" y="6" width="12" height="1"/>
+      <rect x="3" y="7" width="1" height="5"/><rect x="14" y="7" width="1" height="5"/>
+      <rect x="15" y="8" width="1" height="3"/>
+      <rect x="3" y="12" width="12" height="1"/>
+      <rect x="4" y="14" width="1" height="2"/><rect x="7" y="14" width="1" height="2"/>
+      <rect x="10" y="14" width="1" height="2"/><rect x="13" y="14" width="1" height="2"/>
+    </g>
+    <rect x="5" y="8" width="2" height="3" fill="#FF4F1F"/>
+  </svg>
+</svg>
