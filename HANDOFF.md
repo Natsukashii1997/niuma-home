@@ -1,6 +1,6 @@
 # 牛马之家工作台交接入口
 
-更新：2026-10-23。工作区：`/Users/nat/Documents/ChatGPT/个人/work/work-desk`，分支 `main`。
+更新：2026-10-23。工作区：`/Users/nat/Documents/ChatGPT/个人/work/niuma-home`，分支 `main`。
 
 先读本文件 → `AGENTS.md` → `CURRENT.md`。当前用户明确授权的范围优先于历史分工与门禁；历史记录不能当成当前状态。
 

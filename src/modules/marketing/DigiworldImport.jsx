@@ -3,7 +3,7 @@ import { PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { useApi } from "../../api.js";
 import { Button, Modal, Tag } from "../../ui/components.jsx";
 
-// 从数码世界收藏导入：只读列出数码世界（personal-ai-workbench）插件收来的笔记，由你勾选，不做 AI 判断。
+// 从数码世界收藏导入：只读列出数码世界（digiworld）插件收来的笔记，由你勾选，不做 AI 判断。
 // 图文笔记取全部图片，视频只取封面；选择后加入过往营销画布，自动压缩并保存在本机。
 // 默认只勾选数码世界「设计参考」分组尚未导入的图片，不改源收藏。
 export const digiworldSource = (id) => `数码世界笔记 ${id}`;
