@@ -452,8 +452,3 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 
 - `POST /api/v3/nas/scan`（以及首次 `GET /api/v3/nas` 触发的扫描）：NAS 目录不在、且目录位于 `/Volumes/跨部门综合资料` 下时，先用系统 NetFS 不弹框挂载 `smb://172.16.1.10/跨部门综合资料`，挂上后接着扫描。账号密码只用钥匙串里 Finder 存过的那份，代码与数据库都不存。其他目录不自动挂载。
 - 挂载失败仍是 `503 { error }`，`error` 以「NAS 未挂载，自动挂载失败：」开头，后接原因与下一步：钥匙串没密码或密码已改（去 Finder ⌘K 登录一次并记住密码）、连不上 172.16.1.10（连公司网络）、找不到共享、超时或其他错误码。上次快照照常显示。
-
-## 2026-11-02 登录页预填
-
-- `GET /api/login`：只读，返回 `{ configured, account, password }`，响应头 `cache-control: no-store`。值来自数据目录（`WORKDESK_DATA_DIR`，默认 `data/`）下的 `login.json`（`{ "account": "…", "password": "…" }`，不进仓库）；没有文件或格式不对时返回 `{ configured: false, account: "", password: "" }`，登录页直接放行。
-- 登录页用它预填账号密码，回车或点箭头时在前端比对，通过后在 `sessionStorage` 记 `niuma-entered=1`（每个新标签页一次）。服务只监听本机，这是进门仪式，不是安全防护；智能体、收藏插件等接口不受影响。
