@@ -7,7 +7,8 @@ const canonical = value => Array.isArray(value) ? value.map(canonical) : value &
   ? Object.fromEntries(Object.keys(value).filter(k => value[k] !== undefined).sort().map(k => [k, canonical(value[k])])) : value;
 export const writeVersion = value => createHash('sha256').update(JSON.stringify(canonical(value ?? null))).digest('hex');
 export const writeError = (status, code, message) => Object.assign(new Error(message), { status, code });
-export const assistantVersion = a => writeVersion(a && { name: a.name, instructions: a.instructions, model: a.model, effort: a.effort });
+// chatgptUrl 只在绑了链接时参与，没绑的助手版本号与改前一致。
+export const assistantVersion = a => writeVersion(a && { name: a.name, instructions: a.instructions, model: a.model, effort: a.effort, ...(a.chatgptUrl && { chatgptUrl: a.chatgptUrl }) });
 export const materialVersion = m => writeVersion(m && { month: m.month, line: m.line, name: m.name, type: m.type, skus: m.skus, note: m.note, images: m.images });
 export const withAssistantVersion = a => a && { ...a, writeVersion: assistantVersion(a) };
 export const withMaterialVersion = m => m && { ...m, writeVersion: materialVersion(m) };

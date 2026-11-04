@@ -72,3 +72,61 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   }
   return false;
 });
+
+// ChatGPT 桥（issue #15）：长轮询牛马之家取任务，交给对应会话标签页里的 chatgpt.js 执行，进度按顺序回传。
+// 每轮先读一次设置（扩展 API 调用会让 service worker 续命）；闹钟每 30 秒兜底拉起，Chrome 重启后也能接上。
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let bridging = false;
+async function bridgeLoop() {
+  if (bridging) return;
+  bridging = true;
+  try {
+    while (true) {
+      const { code, base } = await settings();
+      if (!/^[a-f0-9]{64}$/.test(code)) return;
+      let job;
+      try {
+        const r = await fetch(`${base}/api/v3/chatgpt-bridge/next`, { credentials: "omit", redirect: "error", signal: AbortSignal.timeout(40000), headers: { "x-niuma-collect-code": code } });
+        if (!r.ok) return; // 配对不对、牛马之家版本太旧等：等下一次闹钟再试
+        job = (await r.json()).job;
+      } catch { return; }
+      if (job) await runJob(job, code, base);
+    }
+  } finally { bridging = false; }
+}
+
+async function runJob(job, code, base) {
+  let chain = Promise.resolve();
+  const report = (body) => (chain = chain.then(() => fetch(`${base}/api/v3/chatgpt-bridge/jobs/${encodeURIComponent(job.id)}`, { method: "POST", credentials: "omit", redirect: "error", signal: AbortSignal.timeout(10000), headers: { "content-type": "application/json", "x-niuma-collect-code": code }, body: JSON.stringify(body) })).catch(() => {}));
+  const alive = setInterval(() => report({ type: "alive" }), 20000);
+  try {
+    const tabId = await chatTab(job.url);
+    await new Promise((resolve) => {
+      const port = chrome.tabs.connect(tabId, { name: "niuma-bridge" });
+      port.onMessage.addListener((m) => { report(m); if (m?.type !== "delta") { port.disconnect(); resolve(); } });
+      port.onDisconnect.addListener(() => { report({ type: "error", error: "ChatGPT 页面中途关闭或刷新了，结果尚未确认：请到 ChatGPT 页面核对" }); resolve(); });
+      port.postMessage(job);
+    });
+  } catch (e) { report({ type: "error", error: e.message }); }
+  finally { clearInterval(alive); await chain; }
+}
+
+// 找已打开的这个会话标签页；没有就在后台新开一个，等 chatgpt.js 就绪（扩展刚重新加载时旧页面里没有它，刷新一次）。
+async function chatTab(url) {
+  const id = url.split("/c/").pop();
+  const tabs = await chrome.tabs.query({ url: "https://chatgpt.com/*" });
+  let tab = tabs.find((t) => { try { return new URL(t.url).pathname.endsWith(`/c/${id}`); } catch { return false; } });
+  if (!tab) tab = await chrome.tabs.create({ url, active: false });
+  for (let i = 0, reloaded = false; i < 60; i++) {
+    try { if ((await chrome.tabs.sendMessage(tab.id, { type: "BRIDGE_PING" }))?.ready) return tab.id; }
+    catch { if (!reloaded && i >= 6 && (await chrome.tabs.get(tab.id)).status === "complete") { reloaded = true; await chrome.tabs.reload(tab.id); } }
+    await sleep(500);
+  }
+  throw new Error("ChatGPT 页面没有就绪：请确认 Chrome 里已登录 ChatGPT");
+}
+
+chrome.alarms.create("bridge", { periodInMinutes: 0.5 });
+chrome.alarms.onAlarm.addListener((a) => { if (a.name === "bridge") bridgeLoop(); });
+chrome.runtime.onStartup.addListener(bridgeLoop);
+chrome.storage.onChanged.addListener((changes) => { if (changes.code || changes.port) bridgeLoop(); });
+bridgeLoop();

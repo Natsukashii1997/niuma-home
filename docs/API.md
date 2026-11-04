@@ -99,7 +99,8 @@ type Material = { id: number; month: string; line: string; name: string; type: s
 ```ts
 type Assistant = { id: number; name: string; kind: "copywriter" | "imported" | "custom"; instructions: string; codexThreadId: string | null; createdAt: string; writeVersion: string;
   model: string | null; effort: string | null;   // T08 新增；null = 跟随 Codex 默认配置（不把解析出的默认值写进数据库）
-  preset: "copywriter" | "interview" | "performance" | "notice" | null };   // 2026-10-18：预设助手（文案 / 面试 / 绩效 / 通知），启动时只补缺，说明为空才填初稿
+  preset: "copywriter" | "interview" | "performance" | "notice" | null;   // 2026-10-18：预设助手（文案 / 面试 / 绩效 / 通知），启动时只补缺，说明为空才填初稿
+  chatgptUrl: string | null };   // 2026-11-04（#15）：绑定的 ChatGPT 会话链接；有值时对话经 ChatGPT 桥收发，见下文「ChatGPT 桥」
 type CodexModel = { id: string; model: string; displayName: string; description: string; isDefault: boolean;
   defaultEffort: string; efforts: Array<{ value: string; description: string }> };   // T08，来自 app-server model/list，不含隐藏模型
 type Message = { role: "user" | "assistant"; text: string; at?: string };
@@ -107,7 +108,8 @@ type Message = { role: "user" | "assistant"; text: string; at?: string };
 
 - `GET /api/assistants` → `Assistant[]`（已实现）
 - `POST /api/assistants` 请求 `{ name, instructions }` → `Assistant`（kind = custom）
-- `PATCH /api/assistants/:id` 请求 `{ name?, instructions?, model?, effort? }` → `Assistant`
+- `PATCH /api/assistants/:id` 请求 `{ name?, instructions?, model?, effort?, chatgptUrl? }` → `Assistant`（`POST` 也可带 `chatgptUrl`）
+  - #15：`chatgptUrl` 须为 `https://chatgpt.com/c/<会话ID>`（或项目里的 `/g/<项目>/c/<会话ID>`），存时去掉查询参数和锚点；传 `null` 或空串解绑。`writeVersion` 只在绑了链接时把它算进去，没绑的助手版本号与改前一致。
   - T08：`model` / `effort` 可传 `null` 恢复默认；`model` 须在模型列表中，`effort` 须为该模型支持的强度；`model` 为 `null` 时 `effort` 也须为 `null`；助手回复中返回 409。
 - `GET /api/assistants/:id/messages[?threadId=历史ID]` → `Message[]`（从 Codex 会话读取历史；历史 ID 必须属于本助手）
 - `GET /api/assistants/:id/conversations` → `{ currentThreadId, items:[{threadId,name,savedAt,current}] }`。当前会话与本地保留的历史会话。
@@ -452,3 +454,15 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 
 - `POST /api/v3/nas/scan`（以及首次 `GET /api/v3/nas` 触发的扫描）：NAS 目录不在、且目录位于 `/Volumes/跨部门综合资料` 下时，先用系统 NetFS 不弹框挂载 `smb://172.16.1.10/跨部门综合资料`，挂上后接着扫描。账号密码只用钥匙串里 Finder 存过的那份，代码与数据库都不存。其他目录不自动挂载。
 - 挂载失败仍是 `503 { error }`，`error` 以「NAS 未挂载，自动挂载失败：」开头，后接原因与下一步：钥匙串没密码或密码已改（去 Finder ⌘K 登录一次并记住密码）、连不上 172.16.1.10（连公司网络）、找不到共享、超时或其他错误码。上次快照照常显示。
+
+## ChatGPT 桥（2026-11-04，#15）
+
+绑了 `chatgptUrl` 的助手不走 Codex：服务端把任务放进内存队列，「牛马之家 · 收藏」插件长轮询取走，在 Chrome 里对应会话的标签页填字、发送、读回复，再逐段回传。只操作页面，不调 ChatGPT 接口、不读 cookie 和 token；服务重启后未完成的任务失效。
+
+- `POST /api/assistants/:id/messages`：SSE 形状不变。`delta` 的 `itemId` 固定为 `chatgpt`；页面重排改动了已显示的字时带 `replace: true`，前端整段替换。
+- `GET /api/assistants/:id/messages`：交给插件读页面上已加载的消息；插件不在线或超时返回 `503 { error }`。
+- `POST /api/assistants/:id/conversations/new|select`：ChatGPT 助手返回 400（会话在 ChatGPT 里管理）。
+- `GET /api/v3/chatgpt-bridge/status` → `{ connected, seenAt }`，只给本机页面。插件 45 秒内来过算在线。
+- `GET /api/v3/chatgpt-bridge/next`（插件）：长轮询 25 秒，返回 `{ job: { id, type: "send" | "history", url, text? } | null }`。
+- `POST /api/v3/chatgpt-bridge/jobs/:id`（插件）：`{ type: "alive" }` 报平安（20 秒一次）、`{ type: "delta" | "done", text }`（到目前为止的完整回复）、`{ type: "history", messages }`、`{ type: "error", error }`。任务不存在或已结束返回 404。
+- 插件两个接口沿用收藏插件的来源与配对码校验（`x-niuma-collect-code`）。时限：插件不在线时立即失败；15 秒没人取走、取走后 60 秒没有任何回传，都以错误结束，提示到 ChatGPT 页面核对。

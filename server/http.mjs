@@ -27,7 +27,7 @@ export async function readJson(req) {
 }
 
 // 请求来源校验（全部 /api/ 路由都过，见 index.mjs）：只接受本机 Host；浏览器带 Origin 时必须等于页面同源
-// （Vite 开发页代理保留页面 Host，所以 5281 的页面也能过）；chrome-extension:// 来源只在收藏接口放行，
+// （Vite 开发页代理保留页面 Host，所以 5281 的页面也能过）；chrome-extension:// 来源只在收藏接口和 ChatGPT 桥放行，
 // 配对码由 kb-collect-pairing.mjs 自己核对。curl、脚本这类不带 Origin 的本机请求照旧放行。
 // 返回 null 表示通过，否则返回拒绝原因。
 const LOCAL_HOST = /^(?:localhost|127\.0\.0\.1|\[::1\])(?::[0-9]{1,5})?$/;
@@ -38,7 +38,7 @@ export function checkOrigin(req, { allowExtension = false } = {}) {
   if (typeof host !== "string" || !LOCAL_HOST.test(host)) return "Host 不是本机地址";
   if (origin === undefined) return null;
   if (typeof origin !== "string") return "Origin 无效";
-  if (EXTENSION_ORIGIN.test(origin)) return allowExtension ? null : "浏览器扩展只能访问知识库收藏接口";
+  if (EXTENSION_ORIGIN.test(origin)) return allowExtension ? null : "浏览器扩展只能访问知识库收藏接口和 ChatGPT 桥";
   if (origin !== `http://${host}`) return "不是本机页面发出的请求";
   return null;
 }

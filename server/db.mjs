@@ -73,7 +73,8 @@ const SCHEMA = `
     created_at TEXT NOT NULL,
     model TEXT,
     effort TEXT,
-    preset TEXT
+    preset TEXT,
+    chatgpt_url TEXT
   );
 
   -- 简单配置：品牌表链接、日报文档链接、物料类型清单等
@@ -157,7 +158,7 @@ export function openDb(dir = dataDir) {
   db.exec("BEGIN IMMEDIATE");
   try {
     const columns = new Set(db.prepare("PRAGMA table_info(assistants)").all().map((column) => column.name));
-    for (const column of ["model", "effort", "preset"]) {
+    for (const column of ["model", "effort", "preset", "chatgpt_url"]) {
       if (!columns.has(column)) db.exec(`ALTER TABLE assistants ADD COLUMN ${column} TEXT`);
     }
     for (const table of ["promos", "plans"]) {
@@ -257,15 +258,15 @@ export function savePlan(db, month, line, { rawText, rawHtml = "", rows, special
 
 export function listAssistants(db) {
   return db
-    .prepare("SELECT id, name, kind, preset, instructions, codex_thread_id AS codexThreadId, created_at AS createdAt, model, effort FROM assistants ORDER BY id")
+    .prepare("SELECT id, name, kind, preset, instructions, codex_thread_id AS codexThreadId, chatgpt_url AS chatgptUrl, created_at AS createdAt, model, effort FROM assistants ORDER BY id")
     .all();
 }
 
 export function getAssistant(db, id) { return listAssistants(db).find((row) => row.id === Number(id)); }
 
-export function saveAssistant(db, { name, instructions = "", model = null, effort = null }, id) {
-  if (id) db.prepare("UPDATE assistants SET name = ?, instructions = ?, model = ?, effort = ? WHERE id = ?").run(name, instructions, model, effort, id);
-  else id = Number(db.prepare("INSERT INTO assistants (name, kind, instructions, created_at) VALUES (?, 'custom', ?, ?)").run(name, instructions, new Date().toISOString()).lastInsertRowid);
+export function saveAssistant(db, { name, instructions = "", model = null, effort = null, chatgptUrl = null }, id) {
+  if (id) db.prepare("UPDATE assistants SET name = ?, instructions = ?, model = ?, effort = ?, chatgpt_url = ? WHERE id = ?").run(name, instructions, model, effort, chatgptUrl, id);
+  else id = Number(db.prepare("INSERT INTO assistants (name, kind, instructions, chatgpt_url, created_at) VALUES (?, 'custom', ?, ?, ?)").run(name, instructions, chatgptUrl, new Date().toISOString()).lastInsertRowid);
   return getAssistant(db, id);
 }
 
