@@ -2,15 +2,15 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## 删除登录页（2026-11-04，Claude，常浩说「删除登录页，不需要了」，并同意一起删正式数据目录的 `data/login.json`；已提交、PR #14 待合并，未发布）
+## 删除登录页（2026-11-04，Claude，常浩说「删除登录页，不需要了」，并同意一起删正式数据目录的 `data/login.json`；PR #14 squash 合并为 `3431a52`；常浩说「合并并发布」，已发布 nm-20261104-144148-3431a52 回读通过）
 
 - 时间：开工 `2026-11-04 14:30`（收到消息时的大致时间）。★ 来由：常浩不再需要进门的鲨鱼登录页（issue #13）。
 - 改了哪些文件：整体撤掉 `d69f706` 的代码部分（交接记录保留）——删 `src/modules/login/LoginPage.jsx`、`src/styles/96-login.css`、`src/vendor/ascii-sharks/`、`server/routes/login.mjs`、`tests/login.test.mjs`；`src/main.jsx` 直接渲染 `App`；`server/index.mjs` 去掉登录路由；`src/styles/index.css` 去掉引入；`scripts/smoke-pages.mjs` 去掉登录一步；`docs/API.md`、`docs/STYLE-GUIDE.md` 去掉登录页两节。
 - 测试：`npm test` 原样结果 `ℹ pass 757` / `ℹ fail 0`（独立 worktree `niuma-home-remove-login`，不含他人改动）；`npm run build` 通过；`npm run smoke` `24 项，0 项有问题`。
 - 验证：冒烟用隔离服务和临时数据目录，第一张截图就是首页，没有登录页。
 - 截图：`~/Library/Application Support/NiumaHome/evidence/smoke-20261104-0638/01-home.png`（不入库）。
-- 发布与回读：未发布，等常浩说「合并并发布」。发布回读后再删 `data/login.json`（常浩已同意）。
-- 与授权不一致之处、遗留问题、范围外发现：无。
+- 发布与回读（`2026-11-04 14:41:48` 开始，常浩说「合并并发布」）：发布前只读核对——没有 `kb-write-lock`、`mentor-reply`，`kb-operation` 12 条 verified、2 条 aborted，无挂起。PR #14 squash 合并为 `3431a52`，`main` 快进；`release-app.sh`（忽略他人未跟踪文件，`NIUMA_SMOKE=1`）切到 `nm-20261104-144148-3431a52`，自动备份 `backups/work-desk-20261104-144149-before-nm-20261104-144148-3431a52.db`，保留策略清理 2 项（快照 `nm-20261028-122805-49b5d8d`、备份 `work-desk-20261027-161358-before-nm-20261027-161356-e3d22fe.db`）；冒烟 `24 项，0 项有问题` → `回读通过：nm-20261104-144148-3431a52`。正式实看：首页直接进工作台（冒烟截图 `evidence/smoke-nm-20261104-144148-3431a52/01-home.png`，状态栏版本 `3431a52`）；`/api/login` 返回 404；前端产物里没有登录页代码。之后把 `data/login.json` 移到废纸篓（常浩已同意）。回滚：`bash scripts/release-app.sh --use nm-20261102-224152-d69f706`（回滚后登录页没有 `login.json` 会直接放行）。
+- 与授权不一致之处、遗留问题、范围外发现：范围外——正式首页「今日日程」「交付月环节」「待我处理」都报亚古兽 lark-cli 未登录或登录已过期，与本轮无关，未处理。
 - 本轮新坑：无
 
 ## 新增 ASCII 鲨鱼登录页（2026-11-02，Claude，常浩看过多版预览后定稿「C3 白雾」+ 单行登录框 + 终端标题细光标，并定了三点：账号密码放数据目录不进仓库、每个新标签页过一次、标题用终端版；PR #12 squash 合并为 `d69f706`；常浩说「合并并发布」，已发布 nm-20261102-224152-d69f706 回读通过）
