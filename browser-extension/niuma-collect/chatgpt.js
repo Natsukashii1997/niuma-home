@@ -16,7 +16,7 @@ function textOf(el) {
   // 只取最外层的段落；列表项里嵌套的子列表项单独成行。
   const inner = (b) => b.parentElement.closest(b.tagName === "LI" ? "p, h1, h2, h3, h4, h5, h6, pre, blockquote, table" : SEL.block);
   const blocks = [...el.querySelectorAll(SEL.block)].filter((b) => !b.closest(".sr-only") && !el.contains(inner(b)));
-  if (!blocks.length) return el.innerText.trim();
+  if (!blocks.length) return [...el.querySelectorAll(".sr-only")].reduce((t, s) => t.replace(s.textContent, ""), el.innerText).trim();
   return blocks.map((b) => {
     const text = b.innerText.trim();
     if (b.tagName === "LI") {
