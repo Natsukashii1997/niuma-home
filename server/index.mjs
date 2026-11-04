@@ -35,8 +35,8 @@ async function serveStatic(res, urlPath) {
 createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   if (!url.pathname.startsWith("/api/")) return serveStatic(res, url.pathname);
-  // 跨站防护：所有接口先核对来源（见 http.mjs checkOrigin）；收藏接口另放行带配对码的扩展。
-  const rejected = checkOrigin(req, { allowExtension: url.pathname.startsWith("/api/v3/kb/collect") });
+  // 跨站防护：所有接口先核对来源（见 http.mjs checkOrigin）；收藏接口与 ChatGPT 桥另放行带配对码的扩展。
+  const rejected = checkOrigin(req, { allowExtension: url.pathname.startsWith("/api/v3/kb/collect") || url.pathname.startsWith("/api/v3/chatgpt-bridge/") });
   if (rejected) { req.resume(); return json(res, 403, { error: `请求来源校验未通过：${rejected}`, code: "ORIGIN_REJECTED" }); }
   const found = match(routes, req.method, url.pathname);
   if (!found) return json(res, 404, { error: "接口不存在" });

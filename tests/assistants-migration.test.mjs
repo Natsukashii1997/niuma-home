@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import path from "node:path";
 import { openDb, listAssistants } from "../server/db.mjs";
 
-test("旧助手表重复打开只新增三列，原有记录和线程绑定不变，预设助手只补一次", (t) => {
+test("旧助手表重复打开只新增四列（2026-11-04 加 chatgpt_url），原有记录和线程绑定不变，预设助手只补一次", (t) => {
   assert.ok(process.env.WORKDESK_DATA_DIR);
   const dir = mkdtempSync(path.join(process.env.WORKDESK_DATA_DIR, "migration-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
@@ -30,6 +30,7 @@ test("旧助手表重复打开只新增三列，原有记录和线程绑定不�
         { name: "model", type: "TEXT", notnull: 0, dflt_value: null },
         { name: "effort", type: "TEXT", notnull: 0, dflt_value: null },
         { name: "preset", type: "TEXT", notnull: 0, dflt_value: null },
+        { name: "chatgpt_url", type: "TEXT", notnull: 0, dflt_value: null },
       ]);
       assert.deepEqual(db.prepare("SELECT id,name,kind,instructions,codex_thread_id,created_at FROM assistants WHERE id <= 3 ORDER BY id").all(), before);
       // 原文案助手认领 copywriter 预设、说明不被覆盖；面试 / 绩效 / 通知各补一个，重复打开不重复补。

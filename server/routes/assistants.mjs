@@ -8,13 +8,17 @@ import { routes as knowledgeRoutes } from "./assistant-knowledge.mjs";
 import { handleV3 } from "./user.mjs";
 import { failure } from "../v3-common.mjs";
 import { createLocalDeletions, deletionFailure, deletionState } from "../local-deletions.mjs";
+import { createChatgptBridge, normalizeChatgptUrl } from "../chatgpt-bridge.mjs";
+import { createCollectPairing } from "../kb-collect-pairing.mjs";
 
 const guarded = action => async (req, res, context) => { try { return await action(req, res, context); } catch (error) { return json(res, error.status || 500, { error: error.status ? error.message : "助手保存失败，请重新读取核对", ...(error.code && { code: error.code }) }); } };
 
 async function body(req) { try { return await readJson(req); } catch { throw failure(400, "请求内容不是有效 JSON"); } }
 
-export function routes(db, client = codex) {
+export function routes(db, client = codex, bridge = createChatgptBridge()) {
   const sending = new Set();
+  // ChatGPT 桥的插件接口沿用收藏插件的配对码（issue #15）。
+  const pairing = createCollectPairing(db);
   const assistant = (id) => /^\d+$/.test(id) && getAssistant(db, id);
   // 删除助手（用户 2026-10-18）：只能删自建和导入的，四个预设不能删；软删除可恢复，对话记录原样保留。
   const isDeleted = (id) => !!deletionState(db, "assistant", String(id))?.deleted;
@@ -33,7 +37,13 @@ export function routes(db, client = codex) {
     const value = { name: body.name ?? previous.name, instructions: body.instructions ?? previous.instructions ?? "" };
     if (typeof value.name !== "string" || !value.name.trim() || value.name.length > 200) throw new Error("助手名称须为 1–200 字");
     if (typeof value.instructions !== "string" || value.instructions.length > 20000) throw new Error("预设说明须为不超过 20000 字的文本");
-    return { name: value.name.trim(), instructions: value.instructions };
+    // ChatGPT 会话链接：传 null 或空串解绑；不传沿用原值。
+    let chatgptUrl = previous.chatgptUrl ?? null;
+    if (Object.hasOwn(body, "chatgptUrl") && body.chatgptUrl !== null && body.chatgptUrl !== "") {
+      chatgptUrl = normalizeChatgptUrl(body.chatgptUrl);
+      if (!chatgptUrl) throw new Error("ChatGPT 会话链接须形如 https://chatgpt.com/c/…");
+    } else if (Object.hasOwn(body, "chatgptUrl")) chatgptUrl = null;
+    return { name: value.name.trim(), instructions: value.instructions, chatgptUrl };
   };
   const edit = async (req, res, id) => {
     const scope = id ? `PATCH /api/assistants/${id}` : "POST /api/assistants";
@@ -101,12 +111,17 @@ export function routes(db, client = codex) {
       const value = live(params.id);
       if (!value) throw failure(404, "助手不存在");
       if (sending.has(value.id)) throw failure(409, "该助手正在回复，请结束后切换会话");
+      if (value.chatgptUrl) throw failure(400, "ChatGPT 会话在 ChatGPT 里管理，这里不切换");
       return selectAssistantConversation(db, value.id, request, { fresh: action === "new" });
     }))),
     route("GET", "/api/assistants/:id/messages", async (req, res, { params, url }) => {
       const value = assistant(params.id);
       if (!value) return json(res, 404, { error: "助手不存在" });
       if (sending.has(value.id)) return json(res, 409, { error: "该助手仍在回复，请稍后重新读取历史" });
+      if (value.chatgptUrl) {
+        try { return json(res, 200, await bridge.request("history", { url: value.chatgptUrl })); }
+        catch (error) { return json(res, 503, { error: error.message }); }
+      }
       const requestedThread = url?.searchParams.get("threadId");
       let threadId = value.codexThreadId;
       if (requestedThread) {
@@ -132,6 +147,7 @@ export function routes(db, client = codex) {
       const heartbeat = setInterval(() => { if (!res.destroyed) res.write(": 保持连接\n\n"); }, 15000);
       try {
         const current = getAssistant(db, value.id);
+        if (current.chatgptUrl) { await bridge.request("send", { url: current.chatgptUrl, text: text.trim(), onEvent: emit, signal: controller.signal }); return; }
         let threadId = current.codexThreadId;
         if (!threadId) {
           threadId = await client.create({ cwd: assistantDirectory(db, current.id), name: current.name, instructions: composeKnowledgeInstructions(db, current.id, current.instructions) });
@@ -141,6 +157,19 @@ export function routes(db, client = codex) {
       } catch (error) { emit("error", { error: error.message }); }
       finally { clearInterval(heartbeat); sending.delete(value.id); res.off("close", disconnected); res.end(); }
     }),
+    // ChatGPT 桥：status 给页面看；next / jobs 只给带配对码的插件。
+    route("GET", "/api/v3/chatgpt-bridge/status", handleV3((req) => { pairing.guard(req); return bridge.status(); })),
+    route("GET", "/api/v3/chatgpt-bridge/next", (req, res, context) => {
+      // 长轮询：插件断开时撤掉等待，免得任务交给已经不在的连接。
+      const controller = new AbortController();
+      res.on("close", () => { if (!res.writableEnded) controller.abort(); });
+      return handleV3(async () => { pairing.guard(req, { extension: true }); return { job: await bridge.next(controller.signal) }; })(req, res, context);
+    }),
+    route("POST", "/api/v3/chatgpt-bridge/jobs/:id", handleV3(async (req, { params }) => {
+      pairing.guard(req, { extension: true });
+      if (!bridge.report(params.id, await body(req))) throw failure(404, "任务不存在或已结束");
+      return { ok: true };
+    })),
     route("GET", "/api/codex/sessions", async (req, res) => {
       const imported = new Set(listAssistants(db).map((a) => a.codexThreadId));
       json(res, 200, (await client.listSessions()).map((s) => ({ ...s, ...(imported.has(s.threadId) && { imported: true }) })));

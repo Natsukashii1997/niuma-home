@@ -120,7 +120,7 @@ function AssistantDesk({ initial, selectedId }) {
       <Button variant="primary" onClick={() => setModal({ type: "new" })}><PixelIcon name="plus" /> 新建助手</Button>
     </>} />
     <div className="chat-layout">
-      <aside className="chat-list" aria-label="助手列表">{list.map((a) => <a key={a.id} data-dither="" href={href("assistants", String(a.id))} className={a.id === current?.id ? "active" : ""}><AgentFace preset={a.preset} seed={a.name} size={32} /><span className="chat-list-name"><strong>{a.name}</strong>{PRESETS[a.preset] && <small className="muted">{PRESETS[a.preset].role}</small>}</span><Tag>{a.preset ? "预设" : KIND_LABEL[a.kind]}</Tag></a>)}
+      <aside className="chat-list" aria-label="助手列表">{list.map((a) => <a key={a.id} data-dither="" href={href("assistants", String(a.id))} className={a.id === current?.id ? "active" : ""}><AgentFace preset={a.preset} seed={a.name} size={32} /><span className="chat-list-name"><strong>{a.name}</strong>{PRESETS[a.preset] && <small className="muted">{PRESETS[a.preset].role}</small>}</span><Tag>{a.chatgptUrl ? "ChatGPT" : a.preset ? "预设" : KIND_LABEL[a.kind]}</Tag></a>)}
         <WriteBox flow={remover.flow} className="soft-delete" title="删除助手预览" confirmLabel="确认删除" savedText="已删除，回读核对：助手列表里不再有它，已在「已删除的助手」里，可恢复" onConfirm={remover.confirm} onRepreview={remover.repreview} onReread={remover.reread}>
           {(pv) => <dl className="kv"><dt>助手</dt><dd>{pv.value.name}</dd><dt>方式</dt><dd>软删除：设置和对话记录全部保留，可在下方「已删除的助手」里恢复</dd></dl>}
         </WriteBox>
@@ -145,12 +145,22 @@ function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked 
   const [sessionNote, setSessionNote] = useState("");
   const lock = useRef(false), controller = useRef(null), bottom = useRef(null);
   const base = `/api/assistants/${assistant.id}`;
+  // 绑了 ChatGPT 会话的助手（issue #15）：经 Chrome 插件在 ChatGPT 页面收发，没有模型、会话切换和知识库。
+  const viaChatgpt = !!assistant.chatgptUrl, blocked = viaChatgpt ? false : settingsBlocked;
+  const [bridge, setBridge] = useState(null);
+  useEffect(() => {
+    if (!viaChatgpt) return;
+    let live = true;
+    const check = () => apiSend("GET", "/api/v3/chatgpt-bridge/status").then((s) => { if (live) setBridge(s); }, () => { if (live) setBridge({ connected: false }); });
+    check(); const timer = setInterval(check, 15000);
+    return () => { live = false; clearInterval(timer); };
+  }, [viaChatgpt]);
   const read = async (threadId = viewThread) => apiSend("GET", `${base}/messages${threadId ? `?threadId=${encodeURIComponent(threadId)}` : ""}`);
   const readConversations = async () => apiSend("GET", `${base}/conversations`);
   const readSnapshot = async (selected = viewThread) => {
     const sessions = await readConversations();
     const threadId = selected || sessions.currentThreadId;
-    return [threadId ? await read(threadId) : [], sessions];
+    return [threadId || viaChatgpt ? await read(threadId) : [], sessions];
   };
   useEffect(() => {
     let live = true;
@@ -195,7 +205,7 @@ function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked 
     finally { lock.current = false; setLoading(false); }
   };
   const send = async () => {
-    if (lock.current || loading || uncertain || settingsBlocked || viewThread || !draft.trim()) return;
+    if (lock.current || loading || uncertain || blocked || viewThread || !draft.trim()) return;
     lock.current = true; setBusy(true); setError("");
     const text = draft.trim(); const abort = new AbortController(); controller.current = abort;
     setPending({ text, replies: [] });
@@ -206,7 +216,7 @@ function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked 
         setPending((old) => {
           const replies = [...old.replies], index = replies.findIndex((r) => r.id === data.itemId);
           if (index < 0) replies.push({ id: data.itemId, text: data.text });
-          else replies[index] = { ...replies[index], text: replies[index].text + data.text };
+          else replies[index] = { ...replies[index], text: data.replace ? data.text : replies[index].text + data.text };
           return { ...old, replies };
         });
       });
@@ -216,14 +226,15 @@ function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked 
     finally { lock.current = false; setBusy(false); controller.current = null; setRuntimeVersion((n) => n + 1); }
   };
   return <section className="chat-panel" aria-label={`${assistant.name}对话`}>
-    <header className="chat-head"><div className="row"><AgentFace preset={assistant.preset} seed={assistant.name} size={32} /><strong>{assistant.name}</strong><Tag>只读</Tag></div>
+    <header className="chat-head"><div className="row"><AgentFace preset={assistant.preset} seed={assistant.name} size={32} /><strong>{assistant.name}</strong><Tag>{viaChatgpt ? "ChatGPT" : "只读"}</Tag></div>
       <div className="row">
+        {viaChatgpt ? <Button onClick={() => window.open(assistant.chatgptUrl, "_blank", "noopener")}><PixelIcon name="external" />在 ChatGPT 打开</Button> : <>
         <Segmented options={[["chat", "对话"], ["kb", "知识库"]]} value={tab} onChange={setTab} />
-        <Button variant="model" aria-expanded={modelOpen} onClick={() => setModelOpen((v) => !v)}><PixelIcon name="settings" />{assistant.model || "默认模型"}{assistant.effort ? ` · ${assistant.effort}` : ""}</Button>
+        <Button variant="model" aria-expanded={modelOpen} onClick={() => setModelOpen((v) => !v)}><PixelIcon name="settings" />{assistant.model || "默认模型"}{assistant.effort ? ` · ${assistant.effort}` : ""}</Button></>}
         <Button disabled={busy} onClick={edit}><PixelIcon name="edit" />编辑</Button>
         {remove && <Button disabled={busy || removeLocked} onClick={remove} title="软删除，可在「已删除的助手」里恢复"><PixelIcon name="close" />删除</Button>}
       </div></header>
-    <div className={modelOpen ? "model-panel is-open" : "model-panel"}><ModelControls assistant={assistant} busy={busy} version={runtimeVersion} reloadAssistants={reloadAssistants} onBlocked={setSettingsBlocked} /></div>
+    {!viaChatgpt && <><div className={modelOpen ? "model-panel is-open" : "model-panel"}><ModelControls assistant={assistant} busy={busy} version={runtimeVersion} reloadAssistants={reloadAssistants} onBlocked={setSettingsBlocked} /></div>
     <div className="assistant-status row">
       <label className="small">会话 <select aria-label="选择会话" value={viewThread} disabled={busy || loading || uncertain} onChange={(e) => viewHistory(e.target.value)}>
         <option value="">当前对话{conversations.currentThreadId ? "" : "（新会话）"}</option>
@@ -231,7 +242,7 @@ function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked 
       </select></label>
       {viewThread && <Button disabled={busy || loading || uncertain} onClick={() => changeConversation(false)}>继续此会话</Button>}
       <Button disabled={busy || loading || uncertain || !conversations.currentThreadId} onClick={() => changeConversation(true)}><PixelIcon name="plus" />用最新知识新建会话</Button>
-    </div>
+    </div></>}
     {sessionNote && <p className="assistant-status small muted" role="status">{sessionNote}</p>}
     {error && <div className="assistant-status"><p className="error" role="alert">{error}</p><Button disabled={busy || loading} onClick={reload}>重新读取历史</Button></div>}
     {tab === "kb" ? <KnowledgePanel assistant={assistant} /> : <>
@@ -243,8 +254,8 @@ function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked 
       <div ref={bottom} />
     </div>
     {busy && pending && !pending.replies.length && <div className="assistant-wait"><StepProgress label="等待回复首字" /></div>}
-    <footer className="chat-input"><textarea aria-label="消息" placeholder="输入消息，确认后发送" value={draft} onChange={(e) => setDraft(e.target.value)} disabled={busy || !!viewThread} maxLength={50000} rows={3} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); } }} /><Button variant="primary" disabled={busy || loading || uncertain || settingsBlocked || !!viewThread || !draft.trim()} onClick={send}><PixelIcon name="send" /> 发送</Button></footer>
-    <div className="assistant-status is-hint" role="status">{busy ? "Codex 正在回复…" : viewThread ? "历史会话只读；点击「继续此会话」后可以发送" : "Enter 发送 · Shift+Enter 换行"}</div>
+    <footer className="chat-input"><textarea aria-label="消息" placeholder="输入消息，确认后发送" value={draft} onChange={(e) => setDraft(e.target.value)} disabled={busy || !!viewThread} maxLength={50000} rows={3} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); } }} /><Button variant="primary" disabled={busy || loading || uncertain || blocked || !!viewThread || !draft.trim()} onClick={send}><PixelIcon name="send" /> 发送</Button></footer>
+    <div className="assistant-status is-hint" role="status">{busy ? `${viaChatgpt ? "ChatGPT" : "Codex"} 正在回复…` : viewThread ? "历史会话只读；点击「继续此会话」后可以发送" : viaChatgpt && bridge && !bridge.connected ? "ChatGPT 桥没连上：请打开 Chrome，确认「牛马之家 · 收藏」插件已启用、已配对" : viaChatgpt ? "经 Chrome 里的 ChatGPT 页面收发 · Enter 发送 · Shift+Enter 换行" : "Enter 发送 · Shift+Enter 换行"}</div>
     </>}
   </section>;
 }
@@ -254,6 +265,7 @@ function AssistantDialog({ modal, close, saved, reload }) {
   const [initialWrite] = useState(() => legacyState(scope));
   const [baseVersion] = useState(initialWrite.pending?.baseVersion || modal.assistant?.writeVersion);
   const [name, setName] = useState(initialWrite.pending?.body?.name ?? modal.assistant?.name ?? ""), [instructions, setInstructions] = useState(initialWrite.pending?.body?.instructions ?? modal.assistant?.instructions ?? "");
+  const [chatgptUrl, setChatgptUrl] = useState(initialWrite.pending?.body?.chatgptUrl ?? modal.assistant?.chatgptUrl ?? "");
   const [sessions, setSessions] = useState([]), [selected, setSelected] = useState(initialWrite.pending?.body?.threadIds || []), [search, setSearch] = useState("");
   const [preview, setPreview] = useState(!!initialWrite.pending), [busy, setBusy] = useState(false), [loading, setLoading] = useState(importing), [error, setError] = useState(initialWrite.error || (initialWrite.pending ? "上次保存尚未核对，已恢复原草稿，请重新读取助手列表。" : "")), [uncertain, setUncertain] = useState(!!initialWrite.pending || !!initialWrite.error);
   const [canRetry, setCanRetry] = useState(false);
@@ -269,7 +281,7 @@ function AssistantDialog({ modal, close, saved, reload }) {
     lock.current = true; setBusy(true); setError("");
     try {
       const result = await legacyWrite(scope, importing ? { method: "POST", path: "/api/assistants/import", body: { threadIds: selected } }
-        : { method: editing ? "PATCH" : "POST", path: editing ? `/api/assistants/${modal.assistant.id}` : "/api/assistants", body: { name: name.trim(), instructions }, baseVersion }, verify);
+        : { method: editing ? "PATCH" : "POST", path: editing ? `/api/assistants/${modal.assistant.id}` : "/api/assistants", body: { name: name.trim(), instructions, chatgptUrl: chatgptUrl.trim() || null }, baseVersion }, verify);
       await saved((importing ? result : [result])[0]?.id);
     } catch (e) { setError(`${e.message}。结果尚未确认，请重新读取助手列表核对。`); setUncertain(true); setCanRetry(e.code === "WRITE_RECEIPT_UNKNOWN"); }
     finally { lock.current = false; setBusy(false); }
@@ -294,10 +306,11 @@ function AssistantDialog({ modal, close, saved, reload }) {
         {importing ? <><label className="material-field" htmlFor="session-search">筛选会话名称<input id="session-search" value={search} onChange={(e) => setSearch(e.target.value)} /></label>
           {loading ? <p className="muted">正在读取本机会话…</p> : <div className="assistant-sessions">{sessions.filter((s) => s.name.toLowerCase().includes(search.toLowerCase())).map((s) => <label key={s.threadId} className="assistant-session" data-dither=""><input type="checkbox" disabled={s.imported} checked={selected.includes(s.threadId)} onChange={(e) => { setSelected((old) => e.target.checked ? [...old, s.threadId] : old.filter((id) => id !== s.threadId)); }} /><span><strong>{s.name}</strong>{s.imported && <Tag>已导入</Tag>}<small>{new Date(s.updatedAt).toLocaleString("zh-CN")} · {s.cwd}</small></span></label>)}</div>}
           {!loading && !sessions.length && !error && <Empty>没有可导入的已命名会话。</Empty>}
-        </> : <><label className="material-field" htmlFor="assistant-name">名称<input id="assistant-name" required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} /></label><label className="material-field" htmlFor="assistant-instructions">预设说明<textarea id="assistant-instructions" rows={6} maxLength={20000} value={instructions} onChange={(e) => setInstructions(e.target.value)} /></label></>}
+        </> : <><label className="material-field" htmlFor="assistant-name">名称<input id="assistant-name" required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} /></label><label className="material-field" htmlFor="assistant-instructions">预设说明<textarea id="assistant-instructions" rows={6} maxLength={20000} value={instructions} onChange={(e) => setInstructions(e.target.value)} /></label>
+          <label className="material-field" htmlFor="assistant-chatgpt">ChatGPT 会话链接（可选）<input id="assistant-chatgpt" type="url" placeholder="https://chatgpt.com/c/…" value={chatgptUrl} onChange={(e) => setChatgptUrl(e.target.value)} /></label></>}
       </fieldset>
-      <p className="muted small">{importing ? "仅导入会话关联；历史仍由 Codex 保存。被其他 Codex 客户端占用时无法续聊，请先在原客户端结束占用。" : "预设说明在新建会话时传入；修改后可点「用最新知识新建会话」，已有会话与历史保留。"}</p>
-      {preview && <div className="settings-preview"><h3 className="section-title">{importing ? "导入预览" : "保存预览"}</h3>{importing ? sessions.filter((s) => selected.includes(s.threadId)).map((s) => <p key={s.threadId}>{s.name}<br /><span className="muted small">{s.cwd}</span></p>) : <><strong>{name.trim()}</strong><pre className="pre">{instructions || "（预设说明为空）"}</pre></>}</div>}
+      <p className="muted small">{importing ? "仅导入会话关联；历史仍由 Codex 保存。被其他 Codex 客户端占用时无法续聊，请先在原客户端结束占用。" : "预设说明在新建会话时传入；修改后可点「用最新知识新建会话」，已有会话与历史保留。填了 ChatGPT 会话链接后，对话改经 Chrome 插件在那个会话里收发，预设说明不再使用。"}</p>
+      {preview && <div className="settings-preview"><h3 className="section-title">{importing ? "导入预览" : "保存预览"}</h3>{importing ? sessions.filter((s) => selected.includes(s.threadId)).map((s) => <p key={s.threadId}>{s.name}<br /><span className="muted small">{s.cwd}</span></p>) : <><strong>{name.trim()}</strong><pre className="pre">{instructions || "（预设说明为空）"}</pre><p className="small">ChatGPT 会话：{chatgptUrl.trim() || "不绑定（走本机 Codex）"}</p></>}</div>}
       {error && <p className="error" role="alert">{error}</p>}
       <div className="row">{uncertain ? <><Button type="button" disabled={busy} onClick={recover}>重新读取助手列表</Button>{canRetry && <Button type="button" disabled={busy} onClick={retry}>重试原操作</Button>}</> : preview ? <><Button type="button" disabled={busy} onClick={() => setPreview(false)}>返回修改</Button><Button type="button" variant="primary" disabled={busy} onClick={confirm}>{importing ? "确认导入" : "确认保存"}</Button></> : <Button type="submit" variant="primary" disabled={loading || (importing ? !selected.length : !name.trim())}>{importing ? "预览导入" : "预览保存"}</Button>}</div>
       {busy && <p className="muted" role="status">正在保存并回读…</p>}

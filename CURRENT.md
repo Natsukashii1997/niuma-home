@@ -2,6 +2,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## Agent 接入 ChatGPT 会话：Chrome 插件桥接（2026-11-04，Claude，常浩说「开工」，并已知悉条款风险与改版易坏；已提交、PR 待合并，未发布）
+
+- 时间：开工 `2026-11-04 16:20`（收到「开工」时的大致时间；收尾 `2026-11-04 18:05`）。★ 来由：面试 / 绩效 / 通知助手对应 ChatGPT 聊天模式里的三个会话，常浩要在牛马之家里直接对话、背后就是 ChatGPT 那个窗口（issue #15）。文案助手仍走 Codex。
+- 改了哪些文件：`server/chatgpt-bridge.mjs`（新：内存任务队列，插件长轮询取任务、逐段回传；不在线立即失败，15 秒没人取、取走后 60 秒无回传都以错误结束）；`server/routes/assistants.mjs`（绑了链接的助手发消息 / 读历史走桥，切换会话返回 400；新增 `/api/v3/chatgpt-bridge/status|next|jobs/:id`，插件接口沿用收藏配对码）；`server/db.mjs`（`assistants` 补列 `chatgpt_url`，保存带上）；`server/legacy-writes.mjs`（版本号只在绑了链接时带上它，没绑的不变）；`server/index.mjs`、`server/http.mjs`（插件来源放行到桥接口）；`browser-extension/niuma-collect/chatgpt.js`（新：在会话页里按粘贴填字、核对后点发送、MutationObserver 边出边读，拒绝有草稿 / 上一条未完 / 标签页不在该会话的情况）、`background.js`（长轮询 + 30 秒闹钟兜底，找或在后台新开会话标签页，回传按顺序、20 秒报平安）、`manifest.json`（0.2.0，加 `alarms` 与 `https://chatgpt.com/*`）；`src/modules/assistants/AssistantsPage.jsx`（编辑弹窗加「ChatGPT 会话链接」，先预览后确认；ChatGPT 助手显示 ChatGPT 标签、「在 ChatGPT 打开」、桥连接状态，隐藏模型 / 会话切换 / 知识库；支持整段替换）；`tests/chatgpt-bridge.test.mjs`（新 4 项）、`tests/assistants-migration.test.mjs`（多一列）；`docs/API.md`（「ChatGPT 桥」一节）、`docs/LESSONS.md`（L-17）。
+- 测试：`npm test` 原样结果 `ℹ pass 761` / `ℹ fail 0`（独立 worktree `niuma-home-chatgpt`，不含他人改动）；`npm run build` 通过。
+- 验证：隔离服务 5290 + 临时数据目录 `evidence/chatgpt-bridge-20261104/data`；常浩在 Chrome 里装了指向 5290 的测试副本插件（`evidence/chatgpt-bridge-20261104/ext-test`，预填测试配对码，不入库）。1280×800 看了 Agent 页：编辑弹窗填链接 → 预览 → 确认，列表与对话头显示「ChatGPT」；插件不在线时提示「ChatGPT 桥没连上…」。真实 ChatGPT：通知助手会话只读读回 10 条（标题、段落保留）；在常浩 ChatGPT 里新建测试聊天「测试会话」（`/c/6aeb00a9-…`），插件在后台新开该标签页（未切到前台），发「介绍番茄工作法，分 3 段」，回复逐段出现、489 字收齐，回读 4 条；修复后再发一条，回读 6 条、最后一条为「第二次收到」。测出两处问题已修：新开标签页第一次读历史为空（L-17）；回复还没出段落时首段带读屏隐藏标题「ChatGPT 说：」，已改为去掉（这一处修复未在 Chrome 里复测）。
+- 截图：`~/Library/Application Support/NiumaHome/evidence/chatgpt-bridge-20261104/后台标签页发送-流式中.jpg`、`后台标签页发送-回复完成.jpg`（不入库）。
+- 发布与回读：未发布。发布后还要：把正式插件目录 `~/Library/Application Support/NiumaHome/extension/niuma-collect/` 同步为新版并在 `chrome://extensions` 重新加载；在编辑弹窗里给通知助手填链接（面试、绩效两个会话的链接还没拿到）；删掉测试副本插件。
+- 与授权不一致之处、遗留问题、范围外发现：① 条款：OpenAI 禁止程序化提取输出，常浩已知悉并接受。② 只能读页面上已加载的消息，很长的会话可能读不全。③ 插件刚重新加载后第一次用要 15 秒左右（旧页面里没有脚本，插件会刷新一次标签页）。④ 测试聊天「测试会话」留在常浩的 ChatGPT 里，可以删。⑤ 面试、绩效两个会话在网页版侧栏和搜索里都找不到，只在桌面 ChatGPT 里看到。
+- 本轮新坑：L-17
+
 ## 删除登录页（2026-11-04，Claude，常浩说「删除登录页，不需要了」，并同意一起删正式数据目录的 `data/login.json`；PR #14 squash 合并为 `3431a52`；常浩说「合并并发布」，已发布 nm-20261104-144148-3431a52 回读通过）
 
 - 时间：开工 `2026-11-04 14:30`（收到消息时的大致时间）。★ 来由：常浩不再需要进门的鲨鱼登录页（issue #13）。
