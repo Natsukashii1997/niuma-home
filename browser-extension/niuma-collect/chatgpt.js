@@ -55,7 +55,9 @@ async function send(job, post) {
   const states = [...document.querySelectorAll(SEL.state)];
   if (states.at(-1)?.getAttribute("data-talvt-turn-state") === "in_progress") throw new Error("这个 ChatGPT 会话还在回复上一条，请稍后再发");
   if (flat(editor.innerText)) throw new Error("ChatGPT 输入框里有没发出的草稿，请先到 ChatGPT 页面处理");
-  const before = units("assistant").length;
+  // 刚打开的标签页里消息可能还没渲染完：先等出现消息（空会话十秒后照常发送），再记下已有几条提问。
+  await until(() => units().length, 10000, "").catch(() => {});
+  const before = units("user").length;
   editor.focus();
   // 按粘贴填入：换行原样保留（ChatGPT 自己就是这样处理粘贴的）。
   const data = new DataTransfer(); data.setData("text/plain", job.text);
@@ -63,7 +65,8 @@ async function send(job, post) {
   if (flat(editor.innerText) !== flat(job.text)) throw new Error("没能把消息填进 ChatGPT 输入框（页面可能改版了），什么也没发送");
   const button = await until(() => { const b = editor.closest("form")?.querySelector('button[type="submit"]'); return b && !b.disabled && b; }, 5000, "ChatGPT 的发送按钮没有就绪（页面可能改版了），消息留在了输入框里没发送");
   button.click();
-  const turn = await until(() => units("assistant")[before], 120000, "已点发送，但 ChatGPT 两分钟内没有开始回复：请到 ChatGPT 页面核对");
+  // 新回复 = 提问数多出一条之后、排在最后的那条回复。
+  const turn = await until(() => { const last = units().at(-1); return units("user").length > before && last && role(last) === "assistant" && last; }, 120000, "已点发送，但 ChatGPT 两分钟内没有开始回复：请到 ChatGPT 页面核对");
   let last = "", postedAt = 0;
   const finished = () => turn.closest(SEL.state)?.getAttribute("data-talvt-turn-state") === "complete";
   await until(() => {
@@ -77,6 +80,8 @@ async function send(job, post) {
 async function history(job, post) {
   checkPage(job.url);
   await until(() => document.querySelector(SEL.editor), 20000, "ChatGPT 页面没有加载完：请确认已登录");
+  // 刚打开的标签页里输入框先出来、消息后渲染：等到有消息再读；十秒还没有就当这是空会话。
+  await until(() => units().length, 10000, "").catch(() => {});
   post({ type: "history", messages: units().map((el) => ({ role: role(el), text: textOf(el) })).filter((m) => m.role === "user" || m.role === "assistant") });
 }
 
