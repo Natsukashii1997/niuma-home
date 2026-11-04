@@ -79,18 +79,6 @@ const check = async (name, extra = "") => {
   console.log(`${problems.length ? "✗" : "✓"} ${name}${info ? ` · 主区 ${info.text} 字${info.loading ? " · 还在读取" : ""}` : ""}${resources.length ? ` · 资源加载失败 ${resources.length}` : ""}${problems.length ? `\n    ${problems.join("\n    ")}` : ""}`);
   errors = []; writes = []; resources = [];
 };
-// 登录页：新标签页先出现登录页，按回车进入（只写 sessionStorage，不发请求），之后同一标签页里各路由不再拦
-await send("Page.navigate", { url: `${base}/` }); await sleep(2500);
-await shot("00-login");
-const login = await js(`const ok = !!document.querySelector(".login canvas") && !!document.querySelector(".login-form"); window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); await new Promise((r) => setTimeout(r, 1200)); return { ok, entered: sessionStorage.getItem("niuma-entered") === "1" && !document.querySelector(".login") };`);
-{
-  const problems = [...errors, ...writes.map((w) => `非 GET 请求：${w}`), ...(strict ? resources : [])];
-  if (!login?.ok) problems.push("登录页没有出现");
-  if (!login?.entered) problems.push("回车后没有进入工作台");
-  results.push({ name: "登录页", ok: !problems.length, problems, resources: [...resources], info: login });
-  console.log(`${problems.length ? "✗" : "✓"} 登录页${problems.length ? `\n    ${problems.join("\n    ")}` : ""}`);
-  errors = []; writes = []; resources = [];
-}
 for (const route of ROUTES) {
   await send("Page.navigate", { url: `${base}/#/${route}` }); await sleep(route === "" ? 2500 : 1800);
   await shot(`${String(ROUTES.indexOf(route) + 1).padStart(2, "0")}-${route.replace(/\//g, "_") || "home"}`);
@@ -109,7 +97,7 @@ await check("自言自语抽屉", `{ open: !!document.querySelector("aside.selft
 if (!results.at(-1).info?.open) { results.at(-1).ok = false; results.at(-1).problems.push("抽屉没有打开"); }
 
 const failed = results.filter((r) => !r.ok);
-const summary = { base, width, at: new Date().toISOString(), version: results.find((r) => r.info?.version)?.info.version || "", pages: results.length, failed: failed.length, results };
+const summary = { base, width, at: new Date().toISOString(), version: results[0]?.info?.version || "", pages: results.length, failed: failed.length, results };
 writeFileSync(join(out, "summary.json"), JSON.stringify(summary, null, 2));
 console.log(`\n${results.length} 项，${failed.length} 项有问题；截图与 summary.json 在 ${out}`);
 ws.close(); await cleanup();

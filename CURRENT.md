@@ -2,6 +2,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 删除登录页（2026-11-04，Claude，常浩说「删除登录页，不需要了」，并同意一起删正式数据目录的 `data/login.json`；已提交、PR #14 待合并，未发布）
+
+- 时间：开工 `2026-11-04 14:30`（收到消息时的大致时间）。★ 来由：常浩不再需要进门的鲨鱼登录页（issue #13）。
+- 改了哪些文件：整体撤掉 `d69f706` 的代码部分（交接记录保留）——删 `src/modules/login/LoginPage.jsx`、`src/styles/96-login.css`、`src/vendor/ascii-sharks/`、`server/routes/login.mjs`、`tests/login.test.mjs`；`src/main.jsx` 直接渲染 `App`；`server/index.mjs` 去掉登录路由；`src/styles/index.css` 去掉引入；`scripts/smoke-pages.mjs` 去掉登录一步；`docs/API.md`、`docs/STYLE-GUIDE.md` 去掉登录页两节。
+- 测试：`npm test` 原样结果 `ℹ pass 757` / `ℹ fail 0`（独立 worktree `niuma-home-remove-login`，不含他人改动）；`npm run build` 通过；`npm run smoke` `24 项，0 项有问题`。
+- 验证：冒烟用隔离服务和临时数据目录，第一张截图就是首页，没有登录页。
+- 截图：`~/Library/Application Support/NiumaHome/evidence/smoke-20261104-0638/01-home.png`（不入库）。
+- 发布与回读：未发布，等常浩说「合并并发布」。发布回读后再删 `data/login.json`（常浩已同意）。
+- 与授权不一致之处、遗留问题、范围外发现：无。
+- 本轮新坑：无
+
 ## 新增 ASCII 鲨鱼登录页（2026-11-02，Claude，常浩看过多版预览后定稿「C3 白雾」+ 单行登录框 + 终端标题细光标，并定了三点：账号密码放数据目录不进仓库、每个新标签页过一次、标题用终端版；PR #12 squash 合并为 `d69f706`；常浩说「合并并发布」，已发布 nm-20261102-224152-d69f706 回读通过）
 
 - 时间：开工 `2026-11-02 22:05`（开工时没跑 `date`，按本轮开始时刻估；收尾 `2026-11-02 22:38`）。来由：常浩要把预览里的鲨鱼登录页作为牛马之家的登录页，账号密码默认填好，回车或点箭头进入。
