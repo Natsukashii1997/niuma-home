@@ -115,12 +115,13 @@ function AssistantDesk({ initial, selectedId }) {
   useEffect(() => { if (remover.flow.phase === "saved") remover.flow.resolve(); }, [remover.flow.phase]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { apiSend("GET", `${DELETE_API.base}?deleted=true`).then((r) => setDeleted(r.items || []), () => {}); }, []);
   return <div className="assistant-page">
-    <PageHeader title="Agent" subtitle="本机 Codex · 只读，不改文件、不执行命令" actions={<>
-      <Button onClick={() => setModal({ type: "import" })}><PixelIcon name="download" /> 导入 Codex 会话</Button>
-      <Button variant="primary" onClick={() => setModal({ type: "new" })}><PixelIcon name="plus" /> 新建助手</Button>
-    </>} />
+    <PageHeader title="Agent" subtitle="角色助手 · ChatGPT 会话经 Chrome 收发，本机 Codex 只读" />
     <div className="chat-layout">
-      <aside className="chat-list" aria-label="助手列表">{list.map((a) => <a key={a.id} data-dither="" href={href("assistants", String(a.id))} className={a.id === current?.id ? "active" : ""}><AgentFace preset={a.preset} seed={a.name} size={32} /><span className="chat-list-name"><strong>{a.name}</strong>{PRESETS[a.preset] && <small className="muted">{PRESETS[a.preset].role}</small>}</span><Tag>{a.chatgptUrl ? "ChatGPT" : a.preset ? "预设" : KIND_LABEL[a.kind]}</Tag></a>)}
+      {/* 新建、导入是给这一栏加助手，按钮放在栏头（方案 A，用户 2026-11-07，issue #20） */}
+      <aside className="chat-list" aria-label="助手列表"><div className="chat-list-head">
+        <Button onClick={() => setModal({ type: "import" })}><PixelIcon name="download" />导入会话</Button>
+        <Button onClick={() => setModal({ type: "new" })}><PixelIcon name="plus" />新建助手</Button>
+      </div>{list.map((a) => <a key={a.id} data-dither="" href={href("assistants", String(a.id))} className={a.id === current?.id ? "active" : ""}><AgentFace preset={a.preset} seed={a.name} size={32} /><span className="chat-list-name"><strong>{a.name}</strong>{PRESETS[a.preset] && <small className="muted">{PRESETS[a.preset].role}</small>}</span><Tag>{a.chatgptUrl ? "ChatGPT" : a.preset ? "预设" : KIND_LABEL[a.kind]}</Tag></a>)}
         <WriteBox flow={remover.flow} className="soft-delete" title="删除助手预览" confirmLabel="确认删除" savedText="已删除，回读核对：助手列表里不再有它，已在「已删除的助手」里，可恢复" onConfirm={remover.confirm} onRepreview={remover.repreview} onReread={remover.reread}>
           {(pv) => <dl className="kv"><dt>助手</dt><dd>{pv.value.name}</dd><dt>方式</dt><dd>软删除：设置和对话记录全部保留，可在下方「已删除的助手」里恢复</dd></dl>}
         </WriteBox>
@@ -131,7 +132,7 @@ function AssistantDesk({ initial, selectedId }) {
       {current && <Conversation key={current.id} assistant={current} reloadAssistants={reload} edit={() => setModal({ type: "edit", assistant: current })}
         remove={PRESETS[current.preset] ? null : () => remover.preview(String(current.id))} removeLocked={remover.flow.busy || remover.flow.phase === "unknown"} />}
     </div>
-    {modal && <AssistantDialog key={`${modal.type}-${modal.assistant?.id || ""}`} modal={modal} close={() => setModal(null)} saved={saved} reload={reload} />}
+    {modal && <AssistantDialog key={`${modal.type}-${modal.assistant?.id || ""}`} modal={modal} close={() => setModal(null)} switchTo={(type) => setModal({ type })} saved={saved} reload={reload} />}
   </div>;
 }
 function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked }) {
@@ -228,10 +229,11 @@ function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked 
   return <section className="chat-panel" aria-label={`${assistant.name}对话`}>
     <header className="chat-head"><div className="row"><AgentFace preset={assistant.preset} seed={assistant.name} size={32} /><strong>{assistant.name}</strong><Tag>{viaChatgpt ? "ChatGPT" : "只读"}</Tag></div>
       <div className="row">
-        {viaChatgpt ? <Button onClick={() => window.open(assistant.chatgptUrl, "_blank", "noopener")}><PixelIcon name="external" />在 ChatGPT 打开</Button> : <>
+        {/* ChatGPT 助手：常用的「在 ChatGPT 打开」放最右（issue #20） */}
+        {viaChatgpt ? <><Button disabled={busy} onClick={edit}><PixelIcon name="edit" />编辑角色</Button><Button onClick={() => window.open(assistant.chatgptUrl, "_blank", "noopener")}><PixelIcon name="external" />在 ChatGPT 打开</Button></> : <>
         <Segmented options={[["chat", "对话"], ["kb", "知识库"]]} value={tab} onChange={setTab} />
-        <Button variant="model" aria-expanded={modelOpen} onClick={() => setModelOpen((v) => !v)}><PixelIcon name="settings" />{assistant.model || "默认模型"}{assistant.effort ? ` · ${assistant.effort}` : ""}</Button></>}
-        <Button disabled={busy} onClick={edit}><PixelIcon name="edit" />编辑</Button>
+        <Button variant="model" aria-expanded={modelOpen} onClick={() => setModelOpen((v) => !v)}><PixelIcon name="settings" />{assistant.model || "默认模型"}{assistant.effort ? ` · ${assistant.effort}` : ""}</Button>
+        <Button disabled={busy} onClick={edit}><PixelIcon name="edit" />编辑角色</Button></>}
         {remove && <Button disabled={busy || removeLocked} onClick={remove} title="软删除，可在「已删除的助手」里恢复"><PixelIcon name="close" />删除</Button>}
       </div></header>
     {!viaChatgpt && <><div className={modelOpen ? "model-panel is-open" : "model-panel"}><ModelControls assistant={assistant} busy={busy} version={runtimeVersion} reloadAssistants={reloadAssistants} onBlocked={setSettingsBlocked} /></div>
@@ -259,9 +261,10 @@ function Conversation({ assistant, edit, reloadAssistants, remove, removeLocked 
     </>}
   </section>;
 }
-function AssistantDialog({ modal, close, saved, reload }) {
-  const importing = modal.type === "import", editing = modal.type === "edit";
-  const scope = importing ? "assistants:import" : editing ? `assistant:${modal.assistant.id}:edit` : "assistants:create";
+// 「导入会话」默认粘 ChatGPT 会话链接（走新建接口带 chatgptUrl）；本机 Codex 导入是弹窗里的次选项（issue #20）。
+function AssistantDialog({ modal, close, switchTo, saved, reload }) {
+  const importing = modal.type === "import-codex", linking = modal.type === "import", editing = modal.type === "edit";
+  const scope = importing ? "assistants:import" : linking ? "assistants:import-chatgpt" : editing ? `assistant:${modal.assistant.id}:edit` : "assistants:create";
   const [initialWrite] = useState(() => legacyState(scope));
   const [baseVersion] = useState(initialWrite.pending?.baseVersion || modal.assistant?.writeVersion);
   const [name, setName] = useState(initialWrite.pending?.body?.name ?? modal.assistant?.name ?? ""), [instructions, setInstructions] = useState(initialWrite.pending?.body?.instructions ?? modal.assistant?.instructions ?? "");
@@ -298,7 +301,8 @@ function AssistantDialog({ modal, close, saved, reload }) {
     catch (error) { setError(`${error.message}。原操作和草稿已保留，请重新读取核对。`); setCanRetry(error.code === "WRITE_RECEIPT_UNKNOWN"); }
     finally { lock.current = false; setBusy(false); }
   };
-  const title = importing ? "导入 Codex 会话" : editing ? "编辑助手" : "新建助手";
+  const title = importing ? "从本机 Codex 导入" : linking ? "导入会话" : editing ? "编辑角色" : "新建助手";
+  const sourceSwitch = !busy && !uncertain && !preview && !editing && (importing || linking);
   return <dialog ref={dialog} className="material-dialog assistant-dialog" aria-labelledby="assistant-dialog-title" onCancel={(e) => { e.preventDefault(); if (!busy) close(); }}>
     <div className="chat-head"><h2 id="assistant-dialog-title">{title}</h2><Button disabled={busy} onClick={close}>关闭</Button></div>
     <form className="assistant-form" onSubmit={(e) => { e.preventDefault(); setPreview(true); setError(""); }}>
@@ -306,13 +310,15 @@ function AssistantDialog({ modal, close, saved, reload }) {
         {importing ? <><label className="material-field" htmlFor="session-search">筛选会话名称<input id="session-search" value={search} onChange={(e) => setSearch(e.target.value)} /></label>
           {loading ? <p className="muted">正在读取本机会话…</p> : <div className="assistant-sessions">{sessions.filter((s) => s.name.toLowerCase().includes(search.toLowerCase())).map((s) => <label key={s.threadId} className="assistant-session" data-dither=""><input type="checkbox" disabled={s.imported} checked={selected.includes(s.threadId)} onChange={(e) => { setSelected((old) => e.target.checked ? [...old, s.threadId] : old.filter((id) => id !== s.threadId)); }} /><span><strong>{s.name}</strong>{s.imported && <Tag>已导入</Tag>}<small>{new Date(s.updatedAt).toLocaleString("zh-CN")} · {s.cwd}</small></span></label>)}</div>}
           {!loading && !sessions.length && !error && <Empty>没有可导入的已命名会话。</Empty>}
+        </> : linking ? <><label className="material-field" htmlFor="assistant-chatgpt">ChatGPT 会话链接<input id="assistant-chatgpt" type="url" required placeholder="https://chatgpt.com/c/…" value={chatgptUrl} onChange={(e) => setChatgptUrl(e.target.value)} /></label><label className="material-field" htmlFor="assistant-name">助手名称<input id="assistant-name" required maxLength={200} placeholder="比如：周报助手" value={name} onChange={(e) => setName(e.target.value)} /></label>
         </> : <><label className="material-field" htmlFor="assistant-name">名称<input id="assistant-name" required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} /></label><label className="material-field" htmlFor="assistant-instructions">预设说明<textarea id="assistant-instructions" rows={6} maxLength={20000} value={instructions} onChange={(e) => setInstructions(e.target.value)} /></label>
           <label className="material-field" htmlFor="assistant-chatgpt">ChatGPT 会话链接（可选）<input id="assistant-chatgpt" type="url" placeholder="https://chatgpt.com/c/…" value={chatgptUrl} onChange={(e) => setChatgptUrl(e.target.value)} /></label></>}
       </fieldset>
-      <p className="muted small">{importing ? "仅导入会话关联；历史仍由 Codex 保存。被其他 Codex 客户端占用时无法续聊，请先在原客户端结束占用。" : "预设说明在新建会话时传入；修改后可点「用最新知识新建会话」，已有会话与历史保留。填了 ChatGPT 会话链接后，对话改经 Chrome 插件在那个会话里收发，预设说明不再使用。"}</p>
-      {preview && <div className="settings-preview"><h3 className="section-title">{importing ? "导入预览" : "保存预览"}</h3>{importing ? sessions.filter((s) => selected.includes(s.threadId)).map((s) => <p key={s.threadId}>{s.name}<br /><span className="muted small">{s.cwd}</span></p>) : <><strong>{name.trim()}</strong><pre className="pre">{instructions || "（预设说明为空）"}</pre><p className="small">ChatGPT 会话：{chatgptUrl.trim() || "不绑定（走本机 Codex）"}</p></>}</div>}
+      <p className="muted small">{importing ? "仅导入会话关联；历史仍由 Codex 保存。被其他 Codex 客户端占用时无法续聊，请先在原客户端结束占用。" : linking ? "导入后，对话经 Chrome 插件在这个 ChatGPT 会话里收发；会话历史仍由 ChatGPT 保存。" : "预设说明在新建会话时传入；修改后可点「用最新知识新建会话」，已有会话与历史保留。填了 ChatGPT 会话链接后，对话改经 Chrome 插件在那个会话里收发，预设说明不再使用。"}</p>
+      {sourceSwitch && <p className="small">{linking ? <button type="button" className="link-btn" onClick={() => switchTo("import-codex")}>从本机 Codex 导入</button> : <button type="button" className="link-btn" onClick={() => switchTo("import")}>改为粘贴 ChatGPT 会话链接</button>}</p>}
+      {preview && <div className="settings-preview"><h3 className="section-title">{importing || linking ? "导入预览" : "保存预览"}</h3>{importing ? sessions.filter((s) => selected.includes(s.threadId)).map((s) => <p key={s.threadId}>{s.name}<br /><span className="muted small">{s.cwd}</span></p>) : <><strong>{name.trim()}</strong>{!linking && <pre className="pre">{instructions || "（预设说明为空）"}</pre>}<p className="small">ChatGPT 会话：{chatgptUrl.trim() || "不绑定（走本机 Codex）"}</p></>}</div>}
       {error && <p className="error" role="alert">{error}</p>}
-      <div className="row">{uncertain ? <><Button type="button" disabled={busy} onClick={recover}>重新读取助手列表</Button>{canRetry && <Button type="button" disabled={busy} onClick={retry}>重试原操作</Button>}</> : preview ? <><Button type="button" disabled={busy} onClick={() => setPreview(false)}>返回修改</Button><Button type="button" variant="primary" disabled={busy} onClick={confirm}>{importing ? "确认导入" : "确认保存"}</Button></> : <Button type="submit" variant="primary" disabled={loading || (importing ? !selected.length : !name.trim())}>{importing ? "预览导入" : "预览保存"}</Button>}</div>
+      <div className="row">{uncertain ? <><Button type="button" disabled={busy} onClick={recover}>重新读取助手列表</Button>{canRetry && <Button type="button" disabled={busy} onClick={retry}>重试原操作</Button>}</> : preview ? <><Button type="button" disabled={busy} onClick={() => setPreview(false)}>返回修改</Button><Button type="button" variant="primary" disabled={busy} onClick={confirm}>{importing || linking ? "确认导入" : "确认保存"}</Button></> : <Button type="submit" variant="primary" disabled={loading || (importing ? !selected.length : !name.trim() || (linking && !chatgptUrl.trim()))}>{importing || linking ? "预览导入" : "预览保存"}</Button>}</div>
       {busy && <p className="muted" role="status">正在保存并回读…</p>}
     </form>
   </dialog>;
