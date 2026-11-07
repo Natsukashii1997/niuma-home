@@ -9,7 +9,7 @@
 - 测试：`npm test` 原样结果 `ℹ pass 761` / `ℹ fail 0`（独立 worktree `niuma-home-render-wait`；日志 `evidence/chatgpt-bridge-20261107/npm-test.log`）。
 - 验证：正式页面编辑弹窗填链接 → 预览（名称、说明不变，437 字）→ 常浩「确认保存」→ `/api/assistants` 与数据库只读回读一致。正式插件重新加载后桥 `connected:true`；正式页面读回 10 条，但最后两条回复只显示「ChatGPT 说：」，接口再读一次就完整。用 Claude in Chrome 新开该会话复现：消息出现后约 0.2 秒内回复里只有隐藏标题，其 textContent 为「ChatGPT 说：ChatGPT」、innerText 为「ChatGPT 说：」；按新逻辑去掉后为空串，等待条件成立时五条回复长度 803 / 200 / 120 / 342 / 83，与接口读回一致。修复后的插件还没装进 Chrome 实测。
 - 截图：`~/Library/Application Support/NiumaHome/evidence/chatgpt-bridge-20261107/正式-通知助手回复只显示隐藏标题.jpg`（不入库）。
-- 发布与回读：无需发布服务（只改插件）。PR #19 squash 合并为 `44e8871`，`main` 快进；正式插件目录 `~/Library/Application Support/NiumaHome/extension/niuma-collect/` 已同步，与仓库逐文件一致，同步前备份在 `evidence/chatgpt-bridge-20261107/extension-before/`。待常浩在 `chrome://extensions` 重新加载后再读一次通知助手历史核对（未做）。回滚：用该备份覆盖回去再重新加载。
+- 发布与回读：无需发布服务（只改插件）。PR #19 squash 合并为 `44e8871`，`main` 快进；正式插件目录 `~/Library/Application Support/NiumaHome/extension/niuma-collect/` 已同步，与仓库逐文件一致，同步前备份在 `evidence/chatgpt-bridge-20261107/extension-before/`。常浩重新加载插件后核对：经正式桥连读两次通知助手历史，第一次走「刷新标签页 → 等正文」用时 10.7 秒、第二次 0.04 秒，都是 10 条、5 条回复长度 831 / 212 / 126 / 354 / 83，没有只剩「ChatGPT 说：」的；正式页面刷新后 5 个回复气泡同样完整（截图 `evidence/chatgpt-bridge-20261107/正式-修复后通知助手历史完整.jpg`）。回滚：用该备份覆盖回去再重新加载。
 - 与授权不一致之处、遗留问题、范围外发现：会话较长时 ChatGPT 只渲染最近的若干轮，这次读回的是最近 10 条（L-17 正文已记「只读页面上已加载的消息」）。面试、绩效两个会话的链接还没拿到。
 - 本轮新坑：L-17
 
