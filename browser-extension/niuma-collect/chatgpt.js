@@ -16,7 +16,8 @@ function textOf(el) {
   // 只取最外层的段落；列表项里嵌套的子列表项单独成行。
   const inner = (b) => b.parentElement.closest(b.tagName === "LI" ? "p, h1, h2, h3, h4, h5, h6, pre, blockquote, table" : SEL.block);
   const blocks = [...el.querySelectorAll(SEL.block)].filter((b) => !b.closest(".sr-only") && !el.contains(inner(b)));
-  if (!blocks.length) return [...el.querySelectorAll(".sr-only")].reduce((t, s) => t.replace(s.textContent, ""), el.innerText).trim();
+  // 隐藏标题按显示出来的字去掉：它的 textContent 是「ChatGPT 说：ChatGPT」，和 innerText 对不上。
+  if (!blocks.length) return [...el.querySelectorAll(".sr-only")].reduce((t, s) => t.replace(s.innerText.trim(), ""), el.innerText).trim();
   return blocks.map((b) => {
     const text = b.innerText.trim();
     if (b.tagName === "LI") {
@@ -80,8 +81,9 @@ async function send(job, post) {
 async function history(job, post) {
   checkPage(job.url);
   await until(() => document.querySelector(SEL.editor), 20000, "ChatGPT 页面没有加载完：请确认已登录");
-  // 刚打开的标签页里输入框先出来、消息后渲染：等到有消息再读；十秒还没有就当这是空会话。
-  await until(() => units().length, 10000, "").catch(() => {});
+  // 刚打开的标签页里输入框先出来、消息后渲染，回复正文更晚（先只有隐藏标题）：等到每条回复都有正文再读；
+  // 十秒还没有消息就当空会话，有消息但正文迟迟不全也只等十秒，照实读回。
+  await until(() => units().length && units("assistant").every((el) => textOf(el)), 10000, "").catch(() => {});
   post({ type: "history", messages: units().map((el) => ({ role: role(el), text: textOf(el) })).filter((m) => m.role === "user" || m.role === "assistant") });
 }
 
