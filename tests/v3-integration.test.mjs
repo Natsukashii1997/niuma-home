@@ -101,7 +101,8 @@ test('参考画布接口图片先压缩预览再确认，重试幂等且路径�
   await assert.rejects(refs.preview({...value,items:[{...value.items[0],imageDataUrl:undefined,src:'https://outside.test/x.jpg'}]}),{status:400});
 });
 
-test('参考图片实际系统压缩为JPEG，拒绝伪造格式',async()=>{
+// 压缩走 macOS 自带的 /usr/bin/sips，Linux 上没有，CI 跳过。
+test('参考图片实际系统压缩为JPEG，拒绝伪造格式',{skip:process.platform!=='darwin'&&'依赖 macOS 的 /usr/bin/sips'},async()=>{
   const png='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aMGQAAAAASUVORK5CYII=';
   const bytes=await compressReference(png);assert.equal(bytes[0],255);assert.equal(bytes[1],216);
   await assert.rejects(compressReference('data:image/png;base64,SGVsbG8='),{status:415});

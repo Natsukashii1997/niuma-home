@@ -9,6 +9,8 @@ const ymd = (daysAgo, sep = '-') => {
   const d = new Date(); d.setDate(d.getDate() - daysAgo);
   return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join(sep);
 };
+// 巡检脚本读 launchd 配置用 /usr/libexec/PlistBuddy、算昨天用 BSD 的 date -v，只在 macOS 上能跑；CI 是 Linux，跳过。
+const macOnly = { skip: process.platform !== 'darwin' && '依赖 macOS 的 PlistBuddy 和 BSD date' };
 const monthLog = daysAgo => `${ymd(daysAgo).slice(0, 7)}.log`;
 
 // 在临时 HOME / base 里跑真实的 health-check.sh；只把外部边界换成桩：
@@ -38,7 +40,7 @@ function scenario(t, { verifyExit, verifyOut, sqlite, freeKb, backupFail = false
   return { ...result, root, backups, log: read(`base/evidence/health/${monthLog(0)}`), launchd: read('base/evidence/health/launchd.log'), notify: read('notify.txt') };
 }
 
-test('巡检全部通过：做今日备份并只留 7 份、裁剪 launchd.log，退出码 0，日志记「通过」，不弹通知', t => {
+test('巡检全部通过：做今日备份并只留 7 份、裁剪 launchd.log，退出码 0，日志记「通过」，不弹通知', macOnly, t => {
   const r = scenario(t, { verifyExit: 0, verifyOut: '✓ launchd 指向 nm-x', sqlite: 'ok', freeKb: 10 * 1024 * 1024, logLines: [[1, '通过']], dailyBackups: 9, launchdLines: 600 });
   t.diagnostic(r.stdout + r.stderr);
   assert.equal(r.status, 0);
@@ -52,13 +54,13 @@ test('巡检全部通过：做今日备份并只留 7 份、裁剪 launchd.log�
   assert.equal(r.notify, '');
 });
 
-test('首次运行没有任何记录：不查昨天，照常通过', t => {
+test('首次运行没有任何记录：不查昨天，照常通过', macOnly, t => {
   const r = scenario(t, { verifyExit: 0, verifyOut: '✓', sqlite: 'ok', freeKb: 10 * 1024 * 1024 });
   assert.equal(r.status, 0);
   assert.match(r.stdout, /✓ 首次运行，不查昨天的记录/);
 });
 
-test('巡检有项不过：昨天缺记录、备份失败都算，退出码 1，日志逐条记下，弹一次通知写第一条', t => {
+test('巡检有项不过：昨天缺记录、备份失败都算，退出码 1，日志逐条记下，弹一次通知写第一条', macOnly, t => {
   const r = scenario(t, { verifyExit: 1, verifyOut: '✗ 错误日志不为空（1 行）', sqlite: '*** in database main ***', freeKb: 1024 * 1024, backupFail: true, logLines: [[3, '通过']] });
   t.diagnostic(r.stdout + r.stderr);
   assert.equal(r.status, 1);
