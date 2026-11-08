@@ -248,6 +248,48 @@ export function createStrategyService(db, { readTimeline, now = Date.now } = {})
       return { revision: writeRevision(month, content, { inputs: old.inputs, segmentIndex: old.segment_index, from: `rollback:${old.id}` }) };
     },
 
+    // 旧数据迁移（04 第 6、7 节）：只供 scripts/migrate-strategy-v2.mjs 调用，不进 HTTP 路由、不进智能体工具。
+    // 只在该月还没有任何 revision 时写入；同一内容重复执行视为已完成，不重复写。
+    async writeMigration(month, doc) {
+      requireMonth(month);
+      if (doc?.month !== month || doc.migrated !== true) throw failure(400, '只接受该月的迁移文档（migrated: true）');
+      const f = await facts(month);
+      const validation = validateStrategyDoc(doc, { evidence: f.evidence, migrated: true });
+      for (const r of doc.regions || []) {
+        const c = f.coverage[r.key];
+        if (c && (r.activity?.value !== c.value || r.activity?.status !== c.status || (r.activity?.ratio ?? null) !== c.ratio)) validation.errors.push({ rule: '05 §6', at: `regions.${r.key}`, message: '覆盖率须与服务端重算一致' });
+      }
+      if (validation.errors.length) throw fail(422, `迁移文档校验未通过，未写入：${issuesText(validation.errors)}`, { code: 'STRATEGY_INVALID', validation });
+      const rows = db.prepare('SELECT id, confirmed_from, content FROM strategy_revisions WHERE month=? ORDER BY created_at, rowid').all(month);
+      if (rows.length) {
+        const same = rows.length === 1 && rows[0].confirmed_from === 'migration' && (({ inputs, ...c }) => fingerprint(c))(JSON.parse(rows[0].content)) === fingerprint(doc);
+        if (same) return { revision: { id: rows[0].id }, skipped: true, validation };
+        throw fail(409, `${month} 已有 revision（${rows.map(r => `${r.id}/${r.confirmed_from}`).join('、')}），迁移不覆盖`, { code: 'MIGRATION_EXISTS' });
+      }
+      const inputs = { timelineSnapshot: f.snapshot, inputFingerprint: f.inputFingerprint, bizcard: f.bizcard ? short(f.bizcard) : null, rules: RULE_VERSIONS, evidenceVersions: {}, migration: doc.producedBy?.migration ?? null };
+      return { revision: writeRevision(month, doc, { inputs, segmentIndex: f.segmentIndex, from: 'migration' }), skipped: false, validation };
+    },
+    // 迁移回退：只删 confirmed_from='migration' 的 revision。该月迁移之后已有任何别的 revision 时整体拒绝（改用数据库备份恢复）。
+    // revision 平时不可删（I-10）；这里是迁移切换的唯一例外，在同一事务里临时摘掉删除触发器、删完立即恢复。
+    rollbackMigration(months) {
+      if (!Array.isArray(months) || !months.length) throw failure(400, '须给出要回退的月份');
+      months.forEach(requireMonth);
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const marks = months.map(() => '?').join(',');
+        const others = db.prepare(`SELECT id, confirmed_from FROM strategy_revisions WHERE month IN (${marks}) AND confirmed_from IS NOT 'migration'`).all(...months);
+        if (others.length) throw fail(409, `迁移之后已有其他版本（${others.map(r => `${r.id}/${r.confirmed_from}`).join('、')}），不能只删迁移版本，请用数据库备份恢复`, { code: 'MIGRATION_SUPERSEDED' });
+        const ids = db.prepare(`SELECT id FROM strategy_revisions WHERE month IN (${marks}) AND confirmed_from='migration'`).all(...months).map(r => r.id);
+        db.exec('DROP TRIGGER strategy_revisions_no_delete');
+        db.prepare(`DELETE FROM strategy_revisions WHERE month IN (${marks}) AND confirmed_from='migration'`).run(...months);
+        db.exec("CREATE TRIGGER strategy_revisions_no_delete BEFORE DELETE ON strategy_revisions BEGIN SELECT RAISE(ABORT, 'revision 写入后不可删除'); END;");
+        db.prepare(`UPDATE strategy_submissions SET state='stale', decided_at=? WHERE month IN (${marks}) AND state='pending'`).run(stamp(), ...months);
+        if (db.prepare(`SELECT COUNT(*) n FROM strategy_revisions WHERE month IN (${marks})`).get(...months).n) throw failure(500, '删除后回读仍有 revision，已回滚');
+        db.exec('COMMIT');
+        return { removed: ids };
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    },
+
     // 业务背景卡：先预览、后确认（07）。新条目在预览时分配 id。
     previewBizcard(month, card) { requireMonth(month); return bizcards.preview(BIZCARD_KIND, month, normalizeBizcard(card)); },
     confirmBizcard(month, body) { requireMonth(month); return bizcards.confirm(BIZCARD_KIND, month, body); },

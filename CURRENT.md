@@ -2,6 +2,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 月度用户策略批 1·1c 旧数据迁移（2026-11-08，Claude，按批 1 票 #29 推进；已提交到分支 `claude/mystifying-keller-7fcf35` 待开 PR，未合并；未切换正式数据；未发布）
+
+- 时间：开工 `2026-11-08 14:47`（`date` 记录）。★ 来由：批 1 票 #29，按 04-迁移映射把 12 个月旧版用户情况和本地改过的月份迁成 v2 revision，可回退。
+- 改了哪些文件：新增 `server/strategy-migrate.mjs`（纯函数：旧记录 → v2 文档 + legacy；迁移检查；每月差异报告）；`server/strategy-service.mjs` 加只供脚本用的 `writeMigration`（`confirmed_from=migration`，按迁移放宽校验，沿用 `writeRevision`）与 `rollbackMigration`（只删迁移版本），都不进 HTTP 路由和智能体工具；新增 `scripts/migrate-strategy-v2.mjs`（plan / apply / rollback 五步）；新增 `tests/strategy-migrate.test.mjs`（6 项：反例 16、检查能抓违规、重复写入、回退、脚本端到端含回退实测、试跑后旧记录被改则拒绝切换）；`docs/策略规则/04-迁移映射.md` 升 migration-v1.2、`09-反例测试集.md` 升 cases-v1.2、README 同步；`docs/OPERATIONS.md` 新增「月度策略 v2 迁移」一节（试跑、切换、回退命令）。
+- 测试：`npm test` 原样结果 `ℹ pass 806` / `ℹ fail 0`（含 `check:style` 与交接格式检查）；`node --test tests/strategy-migrate.test.mjs` `ℹ pass 6` / `ℹ fail 0`。
+- 验证：真实数据隔离试跑 `node scripts/migrate-strategy-v2.mjs plan --data data --out "~/Library/Application Support/NiumaHome/evidence/2026-11-08-strategy-v2-migration/plan-1" --refresh-timeline`：12 个月全部通过（条目 104–131 条逐月守恒，校验器 0 错误 0 提示，隔离库写入回读一致）；正式库只以只读方式做了一致备份，`data/logs/lark-calls.jsonl` 最后一条仍是 05:41（飞书重读只记在隔离副本里）。
+- 截图：无（没有界面改动）。
+- 发布与回读：未发布；未切换正式数据（须常浩看过差异报告并同意；切换前还须发布批 1 并同步一次时间线，见 OPERATIONS）。
+- 与授权不一致之处、遗留问题、范围外发现：① **规则冲突，已改 04 为 v1.2，须常浩知悉**：旧 A2「觉得还来得及」34 条（全是「AI 判断」）换算成 `BR-M2` 后，02 §2.3 和校验器要求没有用户决策行为证据时只能 `unknown`，与 04 v1.1「AI 判断 → inferred + weak」冲突；按「只降不升」迁成 `unknown`（gap、route 指向业务背景卡），正文不动。② 04 没写的四处按推断补进 v1.2：tempNote 第二条起（44 处）进 legacy；readiness 每个迁移情境一条（other 有两个情境）；主障碍取旧版列出的第一条；legacy.regions 按旧地区 key（含 sg）存放，条目保留 `[正文, 来源]`；1.2 三栏条目加了 `origin` 字段（03 第 4 节没有这个字段）。③ 真实数据里没有「你写的」条目，manual 逐字一致只用测试夹具验证。④ 覆盖率按当前时间线重算后几乎全是「高」（11 月英国 74%、美国 100%），12 个月共 27 处旧分档与 05 §7 默认建议不一致，报告里标了 ⚠；覆盖率阈值校准是 README 延期事项（批 1 验收前），不在本票。⑤ 回退为删除迁移 revision 需临时摘掉删除触发器（I-10 的唯一例外），迁移之后已有新版本的月份拒绝回退、改用数据库备份恢复。⑥ 迁移 revision 的 `confirmed_by` 沿用 `writeRevision` 写「常浩」（切换须他同意）。
+- 本轮新坑：无。
+
 ## 月度用户策略批 1·1b-2 提交与确认（2026-11-08，Claude，常浩说「按推荐开工」后按票推进；常浩说「CI 过后合并」，PR #35 squash 合并为 `227be7d`；未发布，批 1 合起来再发布）
 
 - 时间：开工 `2026-11-08 15:00`（事后估计：1b-1 合并后开 worktree 的时刻，开工时没有用 `date` 记录；本节测试结果都在此之后跑出）。★ 来由：批 1 第四张票 #28，打通「skill 提交 → 工作台校验 → 常浩页面确认 → 不可变 revision」。
