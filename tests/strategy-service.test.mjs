@@ -165,12 +165,12 @@ test('反例 4、07 第 3 节：背景卡没有存量用户情况时，续费障
 test('#40 背景卡适用范围：countries、relation 的格式校验；带进 Evidence；只在填了时改变 Evidence 版本；提交按范围封顶', async () => {
   const { strategy } = setup();
   const entry = extra => ({ 用户观察: [{ text: '英国新签咨询多在问考前冲刺', type: '业务观察', basis: '顾问周报', ...extra }] });
-  for (const [extra, why] of [[{ countries: ['gb'] }, /英国写 uk/], [{ countries: ['other'] }, /不是归一化的具体国家代码/], [{ countries: ['usa'] }, /不是归一化/],
+  for (const [extra, why] of [[{ countries: ['gb'] }, /英国写 uk/], [{ countries: ['other'] }, /不是时间线认识的国家代码/], [{ countries: ['usa'] }, /不是时间线认识/], [{ countries: ['de'] }, /不是时间线认识/],
     [{ countries: 'uk' }, /须为国家代码数组/], [{ relation: '老学员' }, /新签 \/ 续费 \/ 通用/]]) assert.throws(() => strategy.previewBizcard('2026-12', entry(extra)), why, JSON.stringify(extra));
   const p0 = strategy.previewBizcard('2026-12', entry({ countries: [], relation: '' }));
   assert.deepEqual(Object.keys(p0.value['用户观察'][0]).sort(), ['basis', 'id', 'text', 'type'], '空范围按没填处理，不存');
-  const p1 = strategy.previewBizcard('2026-12', entry({ countries: [' UK', 'uk', 'Us'], relation: '新签' }));
-  assert.deepEqual([p1.value['用户观察'][0].countries, p1.value['用户观察'][0].relation], [['uk', 'us'], '新签'], '转小写、去重');
+  const p1 = strategy.previewBizcard('2026-12', entry({ countries: [' US', 'uk', 'Us'], relation: '新签' }));
+  assert.deepEqual([p1.value['用户观察'][0].countries, p1.value['用户观察'][0].relation], [['uk', 'us'], '新签'], '转小写、去重、排序（点选顺序不影响依据版本）');
 
   // 先存没填范围的条目：版本与加字段前的算法一致（老条目不会因为这次改动变成「依据已变化」）
   strategy.confirmBizcard('2026-12', { confirm: true, previewId: strategy.previewBizcard('2026-12', entry({})).previewId });

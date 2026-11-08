@@ -28,7 +28,7 @@ const nonEmpty = v => typeof v === 'string' ? v.trim().length > 0 : Boolean(v);
 // 没填按「范围不明」处理，和对不上一样不算行为证据（最高 inferred + weak）。
 const RANK = { strong: 3, partial: 2, weak: 1 };
 const BIZ_RANK = { 事实记录: 3, 业务观察: 2 };
-function behavior(e, scenario, relation) {
+function behaviorRank(e, scenario, relation) {
   if (e?.kind === 'voice') return { rank: RANK[e.strength] ?? 2 };
   if (e?.kind !== 'business' || !BIZ_RANK[e.bizType]) return { rank: 0 };
   const countries = e.countries || [], here = scenario?.countries || [];
@@ -187,7 +187,7 @@ export function validateStrategyDoc(doc, { evidence = [], migrated = false } = {
       const scenario = scenarioById.get(c.scenario), misfit = [];
       let best = 0;
       for (const id of c.evidenceRefs || []) {
-        const b = behavior(byId.get(id), scenario, c.targetRelation);
+        const b = behaviorRank(byId.get(id), scenario, c.targetRelation);
         if (b.misfit) misfit.push(`${id}（${b.misfit}）`);
         best = Math.max(best, b.rank);
       }

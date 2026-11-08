@@ -370,7 +370,7 @@ export function BizcardModal({ open, onClose, month, card, flow, onSaved }) {
                 <span className="s2-biz-chips" role="group" aria-label="适用国家">
                   {shown.map((c) => { const on = countries.includes(c);
                     return <button key={c} type="button" className={`chip${on ? " is-on" : ""}`} aria-pressed={on} title={`${COUNTRY_NAME[c]}（${c}）`} disabled={locked}
-                      onClick={() => set(field, i, { countries: on ? countries.filter((x) => x !== c) : [...countries, c] })}>{COUNTRY_NAME[c]}</button>; })}
+                      onClick={() => set(field, i, { countries: on ? countries.filter((x) => x !== c) : [...countries, c] })}>{COUNTRY_NAME[c] || c}</button>; })}
                   {!moreCountries.has(key) && <button type="button" className="chip s2-biz-more" disabled={locked} onClick={() => setMoreCountries((m) => new Set([...m, key]))}>其他国家…</button>}
                 </span>
                 <span className="s2-biz-sep" />

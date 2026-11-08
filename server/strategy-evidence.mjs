@@ -5,7 +5,7 @@ import { guessRe } from './timeline.mjs';
 
 export const REGION_KEYS = ['uk', 'us', 'hk', 'au', 'ca', 'other'];
 const OWN_REGION = new Set(['uk', 'us', 'hk', 'au', 'ca']);
-const KNOWN_COUNTRIES = new Set(['us', 'uk', 'hk', 'au', 'ca', 'sg', 'my', 'nz', 'mo', 'ie']);
+export const KNOWN_COUNTRIES = new Set(['us', 'uk', 'hk', 'au', 'ca', 'sg', 'my', 'nz', 'mo', 'ie']);
 const EVENT_TYPES = ['Final', '期中', 'Essay 截止', '补考', '出分', '选课', '开学', 'Reading Week', '期中假'];
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);

@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { REVISION_NO_DELETE_TRIGGER } from './db.mjs';
 import { failure, requireMonth } from './v3-common.mjs';
 import { createLocalChanges, fingerprint, getRecord } from './local-records.mjs';
-import { buildEvidence } from './strategy-evidence.mjs';
+import { buildEvidence, KNOWN_COUNTRIES } from './strategy-evidence.mjs';
 import { LIFECYCLE_VERSION, lifecycleWindows, regionCoverage } from './strategy-lifecycle.mjs';
 import { BARRIER_RELATIONS, SCHEMA_VERSION, SOURCE_IDS, validateStrategyDoc } from './strategy-validate.mjs';
 
@@ -33,14 +33,15 @@ export function bizcardEvidence(month, card) {
   }
   return out;
 }
-// 条目的适用国家：可选；归一化为两位小写国家代码（和时间线 Evidence 的 country 同一套，英国写 uk），去重，空数组按没填处理。
+// 条目的适用国家：可选；只收时间线认识的国家代码（和时间线 Evidence 的 country 同一套，英国写 uk）。
+// 去重并排序：同一组国家点选顺序不同，不算依据变化；空数组按没填处理。
 function bizCountries(field, list) {
   if (list === undefined || list === null) return [];
   if (!Array.isArray(list)) throw failure(400, `「${field}」的适用国家须为国家代码数组`);
-  const out = [...new Set(list.map(c => String(c ?? '').trim().toLowerCase()).filter(Boolean))];
+  const out = [...new Set(list.map(c => String(c ?? '').trim().toLowerCase()).filter(Boolean))].sort();
   for (const c of out) {
     if (c === 'gb') throw failure(400, `「${field}」的适用国家里英国写 uk，不写 gb`);
-    if (!/^[a-z]{2}$/.test(c) || c === 'other') throw failure(400, `「${field}」的适用国家 ${c} 不是归一化的具体国家代码（两位小写字母）`);
+    if (!KNOWN_COUNTRIES.has(c)) throw failure(400, `「${field}」的适用国家 ${c} 不是时间线认识的国家代码（${[...KNOWN_COUNTRIES].join(' / ')}）`);
   }
   return out;
 }
