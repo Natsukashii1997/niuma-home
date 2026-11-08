@@ -2,7 +2,7 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## 月度用户策略批 1·1b-1 月度文档 v2 校验器（2026-11-08，Claude，常浩说「按推荐开工」后按票推进；分支 `claude/27-validator`，PR 待合并，等常浩说「合并」；未发布）
+## 月度用户策略批 1·1b-1 月度文档 v2 校验器（2026-11-08，Claude，常浩说「按推荐开工」后按票推进；常浩说「CI 过后合并」，PR #34 squash 合并为 `4a19cb4`；未发布，批 1 合起来再发布）
 
 - 时间：开工 `2026-11-08 14:20`（事后估计：1a 合并后开 worktree 的时刻，开工时没有用 `date` 记录；本节测试结果都在此之后跑出）。★ 来由：批 1 第三张票 #27，实现 schema 2.1 第 4 节月度文档的结构校验和不变量。
 - 改了哪些文件：新增 `server/strategy-validate.mjs`（`validateStrategyDoc(doc, { evidence, migrated })`，返回逐条错误、提示和「依据已变化」的 Claim；内置来源登记表 sources-v1.1 与障碍体系 barrier-v2.1 的编码和适用人群）；新增 `tests/strategy-validate.test.mjs`（13 项，含内置来源表、障碍表与 01、02 文档的一致性测试）；`docs/策略规则/03-Schema-v2.md` 两处对齐：3.2 粒度改为每地区 0–4 个情境（与 I-13 一致），第 5 节注明 I-07、I-08、I-14 随 Opportunity、Strategy 在批 2 实现；`docs/策略规则/02-障碍体系v2.md` 补一句：`targetRelation=通用` 只能用新签、续费都适用的障碍。
