@@ -2,7 +2,7 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## 月度策略：购买判断证据口径与 skill 预检对齐，背景卡加适用范围（2026-11-08，Claude，由 #24 交接会话按 issue #40 派出；常浩「按推荐开工」定 5 处细节、页面选样稿 A；分支 `claude/40-evidence-scope` 已提交并开 PR，未合并；未发布，批 1 合起来再发布）
+## 月度策略：购买判断证据口径与 skill 预检对齐，背景卡加适用范围（2026-11-08，Claude，由 #24 交接会话按 issue #40 派出；常浩「按推荐开工」定 5 处细节、页面选样稿 A；分支 `claude/40-evidence-scope`，常浩说「CI 过后合并」，PR #43 squash 合并为 `b8144a8`，关闭 #40；未发布，批 1 合起来再发布）
 
 - 时间：开工 `2026-11-08 20:12`（`date '+%F %H:%M'` 记录，拉分支时）。★ 来由：服务端校验器把管理判断也算行为证据、readiness 不查、不按强度封顶、不查业务证据适用范围，绕过 skill 直接 `strategy_submit` 时拦不住（#40，来源 my-skills PR #76 遗留第 2 条）。
 - 改了哪些文件：`server/strategy-service.mjs` 背景卡条目加可选 `countries`（只收时间线认识的 10 个代码，转小写、去重、排序）、`relation`（新签 / 续费 / 通用），带进 business Evidence，只在填了时计入 `evidenceVersion`（老条目版本不变）；`server/strategy-evidence.mjs` 导出 `KNOWN_COUNTRIES`；`server/strategy-validate.mjs` 行为证据只认事实记录、业务观察和 Voice，readiness 与 barrier 同一套规则，按适用行为证据最高强度封顶（known 须事实记录，partial 须业务观察以上），范围没填或对不上最高 inferred + weak，报错写明哪条证据、哪里对不上；`src/modules/user/StrategyV2Parts.jsx`、`strategy-v2.js`、`src/styles/51-strategy-v2.css` 背景卡每条加「适用范围」行（样稿 A：国家 chip、人群分段切换、右侧状态标签；顶部统计未填条数；保存差异写出范围）；测试 `tests/strategy-validate.test.mjs`（+6 项，改 1 处旧断言：没有类型和范围的业务证据不再能撑 known）、`tests/strategy-service.test.mjs`（+1 项）、`tests/strategy-v2-view.test.mjs`（+1 项）；文档 `docs/API.md`、`docs/策略规则/07-业务背景卡.md`（升 bizcard-v1.1）、`docs/策略规则/README.md`。
