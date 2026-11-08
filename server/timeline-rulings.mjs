@@ -31,7 +31,7 @@ export function applyRulings(timeline, rulings) {
     if (r.decision === 'exclude') return item;
     const target = a.cell.cells[r.cell];
     const selected = r.decision === 'adopt' && r.segments?.length ? r.segments : [{ from: r.from, to: r.to }];
-    for (const part of selected) out.agenda.push({ from: part.from, to: part.to, c: a.cell.c, school: a.school, type: a.cell.type, src: target.src, ruled: true, ...(part.label && { detail: part.label }) });
+    selected.forEach((part, i) => out.agenda.push({ from: part.from, to: part.to, c: a.cell.c, school: a.school, type: a.cell.type, src: target.src, ruled: true, ...(part.label && { detail: part.label }), ...(selected.length > 1 && { segment: i }) }));
     const row = out.table[a.cell.code]?.[a.cell.row];
     if (row && target.slot >= 0) {
       row.cells[target.slot] = [r.from.slice(5), r.to.slice(5), target.src, 'ruled'];
