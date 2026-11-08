@@ -6,6 +6,9 @@ import path from "node:path";
 // 数据库与图片都放在数据目录下，上云时整体拷走即可。
 export const dataDir = path.resolve(process.env.WORKDESK_DATA_DIR || "data");
 
+// revision 删除触发器单独导出：迁移回退（strategy-service rollbackMigration）临时摘掉后用同一条语句装回。
+export const REVISION_NO_DELETE_TRIGGER = "CREATE TRIGGER IF NOT EXISTS strategy_revisions_no_delete BEFORE DELETE ON strategy_revisions BEGIN SELECT RAISE(ABORT, 'revision 写入后不可删除'); END;";
+
 // 全部表结构在此定义；改表结构须先改 docs/API.md 并在派单中说明。
 const SCHEMA = `
   -- 促销表：一行 = 某月某业务线的一个 SKU
@@ -156,7 +159,7 @@ const SCHEMA = `
     created_at TEXT NOT NULL
   );
   CREATE TRIGGER IF NOT EXISTS strategy_revisions_no_update BEFORE UPDATE ON strategy_revisions BEGIN SELECT RAISE(ABORT, 'revision 写入后不可修改'); END;
-  CREATE TRIGGER IF NOT EXISTS strategy_revisions_no_delete BEFORE DELETE ON strategy_revisions BEGIN SELECT RAISE(ABORT, 'revision 写入后不可删除'); END;
+  ${REVISION_NO_DELETE_TRIGGER}
   -- submission：pending / confirmed / rejected / stale；agent 来自凭据，declared 是 AI 自报，只作声明。
   CREATE TABLE IF NOT EXISTS strategy_submissions (
     id TEXT PRIMARY KEY,

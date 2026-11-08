@@ -2,6 +2,7 @@
 // 流程：skill 用只读工具取事实 → strategy_submit 只能创建 submission → 常浩在页面预览、确认 → 不可变 revision。
 // 确认接口只给页面用，不进智能体工具；AI 自报的执行方、模型只作声明，服务端另记凭据对应的 agent 与时间。
 import { randomUUID } from 'node:crypto';
+import { REVISION_NO_DELETE_TRIGGER } from './db.mjs';
 import { failure, requireMonth } from './v3-common.mjs';
 import { createLocalChanges, fingerprint, getRecord } from './local-records.mjs';
 import { buildEvidence } from './strategy-evidence.mjs';
@@ -129,14 +130,14 @@ export function createStrategyService(db, { readTimeline, now = Date.now } = {})
   };
   const summary = row => ({ id: row.id, month: row.month, state: row.state, agent: row.agent, declared: JSON.parse(row.declared || 'null'), baseRevision: row.base_revision, submittedAt: row.submitted_at, decidedAt: row.decided_at, decidedFrom: row.decided_from });
   // 写入 revision：事务内复核、编号、回读，不一致就回滚。content.inputs 一律用服务端记录的输入。
-  function writeRevision(month, doc, { inputs, segmentIndex, submissionId = null, from, guard = () => {} }) {
+  function writeRevision(month, doc, { inputs, segmentIndex, submissionId = null, from, by = '常浩', guard = () => {} }) {
     db.exec('BEGIN IMMEDIATE');
     try {
       guard();
       const id = `REV-${month}-${db.prepare('SELECT COUNT(*) n FROM strategy_revisions WHERE month=?').get(month).n + 1}`;
       const content = { ...doc, inputs };
       db.prepare('INSERT INTO strategy_revisions (id,month,schema_version,content,content_hash,inputs,segment_index,submission_id,confirmed_by,confirmed_from,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
-        .run(id, month, SCHEMA_VERSION, JSON.stringify(content), fingerprint(content), JSON.stringify(inputs), JSON.stringify(segmentIndex || {}), submissionId, '常浩', from, stamp());
+        .run(id, month, SCHEMA_VERSION, JSON.stringify(content), fingerprint(content), JSON.stringify(inputs), JSON.stringify(segmentIndex || {}), submissionId, by, from, stamp());
       if (submissionId) db.prepare("UPDATE strategy_submissions SET state='confirmed', decided_at=?, decided_from=? WHERE id=? AND state='pending'").run(stamp(), 'page', submissionId);
       db.prepare("UPDATE strategy_submissions SET state='stale', decided_at=? WHERE month=? AND state='pending'").run(stamp(), month);
       const saved = current(month);
@@ -247,6 +248,52 @@ export function createStrategyService(db, { readTimeline, now = Date.now } = {})
       if (current(month).id === old.id) throw failure(409, '已经是当前版本');
       const { inputs, ...content } = old.content;
       return { revision: writeRevision(month, content, { inputs: old.inputs, segmentIndex: old.segment_index, from: `rollback:${old.id}` }) };
+    },
+
+    // 旧数据迁移（04 第 6、7 节）：只供 scripts/migrate-strategy-v2.mjs 调用，不进 HTTP 路由、不进智能体工具。
+    // 只在该月还没有任何 revision 时写入；同一内容重复执行视为已完成，不重复写。
+    async writeMigration(month, doc) {
+      requireMonth(month);
+      if (doc?.month !== month || doc.migrated !== true) throw failure(400, '只接受该月的迁移文档（migrated: true）');
+      const f = await facts(month);
+      const validation = validateStrategyDoc(doc, { evidence: f.evidence, migrated: true });
+      for (const r of doc.regions || []) {
+        const c = f.coverage[r.key];
+        if (c && (r.activity?.value !== c.value || r.activity?.status !== c.status || (r.activity?.ratio ?? null) !== c.ratio)) validation.errors.push({ rule: '05 §6', at: `regions.${r.key}`, message: '覆盖率须与服务端重算一致' });
+      }
+      if (validation.errors.length) throw fail(422, `迁移文档校验未通过，未写入：${issuesText(validation.errors)}`, { code: 'STRATEGY_INVALID', validation });
+      const rows = db.prepare('SELECT id, confirmed_from, content FROM strategy_revisions WHERE month=? ORDER BY created_at, rowid').all(month);
+      if (rows.length) {
+        const same = rows.length === 1 && rows[0].confirmed_from === 'migration' && (({ inputs, ...c }) => fingerprint(c))(JSON.parse(rows[0].content)) === fingerprint(doc);
+        if (same) return { revision: { id: rows[0].id }, skipped: true, validation };
+        throw fail(409, `${month} 已有 revision（${rows.map(r => `${r.id}/${r.confirmed_from}`).join('、')}），迁移不覆盖`, { code: 'MIGRATION_EXISTS' });
+      }
+      const inputs = { timelineSnapshot: f.snapshot, inputFingerprint: f.inputFingerprint, bizcard: f.bizcard ? short(f.bizcard) : null, rules: RULE_VERSIONS, evidenceVersions: {}, migration: doc.producedBy?.migration ?? null };
+      // 确认人记脚本：常浩的同意记在切换日志（apply-log.json）里，不在库里冒用他的名字。
+      return { revision: writeRevision(month, doc, { inputs, segmentIndex: f.segmentIndex, from: 'migration', by: 'migration-script' }), skipped: false, validation };
+    },
+    // 迁移回退：只删 confirmed_from='migration' 的 revision。该月迁移之后已有任何别的 revision 时整体拒绝（改用数据库备份恢复）。
+    // revision 平时不可删（I-10）；这里是迁移切换的唯一例外，在同一事务里临时摘掉删除触发器、删完立即恢复。
+    // dryRun：只列出将删除的版本和将转为 stale 的待确认提交，不改任何数据（先预览、后确认）。
+    rollbackMigration(months, { dryRun = false } = {}) {
+      if (!Array.isArray(months) || !months.length) throw failure(400, '须给出要回退的月份');
+      months.forEach(requireMonth);
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const marks = months.map(() => '?').join(',');
+        const others = db.prepare(`SELECT id, confirmed_from FROM strategy_revisions WHERE month IN (${marks}) AND confirmed_from IS NOT 'migration'`).all(...months);
+        if (others.length) throw fail(409, `迁移之后已有其他版本（${others.map(r => `${r.id}/${r.confirmed_from}`).join('、')}），不能只删迁移版本，请用数据库备份恢复`, { code: 'MIGRATION_SUPERSEDED' });
+        const ids = db.prepare(`SELECT id FROM strategy_revisions WHERE month IN (${marks}) AND confirmed_from='migration'`).all(...months).map(r => r.id);
+        const stale = db.prepare(`SELECT id FROM strategy_submissions WHERE month IN (${marks}) AND state='pending'`).all(...months).map(r => r.id);
+        if (dryRun) { db.exec('ROLLBACK'); return { removed: ids, staled: stale, dryRun: true }; }
+        db.exec('DROP TRIGGER strategy_revisions_no_delete');
+        db.prepare(`DELETE FROM strategy_revisions WHERE month IN (${marks}) AND confirmed_from='migration'`).run(...months);
+        db.exec(REVISION_NO_DELETE_TRIGGER);
+        db.prepare(`UPDATE strategy_submissions SET state='stale', decided_at=? WHERE month IN (${marks}) AND state='pending'`).run(stamp(), ...months);
+        if (db.prepare(`SELECT COUNT(*) n FROM strategy_revisions WHERE month IN (${marks})`).get(...months).n) throw failure(500, '删除后回读仍有 revision，已回滚');
+        db.exec('COMMIT');
+        return { removed: ids, staled: stale, dryRun: false };
+      } catch (error) { if (db.isTransaction) db.exec('ROLLBACK'); throw error; }
     },
 
     // 业务背景卡：先预览、后确认（07）。新条目在预览时分配 id。
