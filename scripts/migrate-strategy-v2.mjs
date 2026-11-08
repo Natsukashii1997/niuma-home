@@ -3,7 +3,8 @@
 //
 //   试跑（第 1–4 步，只读源数据）：node scripts/migrate-strategy-v2.mjs plan --data <源数据目录> --out <证据目录> [--refresh-timeline]
 //   切换（第 5 步，须常浩看过报告并同意）：node scripts/migrate-strategy-v2.mjs apply --data <正式数据目录> --report <证据目录> --confirm
-//   回退：node scripts/migrate-strategy-v2.mjs rollback --data <正式数据目录> --out <证据目录> --confirm [--months 2026-01,2026-02]
+//   回退：node scripts/migrate-strategy-v2.mjs rollback --data <正式数据目录> [--months 2026-01,2026-02]               先预览，不改数据
+//         node scripts/migrate-strategy-v2.mjs rollback --data <正式数据目录> --out <证据目录> --confirm [--months …]   执行
 //
 // plan 以只读方式打开源数据库，备份后复制到证据目录下的隔离数据目录再迁移；--refresh-timeline 只在隔离副本里重读一次飞书时间线（只读）。
 // apply 先备份正式库，再逐月重跑迁移，内容指纹须与报告一致才写；回退只删迁移写入的 revision，迁移之后有新版本的月份整体拒绝。
@@ -60,7 +61,7 @@ async function load(dataDir) {
     const row = db.prepare('SELECT payload, updated_at FROM v3_documents WHERE kind=? AND id=?').get(us.USER_STRATEGY_KIND, month);
     if (row) return { v1: JSON.parse(row.payload), source: { kind: '已修改', ref: `v3_documents user-strategy/${month}`, updatedAt: row.updated_at } };
     const v1 = us.readInsight(month);
-    return v1 ? { v1, source: { kind: '内置', ref: `docs/用户情况/${month}.json`, updatedAt: null } } : null;
+    return v1 ? { v1: { ...v1, strategy: null }, source: { kind: '内置', ref: `docs/用户情况/${month}.json`, updatedAt: null } } : null;
   };
   async function migrate(month) {
     const old = oldRecord(month);
@@ -69,7 +70,7 @@ async function load(dataDir) {
     const doc = mig.migrateMonth(old.v1, { month, coverage: f.coverage, source: old.source });
     const validation = val.validateStrategyDoc(doc, { evidence: f.evidence, migrated: true });
     const checks = mig.migrationChecks(old.v1, doc, validation);
-    return { ...old, doc, validation, checks, fingerprint: mig.contentFingerprint(doc) };
+    return { ...old, doc, validation, checks, fingerprint: mig.contentFingerprint(doc), full: mig.fullFingerprint(doc) };
   }
   // 写入后回读：正式版本就是这份迁移文档。
   const readBack = (month, doc) => {
@@ -123,7 +124,7 @@ async function plan() {
     ok &&= Boolean(pass);
     writeFileSync(path.join(reports, `${month}.md`), ctx.mig.diffReport(r.v1, r.doc, r) + (error ? `\n**写入失败**：${error}\n` : revision ? `\n隔离数据目录写入并回读一致：${revision}\n` : ''));
     writeJson(path.join(docs, `${month}.json`), r.doc);
-    summary.months[month] = { ok: Boolean(pass), source: r.source, fingerprint: r.fingerprint, revision, error, errors: r.validation.errors.length, warnings: r.validation.warnings.length,
+    summary.months[month] = { ok: Boolean(pass), source: r.source, fingerprint: r.fingerprint, full: r.full, revision, error, errors: r.validation.errors.length, warnings: r.validation.warnings.length,
       items: r.checks.total, failed: r.checks.checks.filter(c => !c.ok).map(c => `${c.name}：${c.detail}`),
       regions: Object.fromEntries(r.doc.regions.map(x => [x.key, { priority: x.priority.value, default: x.priority.default, activity: x.activity.value, ratio: x.activity.ratio }])),
       barrierUnknown: r.doc.claims.filter(c => c.claimType === 'barrier' && c.status === 'unknown').length };
@@ -159,6 +160,7 @@ async function apply() {
     const r = await ctx.migrate(month);
     if (!r.checks.ok) die(`${month} 自动检查未通过：${r.checks.checks.filter(c => !c.ok).map(c => c.name).join('、')}`);
     if (r.fingerprint !== summary.months[month].fingerprint) die(`${month} 的迁移内容与报告不一致（旧记录在试跑后被改过？），请重新试跑并给常浩看新报告`);
+    if (r.full !== summary.months[month].full) die(`${month} 的覆盖率或默认优先级与报告不一致（时间线在试跑后同步过？），请重新试跑并给常浩看新报告`);
     runs.push([month, r]);
   }
   if (ctx.months().some(m => !summary.months[m])) die(`正式库里有报告没覆盖的月份：${ctx.months().filter(m => !summary.months[m]).join('、')}，请重新试跑`);
@@ -181,16 +183,26 @@ async function apply() {
 }
 
 async function rollback() {
-  const data = need('data'), out = need('out');
-  if (opt.confirm !== true) die('回退会删除迁移写入的 revision：确认后加 --confirm 执行');
-  mkdirSync(out, { recursive: true });
-  const backup = path.join(out, `work-desk-before-rollback-${stampName()}.db`);
-  backupDb(path.join(data, 'work-desk.db'), backup);
+  const data = need('data');
+  const preview = opt.confirm !== true;
+  // 先预览：不带 --confirm 只列出将删除的版本和将转为 stale 的待确认提交，不备份、不改数据。
+  const out = preview ? null : need('out');
+  let backup = null;
+  if (!preview) {
+    mkdirSync(out, { recursive: true });
+    backup = path.join(out, `work-desk-before-rollback-${stampName()}.db`);
+    backupDb(path.join(data, 'work-desk.db'), backup);
+  }
   const ctx = await load(data);
   const months = typeof opt.months === 'string' ? opt.months.split(',') : ctx.db.prepare("SELECT DISTINCT month FROM strategy_revisions WHERE confirmed_from='migration' ORDER BY month").all().map(r => r.month);
   if (!months.length) { console.log('没有迁移写入的 revision，无需回退'); return; }
-  const { removed } = ctx.service.rollbackMigration(months);
-  console.log(`✓ 已删除迁移版本 ${removed.length} 个（${removed.join('、')}）；回退前备份：${backup}`);
+  const { removed, staled } = ctx.service.rollbackMigration(months, { dryRun: preview });
+  if (preview) {
+    console.log(`预览（未改动）：将删除迁移版本 ${removed.length} 个（${removed.join('、') || '无'}）；将转为 stale 的待确认提交 ${staled.length} 个（${staled.join('、') || '无'}）`);
+    console.log('确认无误后加 --out <证据目录> --confirm 执行（执行前会先备份数据库到证据目录）。');
+    return;
+  }
+  console.log(`✓ 已删除迁移版本 ${removed.length} 个（${removed.join('、')}）；待确认提交转为 stale ${staled.length} 个；回退前备份：${backup}`);
   console.log('页面读的旧版用户情况（v3_documents、docs/用户情况/）迁移时未改动，回退后照常使用。');
 }
 

@@ -31,16 +31,23 @@ const MAIN = ['uk', 'us', 'hk', 'au', 'ca'];
 const OLD_KEYS = [...MAIN, 'sg', 'other'];
 // 04 第 5.1 节：旧地区 → 新地区与迁移情境。
 const SCENARIO_OF = { uk: ['uk', '01', ['uk']], us: ['us', '01', ['us']], hk: ['hk', '01', ['hk']], au: ['au', '01', ['au']], ca: ['ca', '01', ['ca']], sg: ['other', '01', ['sg']], other: ['other', '02', ['nz', 'mo', 'ie', 'my']] };
+const scenarioId = (month, oldKey) => `SCN-${month}-${SCENARIO_OF[oldKey][0]}-${SCENARIO_OF[oldKey][1]}`;
 export const OTHER_REASON = '待研判：由旧 sg 与旧 other 合并，旧分档见 legacy';
 const LEGACY_CELLS = ['node', 'opp', 'master'];
 
+// 04 第 4 节：机会收敛表的字段照搬，「新签 / 续费」→ 通用；claims、toulmin 为空。Opportunity 批 2 实现前存 legacy。
+export function legacyOpportunity(month, [priority, name, regions, line, relation, window, rationale], i) {
+  return { id: `OPP-${month}-${i + 1}`, priority, name, regions, line, targetRelation: relation === '新签 / 续费' ? '通用' : relation, window, rationale, claims: [], toulmin: null };
+}
 const judged = source => {
   const m = SOURCE_MAP[source];
   if (!m) throw new Error(`未知的旧来源「${source}」`);
   return { ...m, origin: source === '你写的' ? 'manual' : 'migrated' };
 };
 const stable = value => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);
-// 迁移内容指纹：去掉随当前时间线重算的部分（activity、priority.default），用于「常浩看过的报告」与切换时的内容比对。
+// 两个指纹：contentFingerprint 只看旧记录迁来的内容（去掉随时间线重算的 activity、priority.default），fullFingerprint 是整份文档。
+// 切换时两者都要与常浩看过的报告一致：前者不一致说明旧记录被改过，后者不一致说明时间线变了，都要重新试跑出报告。
+export const fullFingerprint = doc => stable(doc);
 export const contentFingerprint = doc => stable({ ...doc, regions: doc.regions.map(({ activity, priority, ...r }) => ({ ...r, priority: { value: priority.value, reason: priority.reason } })) });
 
 /**
@@ -59,9 +66,9 @@ export function migrateMonth(v1, { month, coverage, source }) {
   const scenarios = [], claims = [], legacyRegions = {};
 
   for (const k of OLD_KEYS) {
-    const r = byKey[k], [region, no, countries] = SCENARIO_OF[k];
+    const r = byKey[k], [region, , countries] = SCENARIO_OF[k];
     if (!r.task?.length) throw new Error(`${month} ${k} 没有 task，无法生成迁移情境`);
-    const id = `SCN-${month}-${region}-${no}`;
+    const id = scenarioId(month, k);
     scenarios.push({ id, region, countries, academicStage: 'undergraduate', phase: r.task[0][0], keyTask: r.task[0][0], targetRelation: '新签',
       observedRelation: { value: 'unknown', evidenceRefs: [] }, evidenceRefs: [] });
     const base = (claimType, text, src, extra = {}) => ({ id: claimId(), scenario: id, claimType, text, ...judged(src), evidenceRefs: [], refVersions: {}, ...extra });
@@ -106,7 +113,7 @@ export function migrateMonth(v1, { month, coverage, source }) {
     brief, regions, scenarios, claims, opportunities: [], strategies: [],
     research: { rejected: [], assumptions: [], notes: [...(v1.appendix?.pending || [])] },
     legacy: { migration: MIGRATION_VERSION, source: { ...source, timelineSyncedAt: v1.timelineSyncedAt ?? null, preparedAt: v1.preparedAt ?? null, updatedAt: v1.updatedAt ?? source?.updatedAt ?? null },
-      regions: legacyRegions, opportunities: v1.opportunities || [], promo: v1.strategy ?? null },
+      regions: legacyRegions, opportunities: (v1.opportunities || []).map((o, i) => legacyOpportunity(month, o, i)), promo: v1.strategy ?? null },
   };
 }
 
@@ -125,14 +132,14 @@ export function migrationChecks(v1, doc, validation) {
   row('1.3 分档', v1.overview.tiers.length, MAIN.filter(k => doc.regions.find(r => r.key === k)?.priority.value === v1.overview.tiers.find(t => t[0] === k)?.[1]).length,
     ['sg', 'other'].filter(k => doc.legacy.regions.other.tiers?.[k]?.value === v1.overview.tiers.find(t => t[0] === k)?.[1]).length);
   for (const k of OLD_KEYS) {
-    const r = byKey[k], scn = `SCN-${doc.month}-${SCENARIO_OF[k][0]}-${SCENARIO_OF[k][1]}`, lg = doc.legacy.regions[k] || {};
+    const r = byKey[k], scn = scenarioId(doc.month, k), lg = doc.legacy.regions[k] || {};
     row(`${k} · task`, r.task.length, claimsOf(scn, 'task').length);
     row(`${k} · pain`, r.pain.length, claimsOf(scn, 'pain').length);
     row(`${k} · barrier`, r.barrier.length, claimsOf(scn, 'barrier').length);
     row(`${k} · 温度 + tempNote`, 1 + r.tempNote.length, claimsOf(scn, 'need_strength').length * 2, (lg.tempNote || []).length);
     for (const cell of LEGACY_CELLS) row(`${k} · ${cell}`, (r[cell] || []).length, 0, (lg[cell] || []).length);
   }
-  row('机会收敛', (v1.opportunities || []).length, 0, doc.legacy.opportunities.length);
+  row('机会收敛', (v1.opportunities || []).length, 0, doc.legacy.opportunities.filter((o, i) => JSON.stringify(o) === JSON.stringify(legacyOpportunity(doc.month, v1.opportunities[i], i))).length);
   row('待你确认', (v1.appendix?.pending || []).length, doc.research.notes.length);
   row('旧促销', v1.strategy ? 1 : 0, 0, doc.legacy.promo && JSON.stringify(doc.legacy.promo) === JSON.stringify(v1.strategy) ? 1 : 0);
   const total = rows.reduce((a, x) => ({ before: a.before + x.before, after: a.after + x.migrated + x.legacy }), { before: 0, after: 0 });
@@ -142,7 +149,7 @@ export function migrationChecks(v1, doc, validation) {
   const pairs = [];
   for (const k of ['common', 'diff', 'external']) v1.overview[k].forEach(([text, src], i) => pairs.push({ at: `brief.${k}[${i}]`, text, src, item: doc.brief[k][i] }));
   for (const k of OLD_KEYS) {
-    const r = byKey[k], scn = `SCN-${doc.month}-${SCENARIO_OF[k][0]}-${SCENARIO_OF[k][1]}`;
+    const r = byKey[k], scn = scenarioId(doc.month, k);
     r.task.forEach(([text, src], i) => pairs.push({ at: `${k}.task[${i}]`, text, src, item: claimsOf(scn, 'task')[i] }));
     r.pain.forEach(([text, src], i) => pairs.push({ at: `${k}.pain[${i}]`, text, src, item: claimsOf(scn, 'pain')[i] }));
     r.barrier.forEach(([, text, src], i) => pairs.push({ at: `${k}.barrier[${i}]`, text, src, item: claimsOf(scn, 'barrier')[i], barrier: true }));
@@ -197,7 +204,7 @@ export function diffReport(v1, doc, { checks, validation, source, fingerprint })
   for (const k of ['common', 'diff', 'external']) v1.overview[k].forEach(([, src], i) => add(`1.2 ${k}`, src, doc.brief[k][i]));
   const byKey = Object.fromEntries(v1.regions.map(r => [r.key, r]));
   for (const k of OLD_KEYS) {
-    const scn = `SCN-${doc.month}-${SCENARIO_OF[k][0]}-${SCENARIO_OF[k][1]}`, list = t => doc.claims.filter(c => c.scenario === scn && c.claimType === t);
+    const scn = scenarioId(doc.month, k), list = t => doc.claims.filter(c => c.scenario === scn && c.claimType === t);
     byKey[k].task.forEach(([, src], i) => add('task', src, list('task')[i]));
     byKey[k].pain.forEach(([, src], i) => add('pain', src, list('pain')[i]));
     byKey[k].barrier.forEach(([, , src], i) => add('barrier', src, list('barrier')[i]));

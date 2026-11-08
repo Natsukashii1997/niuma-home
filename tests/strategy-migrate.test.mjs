@@ -77,6 +77,11 @@ test('反例 16：12 个内置月份与本地改过的 11 月迁移后——无 
     assert.deepEqual(doc.legacy.regions.other.tiers, { sg: { value: tier('sg')[1], reason: tier('sg')[2] }, other: { value: tier('other')[1], reason: tier('other')[2] } });
     assert.deepEqual(doc.scenarios.filter(s => s.region === 'other').map(s => [s.id, s.countries]), [[`SCN-${month}-other-01`, ['sg']], [`SCN-${month}-other-02`, ['nz', 'mo', 'ie', 'my']]]);
     assert.ok(doc.claims.every(c => !c.evidenceRefs.length && !Object.keys(c.refVersions).length), 'refVersions 为空');
+    assert.equal(doc.legacy.opportunities.length, v1.opportunities.length);
+    doc.legacy.opportunities.forEach((o, i) => {
+      const [priority, name, regions, line, relation, window, rationale] = v1.opportunities[i];
+      assert.deepEqual(o, { id: `OPP-${month}-${i + 1}`, priority, name, regions, line, targetRelation: relation === '新签 / 续费' ? '通用' : relation, window, rationale, claims: [], toulmin: null }, '机会收敛照搬字段，新签 / 续费 → 通用');
+    });
     if (local) {
       assert.equal(doc.claims.filter(c => c.origin === 'manual').length, 3);
       assert.equal(doc.brief.common.at(-1).origin, 'manual');
@@ -88,6 +93,7 @@ test('反例 16：12 个内置月份与本地改过的 11 月迁移后——无 
     assert.deepEqual(saved, doc, `${month} 写入后回读一致`);
     assert.equal(inputs.migration, 'migration-v1.2');
     assert.equal(strategy.get(month).revision.confirmedFrom, 'migration');
+    assert.equal(strategy.revisions(month)[0].confirmed_by, 'migration-script', '迁移版本不冒用常浩的名字');
   }
 });
 
@@ -158,6 +164,10 @@ test('迁移脚本：plan 只读源库、备份并出报告；apply 须 --confir
   const count = () => Number(execFileSync('sqlite3', [path.join(src, 'work-desk.db'), "SELECT COUNT(*) FROM strategy_revisions WHERE confirmed_from='migration'"], { encoding: 'utf8' }).trim());
   assert.equal(count(), 12);
 
+  const preview = run('rollback', '--data', src);
+  assert.equal(preview.status, 0, preview.stderr);
+  assert.match(preview.stdout, /预览（未改动）：将删除迁移版本 12 个/);
+  assert.equal(count(), 12, '回退预览不改数据');
   const rollback = run('rollback', '--data', src, '--out', out, '--confirm');
   assert.equal(rollback.status, 0, rollback.stderr + rollback.stdout);
   assert.equal(count(), 0);
@@ -179,4 +189,19 @@ test('切换前旧记录被改过：apply 拒绝，一条都不写', () => {
   assert.match(apply.stderr, /2026-11 的迁移内容与报告不一致/);
   const n = execFileSync('sqlite3', [path.join(src, 'work-desk.db'), 'SELECT COUNT(*) FROM strategy_revisions'], { encoding: 'utf8' }).trim();
   assert.equal(n, '0');
+});
+
+test('切换前时间线同步过、覆盖率与报告不一致：apply 拒绝，要求重新试跑', () => {
+  const src = mkdtempSync(path.join(tmpdir(), 'migrate-src-')), out = path.join(mkdtempSync(path.join(tmpdir(), 'migrate-ev-')), 'run');
+  const db = openDb(src);
+  saveSnapshot(db, 'timeline', { identity: timelineIdentity(getSettings(db)), value: TIMELINE }, '2026-11-08T02:00:00Z');
+  db.close();
+  const run = (...args) => spawnSync(process.execPath, [path.join(ROOT, 'scripts/migrate-strategy-v2.mjs'), ...args], { encoding: 'utf8' });
+  assert.equal(run('plan', '--data', src, '--out', out).status, 0);
+  const later = { ...parseTimeline([sheet([['英国', 'Final 时间'], ['伦敦大学学院 UCL', '1.20'], ['爱丁堡大学 UoE', '2027.9.20']])], '2026-11-09 10:00'), years: [{ year: 2026 }] };
+  const db2 = openDb(src); saveSnapshot(db2, 'timeline', { identity: timelineIdentity(getSettings(db2)), value: later }, '2026-11-09T02:00:00Z'); db2.close();
+  const apply = run('apply', '--data', src, '--report', out, '--confirm');
+  assert.equal(apply.status, 1);
+  assert.match(apply.stderr, /覆盖率或默认优先级与报告不一致/);
+  assert.equal(execFileSync('sqlite3', [path.join(src, 'work-desk.db'), 'SELECT COUNT(*) FROM strategy_revisions'], { encoding: 'utf8' }).trim(), '0');
 });
