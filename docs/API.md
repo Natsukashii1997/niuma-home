@@ -25,8 +25,22 @@
 | `mentor_questions` | `name`，`since?`（YYYY-MM-DD） | `{ name, log, logs: [{ date, title, src }], items: [{ id, kind, text, date, log, src, reply: { text, state, at } | null }] }`；查无此人 `404` |
 | `project_list` | 无 | `[{ id, name, status, phase, completion, tasks: { total, done }, nodes: [{ title, phase, owner, done, start, due, doneAt, overdue, gate, milestone, deliverables }] }]` |
 | `strategy_month` | `month`（YYYY-MM） | 同 `GET /api/v3/user-strategy?month=`；未准备返回 `{ month, status: "未准备" }` |
+| `strategy_facts` | `month` | 月度用户策略 v2 的事实底稿：`{ month, schemaVersion, inputFingerprint, baseRevision, rules: { versions, sources, barriers }, coverage, evidence, windows, anomalies, bizcard, revision }`；`evidence` 只列与目标月相关的事件。快照缺原格信息 `409 TIMELINE_RESYNC` |
+| `strategy_submit` | `month`、`document`、`idempotencyKey`、`inputFingerprint`、`baseRevision?`、`declared?` | 只创建待确认 submission：`{ id, month, state: "pending", agent, declared, baseRevision, submittedAt, warnings, stale }`；同键同内容返回原 submission（`repeated: true`），同键不同内容 `409 IDEMPOTENCY_CONFLICT`，校验不过 `422 STRATEGY_INVALID`（不保存） |
+| `strategy_submission` | `id` | `{ id, month, state, agent, declared, baseRevision, submittedAt, decidedAt, decidedFrom }` |
 
-数据与页面同源（同一组服务、同一份缓存），不另外读飞书。写入类工具不在第一期。
+数据与页面同源（同一组服务、同一份缓存），不另外读飞书。唯一的写入工具是 `strategy_submit`，只能创建待确认的 submission；确认与拒绝不是智能体工具。
+
+## 月度用户策略 v2（批 1，2026-11-08，docs/策略规则/）
+
+skill 经 `strategy_submit` 提交，常浩在页面预览、确认后生成不可变 revision（触发器禁止修改、删除）。规则：`docs/策略规则/03-Schema-v2.md` 第 4、7 节，`07-业务背景卡.md`。
+
+- `GET /api/v3/strategy-v2?month=` → `{ month, revision: { id, content, createdAt, confirmedFrom, submissionId, inputs } | null, submissions: [待确认摘要], bizcard }`
+- `GET /api/v3/strategy-v2/revisions?month=` → `[{ id, month, submission_id, confirmed_by, confirmed_from, created_at }]`（新的在前）
+- `GET /api/v3/strategy-v2/submissions/:id/preview` → `{ submission, document, stale, errors, warnings, changed, manualChanges: [{ id, before, after }], diff: { scenarios, claims } }`
+- `POST /api/v3/strategy-v2/submissions/:id/confirm` 请求 `{ confirm: true, acceptManual?: [claimId] }` → `{ revision: { id, createdAt }, keptManual }`。基础版本、输入指纹或 schema 不一致：转 stale，`409 SUBMISSION_STALE`。常浩手写（`origin=manual`）的 Claim 只有列进 `acceptManual` 的才被替换。确认后同月其余待确认提交转 stale。
+- `POST /api/v3/strategy-v2/submissions/:id/reject` → submission 摘要（`state: "rejected"`）
+- `POST /api/v3/strategy-v2/:month/bizcard/preview` 请求背景卡 `{ 字段: [{ text, type, basis }] }` → `{ previewId, expiresAt, before, value }`；`POST …/bizcard/confirm` 请求 `{ confirm: true, previewId }`。字段只允许五个；类型为 事实记录 / 业务观察 / 管理判断，事实记录须写出处。
 
 ## 旧写入口保存保护（2026-10-22）
 

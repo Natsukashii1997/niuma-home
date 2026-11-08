@@ -1,4 +1,4 @@
-// workdesk MCP 的工具（第一期只读）。数据与页面同源：直接用现有服务，给模型的是精简视图，不含页面专用字段。
+// workdesk MCP 的工具（第一期只读；月度用户策略 v2 加了唯一的写入工具 strategy_submit，只能创建待确认的 submission）。数据与页面同源：直接用现有服务，给模型的是精简视图，不含页面专用字段。
 import { failure } from './v3-common.mjs';
 
 const NO_ARGS = { type: 'object', properties: {}, additionalProperties: false };
@@ -49,5 +49,25 @@ export const AGENT_TOOLS = {
       if (typeof month !== 'string' || !/^\d{4}-\d{2}$/.test(month)) throw failure(400, 'month 须为 YYYY-MM');
       return userStrategy.get(month);
     },
+  },
+  strategy_facts: {
+    description: '月度用户策略 v2 的事实底稿（docs/策略规则/）：目标月相关的时间线 Evidence（含核验状态、锚点）、需求与行动窗口、六个地区的候选行动窗口覆盖率、业务背景卡及其 Evidence、来源与障碍编码表、当前正式版本，以及提交时要带回的 inputFingerprint 与 baseRevision。',
+    inputSchema: { type: 'object', properties: { month: { type: 'string', description: 'YYYY-MM' } }, required: ['month'], additionalProperties: false },
+    async run({ month }, { strategy }) { return strategy.factsView(month); },
+  },
+  strategy_submit: {
+    description: '提交一份月度用户策略 v2 文档（schema 2.1）。只创建待确认的 submission，不改正式版本；常浩在牛马之家页面预览确认后才生效。同一 idempotencyKey 同一内容返回同一个 submission，内容不同报 409；校验不通过报 422 并列出原因。',
+    inputSchema: { type: 'object', properties: {
+      month: { type: 'string', description: 'YYYY-MM' }, document: { type: 'object', description: '月度文档（schema 2.1 第 4 节）' },
+      idempotencyKey: { type: 'string' }, baseRevision: { type: ['string', 'null'], description: 'strategy_facts 返回的 baseRevision' },
+      inputFingerprint: { type: 'string', description: 'strategy_facts 返回的 inputFingerprint' },
+      declared: { type: 'object', description: '自报执行方、模型、skill 版本，只作声明' } },
+      required: ['month', 'document', 'idempotencyKey', 'inputFingerprint'], additionalProperties: false },
+    async run(args, { strategy }, { agent }) { return strategy.submit(args, { agent }); },
+  },
+  strategy_submission: {
+    description: '查询某个 submission 的状态（pending / confirmed / rejected / stale）。提交结果不明时先查这里，不要重复提交。',
+    inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'], additionalProperties: false },
+    async run({ id }, { strategy }) { return strategy.submission(id); },
   },
 };

@@ -111,6 +111,19 @@ single-context：根目录 `GLOSSARY.md` 与 `docs/adr/`，用到时再建。见
 - 只监听 127.0.0.1。
 - 验证用的备份、日志等证据放 `~/Library/Application Support/NiumaHome/evidence/<目录名>/`，不要只留在 `/tmp`（会被系统清理）；私人数据库与完整日志不进仓库。
 
+## AI 接入
+
+牛马之家本身不调用模型。AI 产出只从外部会话经 workdesk MCP 进来（接入方式：MCP 开放），工作台负责校验、留痕和让常浩确认。
+
+- **对外开放**：`server/mcp-workdesk.mjs` + `/api/v3/agent/*`（见 [docs/API.md](docs/API.md)「智能体接入」）。每个 agent 一个凭据，按工具授权，所有调用记进 `agent_calls`。
+  - 只读：`mentor_trainees`、`mentor_questions`、`project_list`、`strategy_month`、`strategy_facts`（月度用户策略 v2 的事实底稿）、`strategy_submission`（查 submission 状态）。
+  - 写入：只有 `strategy_submit`，只能创建待确认的月度策略 submission，不改正式版本；确认与拒绝只在页面（同源接口），不进智能体工具。
+  - 关掉：`node scripts/agent-token.mjs revoke <agent>` 撤销凭据（`WORKDESK_DATA_DIR` 指向正式数据目录），或重新签发时去掉某个工具。
+- **执行方**：月度用户策略 skill（`my-skills` 的 `monthly-user-strategy`）在 Claude 或 Codex 会话里运行，换执行方不改工作台代码。
+- **留痕**：submission 记 `agent`（来自凭据，服务端认定）、`declared`（AI 自报的执行方、模型、skill 版本，只作声明）、`submitted_at`；revision 记 `submission_id`、`confirmed_by`、`confirmed_from`、`created_at` 和输入（时间线快照指纹、证据版本、规则版本）。
+- **数据对象**：Claude、Codex 的用量、ChatGPT 网页桥等只展示或采集 AI 数据的功能，不算执行方，各自见对应模块。
+- **安全目标**：在单用户可信本机环境里，阻止默认智能体工具误操作，隔离提交与确认，保留可审计记录；不声称能防御同一用户环境下有任意本地执行权限的恶意进程。
+
 ## 发布
 
 - 正式环境是 launchd 常驻服务 `cn.niuma-home.server`（端口 5280）；只在用户同意后发布，在主工作区（`main`）执行 `bash scripts/release-app.sh`。发布流程、回读、回滚、每日巡检、每周整理见 [OPERATIONS](docs/OPERATIONS.md) 对应节。
