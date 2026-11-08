@@ -31,6 +31,28 @@
 
 - 回滚：`bash scripts/release-app.sh --use <上一份快照名>`，在交接里写明。
 
+## 月度策略 v2 迁移（一次性，批 1·1c）
+
+把旧版用户情况（`docs/用户情况/` 12 个内置月份 + `v3_documents` 里本地改过的月份）按 [04-迁移映射](策略规则/04-迁移映射.md) migration-v1.2 写成 v2 revision（`confirmed_from=migration`）。脚本 `scripts/migrate-strategy-v2.mjs`；旧版记录与内置 JSON 只读，迁移和回退都不改它们，页面在 1d 改读 v2 之前照常显示旧版。
+
+1. **试跑（只读正式数据）**：在主工作区执行，`--out` 用一个新的证据目录（非空会拒绝）。正式库的时间线快照没有原格信息时加 `--refresh-timeline`：只在隔离副本里重读一次飞书时间线（只读），快照和飞书调用日志都只写进隔离副本。
+   ```sh
+   node scripts/migrate-strategy-v2.mjs plan --data data --out "$HOME/Library/Application Support/NiumaHome/evidence/<日期>-strategy-v2-migration/plan-<n>" --refresh-timeline
+   ```
+   产出：`backup/`（12 个 JSON、`v1-records.json`、`work-desk.db` 与 `summary.json` 里的校验和）、`isolated-data/`（迁移后的隔离库）、`reports/<月份>.md`（每月差异报告）、`migrated/<月份>.json`、`SUMMARY.md`。任何月份检查不过，退出码为 1。
+2. **交常浩看 `SUMMARY.md` 和各月报告，得到他明确同意**，才做下一步。
+3. **切换（写正式库）**：正式切换前要用正式库自己的时间线重出一份报告：先发布含批 1 代码的版本、在时间线页同步一次（正式库快照要有原格信息），再按第 1 步试跑（不加 `--refresh-timeline`），交常浩看过同意后**中间不要再同步时间线**，马上执行下面的命令。脚本先把正式库备份到 `<证据目录>/apply-<时间>/work-desk-before-apply.db`，再逐月重跑迁移：旧记录迁来的内容或按时间线重算的覆盖率、默认优先级，任何一项与报告不一致就一条都不写，要求重新试跑出报告；某月已有 revision 时不覆盖。迁移版本的 `confirmed_by` 记 `migration-script`，结果写进 `apply-log.json`。
+   ```sh
+   node scripts/migrate-strategy-v2.mjs apply --data data --report "<试跑证据目录>" --confirm
+   ```
+4. **回退**：先不带 `--confirm` 预览，列出将删除的迁移版本和将转为 stale 的同月待确认提交，不改数据；确认后带 `--out --confirm` 执行：先把正式库备份到 `--out`，再删除迁移写入的 revision，同月待确认的 submission 转为 stale（可用 `--months 2026-01,2026-02` 只退部分月份）。某月在迁移之后已有其他版本（skill 提交经确认、页面回退）时整体拒绝，一条不删，改用下面的数据库恢复。
+   ```sh
+   node scripts/migrate-strategy-v2.mjs rollback --data data
+   node scripts/migrate-strategy-v2.mjs rollback --data data --out "<证据目录>" --confirm
+   ```
+   最后手段（会丢掉切换之后的全部写入，先确认）：停服务 `launchctl bootout gui/$(id -u)/cn.niuma-home.server`，用 `cp "<证据目录>/apply-<时间>/work-desk-before-apply.db" data/work-desk.db` 恢复，再 `bash scripts/release-app.sh --use <当前快照名>` 拉起服务。
+- revision 平时不可删（I-10）：回退命令在同一事务里临时摘掉删除触发器、删完立即恢复，是迁移切换的唯一例外；测试见 `tests/strategy-migrate.test.mjs`。
+
 ## 每日巡检
 
 - 每日巡检：launchd 任务 `cn.niuma-home.health` 每天 08:30 跑 `scripts/health-check.sh`（不调用模型，不碰数据）：发布回读 7 项 + 数据库完整性 + 磁盘余量 + 每日数据库备份（`backups/work-desk-<日期>-daily.db`，写后回读，只留 7 份）+ 昨天有没有巡检记录（巡检自己停了也要有人知道）；结果追加到 `~/Library/Application Support/NiumaHome/evidence/health/<年-月>.log`，未通过才弹本机通知。在主工作区执行 `bash scripts/health-check.sh --install` / `--uninstall` 安装或卸载；任务借服务外壳 `NiumaHomeServer.app` 的 node 启动（[LESSONS](LESSONS.md) L-08）。
