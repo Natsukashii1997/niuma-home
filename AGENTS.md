@@ -116,7 +116,7 @@ single-context：根目录 `GLOSSARY.md` 与 `docs/adr/`，用到时再建。见
 牛马之家本身不调用模型。AI 产出只从外部会话经 workdesk MCP 进来（接入方式：MCP 开放），工作台负责校验、留痕和让常浩确认。
 
 - **对外开放**：`server/mcp-workdesk.mjs` + `/api/v3/agent/*`（见 [docs/API.md](docs/API.md)「智能体接入」）。每个 agent 一个凭据，按工具授权，所有调用记进 `agent_calls`。
-  - 只读：`mentor_trainees`、`mentor_questions`、`project_list`、`strategy_month`、`strategy_facts`（月度用户策略 v2 的事实底稿）、`strategy_submission`（查 submission 状态）。
+  - 只读：`mentor_trainees`、`mentor_questions`、`project_list`、`strategy_month`、`strategy_facts`（月度用户策略 v2 的事实底稿）、`strategy_submission`（查 submission 状态：按 `id`，或按提交时的 `idempotencyKey` 查本凭据自己的提交）。
   - 写入：只有 `strategy_submit`，只能创建待确认的月度策略 submission，不改正式版本；确认与拒绝只在页面（同源接口），不进智能体工具。
   - 关掉：`node scripts/agent-token.mjs revoke <agent>` 撤销凭据（`WORKDESK_DATA_DIR` 指向正式数据目录），或重新签发时去掉某个工具。
 - **执行方**：月度用户策略 skill（`my-skills` 的 `monthly-user-strategy`）在 Claude 或 Codex 会话里运行，换执行方不改工作台代码。

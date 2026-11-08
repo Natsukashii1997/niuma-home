@@ -2,6 +2,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 月度策略：`strategy_submission` 支持按 idempotencyKey 查询（2026-11-08，Claude，由 #24 交接会话按 issue #41 派出；分支 `claude/41-submission-by-key`，已提交并开 PR，未合并，等常浩说「合并」；未发布，批 1 合起来再发布）
+
+- 时间：开工 `2026-11-08 19:40`（事后估计：收到派单、读完 issue 的时刻，开工时没有用 `date` 记录；本节测试结果在此之后跑出）。★ 来由：skill 提交结果不明（超时、断网）又没拿到 submission id 时查不到这次提交有没有入库，只能请常浩去页面看（#41，来源 my-skills PR #76 遗留第 3 条）。
+- 改了哪些文件：`server/agent-tools.mjs` 的只读工具 `strategy_submission` 增加可选参数 `idempotencyKey`，与 `id` 二选一（都没给、都给或为空回 400）；`server/strategy-service.mjs` 新增 `submissionByKey`，只按「当前凭据对应的 agent + key」查，返回形状与按 id 查一致，查不到回 `404 SUBMISSION_NOT_FOUND`（「没有这次提交」）；`tests/strategy-service.test.mjs` 新增 1 项（走真实 HTTP 路由与两个 agent 的凭据：按 key 查到且状态随拒绝变化、与按 id 查结果逐字段一致、另一个 agent 查不到、key 不存在 404、四种参数错误 400、调用全部记进 `agent_calls`）；`docs/API.md`「智能体接入」工具表与 `AGENTS.md`「AI 接入」只读工具描述同步。没有改表结构，skill 侧（my-skills）未改。
+- 测试：`npm test` 原样结果 `ℹ pass 815` / `ℹ fail 0`；`npm run check:style` 通过（「样式检查通过」）。
+- 验证：测试内起临时 HTTP 服务 + 临时数据目录 + 夹具时间线，用 `issueAgentToken` 签发 `claude-skill`、`codex-skill` 两个凭据实测；没有界面改动，没起正式服务，没碰 5280 和 `data/`。
+- 截图：无。
+- 发布与回读：未发布。
+- 与授权不一致之处、遗留问题、范围外发现：① 没查到时除 404 外还带了 `code: SUBMISSION_NOT_FOUND`，好让 skill 区分「没有这次提交」和「没有这个工具」（`TOOL_UNKNOWN` 也是 404）；按 id 查不到仍是原来的 404（不带这个 code），没改。② 按 id 查的返回里本来就有 `rejectReason`（#30 加的），API.md 原表漏写，这次一并补上。③ 范围外，未修：`strategy_submissions.idempotency_key` 是全局唯一，`strategy_submit` 查重复也不分 agent——另一个 agent 用同一个 key 同一内容提交，会拿到别人的 submission（`repeated: true`），内容不同则 409；这时它按 key 也查不到（因为记录属于别人）。单用户环境里 key 由 skill 生成、撞上的概率很低，要改得动表约束或提交逻辑，等常浩决定是否另开 issue。
+- 本轮新坑：无。
+
 ## 月度策略：修「提交约 10 分钟后必然过期」（2026-11-08，Claude，常浩点「修 10 分钟过期」；分支 `claude/fix-stale-fingerprint`；常浩说「合并」，PR #38 squash 合并为 `a3c008d`，关闭 #39；未发布，批 1 合起来再发布）
 
 - 时间：开工 `2026-11-08 15:30`（事后估计：收到「修 10 分钟过期」后开 worktree 的时刻；本节测试结果在此之后跑出）。★ 来由：#31 skill 会话在隔离工作台试跑时发现，#28 的快照指纹含时间线同步时间 `syncedAt`，工作台每 10 分钟重读飞书，内容没变也会让待确认提交转 stale。
