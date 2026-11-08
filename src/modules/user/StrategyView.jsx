@@ -1,9 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { apiSend, useApi } from "../../api.js";
-import { currentMonth } from "../../constants.js";
 import { href } from "../../router.js";
 import { PixelIcon } from "../../ui/bitmap.jsx";
-import { Button, Loadable, MonthSwitch, PendingButton, Placeholder, Tag } from "../../ui/components.jsx";
+import { Button, Loadable, PendingButton, Placeholder, Tag } from "../../ui/components.jsx";
 import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { BARRIERS, MECHANISMS } from "./playbook.js";
 import { PLAY_BY_ID } from "./playbook-cards.js";
@@ -40,8 +39,8 @@ function EvidenceNotice({ month, ev }) {
   </p>;
 }
 
-export function Strategy() {
-  const [month, setMonth] = useState(currentMonth); // 默认本月（用户 2026-10-23）
+// v1 旧视图：v2 还没有正式版本的月份（旧数据迁移 #29 完成前）由 StrategyV2.jsx 嵌入，月份由外层切换（切月时外层按月份重建本组件）。
+export function StrategyV1({ month, onBusy }) {
   const path = `/api/v3/user-strategy?month=${month}`;
   const state = useApi(path);
   const gen = useWriteFlow(), fin = useWriteFlow(), edit = useWriteFlow();
@@ -52,7 +51,7 @@ export function Strategy() {
   const view = state.loading && last?.month === month ? { ...state, loading: false, data: last } : state;
   const d = view.data;
   const busy = gen.busy || fin.busy || edit.busy;
-  const switchMonth = (m) => { if (busy) return; gen.reset(); fin.reset(); edit.reset(); setEditing(null); setMonth(m); };
+  useEffect(() => { onBusy?.(busy); }, [busy, onBusy]);
   // 回读全部可保存正文；时间线派生字段和读取状态可随最近一次同步改变。
   const reread = async (receipt, pv) => { const fresh = await apiSend("GET", path); state.reload(); return sameJson(authoredStrategyRecord(fresh), authoredStrategyRecord(pv.value)); };
   const confirm = (flow) => flow.confirm((pv) => apiSend("POST", `/api/v3/user-strategy/${month}/confirm`, { previewId: pv.previewId, confirm: true }), reread);
@@ -76,7 +75,7 @@ export function Strategy() {
   return (
     <div className="us-page">
       <div className="us-bar">
-        <MonthSwitch month={month} onChange={switchMonth} />
+        <span className="label">v1 旧视图</span>
         {d?.origin && <>
           <span className="us-state"><span className="label">用户情况</span><Tag tone={d.origin === "已修改" ? "blue" : "frame"}>{d.origin}</Tag>{d.updatedAt && <span className="small muted tnum">修改于 {when(d.updatedAt)}</span>}</span>
           <span className="us-state"><span className="label">促销策略</span>{st ? <><Tag tone={STATUS_TONE[st.status]}>{st.status}</Tag><span className="small muted tnum">生成于 {when(st.generatedAt)}{st.model ? ` · ${st.model}` : ""}</span></> : <Tag>未生成</Tag>}</span>

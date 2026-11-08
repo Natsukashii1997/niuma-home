@@ -32,6 +32,9 @@ export function userRoutes(services) {
     // 月度用户策略 v2（docs/策略规则/）：skill 经 strategy_submit 提交，页面预览、确认后生成不可变 revision；确认与拒绝只在页面。
     route('GET', '/api/v3/strategy-v2', handleV3((req, { url }) => strategy.get(url.searchParams.get('month')))),
     route('GET', '/api/v3/strategy-v2/revisions', handleV3((req, { url }) => strategy.revisions(url.searchParams.get('month')))),
+    route('GET', '/api/v3/strategy-v2/revisions/:id', handleV3((req, { params }) => strategy.revision(params.id))),
+    route('GET', '/api/v3/strategy-v2/submissions', handleV3((req, { url }) => strategy.submissions(url.searchParams.get('month')))),
+    route('GET', '/api/v3/strategy-v2/evidence', handleV3((req, { url }) => strategy.evidence(url.searchParams.get('month')))),
     route('GET', '/api/v3/strategy-v2/submissions/:id/preview', handleV3((req, { params }) => strategy.preview(params.id))),
     route('POST', '/api/v3/strategy-v2/submissions/:id/confirm', handleV3(async (req, { params }) => strategy.confirm(params.id, await body(req)))),
     route('POST', '/api/v3/strategy-v2/submissions/:id/reject', handleV3(async (req, { params }) => strategy.reject(params.id, await body(req)))),
