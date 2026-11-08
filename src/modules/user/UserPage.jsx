@@ -6,7 +6,7 @@ import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
 import { Button, DateInput, Loadable, Modal, MonthSwitch, PageHeader, Placeholder, Segmented, Tabs, Tag } from "../../ui/components.jsx";
 import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
-import { Strategy } from "./StrategyView.jsx";
+import { Strategy } from "./StrategyV2.jsx";
 import { Playbook } from "./PlaybookView.jsx";
 import { currentMonth, deliveryMonth } from "../../constants.js";
 import { TimelineYears } from "./TimelineYears.jsx";
