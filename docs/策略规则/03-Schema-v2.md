@@ -120,7 +120,7 @@ Evidence 事实与证据 ──▶ Scenario 用户情境 ──▶ Claim 研判 
 | `observedRelation` | object | 是 | `{ value, evidenceRefs }`；`value≠unknown` 时只接受 business 类证据 |
 | `evidenceRefs` | string[] | 是 | 支撑「这个情境存在」的 Evidence，至少一个 |
 
-**粒度**：合并任务、困难和时间窗相同的用户群。每个地区 1–4 个情境；超过 4 个，说明拆得过细。
+**粒度**：合并任务、困难和时间窗相同的用户群。每个地区 0–4 个情境（为空时写 `emptyReason`，见 I-13）；超过 4 个，说明拆得过细。
 
 ### 3.3 Claim
 
@@ -257,7 +257,7 @@ Evidence 事实与证据 ──▶ Scenario 用户情境 ──▶ Claim 研判 
 | I-17 | 引用完整性：Claim、Opportunity、Strategy 里引用的每个 ID（Evidence、Scenario、Claim、Opportunity、打法卡）都必须存在于当前文档或当前快照里；悬空引用直接拦截 |
 | I-18 | 同一快照内 `evidenceId` 唯一（身份碰撞的源记录在落库前已隔离，见 3.1，本条兜底拦截）；`ambiguous=true` 的 Evidence 不能作为 `known` 判断的依据，也不能作为精确窗口的依据，只能支撑月度候选机会（I-07 ②） |
 
-I-15 只提示，其余都是拦截级；I-16 在批 2 生效。写作规范的字数、禁用词沿用现有规则，只提示不拦截。
+I-15 只提示，其余都是拦截级；I-16 在批 2 生效。I-07、I-08、I-14 约束的是 Opportunity、Strategy，随这两类对象在批 2 实现；批 1 的校验器只接受空的 `opportunities`、`strategies`。写作规范的字数、禁用词沿用现有规则，只提示不拦截。
 
 ## 6. 展示映射
 
