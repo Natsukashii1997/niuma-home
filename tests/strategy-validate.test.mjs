@@ -8,6 +8,12 @@ const EV = [
   { evidenceId: 'EV-final', evidenceVersion: 'v1', kind: 'timeline', country: 'uk', ambiguous: false },
   { evidenceId: 'EV-amb', evidenceVersion: 'v1', kind: 'timeline', country: 'uk', ambiguous: true },
   { evidenceId: 'EV-biz', evidenceVersion: 'b1', kind: 'business', ambiguous: false },
+  // #40：背景卡条目带适用范围（countries、relation）。情境是英国新签。
+  ...[
+    ['EV-fact', '事实记录', ['uk'], '新签'], ['EV-obs', '业务观察', ['uk'], '新签'], ['EV-mgmt', '管理判断', ['uk'], '通用'],
+    ['EV-fact-all', '事实记录', ['us', 'uk'], '通用'], ['EV-fact-us', '事实记录', ['us'], '新签'], ['EV-fact-renew', '事实记录', ['uk'], '续费'],
+    ['EV-fact-noscope', '事实记录', undefined, undefined], ['EV-fact-norel', '事实记录', ['uk'], undefined],
+  ].map(([evidenceId, bizType, countries, relation]) => ({ evidenceId, evidenceVersion: 'b1', kind: 'business', bizType, ...(countries && { countries }), ...(relation && { relation }), ambiguous: false })),
 ];
 const region = (key, scenarios = []) => ({ key, priority: { value: '平稳', default: '平稳', reason: '' }, activity: { value: 'unknown', status: 'unknown' }, scenarios, emptyReason: scenarios.length ? null : '当前没有足够证据形成独立情境' });
 const base = () => ({
@@ -125,8 +131,80 @@ test('反例 2（代码侧）、02 第 2.3 节：没有用户决策行为证据�
   assert.deepEqual(rules(check(partial)), ['02 §2.3']);
   partial.claims[1].evidenceStrength = 'weak';
   assert.deepEqual(check(partial).errors, []);
-  const biz = base(); Object.assign(biz.claims[1], { barrierCode: 'BR-C1', status: 'known', evidenceStrength: 'strong', evidenceRefs: ['EV-biz'], refVersions: { 'EV-biz': 'b1' } });
+  const biz = base(); Object.assign(biz.claims[1], { barrierCode: 'BR-C1', status: 'known', evidenceStrength: 'strong', evidenceRefs: ['EV-fact'], refVersions: { 'EV-fact': 'b1' } });
   assert.deepEqual(check(biz).errors, []);
+});
+
+// #40：购买判断（障碍、购买准备度）的证据口径。claim(type, 状态, 强度, 引用) 换掉 base() 的第 2 条 Claim。
+const claim = (claimType, status, evidenceStrength, evidenceRefs, patch = {}) => {
+  const d = base();
+  const common = { status, evidenceStrength, evidenceRefs, refVersions: Object.fromEntries(evidenceRefs.map(id => [id, EV.find(e => e.evidenceId === id).evidenceVersion])),
+    limitations: status === 'inferred' ? '证据有限' : undefined, gap: undefined, route: undefined };
+  d.claims[1] = claimType === 'barrier'
+    ? { ...d.claims[1], barrierCode: 'BR-C1', ...common, ...patch }
+    : { id: 'CLM-2026-12-2', scenario: 'SCN-2026-12-uk-01', claimType: 'readiness', text: '准备度中等', level: '中', targetRelation: '新签', origin: 'skill', ...common, ...patch };
+  return check(d);
+};
+const errs = r => r.errors.map(e => `${e.rule} ${e.message}`);
+
+for (const type of ['barrier', 'readiness']) {
+  test(`#40 ${type}：只引用管理判断时写 partial 或 known 被拒，写 inferred + weak 通过`, () => {
+    assert.deepEqual(rules(claim(type, 'inferred', 'partial', ['EV-mgmt'])), ['02 §2.3']);
+    assert.match(errs(claim(type, 'inferred', 'partial', ['EV-mgmt']))[0], /管理判断和学校日历都不算/);
+    assert.deepEqual(rules(claim(type, 'known', 'strong', ['EV-mgmt'])), ['02 §2.3']);
+    assert.deepEqual(claim(type, 'inferred', 'weak', ['EV-mgmt']).errors, []);
+  });
+
+  test(`#40 ${type}：known 只有业务观察被拒，有事实记录通过；partial 有业务观察通过`, () => {
+    assert.match(errs(claim(type, 'known', 'strong', ['EV-obs']))[0], /known 须有适用的事实记录/);
+    assert.deepEqual(claim(type, 'known', 'strong', ['EV-obs', 'EV-fact']).errors, []);
+    assert.deepEqual(claim(type, 'inferred', 'partial', ['EV-obs']).errors, []);
+    assert.deepEqual(claim(type, 'inferred', 'partial', ['EV-final', 'EV-mgmt', 'EV-obs']).errors, [], '和校历、管理判断一起引用不影响');
+  });
+
+  test(`#40 ${type}：业务证据的适用范围填了且对得上才能撑 partial / known，对不上或没填最高 inferred + weak`, () => {
+    assert.deepEqual(claim(type, 'known', 'strong', ['EV-fact']).errors, []);
+    assert.deepEqual(claim(type, 'known', 'strong', ['EV-fact-all']).errors, [], '国家有交集、人群通用：适用');
+    for (const [id, why] of [['EV-fact-us', /适用国家 us，本处 uk/], ['EV-fact-renew', /适用人群 续费，本处 新签/], ['EV-fact-noscope', /没填适用国家，没填适用人群/], ['EV-fact-norel', /没填适用人群/]]) {
+      for (const [status, strength] of [['known', 'strong'], ['inferred', 'partial']]) {
+        const r = claim(type, status, strength, [id]);
+        assert.deepEqual(rules(r), ['02 §2.3'], `${id} 撑 ${status} + ${strength}`);
+        assert.match(r.errors[0].message, why); assert.ok(r.errors[0].message.includes(id));
+      }
+      assert.deepEqual(claim(type, 'inferred', 'weak', [id]).errors, [], `${id} 撑 inferred + weak`);
+    }
+    // 范围对不上的事实记录 + 对得上的业务观察：按适用的最高强度封顶，partial 可以，known 不行
+    assert.deepEqual(claim(type, 'inferred', 'partial', ['EV-fact-us', 'EV-obs']).errors, []);
+    assert.match(errs(claim(type, 'known', 'strong', ['EV-fact-us', 'EV-obs']))[0], /known 须有适用的事实记录.*EV-fact-us/);
+    // 通用的 Claim 只接受人群写「通用」的条目
+    assert.deepEqual(rules(claim(type, 'known', 'strong', ['EV-fact'], { targetRelation: '通用', ...(type === 'barrier' && { barrierCode: 'BR-C1' }) })), ['02 §2.3']);
+    assert.deepEqual(claim(type, 'known', 'strong', ['EV-fact-all'], { targetRelation: '通用' }).errors, []);
+  });
+}
+
+test('#40 readiness：没有行为证据时最高 inferred + weak；Voice 算行为证据', () => {
+  assert.deepEqual(rules(claim('readiness', 'inferred', 'partial', ['EV-final'])), ['02 §2.3']);
+  assert.deepEqual(rules(claim('readiness', 'known', 'strong', ['EV-final'])), ['02 §2.3']);
+  assert.deepEqual(claim('readiness', 'inferred', 'weak', ['EV-final']).errors, []);
+  assert.deepEqual(claim('readiness', 'unknown', 'none', [], { level: null, gap: '缺少行为证据', route: { status: 'available', source: 'SRC-bizcard' } }).errors, []);
+  const voice = { evidenceId: 'EV-voice', evidenceVersion: 'v1', kind: 'voice', ambiguous: false };
+  const withVoice = (status, strength, extra = {}) => {
+    const d = base();
+    d.claims[1] = { id: 'CLM-2026-12-2', scenario: 'SCN-2026-12-uk-01', claimType: 'readiness', text: '准备度中等', level: '中', targetRelation: '新签', origin: 'skill',
+      status, evidenceStrength: strength, evidenceRefs: ['EV-voice'], refVersions: { 'EV-voice': 'v1' }, limitations: '证据有限' };
+    return validateStrategyDoc(d, { evidence: [...EV, { ...voice, ...extra }] });
+  };
+  assert.deepEqual(withVoice('inferred', 'partial').errors, [], 'Voice 没写强度按 partial');
+  assert.deepEqual(rules(withVoice('known', 'strong')), ['02 §2.3']);
+  assert.deepEqual(withVoice('known', 'strong', { strength: 'strong' }).errors, []);
+});
+
+test('#40 BR-M2：引用的业务证据范围对不上或只有管理判断时仍须 unknown', () => {
+  for (const id of ['EV-fact-us', 'EV-fact-noscope', 'EV-mgmt']) {
+    const r = claim('barrier', 'inferred', 'weak', [id], { barrierCode: 'BR-M2' });
+    assert.deepEqual(rules(r), ['02 §2.3']); assert.match(r.errors[0].message, /BR-M2 没有适用的用户决策行为证据时须为 unknown/);
+  }
+  assert.deepEqual(claim('barrier', 'inferred', 'partial', ['EV-obs'], { barrierCode: 'BR-M2' }).errors, []);
 });
 
 test('I-15 也提示正式稿顶部的正文；priority 为 null 时理由须写「待研判」', () => {

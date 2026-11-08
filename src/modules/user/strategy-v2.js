@@ -9,6 +9,17 @@ export const PRIORITY_TONE = { 主战场: "ink", 次要: "frame", 平稳: "neutr
 export const FIELDS = [["scn", "①", "用户情境"], ["node", "②", "关键节点"], ["task", "③", "待办任务"], ["pain", "④", "核心痛点"], ["need", "⑤", "需求状态"], ["barrier", "⑥", "决策障碍"], ["opp", "⑦", "机会点"], ["basis", "⑧", "研判依据"]];
 export const BIZCARD_FIELDS = ["本月重要变化", "用户观察", "存量用户情况", "产品与资源约束", "负责人特别判断"];
 export const BIZ_TYPES = ["事实记录", "业务观察", "管理判断"];
+// 背景卡条目的适用范围（07 第 2 节 bizcard-v1.1，#40）：常用国家直接列出，其余收进「其他国家」。
+export const BIZ_RELATIONS = ["新签", "续费", "通用"];
+export const MAIN_COUNTRIES = ["uk", "us", "hk", "au", "ca"];
+// 事实记录、业务观察要同时填了国家和人群，才能撑起障碍和购买准备度；管理判断本来就撑不起，范围可不填。
+export function bizScope(e) {
+  if (e.type === "管理判断") return { state: "mgmt" };
+  const c = (e.countries || []).length > 0, r = Boolean(e.relation);
+  return c && r ? { state: "ok" } : { state: "missing", text: c ? "没选人群" : r ? "没选国家" : "未填" };
+}
+export const bizScopeText = (e) => [(e.countries || []).map((c) => COUNTRY_NAME[c] || c).join("、"), e.relation].filter(Boolean).join(" · ");
+export const scopeMissingCount = (card) => BIZCARD_FIELDS.flatMap((f) => card?.[f] || []).filter((e) => e.text?.trim() && bizScope(e).state === "missing").length;
 export const BIZCARD_HINT = {
   本月重要变化: "相较上月，业务上值得注意的变化",
   用户观察: "咨询热点、典型问题、已观察到的需求",

@@ -1,7 +1,7 @@
 // #30 策略页 v2 的展示推导（docs/策略规则/03-Schema-v2.md 3.3 节末、6.1 节）：标签、依据已变化、差异。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { claimText, countChanges, dateText, diffDocs, evidenceName, kindLabel, shortSchool, staleRefs, statusLabel } from '../src/modules/user/strategy-v2.js';
+import { bizScope, bizScopeText, claimText, countChanges, dateText, diffDocs, evidenceName, kindLabel, shortSchool, scopeMissingCount, staleRefs, statusLabel } from '../src/modules/user/strategy-v2.js';
 
 test('状态 × 强度 → 页面标签；依据已变化优先', () => {
   assert.deepEqual(statusLabel({ status: 'known', evidenceStrength: 'strong' }), ['已知 · 强', 'green']);
@@ -64,4 +64,17 @@ test('两份月度文档的差异：核心结论、全局研判、优先级、�
   assert.deepEqual(diffDocs(base, structuredClone(base)), [], '内容相同没有差异');
   assert.equal(diffDocs(null, base).filter(x => x.kind === 'add').length, diffDocs(null, base).length, '没有正式版本时全部是新增');
   assert.equal(claimText(base.claims[2]), '手写（推断 · 弱 · 你写的）');
+});
+
+test('#40 背景卡适用范围：事实记录、业务观察要同时填国家和人群；管理判断不算缺；空条目不计数', () => {
+  assert.deepEqual(bizScope({ type: '事实记录' }), { state: 'missing', text: '未填' });
+  assert.deepEqual(bizScope({ type: '业务观察', countries: ['uk'] }), { state: 'missing', text: '没选人群' });
+  assert.deepEqual(bizScope({ type: '业务观察', relation: '新签' }), { state: 'missing', text: '没选国家' });
+  assert.deepEqual(bizScope({ type: '事实记录', countries: ['uk'], relation: '通用' }), { state: 'ok' });
+  assert.deepEqual(bizScope({ type: '管理判断' }), { state: 'mgmt' });
+  assert.equal(bizScopeText({ countries: ['uk', 'sg'], relation: '续费' }), '英国、新加坡 · 续费');
+  assert.equal(bizScopeText({}), '');
+  assert.equal(scopeMissingCount({ 用户观察: [{ text: 'a', type: '事实记录' }, { text: ' ', type: '业务观察' }, { text: 'b', type: '业务观察', countries: ['uk'], relation: '新签' }],
+    负责人特别判断: [{ text: 'c', type: '管理判断' }], 存量用户情况: [{ text: 'd', type: '业务观察', relation: '续费' }] }), 2);
+  assert.equal(scopeMissingCount(null), 0);
 });

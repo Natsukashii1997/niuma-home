@@ -22,6 +22,23 @@ const ROUTE_STATUS = ['available', 'unavailable', 'research'];
 const ORIGINS = ['skill', 'manual', 'migrated'];
 const CODE_IN_PROSE = /BR-[A-Z]\d|\bP\d{4}\b|\b[A-C]\d\b/;
 const nonEmpty = v => typeof v === 'string' ? v.trim().length > 0 : Boolean(v);
+// 用户决策行为证据（02 §2.3、07 第 2 节）：背景卡的事实记录（strong = 3）、业务观察（partial = 2），或 Voice（按自带强度，没有时按 partial）。
+// 管理判断只是待检验的假设，学校日历只是情境依据，都不算（rank 0）。
+// 背景卡证据还要适用（#40 常浩决定）：条目的 countries 与情境国家有交集，relation 为「通用」或与 Claim 的 targetRelation 相同；
+// 没填按「范围不明」处理，和对不上一样不算行为证据（最高 inferred + weak）。
+const RANK = { strong: 3, partial: 2, weak: 1 };
+const BIZ_RANK = { 事实记录: 3, 业务观察: 2 };
+function behaviorRank(e, scenario, relation) {
+  if (e?.kind === 'voice') return { rank: RANK[e.strength] ?? 2 };
+  if (e?.kind !== 'business' || !BIZ_RANK[e.bizType]) return { rank: 0 };
+  const countries = e.countries || [], here = scenario?.countries || [];
+  const lacks = [];
+  if (!countries.length) lacks.push('没填适用国家');
+  else if (!countries.some(c => here.includes(c))) lacks.push(`适用国家 ${countries.join('、')}，本处 ${here.join('、') || '无情境'}`);
+  if (!e.relation) lacks.push('没填适用人群');
+  else if (e.relation !== '通用' && e.relation !== relation) lacks.push(`适用人群 ${e.relation}，本处 ${relation || '未写'}`);
+  return lacks.length ? { rank: 0, misfit: lacks.join('，') } : { rank: BIZ_RANK[e.bizType] };
+}
 const isList = v => Array.isArray(v);
 
 /**
@@ -163,12 +180,24 @@ export function validateStrategyDoc(doc, { evidence = [], migrated = false } = {
       else if (c.targetRelation !== '通用' && !fits.includes(c.targetRelation)) err('I-11', at, `${c.barrierCode} 不适用于${c.targetRelation}`);
       else if (c.targetRelation === '通用' && fits.length < 2) err('I-11', at, `${c.barrierCode} 只适用于${fits[0]}，不能用于通用`);
       if (!['primary', 'secondary'].includes(c.barrierRole)) err('结构', at, 'barrierRole 须为 primary / secondary');
-      // 02 第 2.3 节：障碍要有用户决策行为证据。没有 business / voice 证据时，M2、M5 只能 unknown，其余最高 inferred + weak。
-      const behavioral = (c.evidenceRefs || []).some(id => ['business', 'voice'].includes(byId.get(id)?.kind));
-      if (!behavioral && c.status !== 'unknown') {
-        if (['BR-M2', 'BR-M5'].includes(c.barrierCode)) err('02 §2.3', at, `${c.barrierCode} 只有节点位置或学校政策时须为 unknown`);
-        else if (!(c.status === 'inferred' && c.evidenceStrength === 'weak') && c.status !== 'not_applicable') err('02 §2.3', at, '缺少用户决策行为证据时，障碍最高 inferred + weak');
+    }
+    // 02 第 2.3 节：障碍和购买准备度都是购买行为判断，强度只由适用的用户决策行为证据决定（#40）。
+    // 没有时 M2、M5 只能 unknown，其余最高 inferred + weak；known 须有事实记录，partial 须有业务观察以上。
+    if (['barrier', 'readiness'].includes(c.claimType) && c.status !== 'unknown') {
+      const scenario = scenarioById.get(c.scenario), misfit = [];
+      let best = 0;
+      for (const id of c.evidenceRefs || []) {
+        const b = behaviorRank(byId.get(id), scenario, c.targetRelation);
+        if (b.misfit) misfit.push(`${id}（${b.misfit}）`);
+        best = Math.max(best, b.rank);
       }
+      const name = c.claimType === 'barrier' ? '障碍' : '购买准备度';
+      const why = misfit.length ? `；引用的业务证据适用范围没填或对不上，只能撑 inferred + weak：${misfit.join('；')}` : '；管理判断和学校日历都不算';
+      if (!best) {
+        if (c.claimType === 'barrier' && ['BR-M2', 'BR-M5'].includes(c.barrierCode)) err('02 §2.3', at, `${c.barrierCode} 没有适用的用户决策行为证据时须为 unknown${why}`);
+        else if (c.status !== 'not_applicable' && !(c.status === 'inferred' && c.evidenceStrength === 'weak')) err('02 §2.3', at, `没有适用的用户决策行为证据（事实记录、业务观察、Voice）时，${name}最高 inferred + weak${why}`);
+      } else if (c.status === 'known' && best < 3) err('02 §2.3', at, `${name} known 须有适用的事实记录（strong）；业务观察最高 inferred + partial${misfit.length ? why : ''}`);
+      else if (c.status === 'inferred' && c.evidenceStrength === 'partial' && best < 2) err('02 §2.3', at, `${name} partial 须有适用的业务观察以上的行为证据${misfit.length ? why : ''}`);
     }
     // I-15：正文不写编码，只提示。
     if (CODE_IN_PROSE.test(c.text || '')) warn('I-15', at, '正文里出现障碍编码或打法编号');

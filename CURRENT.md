@@ -2,6 +2,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 月度策略：购买判断证据口径与 skill 预检对齐，背景卡加适用范围（2026-11-08，Claude，由 #24 交接会话按 issue #40 派出；常浩「按推荐开工」定 5 处细节、页面选样稿 A；分支 `claude/40-evidence-scope` 已提交并开 PR，未合并；未发布，批 1 合起来再发布）
+
+- 时间：开工 `2026-11-08 20:12`（`date '+%F %H:%M'` 记录，拉分支时）。★ 来由：服务端校验器把管理判断也算行为证据、readiness 不查、不按强度封顶、不查业务证据适用范围，绕过 skill 直接 `strategy_submit` 时拦不住（#40，来源 my-skills PR #76 遗留第 2 条）。
+- 改了哪些文件：`server/strategy-service.mjs` 背景卡条目加可选 `countries`（只收时间线认识的 10 个代码，转小写、去重、排序）、`relation`（新签 / 续费 / 通用），带进 business Evidence，只在填了时计入 `evidenceVersion`（老条目版本不变）；`server/strategy-evidence.mjs` 导出 `KNOWN_COUNTRIES`；`server/strategy-validate.mjs` 行为证据只认事实记录、业务观察和 Voice，readiness 与 barrier 同一套规则，按适用行为证据最高强度封顶（known 须事实记录，partial 须业务观察以上），范围没填或对不上最高 inferred + weak，报错写明哪条证据、哪里对不上；`src/modules/user/StrategyV2Parts.jsx`、`strategy-v2.js`、`src/styles/51-strategy-v2.css` 背景卡每条加「适用范围」行（样稿 A：国家 chip、人群分段切换、右侧状态标签；顶部统计未填条数；保存差异写出范围）；测试 `tests/strategy-validate.test.mjs`（+6 项，改 1 处旧断言：没有类型和范围的业务证据不再能撑 known）、`tests/strategy-service.test.mjs`（+1 项）、`tests/strategy-v2-view.test.mjs`（+1 项）；文档 `docs/API.md`、`docs/策略规则/07-业务背景卡.md`（升 bizcard-v1.1）、`docs/策略规则/README.md`。
+- 测试：`npm test` 原样结果 `ℹ pass 825` / `ℹ fail 0`；`npm run check:style` 通过；`npm run build && npm run smoke` 24 项 0 项有问题（审查修改后重跑，证据 `~/Library/Application Support/NiumaHome/evidence/smoke-20261108-1240`，`/user/strategy` 无资源失败）。反向验证：临时去掉范围检查，4 项新测试失败，恢复后全过。
+- 验证：① 与 skill 口径对齐：用 skill 1.1.0 `tests/assemble.test.mjs` 里 14 个购买判断样例（E6、E7、P1-01 与基础稿），把 skill 从原文推出的范围换成结构化字段后跑服务端校验，14 个判定全部一致；不填范围时有 5 个 skill 能过的稿子被封顶拒掉（预期影响）。脚本与输出 `…/evidence/2026-11-08-40-evidence-scope/parity.mjs`、`parity-output.txt`。E1–E7 盲测要另起 agent 生成研判稿，未跑。② 页面：隔离服务 5290（临时数据目录，用接口写入示例背景卡），宽度只看 1440；真实点选国家、人群 →「其他国家…」展开 → 预览（差异写出范围）→ 确认 → 页面「回读核对一致」，接口回读字段一致；先美国后英国保存为 `uk, us`；预览期间范围按钮变灰；改前改后计算样式逐项比对（弹窗宽、描边、字号、输入框高一致）。
+- 截图：`~/Library/Application Support/NiumaHome/evidence/2026-11-08-40-evidence-scope/`：`before-bizcard-modal.jpg`（改前）、`after-00…05`（点选、重开、预览差异、锁定态、排序后预览、分段对齐）、`mockup-bizcard-scope.html`（三版样稿，常浩选 A）。
+- 发布与回读：未发布。
+- 与授权不一致之处、遗留问题、范围外发现：① **接上后的影响**：现有背景卡条目都没有范围字段，引用业务证据的障碍和购买准备度会先被封顶到 inferred + weak，直到常浩在背景卡里补上范围；页面顶部会提示还有几条没填。② skill 侧要跟着改（预填 `countries`、`relation`，本地预检改读字段、不再从原文推），归 my-skills 后续，本 PR 不做。③ skill 还用范围拦 observed 痛点和实际商业关系，服务端这两处这次没加（常浩定的细节④）。④ Voice 按证据自带 `strength` 算，`strong` 可单独撑 known（细节⑤）；服务端目前不产出 Voice 证据，这条分支暂时跑不到。⑤ `RULE_VERSIONS` 没加背景卡版本，02 障碍体系文本与版本未改（规则写在 07 bizcard-v1.1）。⑥ 顶部提示用了规范里的 `.warn`（左侧 4px 琥珀线），样稿是整块琥珀底，其余按样稿 A。⑦ 研判依据区显示业务证据时还不显示范围，未做。
+- 本轮新坑：无。
+
 ## 月度策略：`strategy_submission` 支持按 idempotencyKey 查询（2026-11-08，Claude，由 #24 交接会话按 issue #41 派出；分支 `claude/41-submission-by-key`，常浩说「CI 过后合并」，PR #42 squash 合并为 `1497745`，关闭 #41；未发布，批 1 合起来再发布）
 
 - 时间：开工 `2026-11-08 19:40`（事后估计：收到派单、读完 issue 的时刻，开工时没有用 `date` 记录；本节测试结果在此之后跑出）。★ 来由：skill 提交结果不明（超时、断网）又没拿到 submission id 时查不到这次提交有没有入库，只能请常浩去页面看（#41，来源 my-skills PR #76 遗留第 3 条）。
