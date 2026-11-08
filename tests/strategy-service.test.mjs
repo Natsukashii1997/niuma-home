@@ -237,3 +237,38 @@ test('#30 页面读取：全部提交（含拒绝原因）、版本详情、正�
   assert.throws(() => strategy.revision('REV-nope'), e => e.status === 404);
   assert.deepEqual((await strategy.evidence('2026-12')).evidence.map(e => e.school), ['伦敦大学学院 UCL'], '正式版本引用的 Evidence');
 });
+
+test('#41 按 idempotencyKey 查提交：只查本凭据自己的，查不到回 404，参数缺失或冲突回 400（走真实 HTTP 路由与凭据）', async t => {
+  const { db, strategy } = setup();
+  const routes = agentRoutes(db, { strategy });
+  const server = createServer(async (req, res) => { const url = new URL(req.url, 'http://x'); const found = match(routes, req.method, url.pathname); await found.handler(req, res, { params: found.params, url }); });
+  await new Promise(r => server.listen(0, '127.0.0.1', r)); t.after(() => server.close());
+  const tools = ['strategy_facts', 'strategy_submit', 'strategy_submission'];
+  const caller = token => (tool, args) => fetch(`http://127.0.0.1:${server.address().port}/api/v3/agent/tools/${tool}`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ arguments: args, caller: { userId: 'changhao' } }) }).then(async r => ({ status: r.status, body: await r.json() }));
+  const claude = caller(issueAgentToken(db, 'claude-skill', tools));
+  const codex = caller(issueAgentToken(db, 'codex-skill', tools));
+  const facts = (await claude('strategy_facts', { month: '2026-12' })).body.result;
+  const { doc } = await docFor(strategy);
+  const sub = await claude('strategy_submit', { month: '2026-12', document: doc, idempotencyKey: 'lost-1', baseRevision: facts.baseRevision, inputFingerprint: facts.inputFingerprint });
+  assert.equal(sub.status, 200);
+
+  const byKey = await claude('strategy_submission', { idempotencyKey: 'lost-1' });
+  assert.equal(byKey.status, 200);
+  assert.equal(byKey.body.result.state, 'pending');
+  assert.deepEqual(byKey.body.result, (await claude('strategy_submission', { id: sub.body.result.id })).body.result, '与按 id 查形状一致');
+  strategy.reject(sub.body.result.id, { confirm: true });
+  assert.equal((await claude('strategy_submission', { idempotencyKey: 'lost-1' })).body.result.state, 'rejected', '状态跟着变');
+
+  const other = await codex('strategy_submission', { idempotencyKey: 'lost-1' });
+  assert.deepEqual([other.status, other.body.code], [404, 'SUBMISSION_NOT_FOUND'], '另一个 agent 查不到');
+  assert.doesNotMatch(JSON.stringify(other.body), new RegExp(sub.body.result.id));
+  const missing = await claude('strategy_submission', { idempotencyKey: 'never-sent' });
+  assert.deepEqual([missing.status, missing.body.code], [404, 'SUBMISSION_NOT_FOUND']);
+  assert.match(missing.body.error, /没有这次提交/);
+
+  for (const args of [{}, { id: sub.body.result.id, idempotencyKey: 'lost-1' }, { idempotencyKey: '' }, { id: '' }]) {
+    assert.equal((await claude('strategy_submission', args)).status, 400, JSON.stringify(args));
+  }
+  const logged = db.prepare("SELECT agent,status FROM agent_calls WHERE tool='strategy_submission' ORDER BY rowid").all().map(r => `${r.agent}:${r.status}`);
+  assert.deepEqual(logged, ['claude-skill:200', 'claude-skill:200', 'claude-skill:200', 'codex-skill:404', 'claude-skill:404', 'claude-skill:400', 'claude-skill:400', 'claude-skill:400', 'claude-skill:400']);
+});

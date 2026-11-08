@@ -27,7 +27,7 @@
 | `strategy_month` | `month`（YYYY-MM） | 同 `GET /api/v3/user-strategy?month=`；未准备返回 `{ month, status: "未准备" }` |
 | `strategy_facts` | `month` | 月度用户策略 v2 的事实底稿：`{ month, schemaVersion, inputFingerprint, baseRevision, rules: { versions, sources, barriers }, coverage, evidence, windows, anomalies, bizcard, revision }`；`evidence` 只列与目标月相关的事件。快照缺原格信息 `409 TIMELINE_RESYNC` |
 | `strategy_submit` | `month`、`document`、`idempotencyKey`、`inputFingerprint`、`baseRevision?`、`declared?` | 只创建待确认 submission：`{ id, month, state: "pending", agent, declared, baseRevision, submittedAt, warnings, stale }`；同键同内容返回原 submission（`repeated: true`），同键不同内容 `409 IDEMPOTENCY_CONFLICT`，校验不过 `422 STRATEGY_INVALID`（不保存） |
-| `strategy_submission` | `id` | `{ id, month, state, agent, declared, baseRevision, submittedAt, decidedAt, decidedFrom }` |
+| `strategy_submission` | `id` 或 `idempotencyKey`（二选一） | `{ id, month, state, agent, declared, baseRevision, submittedAt, decidedAt, decidedFrom, rejectReason }`；按 `idempotencyKey` 查只查当前凭据对应 agent 自己的提交（不跨 agent），用于提交结果不明又没拿到 id 时；查不到 `404 SUBMISSION_NOT_FOUND`（没有这次提交）；两个都没给、都给或为空 `400`（#41） |
 
 数据与页面同源（同一组服务、同一份缓存），不另外读飞书。唯一的写入工具是 `strategy_submit`，只能创建待确认的 submission；确认与拒绝不是智能体工具。
 

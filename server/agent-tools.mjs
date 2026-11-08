@@ -66,8 +66,14 @@ export const AGENT_TOOLS = {
     async run(args, { strategy }, { agent }) { return strategy.submit(args, { agent }); },
   },
   strategy_submission: {
-    description: '查询某个 submission 的状态（pending / confirmed / rejected / stale）。提交结果不明时先查这里，不要重复提交。',
-    inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'], additionalProperties: false },
-    async run({ id }, { strategy }) { return strategy.submission(id); },
+    description: '查询某个 submission 的状态（pending / confirmed / rejected / stale）。id 与 idempotencyKey 二选一：提交结果不明又没拿到 id 时，用提交时的 idempotencyKey 查（只查本凭据自己的提交），查不到回 404 SUBMISSION_NOT_FOUND，即没有这次提交。先查这里，不要重复提交。',
+    inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'submission id' }, idempotencyKey: { type: 'string', description: 'strategy_submit 时用的 idempotencyKey' } }, additionalProperties: false },
+    async run({ id, idempotencyKey } = {}, { strategy }, { agent } = {}) {
+      const given = v => v !== undefined && v !== null;
+      if (given(id) === given(idempotencyKey)) throw failure(400, 'id 与 idempotencyKey 须二选一，只给一个');
+      if (!given(id)) return strategy.submissionByKey(idempotencyKey, { agent });
+      if (typeof id !== 'string' || !id.trim()) throw failure(400, 'id 须为非空字符串');
+      return strategy.submission(id);
+    },
   },
 };

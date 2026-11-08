@@ -180,6 +180,13 @@ export function createStrategyService(db, { readTimeline, now = Date.now } = {})
       return { ...summary(saved), warnings, stale: isStale(saved, f) };
     },
     submission(id) { return summary(mustSubmission(id)); },
+    // 提交结果不明、没拿到 id 时按 idempotencyKey 查（#41）：只查当前凭据对应 agent 自己的提交，不跨 agent 暴露。
+    submissionByKey(idempotencyKey, { agent } = {}) {
+      if (typeof idempotencyKey !== 'string' || !idempotencyKey.trim() || idempotencyKey.length > 200) throw failure(400, 'idempotencyKey 须为非空字符串');
+      const row = db.prepare('SELECT * FROM strategy_submissions WHERE idempotency_key=? AND agent=?').get(idempotencyKey, agent || 'unknown');
+      if (!row) throw fail(404, '没有这次提交：当前凭据没有用这个 idempotencyKey 提交过', { code: 'SUBMISSION_NOT_FOUND' });
+      return summary(row);
+    },
 
     // 页面：当月正式版本与待确认提交。
     get(month) {
