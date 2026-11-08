@@ -140,6 +140,42 @@ const SCHEMA = `
     at TEXT NOT NULL
   );
 
+  -- 月度用户策略 v2（docs/策略规则/03-Schema-v2.md 第 7 节）：skill 只能创建 submission，常浩在页面确认后生成 revision。
+  -- revision 写入后不可修改、不可删除（I-10），由触发器兜底。
+  CREATE TABLE IF NOT EXISTS strategy_revisions (
+    id TEXT PRIMARY KEY,
+    month TEXT NOT NULL,
+    schema_version TEXT NOT NULL,
+    content TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    inputs TEXT NOT NULL,
+    segment_index TEXT NOT NULL DEFAULT '{}',
+    submission_id TEXT,
+    confirmed_by TEXT,
+    confirmed_from TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE TRIGGER IF NOT EXISTS strategy_revisions_no_update BEFORE UPDATE ON strategy_revisions BEGIN SELECT RAISE(ABORT, 'revision 写入后不可修改'); END;
+  CREATE TRIGGER IF NOT EXISTS strategy_revisions_no_delete BEFORE DELETE ON strategy_revisions BEGIN SELECT RAISE(ABORT, 'revision 写入后不可删除'); END;
+  -- submission：pending / confirmed / rejected / stale；agent 来自凭据，declared 是 AI 自报，只作声明。
+  CREATE TABLE IF NOT EXISTS strategy_submissions (
+    id TEXT PRIMARY KEY,
+    month TEXT NOT NULL,
+    agent TEXT NOT NULL,
+    declared TEXT,
+    base_revision TEXT,
+    input_fingerprint TEXT NOT NULL,
+    schema_version TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL UNIQUE,
+    content TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    warnings TEXT NOT NULL DEFAULT '[]',
+    submitted_at TEXT NOT NULL,
+    state TEXT NOT NULL,
+    decided_at TEXT,
+    decided_from TEXT
+  );
+
   -- V3：本地业务记录；外部原件只读，用户确认后保存本地版本。
   CREATE TABLE IF NOT EXISTS v3_documents (
     kind TEXT NOT NULL,

@@ -101,7 +101,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     route('GET', '/api/v3/business/charts', handleV3((req, { url }) => businessCharts.get({ refresh: url.searchParams.get('refresh') === '1' }))),
     ...deliveryRoutes(userServices.needs, db),
     ...projectRoutes(projectServices),
-    ...agentRoutes(db, { ...projectServices, userStrategy: userServices.userStrategy }),
+    ...agentRoutes(db, { ...projectServices, userStrategy: userServices.userStrategy, strategy: userServices.strategy }),
     ...brandRoutes(db, v3Options.brand),
     ...marketingRoutes(db, v3Options),
     ...selftalkRoutes(db, v3Options.selftalk),
