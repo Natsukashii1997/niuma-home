@@ -2,7 +2,7 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## 月度策略：`strategy_submission` 支持按 idempotencyKey 查询（2026-11-08，Claude，由 #24 交接会话按 issue #41 派出；分支 `claude/41-submission-by-key`，已提交并开 PR，未合并，等常浩说「合并」；未发布，批 1 合起来再发布）
+## 月度策略：`strategy_submission` 支持按 idempotencyKey 查询（2026-11-08，Claude，由 #24 交接会话按 issue #41 派出；分支 `claude/41-submission-by-key`，常浩说「CI 过后合并」，PR #42 squash 合并为 `1497745`，关闭 #41；未发布，批 1 合起来再发布）
 
 - 时间：开工 `2026-11-08 19:40`（事后估计：收到派单、读完 issue 的时刻，开工时没有用 `date` 记录；本节测试结果在此之后跑出）。★ 来由：skill 提交结果不明（超时、断网）又没拿到 submission id 时查不到这次提交有没有入库，只能请常浩去页面看（#41，来源 my-skills PR #76 遗留第 3 条）。
 - 改了哪些文件：`server/agent-tools.mjs` 的只读工具 `strategy_submission` 增加可选参数 `idempotencyKey`，与 `id` 二选一（都没给、都给或为空回 400）；`server/strategy-service.mjs` 新增 `submissionByKey`，只按「当前凭据对应的 agent + key」查，返回形状与按 id 查一致，查不到回 `404 SUBMISSION_NOT_FOUND`（「没有这次提交」）；`tests/strategy-service.test.mjs` 新增 1 项（走真实 HTTP 路由与两个 agent 的凭据：按 key 查到且状态随拒绝变化、与按 id 查结果逐字段一致、另一个 agent 查不到、key 不存在 404、四种参数错误 400、调用全部记进 `agent_calls`）；`docs/API.md`「智能体接入」工具表与 `AGENTS.md`「AI 接入」只读工具描述同步。没有改表结构，skill 侧（my-skills）未改。
