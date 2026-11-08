@@ -5,9 +5,9 @@ import { PixelIcon } from "../../ui/bitmap.jsx";
 import { Button, Loadable, MonthSwitch, PendingButton, Tag } from "../../ui/components.jsx";
 import { SavedNote, useWriteFlow } from "../../ui/write-flow.jsx";
 import { StrategyV1 } from "./StrategyView.jsx";
-import { BizcardModal, LegacyArchive, SubmissionReview, Versions, revNo, reviewModel } from "./StrategyV2Parts.jsx";
+import { BizcardModal, LegacyArchive, SubmissionReview, Versions, flowsLocked, reviewModel } from "./StrategyV2Parts.jsx";
 import {
-  COUNTRY_NAME, FIELDS, PRIORITY_TONE, REGIONS, VERIFICATION, dateText, evidenceName, kindLabel, routeText, scenarioNo, sortKey, span, stageName, staleRefs, statusLabel,
+  BRIEF_KEYS, COUNTRY_NAME, FIELDS, PRIORITY_TONE, REGIONS, VERIFICATION, dateText, evidenceName, evidenceWhen, isStale, kindLabel, revNo, rollbackSource, routeText, scenarioNo, sortKey, span, stageName, staleRefs, statusLabel,
 } from "./strategy-v2.js";
 
 // 月度用户策略 v2（#30，常浩 2026-11-08 选定 A 报告式样稿，见 #26）：
@@ -43,7 +43,7 @@ function MonthView({ month, onMonth, onBusy }) {
   const legacy = main.data?.revision?.content.legacy ? { legacy: main.data.revision.content.legacy } : first?.content.legacy ? { legacy: first.content.legacy, from: first.id } : null;
   const flows = { confirm: useWriteFlow(), reject: useWriteFlow(), rollback: useWriteFlow(), bizcard: useWriteFlow() };
   const [v1Busy, setV1Busy] = useState(false);
-  const busy = v1Busy || Object.values(flows).some((f) => f.busy || f.phase === "unknown");
+  const busy = v1Busy || flowsLocked(flows);
   useEffect(() => { onBusy(busy); }, [busy, onBusy]);
   const [bizOpen, setBizOpen] = useState(false);
   const [saved, setSaved] = useState("");
@@ -62,20 +62,20 @@ function MonthView({ month, onMonth, onBusy }) {
 
   return (
     <div className="us-page s2-page">
-      <Toolbar month={month} onMonth={onMonth} busy={busy} data={main.data} onBizcard={() => setBizOpen(true)} />
+      <Toolbar month={month} onMonth={onMonth} busy={busy} data={main.data} history={Boolean(main.data?.revision || subs.data?.length)} onBizcard={() => setBizOpen(true)} />
       <SavedNote text={saved} onClose={() => setSaved("")} />
       {sub && <Banner pending={pending} sub={sub} pv={pv} model={model} />}
       <Loadable state={main} name="月度用户策略" big>{(d) => d.revision
         ? <Report d={d} ctx={ctx} review={review} subs={subs} legacy={legacy} />
         : <NoRevision month={month} review={review} subs={subs} onBusy={setV1Busy} />}</Loadable>
-      <BizcardModal open={bizOpen} onClose={() => { if (!flows.bizcard.busy && flows.bizcard.phase !== "unknown") { flows.bizcard.reset(); setBizOpen(false); } }}
+      <BizcardModal open={bizOpen} onClose={() => { if (!flowsLocked({ bizcard: flows.bizcard })) { flows.bizcard.reset(); setBizOpen(false); } }}
         month={month} card={main.data?.bizcard} flow={flows.bizcard} onSaved={onSaved} />
     </div>
   );
 }
 
 /* ---------- 工具栏与提示条 ---------- */
-function Toolbar({ month, onMonth, busy, data, onBizcard }) {
+function Toolbar({ month, onMonth, busy, data, history, onBizcard }) {
   const rev = data?.revision, pending = data?.submissions?.length || 0;
   const card = data?.bizcard, filled = card ? Object.values(card).reduce((n, list) => n + list.length, 0) : 0;
   const content = rev?.content;
@@ -86,7 +86,7 @@ function Toolbar({ month, onMonth, busy, data, onBizcard }) {
       <MonthSwitch month={month} onChange={onMonth} />
       {data && <>
         <span className="us-state"><span className="label">正式版本</span>
-          {rev ? <><Tag tone="green">{revNo(rev.id)} · 已确认</Tag><span className="small muted tnum">{beijingTime(rev.createdAt).slice(5)}{rev.confirmedFrom?.startsWith("rollback:") ? ` · 回退自 ${revNo(rev.confirmedFrom.slice(9))}` : ""}</span></> : <Tag tone="amber">v2 尚无正式版本</Tag>}
+          {rev ? <><Tag tone="green">{revNo(rev.id)} · 已确认</Tag><span className="small muted tnum">{beijingTime(rev.createdAt).slice(5)}{rollbackSource(rev.confirmedFrom) ? ` · 回退自 ${revNo(rollbackSource(rev.confirmedFrom))}` : ""}</span></> : <Tag tone="amber">v2 尚无正式版本</Tag>}
         </span>
         {pending > 0 && <span className="us-state"><span className="label">待确认</span><Tag tone="amber">{pending} 份提交</Tag></span>}
         <span className="us-state"><span className="label">业务背景卡</span>
@@ -96,7 +96,7 @@ function Toolbar({ month, onMonth, busy, data, onBizcard }) {
         </span>
       </>}
       <span className="us-bar-actions">
-        {rev && <Button onClick={() => jump("s2-v")}>版本历史</Button>}
+        {history && <Button onClick={() => jump("s2-v")}>版本历史</Button>}
         {rev && <PendingButton task="T13-用户策略生成">导出到飞书</PendingButton>}
       </span>
     </div>
@@ -142,17 +142,19 @@ function Report({ d, ctx, review, subs, legacy }) {
         ))}
       </nav>
       {ctx.evError && <p className="s2-note"><PixelIcon name="alert" />时间线证据没有读到（{ctx.evError}）：关联事件只显示证据编号，「依据已变化」暂不判断。</p>}
-      <Brief doc={doc} ctx={ctx} card={d.bizcard} />
+      <Brief doc={doc} ctx={ctx} />
       <Global doc={doc} ctx={ctx} />
       <Matrix doc={doc} ctx={ctx} />
       <Sec id="s2-3" no="3" title="待确认提交" extra={review.sub ? <><Tag tone="amber">待确认</Tag><span className="small muted tnum">{beijingTime(review.sub.submittedAt)} · {review.sub.declared?.executor || "未声明"}（声明）</span></> : null}>
-        {review.sub ? <SubmissionReview {...review} /> : <p className="muted">当前没有待确认提交。skill 经 strategy_submit 提交后会出现在这里。</p>}
+        {review.sub ? <SubmissionReview {...review} /> : <>
+          {subs.data?.[0]?.state === "stale" && <p className="s2-note"><PixelIcon name="alert" />最近一份提交 {subs.data[0].id} 已过期（基础版本或输入已变化），没有写入；请让 skill 按当前事实重新生成。</p>}
+          <p className="muted">当前没有待确认提交。skill 经 strategy_submit 提交后会出现在这里。</p></>}
       </Sec>
       <Sec id="s2-v" no="附" title="版本与留痕" extra={<span className="small muted">执行方、模型是 AI 自报的声明；提交凭据、提交与确认时间由服务端独立记录</span>}>
         <Versions review={review} subs={subs.data || []} />
       </Sec>
       <Sec id="s2-l" no="存" title="旧版存档" extra={<span className="s2-ro">只读</span>}>
-        {legacy ? <details className="s2-basis s2-legacy"><summary>展开旧版存档（{d.month} 迁移前内容{legacy.from ? `，存在迁移版本 ${revNo(legacy.from)} 里` : ""}）</summary><LegacyArchive legacy={legacy.legacy} /></details>
+        {legacy ? <details className="s2-basis s2-legacy"><summary><Chevron />展开旧版存档（{d.month} 迁移前内容{legacy.from ? `，存在迁移版本 ${revNo(legacy.from)} 里` : ""}）</summary><LegacyArchive legacy={legacy.legacy} /></details>
           : <p className="muted small">本月没有旧版存档。</p>}
       </Sec>
     </>
@@ -174,7 +176,7 @@ function useActiveSection() {
   return active;
 }
 
-export function Sec({ id, no, title, extra, children }) {
+function Sec({ id, no, title, extra, children }) {
   return (
     <section id={id} className="card us-sec s2-sec">
       <div className="card-head"><h2><span className="us-no">{no}</span>{title}</h2>{extra && <div className="card-extra">{extra}</div>}</div>
@@ -184,13 +186,15 @@ export function Sec({ id, no, title, extra, children }) {
 }
 
 /* ---------- 判断条目与研判依据 ---------- */
-export function StatusTag({ c, stale }) {
+// 折叠开关的图标：收起时向右、展开时向下（显隐由 CSS 按 details[open] 切换）。
+const Chevron = () => <><PixelIcon name="right" className="is-closed" /><PixelIcon name="down" className="is-open" /></>;
+function StatusTag({ c, stale }) {
   const [text, tone] = statusLabel(c, stale);
   return <span title={stale ? "引用的证据版本已变，不能进入新版本（I-06）" : undefined}><Tag tone={tone}>{text}</Tag></span>;
 }
 
 function Claim({ c, ctx, events = true, gap = false, kind = true }) {
-  const stale = staleRefs(c, ctx.ev).length > 0;
+  const stale = isStale(c, ctx.ev);
   const isNew = ctx.prevIds && c.id && !ctx.prevIds.has(c.id);
   return (
     <div className={`s2-claim${stale ? " is-stale" : ""}`}>
@@ -209,7 +213,7 @@ function EventsLine({ refs = [], ctx, max = 3 }) {
   return (
     <div className="s2-evline"><PixelIcon name="timeline" />
       {refs.slice(0, max).map((id) => { const e = ctx.ev[id]; return e
-        ? <span key={id} className="s2-evl">{evidenceName(e)} <b>{e.kind === "business" ? e.bizType : dateText(e.dates)}</b></span>
+        ? <span key={id} className="s2-evl">{evidenceName(e)} <b>{evidenceWhen(e)}</b></span>
         : <span key={id} className="s2-evl is-gone">{id} <b>已不在当前快照</b></span>; })}
       {refs.length > max && <span className="muted">等 {refs.length} 个事件</span>}
     </div>
@@ -217,7 +221,7 @@ function EventsLine({ refs = [], ctx, max = 3 }) {
 }
 
 const WIN_STATUS = { known: "已知", inferred: "推断" };
-export function Basis({ c, ctx, compact = false }) {
+function Basis({ c, ctx, compact = false }) {
   const refs = c.evidenceRefs || [];
   const stale = new Set(staleRefs(c, ctx.ev));
   const wins = refs.map((id) => ctx.win[id]).filter(Boolean).slice(0, compact ? 2 : 4);
@@ -250,16 +254,17 @@ export function Basis({ c, ctx, compact = false }) {
 }
 
 /* ---------- 0 核心结论 ---------- */
-function Brief({ doc, ctx, card }) {
+function Brief({ doc, ctx }) {
   const j = doc.brief?.judgement || {};
   const linked = (j.claims || []).map((id) => doc.claims.find((c) => c.id === id)).filter(Boolean);
-  const empty = !card || !Object.values(card).some((list) => list.length);
+  // 07 第 3 节：看这份正式稿确认时有没有用到背景卡（服务端记在 inputs.bizcard），不看现在的背景卡。
+  const empty = doc.inputs && !doc.inputs.bizcard;
   return (
     <Sec id="s2-0" no="0" title="核心结论" extra={<span className="small muted">本月目标与核心打法：批 2 起生成</span>}>
       <p className="us-judge s2-judge">{j.text || <span className="muted">（本月没有核心结论）</span>}</p>
       {empty && <p className="s2-note"><PixelIcon name="alert" />本月未提供业务背景，用户需求与购买判断均基于学校时间线推断。</p>}
-      <details className="s2-basis s2-judge-basis"><summary>研判依据 · 支撑这句判断的 {linked.length} 条判断</summary>
-        {linked.length ? <ul className="us-items s2-basis-grid">{linked.map((c) => <li key={c.id}>{c.text} <StatusTag c={c} stale={staleRefs(c, ctx.ev).length > 0} /></li>)}</ul>
+      <details className="s2-basis s2-judge-basis"><summary><Chevron />研判依据 · 支撑这句判断的 {linked.length} 条判断</summary>
+        {linked.length ? <ul className="us-items s2-basis-grid">{linked.map((c) => <li key={c.id}>{c.text} <StatusTag c={c} stale={isStale(c, ctx.ev)} /></li>)}</ul>
           : <p className="s2-basis-grid muted small">没有链接具体判断（迁移数据的核心结论原文保留，不链接判断）。</p>}
       </details>
     </Sec>
@@ -278,16 +283,16 @@ function Activity({ a }) {
   if (!a || a.status === "unknown" || a.ratio == null) return <><Tag tone="amber">未知</Tag> <span className="small muted">没有可计算的学校</span></>;
   return <span className="s2-act"><span className="s2-covbar" title={`候选行动窗口覆盖率 ${pct(a.ratio)}%`}><i style={{ width: `${pct(a.ratio)}%` }} /></span><b className="tnum">{pct(a.ratio)}%</b><Tag>{a.value}</Tag><span className="small muted">推断</span></span>;
 }
-const counts = (c = {}) => ({ calc: c.calculable ?? 0, active: c.active ?? 0, gap: c.notCovered ?? (c.calculable ?? 0) - (c.active ?? 0), none: c.insufficient ?? (c.schools ?? 0) - (c.calculable ?? 0) });
+const coverageCounts = (c = {}) => ({ calc: c.calculable ?? 0, active: c.active ?? 0, gap: c.notCovered ?? (c.calculable ?? 0) - (c.active ?? 0), none: c.insufficient ?? (c.schools ?? 0) - (c.calculable ?? 0) });
 
 function BriefItem({ x, ctx }) {
-  const stale = staleRefs(x, ctx.ev).length > 0;
+  const stale = isStale(x, ctx.ev);
   return (
     <div className="s2-claim">
       <span className="s2-claim-text">{x.text}</span>
       <span className="s2-tags"><StatusTag c={x} stale={stale} /></span>
       <EventsLine refs={x.evidenceRefs} ctx={ctx} />
-      <details className="s2-basis"><summary>研判依据</summary><Basis c={x} ctx={ctx} /></details>
+      <details className="s2-basis"><summary><Chevron />研判依据</summary><Basis c={x} ctx={ctx} /></details>
     </div>
   );
 }
@@ -298,7 +303,7 @@ function Global({ doc, ctx }) {
     <Sec id="s2-1" no="1" title="全局研判">
       <h3 className="us-h3">1.1 共性、差异与外部因素</h3>
       <div className="us-boxes">
-        {[["common", "共性"], ["diff", "差异"], ["external", "外部因素"]].map(([k, label]) => { const list = doc.brief?.[k] || []; return (
+        {BRIEF_KEYS.map(([k, label]) => { const list = doc.brief?.[k] || []; return (
           <div key={k} className="us-box"><div className="us-box-head s2-box-head">{label}<span className="label">{list.length} 条</span></div>
             <div className="s2-box-body">{list.length ? list.map((x, i) => <BriefItem key={i} x={x} ctx={ctx} />) : <span className="muted">—</span>}</div>
           </div>); })}
@@ -309,7 +314,7 @@ function Global({ doc, ctx }) {
           <colgroup><col className="is-name" /><col className="is-tag" /><col className="is-tag" /><col /><col className="is-act" /><col className="is-num" /><col className="is-dq" /><col className="is-scn" /></colgroup>
           <thead><tr><th>地区</th><th>策略优先级</th><th>默认建议</th><th>理由</th><th>需求活跃度</th><th>有效 / 活跃 / 窗口未覆盖 / 数据不足</th><th>日期质量</th><th>情境</th></tr></thead>
           <tbody>{REGIONS.map(([key, name]) => { const r = byKey[key]; if (!r) return <tr key={key}><td><b>{name}</b></td><td colSpan={7} className="muted">文档里缺这个地区</td></tr>;
-            const p = r.priority || {}, a = r.activity || {}, n = counts(a.coverage);
+            const p = r.priority || {}, a = r.activity || {}, n = coverageCounts(a.coverage);
             return [
               <tr key={key}>
                 <td><b>{name}</b></td>
@@ -319,7 +324,7 @@ function Global({ doc, ctx }) {
                 <td><Activity a={a} /></td>
                 <td className="tnum">{n.calc} / {n.active} / {n.gap} / <span className={n.none ? "" : "muted"}>{n.none}</span></td>
                 <td><DqBar q={a.dateQuality} /><div className="small muted tnum s2-dq-text">{dqText(a.dateQuality)}</div></td>
-                <td>{r.scenarios?.length ? `${r.scenarios.length} 个` : <span title={r.emptyReason || ""}><Tag tone="amber">空 · 有原因</Tag></span>}</td>
+                <td>{r.scenarios?.length ? `${r.scenarios.length} 个` : r.emptyReason ? <span title={r.emptyReason}><Tag tone="amber">空 · 有原因</Tag></span> : <Tag tone="red">空 · 未写原因</Tag>}</td>
               </tr>,
               a.byCountry && <tr key={`${key}-by`} className="s2-by"><td /><td colSpan={7}><span className="label">各国贡献</span>
                 {Object.entries(a.byCountry).map(([c, x]) => <span key={c} className="s2-bychip">{COUNTRY_NAME[c] || c} <b className="tnum">{x.coverage?.active ?? 0}/{x.coverage?.calculable ?? 0}</b></span>)}
@@ -362,8 +367,8 @@ function Cell({ f, r, scn, doc, ctx, claimsOf }) {
   if (f === "basis") {
     const cs = doc.claims.filter((c) => ids.includes(c.scenario));
     const evn = new Set(cs.flatMap((c) => c.evidenceRefs || [])).size;
-    return <details className="s2-basis"><summary>展开 · {cs.length} 条判断 · {evn} 个证据</summary>
-      <div className="s2-basis-list">{cs.map((c) => <div key={c.id} className="s2-basis-item"><div className="small"><b>{c.text}</b> <StatusTag c={c} stale={staleRefs(c, ctx.ev).length > 0} /></div><Basis c={c} ctx={ctx} compact /></div>)}</div>
+    return <details className="s2-basis"><summary><Chevron />展开 · {cs.length} 条判断 · {evn} 个证据</summary>
+      <div className="s2-basis-list">{cs.map((c) => <div key={c.id} className="s2-basis-item"><div className="small"><b>{c.text}</b> <StatusTag c={c} stale={isStale(c, ctx.ev)} /></div><Basis c={c} ctx={ctx} compact /></div>)}</div>
     </details>;
   }
   const multi = ids.length > 1;
@@ -388,15 +393,15 @@ function Part({ f, s, id, ctx, claimsOf }) {
     if (!ctx.ev) return <span className="small muted">{refs.length} 个证据（时间线未读取）</span>;
     const evs = refs.map((x) => ctx.ev[x] || { evidenceId: x, gone: true }).sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
     return <ul className="s2-nodes">{evs.map((e) => e.gone ? <li key={e.evidenceId} className="is-stale">{e.evidenceId} 已不在当前快照</li>
-      : <li key={e.evidenceId}><span className="tnum">{e.kind === "business" ? e.bizType : dateText(e.dates)}</span> {evidenceName(e)} {e.verification && <i className={`s2-ver is-${e.verification}`}>{VERIFICATION[e.verification]}</i>}</li>)}</ul>;
+      : <li key={e.evidenceId}><span className="tnum">{evidenceWhen(e)}</span> {evidenceName(e)} {e.verification && <i className={`s2-ver is-${e.verification}`}>{VERIFICATION[e.verification]}</i>}</li>)}</ul>;
   }
   if (f === "task") return list(["task"]);
   if (f === "pain") return list(["pain"]);
-  if (f === "need") return list(["need_strength", "readiness", "academic_need"], { events: false, gap: true });
+  if (f === "need") return list(["need_strength", "readiness", "academic_need"], { gap: true });
   if (f === "barrier") {
     const rels = ["新签", "续费", ...(claimsOf(id, ["barrier"]).some((c) => c.targetRelation === "通用") ? ["通用"] : [])];
     return rels.map((rel) => { const cs = claimsOf(id, ["barrier"]).filter((c) => c.targetRelation === rel); return (
-      <div key={rel} className="s2-rel"><span className="label">{rel}</span>{cs.length ? cs.map((c) => <Claim key={c.id} c={c} ctx={ctx} events={false} gap />) : <span className="small muted">无判断</span>}</div>); });
+      <div key={rel} className="s2-rel"><span className="label">{rel}</span>{cs.length ? cs.map((c) => <Claim key={c.id} c={c} ctx={ctx} gap />) : <span className="small muted">无判断</span>}</div>); });
   }
   return null;
 }

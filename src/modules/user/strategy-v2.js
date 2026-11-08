@@ -58,6 +58,15 @@ export function staleRefs(c, evidenceById) {
   if (!evidenceById || !c.refVersions) return [];
   return Object.entries(c.refVersions).filter(([id, v]) => !evidenceById[id] || evidenceById[id].evidenceVersion !== v).map(([id]) => id);
 }
+export const isStale = (c, evidenceById) => staleRefs(c, evidenceById).length > 0;
+export const BRIEF_KEYS = [["common", "共性"], ["diff", "差异"], ["external", "外部因素"]];
+// 版本编号：REV-2026-12-3 → r3；下一个版本 = 当月版本数 + 1（服务端按同样规则编号）。
+export const revNo = (id) => (id ? `r${String(id).split("-").at(-1)}` : "—");
+export const nextRevNo = (count) => `r${(count || 0) + 1}`;
+// 回退生成的版本：confirmedFrom = "rollback:<旧版本>"，返回旧版本 id；不是回退返回 null。
+export const rollbackSource = (from) => (from?.startsWith("rollback:") ? from.slice("rollback:".length) : null);
+// 证据在行内的短说明：背景卡写类型，时间线写日期。
+export const evidenceWhen = (e) => (e.kind === "business" ? e.bizType : dateText(e.dates));
 
 // 「伦敦大学学院 UCL」→「UCL」；没有英文缩写就用全名。
 export function shortSchool(school = "") {
@@ -87,7 +96,7 @@ export function diffDocs(before, after, { omit = [] } = {}) {
   const push = (kind, where, x, y, id) => out.push({ kind, where, before: x ?? "", after: y ?? "", ...(id && { id }) });
   const pair = (where, x, y, id) => { if (x === y) return; push(!x ? "add" : !y ? "del" : "mod", where, x, y, id); };
   pair("核心结论", b.brief?.judgement?.text, a.brief?.judgement?.text);
-  for (const [key, name] of [["common", "共性"], ["diff", "差异"], ["external", "外部因素"]]) {
+  for (const [key, name] of BRIEF_KEYS) {
     const x = b.brief?.[key] || [], y = a.brief?.[key] || [];
     for (let i = 0; i < Math.max(x.length, y.length); i++) pair(`全局研判 · ${name} ${i + 1}`, itemText(x[i]), itemText(y[i]));
   }

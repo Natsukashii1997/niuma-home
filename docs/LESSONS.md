@@ -162,3 +162,10 @@
 - 正确做法：读历史和发送前都先等消息出现（空会话等满 10 秒照常继续）；发送后以「提问多了一条、最后一条是回复」认新回复，不按回复条数下标取。等待用 MutationObserver，不用定时轮询（后台标签页里计时器会被放慢）。
 - 证据：issue #15；`browser-extension/niuma-collect/chatgpt.js`；本轮 CURRENT.md「Agent 接入 ChatGPT 会话」一节「验证」行。
 - 第 2 次（2026-11-07，正式环境）：消息出来了，回复正文还要再晚一点——那一刻回复里只有读屏隐藏标题，页面上显示成「ChatGPT 说：」。隐藏标题的 textContent 是「ChatGPT 说：ChatGPT」，和 innerText 对不上，按 textContent 去不掉。改为按 innerText 去掉隐藏标题，读历史等到每条回复都有正文（最多 10 秒）。
+
+## L-18 开发页（Vite）发出的写请求全部被来源校验拦下：代理改写了 Host（2026-11-08）
+
+- 现象：#30 在开发页（`WORKDESK_API_PORT=… npx vite`）点「确认」，接口回 `请求来源校验未通过：不是本机页面发出的请求`（`ORIGIN_REJECTED`）；同一份构建由服务端口直接托管时，写入正常。读接口不受影响，所以只看页面显示发现不了。
+- 根因：`vite.config.js` 的代理写成字符串简写 `proxy: { "/api": api }`，Vite 会把它展开成 `{ target, changeOrigin: true }`（`node_modules/vite/dist/node/chunks/dep-*.js`：`opts = { target: opts, changeOrigin: true }`），转发时 Host 被改成服务端口；`server/http.mjs` 的 `checkOrigin` 要求 Origin 等于 `http://${host}`，页面端口和服务端口不同就拒。`http.mjs` 注释「Vite 开发页代理保留页面 Host，所以 5281 的页面也能过」与实际不符。
+- 正确做法：在开发页测写入流程前，先用 `curl -X POST -H 'Origin: http://127.0.0.1:<开发端口>' http://127.0.0.1:<开发端口>/api/…` 确认不被拦；被拦时改用 `npm run build` 后由隔离服务端口直接打开页面（同源）来测写入。修 `vite.config.js`（代理写成对象并 `changeOrigin: false`）属于另一件事，先问常浩。
+- 证据：本轮 CURRENT.md「批 1·1d 策略页」一节「验证」行；`curl` 复现结果见同节。

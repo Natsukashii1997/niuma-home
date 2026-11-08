@@ -5,12 +5,13 @@ import { PixelIcon } from "../../ui/bitmap.jsx";
 import { Button, Loadable, Modal, Tag } from "../../ui/components.jsx";
 import { WriteBox } from "../../ui/write-flow.jsx";
 import { PLAY_BY_ID } from "./playbook-cards.js";
-import { BIZCARD_FIELDS, BIZCARD_HINT, BIZ_TYPES, COUNTRY_NAME, REGIONS, claimText, countChanges, diffDocs, legacyText, staleRefs } from "./strategy-v2.js";
+import { BIZCARD_FIELDS, BIZCARD_HINT, BIZ_TYPES, COUNTRY_NAME, REGIONS, claimText, countChanges, diffDocs, isStale, legacyText, nextRevNo, revNo, rollbackSource } from "./strategy-v2.js";
 
 // v2 策略页的写入与留痕区块：第 3 节待确认提交、附 版本与留痕、存 旧版存档、业务背景卡。
 // 写入一律「预览 → 确认 → 回读」：确认、拒绝、回退、背景卡都由常浩在页面明确确认，回读核对一致才算完成。
 const API = "/api/v3/strategy-v2";
-export const revNo = (id) => (id ? `r${String(id).split("-").at(-1)}` : "—");
+// 有写入在进行或结果不明时，其他写入入口一律锁住。
+export const flowsLocked = (flows) => Object.values(flows).some((f) => f.busy || f.phase === "unknown");
 const fail = (message) => Object.assign(new Error(message), { status: 422 });
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -22,11 +23,11 @@ export function reviewModel(p, base, evidenceById) {
   const baseClaims = base?.claims || [];
   // 依据已变化的手写内容：确认时须常浩明确保留（keepStale），否则 422（I-06）。
   const flagged = new Set(p.changed || []);
-  const staleManual = baseClaims.filter((c) => c.origin === "manual" && (flagged.has(c.id) || staleRefs(c, evidenceById).length > 0));
+  const staleManual = baseClaims.filter((c) => c.origin === "manual" && (flagged.has(c.id) || isStale(c, evidenceById)));
   const staleManualIds = new Set(staleManual.map((c) => c.id));
   // 旧判断依据已变化、提交把它移出或重写的（只作说明）。
   const docClaims = new Map(doc.claims.map((c) => [c.id, c]));
-  const staleMoved = baseClaims.filter((c) => c.origin !== "manual" && staleRefs(c, evidenceById).length > 0 && JSON.stringify(docClaims.get(c.id)) !== JSON.stringify(c))
+  const staleMoved = baseClaims.filter((c) => c.origin !== "manual" && isStale(c, evidenceById) && JSON.stringify(docClaims.get(c.id)) !== JSON.stringify(c))
     .map((c) => ({ c, after: docClaims.get(c.id) || null }));
   const others = diffDocs(base, doc, { omit: [...manualIds] });
   // 手写内容上的 I-06 可以靠「保留」解决，不算拦截。
@@ -44,16 +45,27 @@ export function SubmissionReview({ month, sub, pending, pick, pv, flows, revisio
   );
 }
 
+// 确认回读：正式稿内容与预览一致——非手写的判断、核心结论与提交相同；采纳的手写内容换成提交的新文，保留的仍是原文。
+function confirmedAsPreviewed(content, { model: m, acceptManual }) {
+  const manualIds = new Set(m.manual.map((x) => x.id));
+  const plain = (list) => JSON.stringify(list.filter((c) => !manualIds.has(c.id)));
+  if (plain(content.claims) !== plain(m.doc.claims) || JSON.stringify(content.brief) !== JSON.stringify(m.doc.brief)) return false;
+  const byId = new Map(content.claims.map((c) => [c.id, c]));
+  return m.manual.every((x) => (acceptManual.includes(x.id) ? JSON.stringify(byId.get(x.id) ?? null) === JSON.stringify(x.after) : byId.get(x.id)?.text === x.before.text));
+}
+
 function ReviewBody({ month, sub, p, model: m, flows, revision, revs, ctx, onSaved }) {
   const [choice, setChoice] = useState({}); // 手写内容：accept 采纳新文 / keep 保留原文
   const [keep, setKeep] = useState({}); // 依据已变化的手写内容：true = 保留
   const [reason, setReason] = useState("");
   const base = revision?.content;
-  const next = revNo(`x-${(revs?.length || 0) + 1}`);
+  const next = nextRevNo(revs?.length);
   const needKeep = m.staleManual.filter((c) => choice[c.id] !== "accept");
   const undecided = m.manual.filter((x) => !choice[x.id]).length;
   const unkept = needKeep.filter((c) => !keep[c.id]).length;
-  const locked = Object.values(flows).some((f) => f.busy || f.phase === "unknown");
+  const locked = flowsLocked(flows);
+  // 改了选择，旧的确认预览作废（STYLE-GUIDE 第 5 节「时效」）。
+  const decide = (set, value) => { flows.confirm.reset(); set(value); };
   const canConfirm = !p.stale && !m.blocking.length && !undecided && !unkept && !locked;
   const hint = p.stale ? "提交已过期（基础版本、输入或 schema 已变化），不能确认；请让 skill 重新生成"
     : m.blocking.length ? `校验拦截 ${m.blocking.length} 条，不能确认`
@@ -75,7 +87,7 @@ function ReviewBody({ month, sub, p, model: m, flows, revision, revs, ctx, onSav
     let made = null;
     const ok = await flows.confirm.confirm(
       (x) => apiSend("POST", `${API}/submissions/${sub.id}/confirm`, { confirm: true, acceptManual: x.acceptManual, keepStale: x.keepStale }),
-      async (receipt) => { made = receipt.revision.id; const fresh = await apiSend("GET", `${API}?month=${month}`); return fresh.revision?.id === made && fresh.revision.submissionId === sub.id; });
+      async (receipt, x) => { made = receipt.revision.id; const fresh = await apiSend("GET", `${API}?month=${month}`); return fresh.revision?.id === made && fresh.revision.submissionId === sub.id && confirmedAsPreviewed(fresh.revision.content, x); });
     if (ok) { flows.confirm.resolve(); onSaved(`已确认 ${sub.id}，生成 ${revNo(made)}，回读核对一致`); }
   };
   const previewReject = () => { flows.confirm.reset(); return flows.reject.preview(async () => {
@@ -85,7 +97,7 @@ function ReviewBody({ month, sub, p, model: m, flows, revision, revs, ctx, onSav
   }); };
   const reject = async () => {
     const ok = await flows.reject.confirm((x) => apiSend("POST", `${API}/submissions/${sub.id}/reject`, { confirm: true, reason: x.reason }),
-      async () => { const list = await apiSend("GET", `${API}/submissions?month=${month}`); return list.find((s) => s.id === sub.id)?.state === "rejected"; });
+      async (receipt, x) => { const list = await apiSend("GET", `${API}/submissions?month=${month}`); const s = list.find((y) => y.id === sub.id); return s?.state === "rejected" && (s.rejectReason || "") === x.reason; });
     if (ok) { flows.reject.resolve(); onSaved(`已拒绝 ${sub.id}，正式版本不变，回读核对一致`); }
   };
   // 结果不明、或确认时提交已过期（过期的提交不能再预览）：都重新读取当前状态。
@@ -124,8 +136,8 @@ function ReviewBody({ month, sub, p, model: m, flows, revision, revs, ctx, onSav
             <div><span className="label">你写的</span><p>{claimText(x.before)}</p></div>
             <div><span className="label">提交建议</span><p>{x.after ? <ins>{claimText(x.after)}</ins> : <del>删除这条</del>}</p></div>
             <div className="s2-choice" role="radiogroup" aria-label={`${x.id} 怎么处理`}>
-              <label><input type="radio" name={`m-${x.id}`} checked={choice[x.id] === "accept"} onChange={() => setChoice({ ...choice, [x.id]: "accept" })} disabled={locked} /> 采纳新文</label>
-              <label><input type="radio" name={`m-${x.id}`} checked={choice[x.id] === "keep"} onChange={() => setChoice({ ...choice, [x.id]: "keep" })} disabled={locked} /> 保留我写的原文</label>
+              <label><input type="radio" name={`m-${x.id}`} checked={choice[x.id] === "accept"} onChange={() => decide(setChoice, { ...choice, [x.id]: "accept" })} disabled={locked} /> 采纳新文</label>
+              <label><input type="radio" name={`m-${x.id}`} checked={choice[x.id] === "keep"} onChange={() => decide(setChoice, { ...choice, [x.id]: "keep" })} disabled={locked} /> 保留我写的原文</label>
             </div>
           </div>
         </div>
@@ -137,7 +149,7 @@ function ReviewBody({ month, sub, p, model: m, flows, revision, revs, ctx, onSav
           <div key={c.id} className="s2-stale s2-chg is-del">
             <div className="small muted">{c.id} · 你写的，引用的证据版本已变</div>
             <p>{c.text}</p>
-            <label className="s2-keep"><input type="checkbox" checked={Boolean(keep[c.id])} onChange={(e) => setKeep({ ...keep, [c.id]: e.target.checked })} disabled={locked} /> 保留这条（正文不动，依据版本更新为当前）</label>
+            <label className="s2-keep"><input type="checkbox" checked={Boolean(keep[c.id])} onChange={(e) => decide(setKeep, { ...keep, [c.id]: e.target.checked })} disabled={locked} /> 保留这条（正文不动，依据版本更新为当前）</label>
           </div>
         ))}
         {m.staleMoved.map(({ c, after }) => (
@@ -198,7 +210,7 @@ export function Versions({ review, subs }) {
   const { month, revs = [], revision, flows, onSaved } = review;
   const bySub = Object.fromEntries(subs.map((s) => [s.id, s]));
   const [diff, setDiff] = useState(null); // { id, list } | { id, error }
-  const locked = Object.values(flows).some((f) => f.busy || f.phase === "unknown");
+  const locked = flowsLocked(flows);
   const showDiff = async (id) => {
     if (diff?.id === id) { setDiff(null); return; }
     try { const old = await apiSend("GET", `${API}/revisions/${id}`); setDiff({ id, list: diffDocs(old.content, revision.content) }); }
@@ -217,17 +229,17 @@ export function Versions({ review, subs }) {
       async (receipt) => { made = receipt.revision.id; const fresh = await apiSend("GET", `${API}?month=${month}`); return fresh.revision?.id === made && fresh.revision.confirmedFrom === `rollback:${from}`; });
     if (ok) { flows.rollback.resolve(); setDiff(null); onSaved(`已回退：${revNo(from)} 的内容写成新版本 ${revNo(made)}，回读核对一致`); }
   };
-  const next = revNo(`x-${revs.length + 1}`);
+  const next = nextRevNo(revs.length);
   return (
     <>
       <h3 className="us-h3">版本</h3>
       {revs.length ? <div className="table-wrap"><table className="grid s2-vers">
         <thead><tr><th>版本</th><th>来源</th><th>执行方 · 模型（声明）</th><th>提交凭据</th><th>提交时间</th><th>确认时间 · 方式</th><th>时间线快照</th><th>对应提交</th><th /></tr></thead>
-        <tbody>{revs.map((v) => { const s = bySub[v.submission_id], cur = v.id === revision?.id, back = v.confirmed_from?.startsWith("rollback:"); return (
+        <tbody>{revs.map((v) => { const s = bySub[v.submission_id], cur = v.id === revision?.id, back = rollbackSource(v.confirmed_from); return (
           <Fragment key={v.id}>
             <tr className={cur ? "is-cur" : ""}>
               <td className="s2-nowrap"><b className="mono">{revNo(v.id)}</b> {cur && <Tag tone="ink">当前</Tag>}<div className="s2-decl">{v.id}</div></td>
-              <td>{back ? `回退自 ${revNo(v.confirmed_from.slice(9))}` : s ? "skill 提交" : <Tag tone="frame">{v.confirmed_from === "migration" ? "迁移" : v.confirmed_from || "人工"}</Tag>}</td>
+              <td>{back ? `回退自 ${revNo(back)}` : s ? "skill 提交" : <Tag tone="frame">{v.confirmed_from === "migration" ? "迁移" : v.confirmed_from || "人工"}</Tag>}</td>
               <td>{s ? <>{s.declared?.executor || "未声明"} · <span className="mono">{s.declared?.model || "未声明"}</span><div className="s2-decl">AI 自报，仅作声明{s.declared?.skillVersion ? ` · ${s.declared.skillVersion}` : ""}</div></> : "—"}</td>
               <td>{s ? <><span className="mono">{s.agent}</span><div className="s2-decl">服务端按凭据记录</div></> : "—"}</td>
               <td className="tnum">{s ? beijingTime(s.submittedAt) : "—"}</td>
