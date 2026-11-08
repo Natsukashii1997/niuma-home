@@ -86,8 +86,7 @@ Evidence 事实与证据 ──▶ Scenario 用户情境 ──▶ Claim 研判 
 | `dates` | object | 是 | `{ from, to, precision }`；`precision` ∈ `day` / `month` / `none`；`month` 时 from、to 为空，另给 `months: ["2026-12"]` |
 | `verification` | enum | 时间线类必填 | `verified`（官网核实）/ `ruled`（人工裁定）/ `source`（原表日期）/ `guess`（推测）/ `conflict`（冲突未决） |
 | `scope` | string | 否 | 适用对象限定，如「仅研究生」「仅国际生」 |
-| `ambiguous` | boolean | 是 | 同一格多段重排、拆分、合并，无法与旧片段对应时为 `true`，并生成新 ID；身份碰撞时也为 `true` |
-| `identityConflict` | boolean | 否 | 同一快照内与其他 Evidence 身份碰撞时为 `true` |
+| `ambiguous` | boolean | 是 | 同一格多段重排、拆分、合并，无法与旧片段对应时为 `true`，并生成新 ID |
 | `text` | string | business 类必填 | 业务背景卡原文 |
 | `bizType` | enum | business 类必填 | `事实记录` / `业务观察` / `管理判断` |
 | `source` | object | 是 | `{ ref, raw, snapshot }`：单元格地址或背景卡条目、原文、来源快照指纹。只用于溯源，不参与身份计算 |
@@ -98,7 +97,8 @@ Evidence 事实与证据 ──▶ Scenario 用户情境 ──▶ Claim 研判 
 
 **身份唯一与碰撞处理**：
 - 同一快照内 `evidenceId` 必须唯一。生成时检测到重复，不允许静默合并事件。
-- 碰撞的主要来源是同一地区表里出现两条同名学校记录。这种情况下，碰撞的各条 Evidence 都标 `ambiguous=true`、`identityConflict=true`，在同步报告里列出，提醒修正飞书原表；在此之前它们不能作为 `known` 判断的依据，也不能作为窗口依据（I-07、I-18）。
+- **碰撞在 Evidence 落库之前识别并隔离**。碰撞的主要来源是同一地区表里出现两条同名学校记录：生成 Evidence 前先按身份分组，同一身份对应多条源记录的，这些源记录**全部不生成 Evidence**，写进同步报告的「身份冲突」异常清单，每条保留原始来源定位（地区表、单元格地址、原文、快照指纹），提醒修正飞书原表。正式 Evidence 集合里因此不会出现重复 ID，I-18 的唯一性拦截只作兜底。
+- 被隔离的记录不参与任何判断：不作 `known` 依据，不作精确窗口或月度候选机会的依据，不计入覆盖率的有效学校（该校在 `coverage` 里算「数据不足」，见 05 第 6 节）。飞书原表修正后，下次同步按正常身份生成 Evidence。
 - 不用行号或出现顺序区分同名学校：行顺序会随编辑变化，用它区分反而会让身份漂移。
 
 **和核验、裁定记录键的关系**：官网核验与人工裁定沿用现有记录键（含异常描述的指纹），不与 `evidenceId` 混用。核验、裁定的结果以 `verification` 和有效日期进入 `evidenceVersion`。
@@ -143,7 +143,7 @@ Evidence 事实与证据 ──▶ Scenario 用户情境 ──▶ Claim 研判 
 | `level` | enum | 仅 need_strength、readiness | `高` / `中` / `低`；status 为 unknown 时为空 |
 | `barrierCode` | string | 仅 barrier | v2 编码（`BR-…`），见 [02-障碍体系v2](02-障碍体系v2.md) |
 | `targetRelation` | enum | 仅 barrier、readiness | 这条判断针对的人群 |
-| `barrierRole` | enum | 仅 barrier | `primary` / `secondary`。同一情境、同一 `targetRelation` 下最多一个 `primary`；障碍可以多标签并存，但主障碍只有一个 |
+| `barrierRole` | enum | 仅 barrier | `primary` / `secondary`。同一情境、同一 `targetRelation` 下有 barrier Claim 时，**恰好一个** `primary`，其余为 `secondary`；没有 barrier Claim 时不强造主障碍。全部障碍都是 `unknown` 时，`primary` 只表示待验证的研究重点，不能据此升级促销推荐（I-08 仍按各障碍的 status 判定） |
 | `origin` | enum | 是 | `skill` / `manual`（常浩写的）/ `migrated`（旧数据迁移） |
 
 **页面标签由展示层推导，不存储**：
@@ -244,18 +244,18 @@ Evidence 事实与证据 ──▶ Scenario 用户情境 ──▶ Claim 研判 
 | I-04 | `status=not_applicable` ⇒ `limitations` 写明不适用的原因 |
 | I-05 | `observedRelation.value≠unknown` ⇒ 其 `evidenceRefs` 至少一条是 business 类 Evidence |
 | I-06 | Claim 的 `refVersions` 与当前 Evidence 版本不一致 ⇒ 状态转为「依据已变化」，不能进入新 revision，须重新研判或由常浩确认保留 |
-| I-07 | **禁止虚构精度，不禁止粗粒度研判**。① 精确日期窗口（`window.granularity=day`）的依据必须是 `precision=day`、`verification≠conflict`、`anchorType≠anchor_unknown`、`ambiguous=false` 的 Evidence。② 只有月份或锚点不明的 Evidence，可以支撑月度候选机会（`granularity=month`），但不能产出精确行动日期。③ 冲突未决的日期不能被选为任何窗口的依据，只能作为「冲突未决」的风险说明。④ 带时间限制的促销（限时、截止、早鸟、倒计时类）必须有符合 ① 的具体时间依据 |
+| I-07 | **禁止虚构精度，不禁止粗粒度研判**。① 精确日期窗口（`window.granularity=day`）的依据必须是 `precision=day`、`verification≠conflict`、`anchorType≠anchor_unknown`、`ambiguous=false` 的 Evidence。② 只有月份、锚点不明或 `ambiguous=true` 的 Evidence，可以支撑月度候选机会（`granularity=month`），但不能产出精确行动日期。③ 冲突未决的日期不能被选为任何窗口的依据，只能作为「冲突未决」的风险说明。④ 带时间限制的促销（限时、截止、早鸟、倒计时类）必须有符合 ① 的具体时间依据 |
 | I-08 | Strategy `status=推荐` ⇒ 同时满足：引用的 Opportunity 至少一个是 P0 或 P1；`barrierRefs` 非空；每个被引用的障碍 Claim 是 `known`，或 `inferred + partial`；通过 I-14（批 2 起还要通过 I-16）。被引用的障碍里有 `inferred + weak` 的，最多「附条件推荐」；有 `unknown` 的，最多「候选待确认」。没有可匹配购买障碍的用户策略方向，写在用户策略段落里，不生成促销 Strategy |
 | I-09 | `origin=manual` 的内容不会被 submission 自动改写；submission 对它的修改在预览里单独列出，常浩逐条确认 |
 | I-10 | revision 写入后不可修改；review、rating 只能追加 |
-| I-11 | barrier Claim 的 `barrierCode` 必须在障碍体系 v2 内，且其适用人群与 `targetRelation` 相容 |
+| I-11 | barrier Claim 的 `barrierCode` 必须在障碍体系 v2 内，且其适用人群与 `targetRelation` 相容；同一情境、同一 `targetRelation` 下有 barrier Claim 时，`barrierRole=primary` 恰好一个（3.3） |
 | I-12 | Evidence 的 `country` 和 Scenario 的 `countries` 里的每个值，都必须是 2.1 归一化表里的具体国家代码，不允许 `other` 或未归一化的大写代码 |
 | I-13 | 六个地区单元都必须存在，`activity`、`priority` 字段必填（值可以是 unknown 或 null，见第 4 节）；`scenarios` 可以为空，为空时 `emptyReason` 必填 |
 | I-14 | Strategy 引用的打法卡，阶段必须与 `audience.targetRelation` 相容。组合冲突只在**目标人群和时间都重叠**的方案之间判断：两个 Strategy 的 `targetRelation` 相同、`audience` 的地区或情境有交集、`window` 有重叠时，不能违反卡片「不宜组合」，也不能同时使用两种直接降价；面向不同地区、不同人群或时间不重叠的方案，不算冲突 |
 | I-15 | 正文字段（text、name、rationale）里不写障碍编码、打法编号、机制编号；只提示，不拦截 |
 | I-16 | （批 2 定义）时间适用性：打法卡的结构化时间条件（如早鸟价「距开课 4–8 周」）与引用的需求窗口、行动窗口比对，不满足的方案不能是「推荐」或「附条件推荐」。批 2 先给 47 张卡补结构化时间条件，再定本条的判定细则 |
 | I-17 | 引用完整性：Claim、Opportunity、Strategy 里引用的每个 ID（Evidence、Scenario、Claim、Opportunity、打法卡）都必须存在于当前文档或当前快照里；悬空引用直接拦截 |
-| I-18 | 同一快照内 `evidenceId` 唯一；`identityConflict=true` 或 `ambiguous=true` 的 Evidence 不能作为 `known` 判断的依据，也不能作为精确窗口的依据 |
+| I-18 | 同一快照内 `evidenceId` 唯一（身份碰撞的源记录在落库前已隔离，见 3.1，本条兜底拦截）；`ambiguous=true` 的 Evidence 不能作为 `known` 判断的依据，也不能作为精确窗口的依据，只能支撑月度候选机会（I-07 ②） |
 
 I-15 只提示，其余都是拦截级；I-16 在批 2 生效。写作规范的字数、禁用词沿用现有规则，只提示不拦截。
 
@@ -307,4 +307,4 @@ I-15 只提示，其余都是拦截级；I-16 在批 2 生效。写作规范的�
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | schema 2.0 | 2026-11-08 | 初版 |
-| schema 2.1 | 2026-11-08 | 批 0 返修（GPT 验收 P1-01、P1-02）：增加国家与年份归一化、eventType 归一化；一个事件一条 Evidence，`kind` 去掉 official / ruling；身份碰撞处理与原格修改导致核验失效的说明；`anchorType` 增加 `period`；需求活跃度改为「候选行动窗口覆盖率」，status 恒为 inferred，增加 dateQuality、coverage、byCountry；地区允许空情境；`barrierRole`；窗口粒度；修订 I-07、I-08、I-12、I-13、I-14；新增 I-16（批 2）、I-17、I-18；幂等冲突报 409 |
+| schema 2.1 | 2026-11-08 | 批 0 返修（GPT 验收 P1-01、P1-02）：增加国家与年份归一化、eventType 归一化；一个事件一条 Evidence，`kind` 去掉 official / ruling；身份碰撞处理与原格修改导致核验失效的说明；`anchorType` 增加 `period`；需求活跃度改为「候选行动窗口覆盖率」，status 恒为 inferred，增加 dateQuality、coverage、byCountry；地区允许空情境；`barrierRole`；窗口粒度；修订 I-07、I-08、I-12、I-13、I-14；新增 I-16（批 2）、I-17、I-18；幂等冲突报 409。定向验收补改（P1-R01、P2-R01）：身份碰撞改为落库前隔离到同步报告，去掉 `identityConflict` 字段；`barrierRole` 改为有障碍时恰好一个 primary，并写进 I-11；`ambiguous` 的 Evidence 可支撑月度候选机会 |
