@@ -11,6 +11,7 @@ import { parseTimeline, REGION_SHEETS } from '../server/timeline.mjs';
 import { createStrategyService } from '../server/strategy-service.mjs';
 import { agentRoutes } from '../server/routes/agent.mjs';
 import { issueAgentToken } from '../server/agent-access.mjs';
+import { fingerprint } from '../server/local-records.mjs';
 
 const COLS = 'ABCDEFGH'.split('');
 const sheet = rows => ({ name: REGION_SHEETS[1], cols: COLS, rows: rows.map((values, i) => ({ row: i + 1, values })) });
@@ -159,6 +160,37 @@ test('反例 4、07 第 3 节：背景卡没有存量用户情况时，续费障
   strategy.confirmBizcard('2026-12', { confirm: true, previewId: p2.previewId });
   const ids = (await strategy.facts('2026-12')).evidence.filter(e => e.kind === 'business').map(e => e.evidenceId);
   assert.ok(ids.includes(biz.evidenceId)); assert.equal(ids.length, 2);
+});
+
+test('#40 背景卡适用范围：countries、relation 的格式校验；带进 Evidence；只在填了时改变 Evidence 版本；提交按范围封顶', async () => {
+  const { strategy } = setup();
+  const entry = extra => ({ 用户观察: [{ text: '英国新签咨询多在问考前冲刺', type: '业务观察', basis: '顾问周报', ...extra }] });
+  for (const [extra, why] of [[{ countries: ['gb'] }, /英国写 uk/], [{ countries: ['other'] }, /不是归一化的具体国家代码/], [{ countries: ['usa'] }, /不是归一化/],
+    [{ countries: 'uk' }, /须为国家代码数组/], [{ relation: '老学员' }, /新签 \/ 续费 \/ 通用/]]) assert.throws(() => strategy.previewBizcard('2026-12', entry(extra)), why, JSON.stringify(extra));
+  const p0 = strategy.previewBizcard('2026-12', entry({ countries: [], relation: '' }));
+  assert.deepEqual(Object.keys(p0.value['用户观察'][0]).sort(), ['basis', 'id', 'text', 'type'], '空范围按没填处理，不存');
+  const p1 = strategy.previewBizcard('2026-12', entry({ countries: [' UK', 'uk', 'Us'], relation: '新签' }));
+  assert.deepEqual([p1.value['用户观察'][0].countries, p1.value['用户观察'][0].relation], [['uk', 'us'], '新签'], '转小写、去重');
+
+  // 先存没填范围的条目：版本与加字段前的算法一致（老条目不会因为这次改动变成「依据已变化」）
+  strategy.confirmBizcard('2026-12', { confirm: true, previewId: strategy.previewBizcard('2026-12', entry({})).previewId });
+  const bare = (await strategy.facts('2026-12')).evidence.find(e => e.kind === 'business');
+  assert.equal(bare.evidenceVersion, fingerprint(['英国新签咨询多在问考前冲刺', '业务观察', '顾问周报']).slice(0, 16));
+  assert.equal(bare.countries, undefined); assert.equal(bare.relation, undefined);
+  const scoped = d => { d.claims[1] = { ...d.claims[1], barrierCode: 'BR-C1', status: 'inferred', evidenceStrength: 'partial', limitations: '一线反馈', gap: undefined, route: undefined }; return d; };
+  const cite = ev => d => { scoped(d); d.claims[1].evidenceRefs = [ev.evidenceId]; d.claims[1].refVersions = { [ev.evidenceId]: ev.evidenceVersion }; return d; };
+  const r0 = await docFor(strategy, '2026-12', cite(bare));
+  await assert.rejects(submit(strategy, r0.doc, r0.f, 's0'), e => e.status === 422 && /02 §2.3/.test(e.message) && /没填适用国家/.test(e.message), '没填范围撑不起 partial');
+
+  // 补上范围：Evidence ID 不变、版本变化，带上两个字段，同一份稿子可以提交
+  const saved = strategy.get('2026-12').bizcard['用户观察'][0];
+  strategy.confirmBizcard('2026-12', { confirm: true, previewId: strategy.previewBizcard('2026-12', { 用户观察: [{ ...saved, countries: ['uk'], relation: '新签' }] }).previewId });
+  const ev = (await strategy.facts('2026-12')).evidence.find(e => e.kind === 'business');
+  assert.equal(ev.evidenceId, bare.evidenceId); assert.notEqual(ev.evidenceVersion, bare.evidenceVersion, '范围变了，依据就算变了');
+  assert.deepEqual([ev.countries, ev.relation], [['uk'], '新签']);
+  const r1 = await docFor(strategy, '2026-12', cite(ev));
+  assert.equal((await submit(strategy, r1.doc, r1.f, 's1')).state, 'pending');
+  await assert.rejects(submit(strategy, r0.doc, r1.f, 's2'), e => e.status === 422 && /I-06/.test(e.message), '按旧版本引用的稿子须重新研判');
 });
 
 test('07 第 3 节：缺存量用户情况时续费 unknown 须指向背景卡；缺用户观察时痛点只能是 typical', async () => {

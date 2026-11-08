@@ -13,19 +13,35 @@ export const RULE_VERSIONS = { sources: 'sources-v1.1', barrier: 'barrier-v2.1',
 export const BIZCARD_KIND = 'strategy-bizcard';
 const BIZCARD_FIELDS = ['本月重要变化', '用户观察', '存量用户情况', '产品与资源约束', '负责人特别判断'];
 const BIZ_STRENGTH = { 事实记录: 'strong', 业务观察: 'partial', 管理判断: 'weak' };
+const BIZ_RELATIONS = ['新签', '续费', '通用'];
 const short = value => fingerprint(value).slice(0, 16);
 const fail = (status, message, extra) => Object.assign(failure(status, message), extra);
 const nextMonth = month => { const [y, m] = month.split('-').map(Number); return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`; };
 const parseRevision = row => row ? { ...row, content: JSON.parse(row.content), inputs: JSON.parse(row.inputs), segment_index: JSON.parse(row.segment_index || '{}') } : null;
 
-// 业务背景卡条目 → business 类 Evidence（07 第 2 节）。身份 = 月份 + 字段 + 条目 id（保存时分配，删改别的条目不影响）；版本 = 原文 + 类型 + 依据。
+// 业务背景卡条目 → business 类 Evidence（07 第 2 节）。身份 = 月份 + 字段 + 条目 id（保存时分配，删改别的条目不影响）；版本 = 原文 + 类型 + 依据 + 适用范围。
+// 适用范围（countries、relation）只在填了时算进版本：没填的老条目版本不变，已引用它们的提交和版本不会因为这次加字段而「依据已变化」。
 export function bizcardEvidence(month, card) {
   const out = [];
-  for (const field of BIZCARD_FIELDS) for (const entry of card?.[field] || []) out.push({
-    evidenceId: `EV-${short(['bizcard', month, field, entry.id])}`, evidenceVersion: short([entry.text, entry.type, entry.basis]),
-    kind: 'business', sourceId: 'SRC-bizcard', field, text: entry.text, bizType: entry.type, strength: BIZ_STRENGTH[entry.type], basis: entry.basis, ambiguous: false,
-    source: { ref: `${month}·${field}·${entry.id}`, raw: entry.text, snapshot: '' },
-  });
+  for (const field of BIZCARD_FIELDS) for (const entry of card?.[field] || []) {
+    const scope = { ...(entry.countries?.length && { countries: entry.countries }), ...(entry.relation && { relation: entry.relation }) };
+    out.push({
+      evidenceId: `EV-${short(['bizcard', month, field, entry.id])}`, evidenceVersion: short([entry.text, entry.type, entry.basis, ...(Object.keys(scope).length ? [scope] : [])]),
+      kind: 'business', sourceId: 'SRC-bizcard', field, text: entry.text, bizType: entry.type, strength: BIZ_STRENGTH[entry.type], basis: entry.basis, ...scope, ambiguous: false,
+      source: { ref: `${month}·${field}·${entry.id}`, raw: entry.text, snapshot: '' },
+    });
+  }
+  return out;
+}
+// 条目的适用国家：可选；归一化为两位小写国家代码（和时间线 Evidence 的 country 同一套，英国写 uk），去重，空数组按没填处理。
+function bizCountries(field, list) {
+  if (list === undefined || list === null) return [];
+  if (!Array.isArray(list)) throw failure(400, `「${field}」的适用国家须为国家代码数组`);
+  const out = [...new Set(list.map(c => String(c ?? '').trim().toLowerCase()).filter(Boolean))];
+  for (const c of out) {
+    if (c === 'gb') throw failure(400, `「${field}」的适用国家里英国写 uk，不写 gb`);
+    if (!/^[a-z]{2}$/.test(c) || c === 'other') throw failure(400, `「${field}」的适用国家 ${c} 不是归一化的具体国家代码（两位小写字母）`);
+  }
   return out;
 }
 // 校验背景卡并给新条目分配 id；已有 id 原样保留。
@@ -40,7 +56,10 @@ function normalizeBizcard(card) {
       if (!BIZ_STRENGTH[e.type]) throw failure(400, `「${field}」的条目类型须为 事实记录 / 业务观察 / 管理判断`);
       if (e.type === '事实记录' && !String(e.basis || '').trim()) throw failure(400, '事实记录须写明记录出处');
       if (e.id !== undefined && !/^B-[0-9a-f]{8}$/.test(e.id)) throw failure(400, '条目 id 格式不对');
-      return { id: e.id || `B-${randomUUID().slice(0, 8)}`, text: e.text.trim(), type: e.type, ...(e.basis && { basis: String(e.basis).trim() }) };
+      const countries = bizCountries(field, e.countries);
+      if (e.relation !== undefined && e.relation !== null && e.relation !== '' && !BIZ_RELATIONS.includes(e.relation)) throw failure(400, `「${field}」的适用人群须为 新签 / 续费 / 通用，或不填`);
+      return { id: e.id || `B-${randomUUID().slice(0, 8)}`, text: e.text.trim(), type: e.type, ...(e.basis && { basis: String(e.basis).trim() }),
+        ...(countries.length && { countries }), ...(e.relation && { relation: e.relation }) };
     });
   }
   return out;

@@ -44,7 +44,7 @@ skill 经 `strategy_submit` 提交，常浩在页面预览、确认后生成不�
 - `POST /api/v3/strategy-v2/submissions/:id/confirm` 请求 `{ confirm: true, acceptManual?: [claimId], keepStale?: [claimId] }` → `{ revision: { id, createdAt }, keptManual }`。基础版本、输入指纹或 schema 不一致：转 stale，`409 SUBMISSION_STALE`。常浩手写（`origin=manual`）的 Claim 只有列进 `acceptManual` 的才被替换（提交删掉的手写内容也会恢复）；手写内容依据已变化时须列进 `keepStale` 明确保留，否则 `422`（I-06）。skill 不能新建 `origin=manual` 的内容（提交时 `422`）。确认后同月其余待确认提交转 stale。
 - `POST /api/v3/strategy-v2/submissions/:id/reject` 请求 `{ confirm: true, reason? }` → submission 摘要（`state: "rejected"`）；`reason` 是常浩写的一句原因，可空，不超过 200 字，存在 `reject_reason` 列（#30）
 - `POST /api/v3/strategy-v2/:month/rollback` 请求 `{ confirm: true, revisionId }` → `{ revision: { id, createdAt } }`：把旧版本内容写成新的 revision（`confirmed_from: "rollback:<旧版本>"`），历史不改写，同月待确认提交转 stale
-- `POST /api/v3/strategy-v2/:month/bizcard/preview` 请求背景卡 `{ 字段: [{ text, type, basis }] }` → `{ previewId, expiresAt, before, value }`；`POST …/bizcard/confirm` 请求 `{ confirm: true, previewId }`。字段只允许五个；类型为 事实记录 / 业务观察 / 管理判断，事实记录须写出处；新条目在预览时分配 `id`（`B-` + 8 位），Evidence 身份按条目 id，删改别的条目不影响。
+- `POST /api/v3/strategy-v2/:month/bizcard/preview` 请求背景卡 `{ 字段: [{ text, type, basis, countries?, relation? }] }` → `{ previewId, expiresAt, before, value }`；`POST …/bizcard/confirm` 请求 `{ confirm: true, previewId }`。字段只允许五个；类型为 事实记录 / 业务观察 / 管理判断，事实记录须写出处；新条目在预览时分配 `id`（`B-` + 8 位），Evidence 身份按条目 id，删改别的条目不影响。`countries`（适用国家，两位小写国家代码数组，英国写 `uk`）、`relation`（适用人群 新签 / 续费 / 通用）可选，填了才存、才进 Evidence 和 Evidence 版本；没填或和 Claim 的情境对不上时，这条证据撑不起 `inferred + weak` 以上的障碍和购买准备度（07 第 2 节）。
 
 ## 旧写入口保存保护（2026-10-22）
 
