@@ -128,7 +128,7 @@ export function createStrategyService(db, { readTimeline, now = Date.now } = {})
     return { added: [...after.keys()].filter(k => !before.has(k)), removed: [...before.keys()].filter(k => !after.has(k)),
       changed: [...after.keys()].filter(k => before.has(k) && fingerprint(before.get(k)) !== fingerprint(after.get(k))) };
   };
-  const summary = row => ({ id: row.id, month: row.month, state: row.state, agent: row.agent, declared: JSON.parse(row.declared || 'null'), baseRevision: row.base_revision, submittedAt: row.submitted_at, decidedAt: row.decided_at, decidedFrom: row.decided_from });
+  const summary = row => ({ id: row.id, month: row.month, state: row.state, agent: row.agent, declared: JSON.parse(row.declared || 'null'), baseRevision: row.base_revision, submittedAt: row.submitted_at, decidedAt: row.decided_at, decidedFrom: row.decided_from, rejectReason: row.reject_reason ?? null });
   // 写入 revision：事务内复核、编号、回读，不一致就回滚。content.inputs 一律用服务端记录的输入。
   function writeRevision(month, doc, { inputs, segmentIndex, submissionId = null, from, by = '常浩', guard = () => {} }) {
     db.exec('BEGIN IMMEDIATE');
@@ -191,7 +191,28 @@ export function createStrategyService(db, { readTimeline, now = Date.now } = {})
     },
     revisions(month) {
       requireMonth(month);
-      return db.prepare('SELECT id,month,submission_id,confirmed_by,confirmed_from,created_at FROM strategy_revisions WHERE month=? ORDER BY created_at DESC, rowid DESC').all(month);
+      return db.prepare('SELECT id,month,submission_id,confirmed_by,confirmed_from,created_at,inputs FROM strategy_revisions WHERE month=? ORDER BY created_at DESC, rowid DESC').all(month)
+        .map(({ inputs, ...row }) => ({ ...row, snapshot: JSON.parse(inputs || '{}').timelineSnapshot ?? null }));
+    },
+    // 页面：某个版本的完整内容（看差异、回退前查看）。
+    revision(id) {
+      const rev = parseRevision(db.prepare('SELECT * FROM strategy_revisions WHERE id=?').get(String(id ?? '')));
+      if (!rev) throw failure(404, '没有这个版本');
+      return { id: rev.id, month: rev.month, content: rev.content, createdAt: rev.created_at, confirmedBy: rev.confirmed_by, confirmedFrom: rev.confirmed_from, submissionId: rev.submission_id };
+    },
+    // 页面：当月全部提交（含已确认、已拒绝、已过期），新的在前。
+    submissions(month) {
+      requireMonth(month);
+      return db.prepare('SELECT * FROM strategy_submissions WHERE month=? ORDER BY submitted_at DESC, rowid DESC').all(month).map(summary);
+    },
+    // 页面：正式版本与待确认提交引用到的 Evidence 及其窗口，用来显示关联事件、研判依据和「依据已变化」。
+    async evidence(month) {
+      const f = await facts(month);
+      const rev = current(month), used = rev ? referenced(rev.content) : new Set();
+      for (const row of db.prepare("SELECT content FROM strategy_submissions WHERE month=? AND state='pending'").all(month)) for (const id of referenced(JSON.parse(row.content))) used.add(id);
+      const windows = new Map(f.windows.map(w => [w.evidenceId, w]));
+      const evidence = f.evidence.filter(e => used.has(e.evidenceId));
+      return { month, snapshot: f.snapshot, evidence, windows: evidence.map(e => windows.get(e.evidenceId)).filter(Boolean) };
     },
     async preview(id) {
       const row = mustSubmission(id);
@@ -236,7 +257,9 @@ export function createStrategyService(db, { readTimeline, now = Date.now } = {})
     reject(id, body = {}) {
       mustSubmission(id);
       if (body.confirm !== true) throw failure(400, '请明确确认拒绝');
-      if (!db.prepare("UPDATE strategy_submissions SET state='rejected', decided_at=?, decided_from='page' WHERE id=? AND state='pending'").run(stamp(), id).changes) throw failure(409, 'submission 已不是待确认状态');
+      const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
+      if (reason.length > 200) throw failure(400, '拒绝原因不超过 200 字');
+      if (!db.prepare("UPDATE strategy_submissions SET state='rejected', decided_at=?, decided_from='page', reject_reason=? WHERE id=? AND state='pending'").run(stamp(), reason || null, id).changes) throw failure(409, 'submission 已不是待确认状态');
       return summary(submissionRow(id));
     },
     // 回退：把某个旧版本的内容写成新的 revision（历史不改写）；同月待确认提交转 stale。

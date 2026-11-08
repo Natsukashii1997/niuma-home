@@ -36,10 +36,13 @@
 skill 经 `strategy_submit` 提交，常浩在页面预览、确认后生成不可变 revision（触发器禁止修改、删除）。规则：`docs/策略规则/03-Schema-v2.md` 第 4、7 节，`07-业务背景卡.md`。
 
 - `GET /api/v3/strategy-v2?month=` → `{ month, revision: { id, content, createdAt, confirmedFrom, submissionId } | null, submissions: [待确认摘要], bizcard }`；`content.inputs` 是服务端在确认时记录的输入（时间线快照指纹、输入指纹、背景卡指纹、规则版本、引用的 Evidence 版本），skill 填的会被覆盖
-- `GET /api/v3/strategy-v2/revisions?month=` → `[{ id, month, submission_id, confirmed_by, confirmed_from, created_at }]`（新的在前）
+- `GET /api/v3/strategy-v2/revisions?month=` → `[{ id, month, submission_id, confirmed_by, confirmed_from, created_at, snapshot }]`（新的在前；`snapshot` 是确认时记录的时间线快照指纹，#30 加）
+- `GET /api/v3/strategy-v2/revisions/:id` → `{ id, month, content, createdAt, confirmedBy, confirmedFrom, submissionId }`：版本详情，页面「看差异」与回退前查看用（#30）
+- `GET /api/v3/strategy-v2/submissions?month=` → `[submission 摘要]`（全部状态，新的在前）；摘要含 `rejectReason`（#30，页面「提交记录」用）
+- `GET /api/v3/strategy-v2/evidence?month=` → `{ month, snapshot, evidence, windows }`：只列当前正式版本与待确认提交引用到的 Evidence 及其窗口，页面显示关联事件、研判依据和「依据已变化」用；快照缺原格信息 `409 TIMELINE_RESYNC`（#30）
 - `GET /api/v3/strategy-v2/submissions/:id/preview` → `{ submission, document, stale, errors, warnings, changed, manualChanges: [{ id, before, after }], diff: { scenarios, claims } }`
 - `POST /api/v3/strategy-v2/submissions/:id/confirm` 请求 `{ confirm: true, acceptManual?: [claimId], keepStale?: [claimId] }` → `{ revision: { id, createdAt }, keptManual }`。基础版本、输入指纹或 schema 不一致：转 stale，`409 SUBMISSION_STALE`。常浩手写（`origin=manual`）的 Claim 只有列进 `acceptManual` 的才被替换（提交删掉的手写内容也会恢复）；手写内容依据已变化时须列进 `keepStale` 明确保留，否则 `422`（I-06）。skill 不能新建 `origin=manual` 的内容（提交时 `422`）。确认后同月其余待确认提交转 stale。
-- `POST /api/v3/strategy-v2/submissions/:id/reject` 请求 `{ confirm: true }` → submission 摘要（`state: "rejected"`）
+- `POST /api/v3/strategy-v2/submissions/:id/reject` 请求 `{ confirm: true, reason? }` → submission 摘要（`state: "rejected"`）；`reason` 是常浩写的一句原因，可空，不超过 200 字，存在 `reject_reason` 列（#30）
 - `POST /api/v3/strategy-v2/:month/rollback` 请求 `{ confirm: true, revisionId }` → `{ revision: { id, createdAt } }`：把旧版本内容写成新的 revision（`confirmed_from: "rollback:<旧版本>"`），历史不改写，同月待确认提交转 stale
 - `POST /api/v3/strategy-v2/:month/bizcard/preview` 请求背景卡 `{ 字段: [{ text, type, basis }] }` → `{ previewId, expiresAt, before, value }`；`POST …/bizcard/confirm` 请求 `{ confirm: true, previewId }`。字段只允许五个；类型为 事实记录 / 业务观察 / 管理判断，事实记录须写出处；新条目在预览时分配 `id`（`B-` + 8 位），Evidence 身份按条目 id，删改别的条目不影响。
 

@@ -176,7 +176,8 @@ const SCHEMA = `
     submitted_at TEXT NOT NULL,
     state TEXT NOT NULL,
     decided_at TEXT,
-    decided_from TEXT
+    decided_from TEXT,
+    reject_reason TEXT
   );
 
   -- V3：本地业务记录；外部原件只读，用户确认后保存本地版本。
@@ -204,6 +205,8 @@ export function openDb(dir = dataDir) {
       const names = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((column) => column.name));
       if (!names.has("special")) db.exec(`ALTER TABLE ${table} ADD COLUMN special TEXT NOT NULL DEFAULT '无'`);
     }
+    const submissionColumns = new Set(db.prepare("PRAGMA table_info(strategy_submissions)").all().map((column) => column.name));
+    if (!submissionColumns.has("reject_reason")) db.exec("ALTER TABLE strategy_submissions ADD COLUMN reject_reason TEXT"); // 拒绝时常浩写的一句原因（#30）
     db.exec("COMMIT");
   } catch (error) { db.exec("ROLLBACK"); db.close(); throw error; }
   seed(db);

@@ -217,3 +217,23 @@ test('反例 20：智能体凭据只能提交；确认不是智能体工具，�
   assert.equal((await call('strategy_submission', { id: sub.body.result.id })).body.result.state, 'rejected');
   await assert.rejects(strategy.confirm(sub.body.result.id, { confirm: true }), e => e.status === 409);
 });
+
+test('#30 页面读取：全部提交（含拒绝原因）、版本详情、正式版本与待确认提交引用的 Evidence', async () => {
+  const { strategy } = setup();
+  const { doc, f } = await docFor(strategy);
+  const a = await submit(strategy, doc, f, 'p1');
+  assert.throws(() => strategy.reject(a.id, { confirm: true, reason: 'x'.repeat(201) }), /200 字/);
+  strategy.reject(a.id, { confirm: true, reason: '  判断太泛  ' });
+  const b = await submit(strategy, { ...doc, research: { rejected: [], assumptions: [], notes: ['二稿'] } }, f, 'p2');
+  const list = strategy.submissions('2026-12');
+  assert.deepEqual(list.map(s => [s.id, s.state, s.rejectReason]), [[b.id, 'pending', null], [a.id, 'rejected', '判断太泛']], '新的在前，拒绝原因去掉首尾空格');
+  const ev = await strategy.evidence('2026-12');
+  assert.deepEqual(ev.evidence.map(e => e.school), ['伦敦大学学院 UCL'], '待确认提交引用的 Evidence');
+  assert.equal(ev.windows[0].evidenceId, ev.evidence[0].evidenceId);
+  const { revision } = await strategy.confirm(b.id, { confirm: true });
+  const full = strategy.revision(revision.id);
+  assert.equal(full.submissionId, b.id); assert.equal(full.content.research.notes[0], '二稿'); assert.equal(full.confirmedFrom, 'page');
+  assert.equal(strategy.revisions('2026-12')[0].snapshot, full.content.inputs.timelineSnapshot, '版本列表带确认时的快照指纹');
+  assert.throws(() => strategy.revision('REV-nope'), e => e.status === 404);
+  assert.deepEqual((await strategy.evidence('2026-12')).evidence.map(e => e.school), ['伦敦大学学院 UCL'], '正式版本引用的 Evidence');
+});
