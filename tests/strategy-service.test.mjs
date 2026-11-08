@@ -66,11 +66,21 @@ test('反例 19、17：提交不改正式版本；确认生成 revision；基础
   await assert.rejects(strategy.confirm(s1.id, { confirm: true }), e => e.status === 409, '已确认的不能再确认');
 });
 
-test('反例 17：时间线变化（输入指纹变了）后确认被拒并转 stale', async () => {
+test('重读飞书只改了同步时间、内容没变：待确认提交不过期，可以确认', async () => {
   const { strategy, state } = setup();
   const { doc, f } = await docFor(strategy);
   const s = await submit(strategy, doc, f);
-  state.timeline = { ...TIMELINE, syncedAt: '2026-11-09 10:00' };
+  state.timeline = { ...structuredClone(TIMELINE), syncedAt: '2026-11-08 10:10' };
+  assert.equal((await strategy.facts('2026-12')).inputFingerprint, f.inputFingerprint);
+  assert.equal((await strategy.preview(s.id)).stale, false);
+  assert.equal((await strategy.confirm(s.id, { confirm: true })).revision.id, 'REV-2026-12-1');
+});
+
+test('反例 17：时间线内容变化（输入指纹变了）后确认被拒并转 stale', async () => {
+  const { strategy, state } = setup();
+  const { doc, f } = await docFor(strategy);
+  const s = await submit(strategy, doc, f);
+  state.timeline = { ...parseTimeline([sheet([['英国', 'Final 时间'], ['伦敦大学学院 UCL', '12.8'], ['爱丁堡大学 UoE', '2027.9.20']])], '2026-11-09 10:00'), years: [{ year: 2026 }] };
   await assert.rejects(strategy.confirm(s.id, { confirm: true }), e => e.status === 409 && e.code === 'SUBMISSION_STALE');
   assert.equal(strategy.submission(s.id).state, 'stale');
 });

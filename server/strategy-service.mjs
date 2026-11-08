@@ -68,7 +68,8 @@ export function createStrategyService(db, { readTimeline, now = Date.now } = {})
     requireMonth(month);
     const timeline = await readTimeline();
     if (!timeline?.cellIndex) throw fail(409, '时间线快照缺少原格信息，请先在时间线页同步一次', { code: 'TIMELINE_RESYNC' });
-    const snapshot = short([timeline.syncedAt, timeline.agenda, timeline.anomalies?.map(a => [a.src, a.a, a.ruling, a.verification])]);
+    // 快照指纹只看内容（事件、异常与裁定核验、学校名单），不含同步时间：工作台每 10 分钟重读飞书，内容没变就不能让待确认提交过期。
+    const snapshot = short([timeline.agenda, timeline.anomalies?.map(a => [a.src, a.a, a.ruling, a.verification]), Object.entries(timeline.table || {}).map(([code, rows]) => [code, rows.map(r => [r.school, r.abbr])])]);
     const rev = current(month);
     const built = buildEvidence(timeline, { previous: rev?.segment_index ?? {}, snapshot });
     const card = getRecord(db, BIZCARD_KIND, month);
