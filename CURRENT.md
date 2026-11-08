@@ -2,7 +2,7 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## 月度用户策略批 1·1a 证据与窗口（2026-11-08，Claude，常浩说「按推荐开工」；分支 `claude/25-evidence-windows`，PR 待合并，等常浩说「合并」；未发布）
+## 月度用户策略批 1·1a 证据与窗口（2026-11-08，Claude，常浩说「按推荐开工」；常浩说「CI 过后合并」，PR #33 squash 合并为 `b7872f2`；未发布，批 1 合起来再发布）
 
 - 时间：开工 `2026-11-08 13:05`（拆完票、开 worktree 的大致时间）。★ 来由：批 1 规格 #24 第一张票 #25，把时间线快照落成 schema 2.1 的 Evidence，并按 lifecycle-v0.2 算窗口与候选行动窗口覆盖率。
 - 改了哪些文件：新增 `server/strategy-evidence.mjs`（时间线 → Evidence：国家与年份、eventType 归一化，语义身份与版本指纹，核验 / 裁定只改核验状态，同名学校落库前隔离，片段重排标 ambiguous，锚点含 period）；新增 `server/strategy-lifecycle.mjs`（Evidence → 需求 / 行动窗口，补考替代锚点，地区覆盖率含 dateQuality、coverage、byCountry）；`server/timeline.mjs` 只增不改：解析结果多一个 `cellIndex`（来源格 → 地区代码、地区表、列名与同名列序号、学校、原文），`guessRe` 导出；`server/routes/user.mjs` 的时间线读取与同步接口不下发 `cellIndex`；`server/timeline-verification.mjs`、`server/timeline-rulings.mjs` 只增：多段核验 / 裁定的事件带 `segment`（原格内位置），让片段身份不随日期改动漂移；新增 `tests/strategy-evidence.test.mjs`（15 项，覆盖反例 1、3、7、8a、8b、9、10、11、12、13、21、25、26）。
