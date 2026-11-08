@@ -28,8 +28,10 @@ export function applyOfficialVerifications(timeline, records = evidence, {source
     for (const c of a.cell.cells) if (row && c.slot >= 0) { row.cells[c.slot]=null; if(row.cellRanges) delete row.cellRanges[c.slot]; }
     for (const p of segments) {
       const dest = a.cell.cells[p.cell ?? r.cell ?? 0];
+      // segment：同一目标格内的片段位置（多段时才有），月度策略按它给片段定身份，不随日期改动漂移。
+      const same = segments.filter(q => a.cell.cells[q.cell ?? r.cell ?? 0] === dest);
       out.agenda.push({from:p.from,to:p.to,c:a.cell.c,school:a.school,type:r.eventType || a.cell.type,src:dest.src,
-        verified:true,verification,...((p.label || r.label) && {detail:p.label || r.label})});
+        verified:true,verification,...((p.label || r.label) && {detail:p.label || r.label}),...(same.length > 1 && {segment:same.indexOf(p)})});
     }
     for (const dest of a.cell.cells) if (row && dest.slot >= 0) {
       const parts = segments.filter(p => a.cell.cells[p.cell ?? r.cell ?? 0] === dest);

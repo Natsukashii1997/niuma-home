@@ -5,12 +5,13 @@
 ## 月度用户策略批 1·1a 证据与窗口（2026-11-08，Claude，常浩说「按推荐开工」；分支 `claude/25-evidence-windows`，PR 待合并，等常浩说「合并」；未发布）
 
 - 时间：开工 `2026-11-08 13:05`（拆完票、开 worktree 的大致时间）。★ 来由：批 1 规格 #24 第一张票 #25，把时间线快照落成 schema 2.1 的 Evidence，并按 lifecycle-v0.2 算窗口与候选行动窗口覆盖率。
-- 改了哪些文件：新增 `server/strategy-evidence.mjs`（时间线 → Evidence：国家与年份、eventType 归一化，语义身份与版本指纹，核验 / 裁定只改核验状态，同名学校落库前隔离，片段重排标 ambiguous，锚点含 period）；新增 `server/strategy-lifecycle.mjs`（Evidence → 需求 / 行动窗口，补考替代锚点，地区覆盖率含 dateQuality、coverage、byCountry）；`server/timeline.mjs` 只增不改：解析结果多一个 `cellIndex`（来源格 → 地区代码、地区表、列名与同名列序号、学校、原文），`guessRe` 导出；`server/routes/user.mjs` 的时间线读取与同步接口不下发 `cellIndex`；新增 `tests/strategy-evidence.test.mjs`（12 项，覆盖反例 1、3、7、8a、8b、9、10、11、12、13、21、25、26）。
-- 测试：`npm test` 原样结果 `ℹ pass 773` / `ℹ fail 0`；`npm run check:style` 通过。
+- 改了哪些文件：新增 `server/strategy-evidence.mjs`（时间线 → Evidence：国家与年份、eventType 归一化，语义身份与版本指纹，核验 / 裁定只改核验状态，同名学校落库前隔离，片段重排标 ambiguous，锚点含 period）；新增 `server/strategy-lifecycle.mjs`（Evidence → 需求 / 行动窗口，补考替代锚点，地区覆盖率含 dateQuality、coverage、byCountry）；`server/timeline.mjs` 只增不改：解析结果多一个 `cellIndex`（来源格 → 地区代码、地区表、列名与同名列序号、学校、原文），`guessRe` 导出；`server/routes/user.mjs` 的时间线读取与同步接口不下发 `cellIndex`；`server/timeline-verification.mjs`、`server/timeline-rulings.mjs` 只增：多段核验 / 裁定的事件带 `segment`（原格内位置），让片段身份不随日期改动漂移；新增 `tests/strategy-evidence.test.mjs`（15 项，覆盖反例 1、3、7、8a、8b、9、10、11、12、13、21、25、26）。
+- 测试：`npm test` 原样结果 `ℹ pass 776` / `ℹ fail 0`；`npm run check:style` 通过。
+- code-review（规范 + 规格两个子 agent）：规范无硬违规，去掉了未用导出、重复的校名拼接；规格指出两处错误已修并补测：① 碰撞改为按「年份 + 地区表 + 学校」整校隔离（原来按完整证据 ID 判，分段不同会漏检）；② 片段位置改用原格顺序（原来按日期排，核验后会漂移），一格只有一段时不用标签作身份；另修了 period 须列名表示选课期、补考替代锚点排除不可计算的出分日、表外国家代码进同步报告。
 - 验证：纯函数，用夹具表格经现有解析器得到快照后测试；没有界面改动，没起服务。
 - 截图：无。
 - 发布与回读：未发布（本票没有接到任何页面或接口，发布与否无影响；批 1 合起来再发布）。
-- 与授权不一致之处、遗留问题、范围外发现：① 正式库里现有的时间线快照没有 `cellIndex`，要发布后再同步一次时间线才能生成 Evidence；1b 的服务层遇到没有 `cellIndex` 的快照应明确提示「请先同步时间线」。② 覆盖率 `dateQuality` 计的是该地区全部可计算事件（不只目标月重叠的），05 第 6 节写的是「参与计算的事件」，按这个口径实现。③ 「其他」类事件的锚点：列名含「截止」记 deadline，否则 start（05 没有明确写，只作情境信息，不生成窗口）。
+- 与授权不一致之处、遗留问题、范围外发现：① 正式库里现有的时间线快照没有 `cellIndex`，要发布后再同步一次时间线才能生成 Evidence；1b 的服务层遇到没有 `cellIndex` 的快照应明确提示「请先同步时间线」。② 覆盖率 `dateQuality` 计的是该地区全部可计算事件（不只目标月重叠的），05 第 6 节写的是「参与计算的事件」，按这个口径实现。③ 「其他」类事件的锚点：列名含「截止」记 deadline，否则 anchor_unknown（只作情境信息，不生成窗口）。④ 冲突未决的「宽泛风险区间」（05 第 5 节「需要时」）未做，目前只给不出窗口的原因，留给 1b 需要时再加。⑤ 补考替代锚点用「同校、28 天内最近的出分日」近似「同一学期」。
 - 本轮新坑：无。
 
 ## 月度用户策略 Skill · 批 0 规格定标（2026-11-08，Claude，常浩说「开始批 0」；常浩说「合并」，PR #23 squash 合并为 `d57c1af`；纯文档，无需发布）

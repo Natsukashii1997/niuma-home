@@ -90,7 +90,7 @@ export function parseTimeline(sheets, syncedAt, year = 2026, { tag = '', title =
   // 日期类异常另带 cell（国家、表格行与列、事件类型、各单元格解析出的日期），供人工裁定定位；校名类异常没有。
   const anomaly = (school, issue, a, src, b = '', cell) => result.anomalies.push({ school, issue, a, b, src, ...(cell && { cell }) });
   for (const sheet of sheets.filter(s => REGION_SHEETS.includes(s.name))) {
-    let country, headers, slots, ords;
+    let country, headers, slots, ords, names;
     const sheetRef = tag ? `${tag}·${sheet.name}` : sheet.name;
     for (const row of sheet.rows) {
       const rawSchool = row.values[0]?.trim();
@@ -105,11 +105,11 @@ export function parseTimeline(sheets, syncedAt, year = 2026, { tag = '', title =
         if (!result.table[code]) { result.countries.push([code, name]); result.table[code] = []; result.nodes[code] = []; labels.set(code, new Map()); }
         result.terms[code] = `${year} · 地区表各学期（含源中明确的跨年日期）`;
         const counts = new Map();
-        ords = [];
+        ords = []; names = [];
         slots = headers.map((header, col) => {
           if (!col || !header.trim()) return -1;
           const h = header.trim().replace(/\s+/g, ' '), n = (counts.get(h) || 0) + 1;
-          counts.set(h, n); ords[col] = n;
+          counts.set(h, n); ords[col] = n; names[col] = h;
           const key = `${h}|${n}`, known = labels.get(code);
           if (!known.has(key)) { known.set(key, result.nodes[code].length); result.nodes[code].push(n === 1 ? h : `${h}（${n}）`); }
           return known.get(key);
@@ -133,7 +133,7 @@ export function parseTimeline(sheets, syncedAt, year = 2026, { tag = '', title =
           Object.assign(result.anomalies.at(-1), { c: name, monthHints: timelineMonthHints(raw, year) });
           continue;
         }
-        result.cellIndex[src] = { code, sheet: sheet.name, header: headers[col].trim().replace(/\s+/g, ' '), ord: ords[col], school, abbr, raw };
+        result.cellIndex[src] = { code, sheet: sheet.name, header: names[col], ord: ords[col], school, abbr, raw };
         const parts = parseDateSegments(raw, headers[col], year, parseTimelineDate);
         for (const parsed of parts) {
         if (parsed.empty) continue;

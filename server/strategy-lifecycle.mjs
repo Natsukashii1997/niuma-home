@@ -1,6 +1,6 @@
 // 月度用户策略 · 需求生命周期窗口与候选行动窗口覆盖率（docs/策略规则/05-需求生命周期.md，lifecycle-v0.2）。
 // 纯函数：Evidence → 窗口；时间线学校名单 + 窗口 → 各地区覆盖率。天数是候选启发式参数，改动须走方法论修订流程。
-import { normalizeCountry, REGION_KEYS } from './strategy-evidence.mjs';
+import { baseYearOf, normalizeCountry, REGION_KEYS, schoolLabel } from './strategy-evidence.mjs';
 
 export const LIFECYCLE_VERSION = 'lifecycle-v0.2';
 const CATEGORY = { Final: 'Final', 期中: '期中', 'Essay 截止': 'Essay', 补考: '补考', 出分: '出分', 选课: '选课', 开学: '开学', 'Reading Week': '假期', 期中假: '假期' };
@@ -24,7 +24,7 @@ function blocked(e) {
 
 /** 每条 Evidence 的窗口：{ evidenceId, category, need, action, next, ruleVersion, status, limitations } 或 { evidenceId, skipped }。 */
 export function lifecycleWindows(evidence) {
-  const releases = evidence.filter(e => e.eventType === '出分' && e.dates.precision === 'day' && e.verification !== 'conflict');
+  const releases = evidence.filter(e => e.eventType === '出分' && !blocked(e));
   return evidence.map(e => {
     const category = CATEGORY[e.eventType];
     if (!category) return { evidenceId: e.evidenceId, skipped: '不属于八类，只作情境信息' };
@@ -41,7 +41,7 @@ export function lifecycleWindows(evidence) {
       return { evidenceId: e.evidenceId, category, skipped: '选课开始只说明开放，不生成截止前窗口' };
     const T = e.anchorType === 'deadline' ? e.dates.to : e.dates.from;
     if (category === '补考') {
-      // 公告日未知：以同校出分日作为替代锚点（回看不超过 28 天），否则 T-28。
+      // 公告日未知：以同校出分日作为替代锚点（回看不超过 28 天，近似「同一学期」），否则 T-28。
       const proxy = releases.filter(r => r.school === e.school && r.country === e.country && r.dates.from >= shift(T, -28) && r.dates.from < T).map(r => r.dates.from).sort().at(-1);
       const start = proxy || shift(T, -28);
       return { ...base, need: span(start, shift(T, -1)), action: start <= shift(T, -3) ? span(start, shift(T, -3)) : null, status: 'inferred',
@@ -80,12 +80,12 @@ function summarize(schools, events, windowById, range) {
 export function regionCoverage(timeline, evidence, windows, month) {
   if (!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month)) throw new Error('month 须为 YYYY-MM');
   const range = monthRange(month);
-  const baseYear = timeline.years?.[0]?.year ?? 2026;
+  const baseYear = baseYearOf(timeline);
   const windowById = new Map(windows.map(w => [w.evidenceId, w]));
   const schools = {};
   for (const [code, rows] of Object.entries(timeline.table || {})) {
     const { country, region } = normalizeCountry(code, baseYear);
-    for (const row of rows) ((schools[region] ||= {})[country] ||= new Set()).add(`${country}|${[row.school, row.abbr].filter(Boolean).join(' ')}`);
+    for (const row of rows) ((schools[region] ||= {})[country] ||= new Set()).add(`${country}|${schoolLabel(row)}`);
   }
   const out = {};
   for (const region of REGION_KEYS) {

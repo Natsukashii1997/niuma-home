@@ -163,3 +163,33 @@ test('反例 3：新加坡、马来西亚保留各自国家代码，归入其他
   assert.deepEqual([cov.other.byCountry.sg.coverage.active, cov.other.byCountry.my.coverage.active], [1, 0]);
   assert.deepEqual([cov.other.coverage.schools, cov.other.coverage.calculable, cov.other.coverage.active], [2, 2, 1]);
 });
+
+test('反例 25 补充：同名学校分段结构不同、填的列不同，也整校隔离', () => {
+  const t = parse([sheet(UK, [['英国', 'Final 时间', '出分时间'], ['伦敦大学学院 UCL', 'T1：11.30；T2：4.1', ''], ['伦敦大学学院 UCL', '12.9', '1.20']])]);
+  const { evidence, anomalies } = evidenceOf(t);
+  assert.equal(evidence.length, 0);
+  assert.deepEqual(anomalies.find(a => a.type === 'identityConflict').sources.map(s => s.ref).sort(), [`${UK}!B2`, `${UK}!B3`, `${UK}!C3`]);
+  const cov = regionCoverage(t, evidence, lifecycleWindows(evidence), '2026-12').uk;
+  assert.deepEqual([cov.coverage.schools, cov.coverage.calculable, cov.coverage.insufficient, cov.value], [1, 0, 1, 'unknown']);
+});
+
+test('片段身份按原格位置：核验改动日期不让 ID 漂移；一格只有一段时就是这一格', () => {
+  const raw = parse([sheet(UK, [['英国', 'Final 时间'], ['伦敦大学学院 UCL', '11.30；12.10（预计）']])]);
+  const before = evidenceOf(raw).evidence;
+  const r = review(raw.anomalies[0], [{ from: '2026-12-20', to: '2026-12-20' }, { from: '2026-12-01', to: '2026-12-01' }]);
+  const after = evidenceOf(raw, { records: [r] }).evidence;
+  const first = before.find(e => e.dates.from === '2026-11-30');
+  assert.deepEqual(after.map(e => e.evidenceId).sort(), before.map(e => e.evidenceId).sort());
+  assert.equal(after.find(e => e.evidenceId === first.evidenceId).dates.from, '2026-12-20', '原第 1 段仍是第 1 段');
+  const labelled = evidenceOf(parse([sheet(UK, [['英国', 'Final 时间'], ['伦敦大学学院 UCL', 'T1：11.30']])])).evidence[0];
+  const plain = evidenceOf(parse([sheet(UK, [['英国', 'Final 时间'], ['伦敦大学学院 UCL', '11.30']])])).evidence[0];
+  assert.equal(labelled.evidenceId, plain.evidenceId);
+});
+
+test('锚点：选课列名不表示选课期时区间不算 period；其他类判断不出含义记 anchor_unknown', () => {
+  const t = parse([sheet(UK, [['英国', 'Spring选课开始', '教学日结束', 'Withdraw 截止'], ['伦敦大学学院 UCL', '1.5-1.9', '12.12', '10.20']])]);
+  const { evidence } = evidenceOf(t);
+  assert.equal(find(evidence, '伦敦', 'Spring选课开始')[0].anchorType, 'start');
+  assert.equal(find(evidence, '伦敦', '教学日结束')[0].anchorType, 'anchor_unknown');
+  assert.equal(find(evidence, '伦敦', 'Withdraw 截止')[0].anchorType, 'deadline');
+});
