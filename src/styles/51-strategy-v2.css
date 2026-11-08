@@ -151,4 +151,17 @@ details.s2-basis[open] > .s2-basis-grid, details.s2-basis[open] > .s2-lg { margi
 .s2-biz-row textarea, .s2-biz-row select, .s2-biz-row input { width: 100%; padding: var(--s1) var(--s2); border: 1px solid var(--line); background: var(--panel); font: inherit; font-size: 13px; resize: vertical; }
 .s2-biz-row select, .s2-biz-row input { height: 32px; }
 .s2-biz-row textarea:focus, .s2-biz-row select:focus, .s2-biz-row input:focus { outline: none; border-color: var(--text); }
+/* #40 适用范围行（样稿 A，常浩 2026-11-08 选定）：每条下面一行，国家用 chip、人群用分段切换，右侧标能不能撑购买判断 */
+.s2-biz-warn { display: block; margin: 0 0 var(--s3); font-size: 12px; }
+.s2-biz-warn b { margin-right: var(--s2); }
+.s2-biz-scope { grid-column: 1 / 4; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); padding: var(--s1) 0 var(--s2); border-bottom: 1px dashed var(--line); }
+.s2-biz-chips { display: inline-flex; flex-wrap: wrap; gap: var(--s1); }
+.s2-biz-scope .chip { height: 24px; padding: 0 var(--s2); font: inherit; font-size: 12px; background: var(--panel); color: var(--text); cursor: pointer; }
+.s2-biz-scope .chip.is-on { background: var(--text); color: var(--panel); border-color: var(--text); }
+.s2-biz-scope .chip.s2-biz-more { color: var(--muted); border-style: dashed; }
+.s2-biz-scope .segmented button { height: 24px; padding: 0 var(--s2); font-size: 12px; }
+.s2-biz-scope button:disabled { cursor: default; }
+.s2-biz-scope .chip:disabled:not(.is-on), .s2-biz-scope .segmented button:disabled:not(.active) { color: var(--muted); border-color: var(--line); }
+.s2-biz-sep { width: 1px; height: 16px; background: var(--line); }
+.s2-biz-state { margin-left: auto; }
 .s2-ins { color: var(--text); }

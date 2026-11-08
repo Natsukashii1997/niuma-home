@@ -5,7 +5,7 @@ import { PixelIcon } from "../../ui/bitmap.jsx";
 import { Button, Loadable, Modal, Tag } from "../../ui/components.jsx";
 import { WriteBox } from "../../ui/write-flow.jsx";
 import { PLAY_BY_ID } from "./playbook-cards.js";
-import { BIZCARD_FIELDS, BIZCARD_HINT, BIZ_TYPES, COUNTRY_NAME, REGIONS, claimText, countChanges, diffDocs, isStale, legacyText, nextRevNo, revNo, rollbackSource } from "./strategy-v2.js";
+import { BIZCARD_FIELDS, BIZCARD_HINT, BIZ_RELATIONS, BIZ_TYPES, COUNTRY_NAME, MAIN_COUNTRIES, REGIONS, bizScope, bizScopeText, claimText, countChanges, diffDocs, isStale, legacyText, nextRevNo, revNo, rollbackSource, scopeMissingCount } from "./strategy-v2.js";
 
 // v2 策略页的写入与留痕区块：第 3 节待确认提交、附 版本与留痕、存 旧版存档、业务背景卡。
 // 写入一律「预览 → 确认 → 回读」：确认、拒绝、回退、背景卡都由常浩在页面明确确认，回读核对一致才算完成。
@@ -332,11 +332,15 @@ function LegacyPromo({ promo }) {
 const emptyCard = () => Object.fromEntries(BIZCARD_FIELDS.map((f) => [f, []]));
 export function BizcardModal({ open, onClose, month, card, flow, onSaved }) {
   const [draft, setDraft] = useState(null);
+  const [moreCountries, setMoreCountries] = useState(() => new Set());
   const value = draft || { ...emptyCard(), ...structuredClone(card || {}) };
   const locked = flow.busy || flow.phase === "unknown" || flow.phase === "preview" || flow.phase === "confirming";
   const edit = (field, fn) => { flow.reset(); setDraft({ ...value, [field]: fn(value[field] || []) }); };
+  const set = (field, i, patch) => edit(field, (l) => l.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const close = () => { setDraft(null); onClose(); };
-  const body = () => Object.fromEntries(Object.entries(value).map(([f, list]) => [f, list.filter((e) => e.text?.trim()).map((e) => ({ ...(e.id && { id: e.id }), text: e.text.trim(), type: e.type, ...(e.basis?.trim() && { basis: e.basis.trim() }) }))]).filter(([, list]) => list.length));
+  const body = () => Object.fromEntries(Object.entries(value).map(([f, list]) => [f, list.filter((e) => e.text?.trim()).map((e) => ({ ...(e.id && { id: e.id }), text: e.text.trim(), type: e.type, ...(e.basis?.trim() && { basis: e.basis.trim() }),
+    ...(e.countries?.length && { countries: e.countries }), ...(e.relation && { relation: e.relation }) }))]).filter(([, list]) => list.length));
+  const missing = scopeMissingCount(value);
   const preview = () => flow.preview(() => apiSend("POST", `${API}/${month}/bizcard/preview`, body()));
   const confirm = async () => {
     const ok = await flow.confirm((pv) => apiSend("POST", `${API}/${month}/bizcard/confirm`, { confirm: true, previewId: pv.previewId }),
@@ -345,21 +349,41 @@ export function BizcardModal({ open, onClose, month, card, flow, onSaved }) {
   };
   return (
     <Modal open={open} onClose={close} title={`${month} 业务背景卡`} icon="edit" wide
-      footer={!locked && <><span className="small muted spacer">每个字段都可以留空；事实记录须写出处</span><Button onClick={close}>取消</Button><Button variant="primary" onClick={preview}>预览</Button></>}>
-      <p className="small muted s2-biz-intro">时间线之外唯一的业务证据来源。条目进入系统后成为 business 类证据：事实记录 = 强，业务观察 = 中，管理判断 = 弱（只当待检验的假设）。缺「存量用户情况」时续费判断一律未知；缺「用户观察」时痛点只能是典型困难。</p>
+      footer={!locked && <><span className="small muted spacer">每个字段都可以留空；事实记录须写出处；适用范围可不填，不填按范围不明</span><Button onClick={close}>取消</Button><Button variant="primary" onClick={preview}>预览</Button></>}>
+      <p className="small muted s2-biz-intro">时间线之外唯一的业务证据来源。条目进入系统后成为 business 类证据：事实记录 = 强，业务观察 = 中，管理判断 = 弱（只当待检验的假设）。购买判断（障碍、购买准备度）只用适用范围对得上情境的事实记录和业务观察。缺「存量用户情况」时续费判断一律未知；缺「用户观察」时痛点只能是典型困难。</p>
+      {missing > 0 && <p className="warn s2-biz-warn"><b>{missing} 条事实记录 / 业务观察还没填适用范围</b><span>引用它们的障碍和购买准备度最高只到「推断 · 弱」。补上国家和人群后，下次研判才能用。</span></p>}
       {BIZCARD_FIELDS.map((field) => (
         <section key={field} className="s2-biz-field">
           <div className="s2-biz-head"><b>{field}</b><span className="small muted">{BIZCARD_HINT[field]}</span>
             <Button className="btn btn-xs" onClick={() => edit(field, (l) => [...l, { text: "", type: "业务观察", basis: "" }])} disabled={locked}><PixelIcon name="plus" />加一条</Button></div>
           {(value[field] || []).length === 0 && <p className="small muted">未填写</p>}
-          {(value[field] || []).map((e, i) => (
-            <div key={e.id || `n${i}`} className="s2-biz-row">
+          {(value[field] || []).map((e, i) => { const key = e.id || `${field}-n${i}`, scope = bizScope(e), countries = e.countries || [];
+            const shown = moreCountries.has(key) ? Object.keys(COUNTRY_NAME) : [...MAIN_COUNTRIES, ...countries.filter((c) => !MAIN_COUNTRIES.includes(c))];
+            return (
+            <div key={key} className="s2-biz-row">
               <textarea rows={2} value={e.text} placeholder="一句话写清内容" onChange={(ev) => edit(field, (l) => l.map((x, j) => (j === i ? { ...x, text: ev.target.value } : x)))} disabled={locked} aria-label={`${field} 第 ${i + 1} 条`} />
               <select value={e.type} onChange={(ev) => edit(field, (l) => l.map((x, j) => (j === i ? { ...x, type: ev.target.value } : x)))} disabled={locked} aria-label="证据类型">{BIZ_TYPES.map((t) => <option key={t}>{t}</option>)}</select>
               <input value={e.basis || ""} placeholder={e.type === "事实记录" ? "记录出处（必填）" : "依据或来源（可空）"} onChange={(ev) => edit(field, (l) => l.map((x, j) => (j === i ? { ...x, basis: ev.target.value } : x)))} disabled={locked} aria-label="依据" />
               <button type="button" className="icon-btn" onClick={() => edit(field, (l) => l.filter((_, j) => j !== i))} disabled={locked} aria-label="删除这条"><PixelIcon name="close" /></button>
+              <div className="s2-biz-scope">
+                <span className="label">适用范围</span>
+                <span className="s2-biz-chips" role="group" aria-label="适用国家">
+                  {shown.map((c) => { const on = countries.includes(c);
+                    return <button key={c} type="button" className={`chip${on ? " is-on" : ""}`} aria-pressed={on} title={`${COUNTRY_NAME[c]}（${c}）`} disabled={locked}
+                      onClick={() => set(field, i, { countries: on ? countries.filter((x) => x !== c) : [...countries, c] })}>{COUNTRY_NAME[c]}</button>; })}
+                  {!moreCountries.has(key) && <button type="button" className="chip s2-biz-more" disabled={locked} onClick={() => setMoreCountries((m) => new Set([...m, key]))}>其他国家…</button>}
+                </span>
+                <span className="s2-biz-sep" />
+                <div className="segmented" role="group" aria-label="适用人群">
+                  {BIZ_RELATIONS.map((r) => <button key={r} type="button" className={e.relation === r ? "active" : ""} aria-pressed={e.relation === r} disabled={locked}
+                    onClick={() => set(field, i, { relation: e.relation === r ? "" : r })}>{r}</button>)}
+                </div>
+                <span className="s2-biz-state">{scope.state === "ok" ? <Tag tone="green">已填 · 对得上的情境可用</Tag>
+                  : scope.state === "missing" ? <span title="引用它的障碍和购买准备度最高推断 · 弱"><Tag tone="amber">{scope.text} · 最高推断·弱</Tag></span>
+                  : <span className="small muted">管理判断：范围可不填</span>}</span>
+              </div>
             </div>
-          ))}
+          ); })}
         </section>
       ))}
       <WriteBox flow={flow} title="背景卡 · 保存预览" confirmLabel="确认保存" onConfirm={confirm} onRepreview={preview} onReread={() => { flow.resolve(); setDraft(null); onClose(); onSaved(""); }}>
@@ -371,7 +395,7 @@ export function BizcardModal({ open, onClose, month, card, flow, onSaved }) {
 function BizcardDiff({ before, after }) {
   const rows = BIZCARD_FIELDS.map((f) => [f, before?.[f] || [], after?.[f] || []]).filter(([, b, a]) => JSON.stringify(b) !== JSON.stringify(a));
   if (!rows.length) return <p className="small muted">和当前保存的内容相同，没有改动。</p>;
-  const line = (e) => `${e.text}（${e.type}${e.basis ? ` · ${e.basis}` : ""}）`;
+  const line = (e) => { const scope = bizScopeText(e); return `${e.text}（${e.type}${e.basis ? ` · ${e.basis}` : ""}${scope ? ` · 范围 ${scope}` : ""}）`; };
   return <dl className="kv">{rows.map(([f, b, a]) => <Fragment key={f}><dt>{f}</dt><dd>
     {b.filter((x) => !a.some((y) => y.id === x.id)).map((x) => <div key={x.id}><del>{line(x)}</del></div>)}
     {a.map((x) => { const old = b.find((y) => y.id === x.id); return old && JSON.stringify(old) === JSON.stringify(x) ? <div key={x.id} className="muted">{line(x)}</div>
