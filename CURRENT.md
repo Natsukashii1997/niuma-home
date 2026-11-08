@@ -2,7 +2,7 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## 月度用户策略批 1·1b-2 提交与确认（2026-11-08，Claude，常浩说「按推荐开工」后按票推进；分支 `claude/28-submit`，PR 待合并，等常浩说「合并」；未发布）
+## 月度用户策略批 1·1b-2 提交与确认（2026-11-08，Claude，常浩说「按推荐开工」后按票推进；常浩说「CI 过后合并」，PR #35 squash 合并为 `227be7d`；未发布，批 1 合起来再发布）
 
 - 时间：开工 `2026-11-08 15:00`（事后估计：1b-1 合并后开 worktree 的时刻，开工时没有用 `date` 记录；本节测试结果都在此之后跑出）。★ 来由：批 1 第四张票 #28，打通「skill 提交 → 工作台校验 → 常浩页面确认 → 不可变 revision」。
 - 改了哪些文件：新增 `server/strategy-service.mjs`（事实底稿、提交、预览、确认、拒绝、版本、业务背景卡）；`server/db.mjs` 新增 `strategy_revisions`（触发器禁止修改、删除）、`strategy_submissions` 两张表；`server/agent-tools.mjs` 新增 `strategy_facts`、`strategy_submit`、`strategy_submission`，`server/routes/agent.mjs` 把凭据对应的 agent 传给工具；`server/routes/user.mjs` 新增 `/api/v3/strategy-v2*` 页面接口；`server/routes/workspace.mjs` 把服务交给智能体路由；`AGENTS.md` 新增「AI 接入」一节；`docs/API.md` 补工具与接口；新增 `tests/strategy-service.test.mjs`（11 项，覆盖反例 4、5、17、18、19、20、24 与 I-06、I-09、I-10、回退）；`docs/策略规则/README.md` 延期表补记 I-07、I-08、I-14 改到批 2（常浩确认「同意推到批 2」）。
