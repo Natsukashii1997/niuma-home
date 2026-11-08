@@ -23,6 +23,8 @@ export function createUserServices(db, options = {}) {
   return { timeline, needs, strategyExports: createStrategyExportService(db, needs, options.exports), manualNeeds: createManualNeeds(db, { voice: options.voiceReader, ...options.manualNeeds }), rulings: createRulingService(db, raw, options.rulings), userStrategy: createUserStrategyService(db, options.userStrategy),
     timelineYears: createTimelineYearService(db, { ...(options.timeline?.readSheets && { readSheets: options.timeline.readSheets }), ...options.timelineYears, refresh: () => timeline({ refresh: true }) }) };
 }
+// cellIndex 只给月度策略生成 Evidence 用（含全部原格原文），不随时间线接口下发给页面。
+const forPage = ({ cellIndex, ...rest }) => rest;
 export function userRoutes(services) {
   const { timeline, needs, strategyExports, manualNeeds, rulings, userStrategy, timelineYears } = services;
   return [
@@ -39,8 +41,8 @@ export function userRoutes(services) {
     route('POST', '/api/v3/manual-needs/preview', handleV3(async req => manualNeeds.preview(await body(req)))),
     route('POST', '/api/v3/manual-needs/:id/remove-preview', handleV3((req, { params }) => manualNeeds.removePreview(params.id))),
     route('POST', '/api/v3/manual-needs/confirm', handleV3(async req => manualNeeds.confirm(await body(req)))),
-    route('GET', '/api/v3/timeline', handleV3(() => timeline())),
-    route('POST', '/api/v3/timeline/sync', handleV3(() => timeline({ refresh: true }))),
+    route('GET', '/api/v3/timeline', handleV3(async () => forPage(await timeline()))),
+    route('POST', '/api/v3/timeline/sync', handleV3(async () => forPage(await timeline({ refresh: true })))),
     // 登记新年份的时间表：先预览（只读校验结构），确认后写设置并同步回读。
     route('POST', '/api/v3/timeline/years/preview', handleV3(async req => timelineYears.preview(await body(req)))),
     route('POST', '/api/v3/timeline/years/confirm', handleV3(async req => timelineYears.confirm(await body(req)))),

@@ -23,7 +23,7 @@ export function timelineSources(settings) {
 export const timelineIdentity = settings => settings.timeline_years ? JSON.stringify(timelineSources(settings).map(({ tag, ...s }) => s)) : settings.timeline_source || JSON.stringify(TIMELINE_SOURCE);
 const countries = { 美西: ['US', '美国'], 美东: ['US', '美国'], 加拿大: ['CA', '加拿大'], 英国: ['UK', '英国'], 爱尔兰: ['IE', '爱尔兰'], 澳洲: ['AU', '澳洲'], 新西兰: ['NZ', '新西兰'], 香港: ['HK', '香港'], 澳门: ['MO', '澳门'], 新加坡: ['SG', '新加坡'], 马来西亚: ['MY', '马来西亚'] };
 const empty = value => !value.trim() || /^(?:\/|—|-|暂无|待定|TBC|未公开|未更新)$/i.test(value.trim());
-const guessRe = /推测|预估|预计|估计|去年|左右|大概|通常|一般|约|上旬|中旬|下旬|月底|月初/i;
+export const guessRe = /推测|预估|预计|估计|去年|左右|大概|通常|一般|约|上旬|中旬|下旬|月底|月初/i;
 const pad = v => String(v).padStart(2, '0');
 
 // 北美源缩写经原格官网域名核对；UWM 指向 wisc.edu，不能误认成密尔沃基。
@@ -84,12 +84,13 @@ function eventType(header) {
 }
 
 export function parseTimeline(sheets, syncedAt, year = 2026, { tag = '', title = '2026海外大学时间线' } = {}) {
-  const result = { source: `飞书《${title}》· 地区明细表`, syncedAt, stage: '本科', countries: [], terms: {}, nodes: {}, table: {}, agenda: [], anomalies: [] };
+  const result = { source: `飞书《${title}》· 地区明细表`, syncedAt, stage: '本科', countries: [], terms: {}, nodes: {}, table: {}, agenda: [], anomalies: [], cellIndex: {} };
+  // cellIndex：来源格 → 语义身份所需的信息（地区代码、地区表、列名与同名列序号、学校、原文），供月度策略生成 Evidence（docs/策略规则/03-Schema-v2.md §3.1）。只增不改，现有消费者不读它。
   const labels = new Map();
   // 日期类异常另带 cell（国家、表格行与列、事件类型、各单元格解析出的日期），供人工裁定定位；校名类异常没有。
   const anomaly = (school, issue, a, src, b = '', cell) => result.anomalies.push({ school, issue, a, b, src, ...(cell && { cell }) });
   for (const sheet of sheets.filter(s => REGION_SHEETS.includes(s.name))) {
-    let country, headers, slots;
+    let country, headers, slots, ords;
     const sheetRef = tag ? `${tag}·${sheet.name}` : sheet.name;
     for (const row of sheet.rows) {
       const rawSchool = row.values[0]?.trim();
@@ -104,10 +105,11 @@ export function parseTimeline(sheets, syncedAt, year = 2026, { tag = '', title =
         if (!result.table[code]) { result.countries.push([code, name]); result.table[code] = []; result.nodes[code] = []; labels.set(code, new Map()); }
         result.terms[code] = `${year} · 地区表各学期（含源中明确的跨年日期）`;
         const counts = new Map();
+        ords = [];
         slots = headers.map((header, col) => {
           if (!col || !header.trim()) return -1;
           const h = header.trim().replace(/\s+/g, ' '), n = (counts.get(h) || 0) + 1;
-          counts.set(h, n);
+          counts.set(h, n); ords[col] = n;
           const key = `${h}|${n}`, known = labels.get(code);
           if (!known.has(key)) { known.set(key, result.nodes[code].length); result.nodes[code].push(n === 1 ? h : `${h}（${n}）`); }
           return known.get(key);
@@ -131,6 +133,7 @@ export function parseTimeline(sheets, syncedAt, year = 2026, { tag = '', title =
           Object.assign(result.anomalies.at(-1), { c: name, monthHints: timelineMonthHints(raw, year) });
           continue;
         }
+        result.cellIndex[src] = { code, sheet: sheet.name, header: headers[col].trim().replace(/\s+/g, ' '), ord: ords[col], school, abbr, raw };
         const parts = parseDateSegments(raw, headers[col], year, parseTimelineDate);
         for (const parsed of parts) {
         if (parsed.empty) continue;
@@ -250,7 +253,7 @@ export function mergeTimelines(parts) {
   const out = structuredClone(parts[0].value);
   for (const { value } of parts.slice(1)) {
     out.countries.push(...value.countries);
-    for (const key of ['table', 'nodes', 'terms']) Object.assign(out[key], value[key]);
+    for (const key of ['table', 'nodes', 'terms', 'cellIndex']) Object.assign(out[key] ||= {}, value[key]);
     for (const key of ['agenda', 'anomalies', 'calendarEntries']) out[key].push(...(value[key] || []));
     out.coverage = { schools: out.coverage.schools + value.coverage.schools, regionSheets: out.coverage.regionSheets + value.coverage.regionSheets, calendarSheets: out.coverage.calendarSheets + value.coverage.calendarSheets };
   }

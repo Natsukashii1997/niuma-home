@@ -2,6 +2,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 月度用户策略批 1·1a 证据与窗口（2026-11-08，Claude，常浩说「按推荐开工」；分支 `claude/25-evidence-windows`，PR 待合并，等常浩说「合并」；未发布）
+
+- 时间：开工 `2026-11-08 13:05`（拆完票、开 worktree 的大致时间）。★ 来由：批 1 规格 #24 第一张票 #25，把时间线快照落成 schema 2.1 的 Evidence，并按 lifecycle-v0.2 算窗口与候选行动窗口覆盖率。
+- 改了哪些文件：新增 `server/strategy-evidence.mjs`（时间线 → Evidence：国家与年份、eventType 归一化，语义身份与版本指纹，核验 / 裁定只改核验状态，同名学校落库前隔离，片段重排标 ambiguous，锚点含 period）；新增 `server/strategy-lifecycle.mjs`（Evidence → 需求 / 行动窗口，补考替代锚点，地区覆盖率含 dateQuality、coverage、byCountry）；`server/timeline.mjs` 只增不改：解析结果多一个 `cellIndex`（来源格 → 地区代码、地区表、列名与同名列序号、学校、原文），`guessRe` 导出；`server/routes/user.mjs` 的时间线读取与同步接口不下发 `cellIndex`；新增 `tests/strategy-evidence.test.mjs`（12 项，覆盖反例 1、3、7、8a、8b、9、10、11、12、13、21、25、26）。
+- 测试：`npm test` 原样结果 `ℹ pass 773` / `ℹ fail 0`；`npm run check:style` 通过。
+- 验证：纯函数，用夹具表格经现有解析器得到快照后测试；没有界面改动，没起服务。
+- 截图：无。
+- 发布与回读：未发布（本票没有接到任何页面或接口，发布与否无影响；批 1 合起来再发布）。
+- 与授权不一致之处、遗留问题、范围外发现：① 正式库里现有的时间线快照没有 `cellIndex`，要发布后再同步一次时间线才能生成 Evidence；1b 的服务层遇到没有 `cellIndex` 的快照应明确提示「请先同步时间线」。② 覆盖率 `dateQuality` 计的是该地区全部可计算事件（不只目标月重叠的），05 第 6 节写的是「参与计算的事件」，按这个口径实现。③ 「其他」类事件的锚点：列名含「截止」记 deadline，否则 start（05 没有明确写，只作情境信息，不生成窗口）。
+- 本轮新坑：无。
+
 ## 月度用户策略 Skill · 批 0 规格定标（2026-11-08，Claude，常浩说「开始批 0」；常浩说「合并」，PR #23 squash 合并为 `d57c1af`；纯文档，无需发布）
 
 - 时间：开工 `2026-11-08 11:20`（收到「开始批 0」时的大致时间）。★ 来由：策略页要新建「月度用户策略」skill，方法论 V1.1 经 GPT 两轮复审后定稿为施工方案 V3；批 0 把 V3 第 4 节落成可直接编码的规则文件（issue #22）。
