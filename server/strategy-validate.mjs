@@ -2,11 +2,12 @@
 // 纯函数：给定文档与当前 Evidence（时间线 + 业务背景卡），返回逐条错误（拦截）与提示（不拦截），每条定位到对象 ID。
 // 规则表照抄 01 来源登记表 sources-v1.1、02 障碍体系 barrier-v2.1；规则文件改了，先改文档再改这里。
 import { REGION_KEYS } from './strategy-evidence.mjs';
+import { units } from './user-strategy.mjs';
 
 export const SCHEMA_VERSION = '2.1';
 export const SOURCE_IDS = ['SRC-timeline', 'SRC-official', 'SRC-ruling', 'SRC-bizcard', 'SRC-playbook', 'SRC-voice', 'SRC-crm', 'SRC-service'];
 const BOTH = ['新签', '续费'];
-export const BARRIERS = {
+export const BARRIER_RELATIONS = {
   'BR-M1': ['新签'], 'BR-M2': BOTH, 'BR-M3': BOTH, 'BR-M4': BOTH, 'BR-M5': BOTH,
   'BR-C1': BOTH, 'BR-C2': BOTH, 'BR-C3': BOTH, 'BR-C4': BOTH, 'BR-O1': ['新签'], 'BR-F1': BOTH,
   'BR-R1': ['续费'], 'BR-R2': ['续费'], 'BR-R3': ['续费'], 'BR-R4': ['续费'], 'BR-R5': ['续费'],
@@ -15,12 +16,11 @@ const STATUS = ['known', 'inferred', 'unknown', 'not_applicable'];
 const STRENGTH = ['strong', 'partial', 'weak', 'none'];
 const RELATIONS = ['新签', '续费', '通用'];
 const CLAIM_TYPES = ['task', 'academic_need', 'pain', 'need_strength', 'readiness', 'barrier'];
-const PRIORITY = ['主战场', '次要', '平稳'];
+const REGION_PRIORITY = ['主战场', '次要', '平稳'];
 const ACTIVITY = ['高', '中', '低', 'unknown'];
 const ROUTE_STATUS = ['available', 'unavailable', 'research'];
 const ORIGINS = ['skill', 'manual', 'migrated'];
 const CODE_IN_PROSE = /BR-[A-Z]\d|\bP\d{4}\b|\b[A-C]\d\b/;
-const units = text => [...String(text)].reduce((n, ch) => n + (ch.charCodeAt(0) < 128 ? 0.5 : 1), 0);
 const nonEmpty = v => typeof v === 'string' ? v.trim().length > 0 : Boolean(v);
 const isList = v => Array.isArray(v);
 
@@ -38,11 +38,12 @@ export function validateStrategyDoc(doc, { evidence = [], migrated = false } = {
   if (doc.schemaVersion !== SCHEMA_VERSION) err('结构', 'schemaVersion', `schemaVersion 须为 ${SCHEMA_VERSION}`);
   if (!/^20\d{2}-(0[1-9]|1[0-2])$/.test(doc.month || '')) err('结构', 'month', 'month 须为 YYYY-MM');
 
-  // I-18：当前 Evidence 集合内 ID 唯一。
+  // I-18：当前 Evidence 集合内 ID 唯一；I-12：时间线 Evidence 的国家是归一化的具体国家代码。
   const byId = new Map();
   for (const e of evidence) {
     if (byId.has(e.evidenceId)) err('I-18', e.evidenceId, '同一快照内 evidenceId 重复');
     byId.set(e.evidenceId, e);
+    if (e.kind === 'timeline' && (!/^[a-z]{2}$/.test(e.country || '') || e.country === 'other')) err('I-12', e.evidenceId, `Evidence 的 country ${e.country} 不是归一化的具体国家代码`);
   }
   const scenarios = isList(doc.scenarios) ? doc.scenarios : (err('结构', 'scenarios', 'scenarios 须为数组'), []);
   const claims = isList(doc.claims) ? doc.claims : (err('结构', 'claims', 'claims 须为数组'), []);
@@ -51,7 +52,7 @@ export function validateStrategyDoc(doc, { evidence = [], migrated = false } = {
     if (ids.has(o?.id)) err('I-17', o?.id, '对象 ID 重复');
     ids.add(o?.id);
   }
-  const scenarioIds = new Set(scenarios.map(s => s.id)), claimIds = new Set(claims.map(c => c.id));
+  const scenarioById = new Map(scenarios.map(s => [s.id, s])), claimIds = new Set(claims.map(c => c.id));
   // I-17：引用的 Evidence 必须在当前快照里。
   const refs = (list, at, field = 'evidenceRefs') => {
     if (list === undefined) return [];
@@ -84,8 +85,12 @@ export function validateStrategyDoc(doc, { evidence = [], migrated = false } = {
     if (units(brief.judgement.text) > 100) warn('写作', 'brief.judgement', '月度判断超过 100 字');
     if (!migrated && !(brief.judgement.claims || []).length) err('结构', 'brief.judgement', 'claims 不能为空');
     for (const id of brief.judgement.claims || []) if (!claimIds.has(id)) err('I-17', 'brief.judgement', `引用的 Claim ${id} 不存在`);
+    if (CODE_IN_PROSE.test(brief.judgement.text)) warn('I-15', 'brief.judgement', '正文里出现障碍编码或打法编号');
   }
-  for (const key of ['common', 'diff', 'external']) (brief[key] || []).forEach((item, i) => judged(item, `brief.${key}[${i}]`));
+  for (const key of ['common', 'diff', 'external']) (brief[key] || []).forEach((item, i) => {
+    judged(item, `brief.${key}[${i}]`);
+    if (CODE_IN_PROSE.test(item.text || '')) warn('I-15', `brief.${key}[${i}]`, '正文里出现障碍编码或打法编号');
+  });
 
   // I-13：六个地区单元都在；priority、activity 字段必填；情境可空但须写原因。
   const regions = isList(doc.regions) ? doc.regions : [];
@@ -94,16 +99,17 @@ export function validateStrategyDoc(doc, { evidence = [], migrated = false } = {
   for (const k of keys) if (!REGION_KEYS.includes(k)) err('I-13', `regions.${k}`, '未知地区');
   for (const r of regions) {
     const at = `regions.${r.key}`, p = r.priority, a = r.activity;
-    if (!p || typeof p !== 'object' || !(p.value === null || PRIORITY.includes(p.value))) err('I-13', at, 'priority.value 须为 主战场 / 次要 / 平稳 或 null');
-    else if ((p.value === null || p.value !== p.default) && !nonEmpty(p.reason)) err('I-13', at, 'priority 为 null 或与默认建议不同时须写 reason');
+    if (!p || typeof p !== 'object' || !(p.value === null || REGION_PRIORITY.includes(p.value))) err('I-13', at, 'priority.value 须为 主战场 / 次要 / 平稳 或 null');
+    else if (p.value === null && !String(p.reason || '').includes('待研判')) err('I-13', at, 'priority 为 null 时 reason 须写「待研判」及原因');
+    else if (p.value !== null && p.value !== p.default && !nonEmpty(p.reason)) err('I-13', at, 'priority 与默认建议不同时须写 reason');
     if (!a || typeof a !== 'object' || !ACTIVITY.includes(a.value)) err('I-13', at, 'activity.value 须为 高 / 中 / 低 / unknown');
     else if ((a.value === 'unknown') !== (a.status === 'unknown') || !['inferred', 'unknown'].includes(a.status)) err('I-13', at, '覆盖率计算得出时 status 为 inferred，无法计算时 value、status 都为 unknown');
     if (!isList(r.scenarios)) err('I-13', at, 'scenarios 须为数组');
     else {
       if (!r.scenarios.length && !nonEmpty(r.emptyReason)) err('I-13', at, 'scenarios 为空时须写 emptyReason');
       for (const id of r.scenarios) {
-        if (!scenarioIds.has(id)) err('I-17', at, `引用的 Scenario ${id} 不存在`);
-        else if (scenarios.find(s => s.id === id).region !== r.key) err('结构', at, `Scenario ${id} 不属于该地区`);
+        if (!scenarioById.has(id)) err('I-17', at, `引用的 Scenario ${id} 不存在`);
+        else if (scenarioById.get(id).region !== r.key) err('结构', at, `Scenario ${id} 不属于该地区`);
       }
       if (r.scenarios.length > 4) warn('粒度', at, '情境超过 4 个，可能拆得过细');
     }
@@ -133,7 +139,7 @@ export function validateStrategyDoc(doc, { evidence = [], migrated = false } = {
   for (const c of claims) {
     const at = c.id || 'claim';
     if (!/^CLM-20\d{2}-\d{2}-\d+$/.test(c.id || '')) err('结构', at, 'id 须为 CLM-<月份>-<序号>');
-    if (!scenarioIds.has(c.scenario)) err('I-17', at, `引用的 Scenario ${c.scenario} 不存在`);
+    if (!scenarioById.has(c.scenario)) err('I-17', at, `引用的 Scenario ${c.scenario} 不存在`);
     if (!CLAIM_TYPES.includes(c.claimType)) err('结构', at, `claimType 须为 ${CLAIM_TYPES.join(' / ')}`);
     if (!ORIGINS.includes(c.origin)) err('结构', at, 'origin 须为 skill / manual / migrated');
     if (!nonEmpty(c.text)) err('结构', at, '缺少 text');
@@ -149,14 +155,20 @@ export function validateStrategyDoc(doc, { evidence = [], migrated = false } = {
     }
     if (c.claimType === 'pain' && !['typical', 'observed'].includes(c.painKind)) err('结构', at, 'pain 须写 painKind');
     if (['need_strength', 'readiness'].includes(c.claimType) && (c.status === 'unknown' ? c.level != null : !['高', '中', '低'].includes(c.level))) err('结构', at, 'level 须为 高 / 中 / 低，unknown 时为空');
-    if (['barrier', 'readiness'].includes(c.claimType) && !BOTH.includes(c.targetRelation) && c.targetRelation !== '通用') err('结构', at, 'targetRelation 须为 新签 / 续费 / 通用');
+    if (['barrier', 'readiness'].includes(c.claimType) && !RELATIONS.includes(c.targetRelation)) err('结构', at, 'targetRelation 须为 新签 / 续费 / 通用');
     if (c.claimType === 'barrier') {
       // I-11：编码在障碍体系 v2 内，适用人群与 targetRelation 相容。
-      const fits = BARRIERS[c.barrierCode];
+      const fits = BARRIER_RELATIONS[c.barrierCode];
       if (!fits) err('I-11', at, `barrierCode ${c.barrierCode} 不在障碍体系 v2 内`);
       else if (c.targetRelation !== '通用' && !fits.includes(c.targetRelation)) err('I-11', at, `${c.barrierCode} 不适用于${c.targetRelation}`);
       else if (c.targetRelation === '通用' && fits.length < 2) err('I-11', at, `${c.barrierCode} 只适用于${fits[0]}，不能用于通用`);
       if (!['primary', 'secondary'].includes(c.barrierRole)) err('结构', at, 'barrierRole 须为 primary / secondary');
+      // 02 第 2.3 节：障碍要有用户决策行为证据。没有 business / voice 证据时，M2、M5 只能 unknown，其余最高 inferred + weak。
+      const behavioral = (c.evidenceRefs || []).some(id => ['business', 'voice'].includes(byId.get(id)?.kind));
+      if (!behavioral && c.status !== 'unknown') {
+        if (['BR-M2', 'BR-M5'].includes(c.barrierCode)) err('02 §2.3', at, `${c.barrierCode} 只有节点位置或学校政策时须为 unknown`);
+        else if (!(c.status === 'inferred' && c.evidenceStrength === 'weak') && c.status !== 'not_applicable') err('02 §2.3', at, '缺少用户决策行为证据时，障碍最高 inferred + weak');
+      }
     }
     // I-15：正文不写编码，只提示。
     if (CODE_IN_PROSE.test(c.text || '')) warn('I-15', at, '正文里出现障碍编码或打法编号');

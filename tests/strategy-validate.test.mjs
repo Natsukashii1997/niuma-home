@@ -1,7 +1,8 @@
 // 月度用户策略批 1·1b-1：月度文档 v2 校验（docs/策略规则/03 第 3–5 节；反例见 09）。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateStrategyDoc } from '../server/strategy-validate.mjs';
+import { readFileSync } from 'node:fs';
+import { BARRIER_RELATIONS, SOURCE_IDS, validateStrategyDoc } from '../server/strategy-validate.mjs';
 
 const EV = [
   { evidenceId: 'EV-final', evidenceVersion: 'v1', kind: 'timeline', country: 'uk', ambiguous: false },
@@ -111,4 +112,34 @@ test('I-15 与写作规范只提示不拦截；批 1 不接受机会与策略；
   const legacy = base(); legacy.legacy = {}; legacy.brief.judgement.claims = []; legacy.scenarios[0].evidenceRefs = [];
   assert.equal(rules(check(legacy)).length, 3);
   assert.deepEqual(check(legacy, { migrated: true }).errors, []);
+});
+
+test('I-12：时间线 Evidence 的国家也须是归一化代码', () => {
+  assert.deepEqual(rules(check(base(), { evidence: [...EV, { evidenceId: 'EV-x', evidenceVersion: 'v', kind: 'timeline', country: 'UK' }] })), ['I-12']);
+});
+
+test('反例 2（代码侧）、02 第 2.3 节：没有用户决策行为证据时，M2 只能 unknown，其他障碍最高 inferred + weak', () => {
+  const known = base(); Object.assign(known.claims[1], { status: 'known', evidenceStrength: 'strong', evidenceRefs: ['EV-final'], refVersions: { 'EV-final': 'v1' } });
+  assert.deepEqual(rules(check(known)), ['02 §2.3']);
+  const partial = base(); Object.assign(partial.claims[1], { barrierCode: 'BR-C1', status: 'inferred', evidenceStrength: 'partial', limitations: '常识推断', evidenceRefs: ['EV-final'], refVersions: { 'EV-final': 'v1' } });
+  assert.deepEqual(rules(check(partial)), ['02 §2.3']);
+  partial.claims[1].evidenceStrength = 'weak';
+  assert.deepEqual(check(partial).errors, []);
+  const biz = base(); Object.assign(biz.claims[1], { barrierCode: 'BR-C1', status: 'known', evidenceStrength: 'strong', evidenceRefs: ['EV-biz'], refVersions: { 'EV-biz': 'b1' } });
+  assert.deepEqual(check(biz).errors, []);
+});
+
+test('I-15 也提示正式稿顶部的正文；priority 为 null 时理由须写「待研判」', () => {
+  const d = base(); d.brief.judgement.text = 'BR-M2 为主'; d.brief.common[0].text = '打法 P0201 早鸟';
+  assert.deepEqual(check(d).warnings.map(w => w.at), ['brief.judgement', 'brief.common[0]']);
+  const n = base(); n.regions[5].priority = { value: null, default: null, reason: '看不出来' };
+  assert.deepEqual(rules(check(n)), ['I-13']);
+});
+
+test('内置的来源与障碍表和规则文档一致（01 sources-v1.1、02 barrier-v2.1）', () => {
+  const sources = readFileSync(new URL('../docs/策略规则/01-来源登记表.md', import.meta.url), 'utf8');
+  assert.deepEqual([...sources.matchAll(/^\| `(SRC-[a-z]+)` \|/gm)].map(m => m[1]), SOURCE_IDS);
+  const barriers = readFileSync(new URL('../docs/策略规则/02-障碍体系v2.md', import.meta.url), 'utf8');
+  const table = Object.fromEntries([...barriers.matchAll(/^\| `(BR-[A-Z]\d)` \|[^|]+\|[^|]+\| ([^|]+) \|/gm)].map(m => [m[1], m[2].trim().split(' / ')]));
+  assert.deepEqual(table, BARRIER_RELATIONS);
 });

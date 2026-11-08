@@ -4,13 +4,14 @@
 
 ## 月度用户策略批 1·1b-1 月度文档 v2 校验器（2026-11-08，Claude，常浩说「按推荐开工」后按票推进；分支 `claude/27-validator`，PR 待合并，等常浩说「合并」；未发布）
 
-- 时间：开工 `2026-11-08 14:20`（1a 合并后开 worktree 的大致时间）。★ 来由：批 1 第三张票 #27，实现 schema 2.1 第 4 节月度文档的结构校验和不变量。
-- 改了哪些文件：新增 `server/strategy-validate.mjs`（`validateStrategyDoc(doc, { evidence, migrated })`，返回逐条错误、提示和「依据已变化」的 Claim；内置来源登记表 sources-v1.1 与障碍体系 barrier-v2.1 的编码和适用人群）；新增 `tests/strategy-validate.test.mjs`（9 项）；`docs/策略规则/03-Schema-v2.md` 两处对齐：3.2 粒度改为每地区 0–4 个情境（与 I-13 一致），第 5 节注明 I-07、I-08、I-14 随 Opportunity、Strategy 在批 2 实现。
-- 测试：`npm test` 原样结果 `ℹ pass 785` / `ℹ fail 0`；`npm run check:style` 通过。
+- 时间：开工 `2026-11-08 14:20`（事后估计：1a 合并后开 worktree 的时刻，开工时没有用 `date` 记录；本节测试结果都在此之后跑出）。★ 来由：批 1 第三张票 #27，实现 schema 2.1 第 4 节月度文档的结构校验和不变量。
+- 改了哪些文件：新增 `server/strategy-validate.mjs`（`validateStrategyDoc(doc, { evidence, migrated })`，返回逐条错误、提示和「依据已变化」的 Claim；内置来源登记表 sources-v1.1 与障碍体系 barrier-v2.1 的编码和适用人群）；新增 `tests/strategy-validate.test.mjs`（13 项，含内置来源表、障碍表与 01、02 文档的一致性测试）；`docs/策略规则/03-Schema-v2.md` 两处对齐：3.2 粒度改为每地区 0–4 个情境（与 I-13 一致），第 5 节注明 I-07、I-08、I-14 随 Opportunity、Strategy 在批 2 实现；`docs/策略规则/02-障碍体系v2.md` 补一句：`targetRelation=通用` 只能用新签、续费都适用的障碍。
+- 测试：`npm test` 原样结果 `ℹ pass 789` / `ℹ fail 0`；`npm run check:style` 通过。
+- code-review（规范 + 规格两个子 agent）：补了三处漏检（时间线 Evidence 的国家代码 I-12；没有 business / voice 证据的障碍按 02 §2.3 限为 unknown 或 inferred + weak；正式稿顶部正文的编码提示 I-15）；priority 为 null 时理由须含「待研判」；复用 `units`，改名 `BARRIER_RELATIONS`、`REGION_PRIORITY` 避免与页面同名常量混淆。
 - 验证：纯函数，夹具文档逐条改坏验证拦截；没有界面改动，没起服务。
 - 截图：无。
 - 发布与回读：未发布（还没接入接口，批 1 合起来再发布）。
-- 与授权不一致之处、遗留问题、范围外发现：① 票 #27 验收写的是「I-01–I-14、I-17、I-18 拦截」，实际 I-07、I-08、I-14 没实现：它们约束的是 Opportunity、Strategy，批 1 不生成这两类对象，校验器直接拒收非空的 `opportunities`、`strategies`；I-14 还依赖打法卡的结构化约束（README 延期事项已排在批 2）。已在 03 第 5 节写明，须常浩知悉。② 证据强度是否超过来源登记表的上限（如时间线原表最高 partial）目前不校验，01 没有把它列成不变量。③ 覆盖率（activity）只校验值与状态一致，不重新计算；1b-2 提交时由服务端用当前快照重算后比对。
+- 与授权不一致之处、遗留问题、范围外发现：① 票 #27 验收写的是「I-01–I-14、I-17、I-18 拦截」，实际 I-07、I-08、I-14 没实现：它们约束的是 Opportunity、Strategy，批 1 不生成这两类对象，校验器直接拒收非空的 `opportunities`、`strategies`；I-14 还依赖打法卡的结构化约束（README 延期事项已排在批 2）。已在 03 第 5 节写明，须常浩知悉。② 证据强度是否超过来源登记表的上限（如时间线原表最高 partial）目前不校验，01 没有把它列成不变量。③ 覆盖率（activity）只校验值与状态一致，不重新计算；1b-2 提交时由服务端用当前快照重算后比对。④ I-09（manual 不被自动改写）、I-10（revision 不可改）是写入层的约束，放 1b-2。⑤ 迁移放宽由调用方传 `migrated`，1b-2 必须由服务端判定（只对迁移生成的 revision 放宽），不信任提交方。⑥ `priority=null`：03 第 4 节允许「迁移数据或无法判断时」为 null，04 第 6 节把它列为迁移放宽，两处口径不同；校验器按 03（非迁移数据也可为 null，但理由须写「待研判」）。
 - 本轮新坑：无。
 
 ## 月度用户策略批 1·1a 证据与窗口（2026-11-08，Claude，常浩说「按推荐开工」；常浩说「CI 过后合并」，PR #33 squash 合并为 `b7872f2`；未发布，批 1 合起来再发布）
