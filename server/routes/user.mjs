@@ -34,7 +34,8 @@ export function userRoutes(services) {
     route('GET', '/api/v3/strategy-v2/revisions', handleV3((req, { url }) => strategy.revisions(url.searchParams.get('month')))),
     route('GET', '/api/v3/strategy-v2/submissions/:id/preview', handleV3((req, { params }) => strategy.preview(params.id))),
     route('POST', '/api/v3/strategy-v2/submissions/:id/confirm', handleV3(async (req, { params }) => strategy.confirm(params.id, await body(req)))),
-    route('POST', '/api/v3/strategy-v2/submissions/:id/reject', handleV3((req, { params }) => strategy.reject(params.id))),
+    route('POST', '/api/v3/strategy-v2/submissions/:id/reject', handleV3(async (req, { params }) => strategy.reject(params.id, await body(req)))),
+    route('POST', '/api/v3/strategy-v2/:month/rollback', handleV3(async (req, { params }) => strategy.rollback(params.month, await body(req)))),
     route('POST', '/api/v3/strategy-v2/:month/bizcard/preview', handleV3(async (req, { params }) => strategy.previewBizcard(params.month, await body(req)))),
     route('POST', '/api/v3/strategy-v2/:month/bizcard/confirm', handleV3(async (req, { params }) => strategy.confirmBizcard(params.month, await body(req)))),
     // 月度用户策略（T13，docs/用户策略规范.md）：用户情况内置可改，促销策略按钮生成；修改 / 生成 / 定稿都先预览，再用同一个 confirm 写入并回读。

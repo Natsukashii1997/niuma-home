@@ -31,7 +31,7 @@ export function agentRoutes(db, services) {
       try { reply(200, { result: await AGENT_TOOLS[tool].run(body.arguments ?? {}, services, { agent: agent.agent }) }); }
       catch (error) {
         if (!error.status) console.error(error);
-        reply(error.status || 500, { error: error.status ? error.message : '读取失败，详情见服务日志', code: error.code || 'TOOL_FAILED' });
+        reply(error.status || 500, { error: error.status ? error.message : '处理失败，详情见服务日志', code: error.code || 'TOOL_FAILED' });
       }
     }),
   ];

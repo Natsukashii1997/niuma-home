@@ -88,10 +88,14 @@ test('反例 18、24：同键同内容返回同一个；同键不同内容 409�
   assert.equal(db.prepare('SELECT COUNT(*) n FROM strategy_submissions').get().n, 1);
 });
 
-test('反例 5、I-09：提交改动常浩手写的内容时预览单列；确认时只有逐条接受的才替换', async () => {
-  const { strategy } = setup();
+// 模拟迁移或页面编辑留下的手写内容：直接写一个正式版本（skill 不能提交 origin=manual）。
+const seed = (db, doc) => db.prepare("INSERT INTO strategy_revisions (id,month,schema_version,content,content_hash,inputs,segment_index,confirmed_by,confirmed_from,created_at) VALUES ('REV-2026-12-1','2026-12','2.1',?,'x','{}','{}','常浩','migration','2026-11-08T00:00:00Z')").run(JSON.stringify(doc));
+
+test('反例 5、I-09：skill 不能新建手写内容；改动手写内容时预览单列，确认时只有逐条接受的才替换', async () => {
+  const { strategy, db } = setup();
   const { doc, f } = await docFor(strategy, '2026-12', d => { d.claims[0].origin = 'manual'; return d; });
-  await strategy.confirm((await submit(strategy, doc, f, 'base')).id, { confirm: true });
+  await assert.rejects(submit(strategy, doc, f, 'forge'), e => e.status === 422 && /I-09/.test(e.message));
+  seed(db, doc);
   const f2 = await strategy.facts('2026-12');
   const changed = structuredClone(doc); changed.claims[0].text = 'skill 改写的任务';
   const s = await submit(strategy, changed, f2, 'rewrite');
@@ -105,6 +109,24 @@ test('反例 5、I-09：提交改动常浩手写的内容时预览单列；确�
   await strategy.confirm(s3.id, { confirm: true, acceptManual: ['CLM-2026-12-1'] });
   assert.equal(strategy.get('2026-12').revision.content.claims[0].text, 'skill 改写的任务');
   assert.equal(strategy.revisions('2026-12').length, 3);
+});
+
+test('I-06：手写内容依据已变化时，确认须常浩明确保留（keepStale），保留只更新依据版本、不改正文', async () => {
+  const { strategy, db, state } = setup();
+  const { doc } = await docFor(strategy, '2026-12', d => { d.claims[0].origin = 'manual'; return d; });
+  seed(db, doc);
+  state.timeline = parseTimeline([sheet([['英国', 'Final 时间'], ['伦敦大学学院 UCL', '12.8'], ['爱丁堡大学 UoE', '2027.9.20']])], '2026-11-09 10:00');
+  state.timeline.years = [{ year: 2026 }];
+  const f = await strategy.facts('2026-12');
+  const next = structuredClone(doc); next.regions = (await docFor(strategy)).doc.regions; next.brief.judgement = { text: '新一版', claims: ['CLM-2026-12-2'] };
+  next.claims[0] = doc.claims[0];
+  const s = await submit(strategy, { ...next, claims: [next.claims[1]] }, f, 'drop-manual');
+  await assert.rejects(strategy.confirm(s.id, { confirm: true }), e => e.status === 422 && /I-06/.test(e.message));
+  const ok = await strategy.confirm(s.id, { confirm: true, keepStale: ['CLM-2026-12-1'] });
+  assert.deepEqual(ok.keptManual, ['CLM-2026-12-1'], '提交删掉的手写内容也恢复');
+  const kept = strategy.get('2026-12').revision.content.claims.find(c => c.id === 'CLM-2026-12-1');
+  assert.equal(kept.text, '12 月上旬进入 Final');
+  assert.equal(Object.values(kept.refVersions)[0], f.evidence.find(e => e.school.startsWith('伦敦')).evidenceVersion);
 });
 
 test('反例 4、07 第 3 节：背景卡没有存量用户情况时，续费障碍须为 unknown；背景卡先预览后确认，条目成为 business Evidence', async () => {
@@ -121,6 +143,39 @@ test('反例 4、07 第 3 节：背景卡没有存量用户情况时，续费障
   assert.notEqual(f2.inputFingerprint, f.inputFingerprint, '背景卡进入输入指纹');
   const ok = await submit(strategy, (await docFor(strategy, '2026-12', renewal)).doc, f2, 'r2');
   assert.equal(ok.state, 'pending');
+  // 条目 id 在预览时分配；删掉别的条目，已有条目的 Evidence ID 不变
+  const saved = strategy.get('2026-12').bizcard;
+  const p2 = strategy.previewBizcard('2026-12', { 存量用户情况: [{ text: '新加的一条', type: '管理判断' }, ...saved['存量用户情况']] });
+  strategy.confirmBizcard('2026-12', { confirm: true, previewId: p2.previewId });
+  const ids = (await strategy.facts('2026-12')).evidence.filter(e => e.kind === 'business').map(e => e.evidenceId);
+  assert.ok(ids.includes(biz.evidenceId)); assert.equal(ids.length, 2);
+});
+
+test('07 第 3 节：缺存量用户情况时续费 unknown 须指向背景卡；缺用户观察时痛点只能是 typical', async () => {
+  const { strategy } = setup();
+  const { doc, f } = await docFor(strategy, '2026-12', d => {
+    d.claims.push({ id: 'CLM-2026-12-3', scenario: 'SCN-2026-12-uk-01', claimType: 'barrier', text: '下阶段任务不明', status: 'unknown', evidenceStrength: 'none', gap: '缺少存量信息', route: { status: 'research', suggestion: '问顾问' }, barrierCode: 'BR-R2', targetRelation: '续费', barrierRole: 'primary', origin: 'skill' });
+    d.claims.push({ id: 'CLM-2026-12-4', scenario: 'SCN-2026-12-uk-01', claimType: 'pain', painKind: 'observed', text: '引用规范不熟', status: 'inferred', evidenceStrength: 'weak', limitations: '常识', origin: 'skill' });
+    return d;
+  });
+  await assert.rejects(submit(strategy, doc, f, 'deg'), e => e.status === 422 && /CLM-2026-12-3/.test(e.message) && /CLM-2026-12-4/.test(e.message));
+});
+
+test('回退与 revision 输入：服务端记录的输入写进正式版本；回退生成新版本，历史不改写', async () => {
+  const { strategy } = setup();
+  const { doc, f } = await docFor(strategy, '2026-12', d => { d.inputs = { timelineSnapshot: 'skill 乱填' }; return d; });
+  await strategy.confirm((await submit(strategy, doc, f, 'v1')).id, { confirm: true });
+  const r1 = strategy.get('2026-12').revision;
+  assert.equal(r1.content.inputs.timelineSnapshot, f.snapshot); assert.equal(r1.content.inputs.rules.baseline, 'baseline-v1');
+  assert.deepEqual(Object.keys(r1.content.inputs.evidenceVersions), doc.scenarios[0].evidenceRefs);
+  const f2 = await strategy.facts('2026-12');
+  await strategy.confirm((await submit(strategy, { ...doc, brief: { ...doc.brief, judgement: { ...doc.brief.judgement, text: '第二版' } } }, f2, 'v2')).id, { confirm: true });
+  assert.throws(() => strategy.rollback('2026-12', { revisionId: 'REV-2026-12-1' }), /明确确认/);
+  const back = strategy.rollback('2026-12', { confirm: true, revisionId: 'REV-2026-12-1' });
+  assert.equal(back.revision.id, 'REV-2026-12-3');
+  const now = strategy.get('2026-12').revision;
+  assert.equal(now.content.brief.judgement.text, '英国 Final 前复习'); assert.equal(now.confirmedFrom, 'rollback:REV-2026-12-1');
+  assert.equal(strategy.revisions('2026-12').length, 3);
 });
 
 test('I-10：revision 写入后不可修改、不可删除', async () => {
@@ -147,7 +202,8 @@ test('反例 20：智能体凭据只能提交；确认不是智能体工具，�
   assert.equal(strategy.get('2026-12').revision, null);
   const logged = db.prepare("SELECT tool,status FROM agent_calls WHERE tool='strategy_confirm'").get();
   assert.deepEqual({ ...logged }, { tool: 'strategy_confirm', status: 404 });
-  strategy.reject(sub.body.result.id);
+  assert.throws(() => strategy.reject(sub.body.result.id), /明确确认/);
+  strategy.reject(sub.body.result.id, { confirm: true });
   assert.equal((await call('strategy_submission', { id: sub.body.result.id })).body.result.state, 'rejected');
   await assert.rejects(strategy.confirm(sub.body.result.id, { confirm: true }), e => e.status === 409);
 });

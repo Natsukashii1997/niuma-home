@@ -5,12 +5,13 @@
 ## 月度用户策略批 1·1b-2 提交与确认（2026-11-08，Claude，常浩说「按推荐开工」后按票推进；分支 `claude/28-submit`，PR 待合并，等常浩说「合并」；未发布）
 
 - 时间：开工 `2026-11-08 15:00`（事后估计：1b-1 合并后开 worktree 的时刻，开工时没有用 `date` 记录；本节测试结果都在此之后跑出）。★ 来由：批 1 第四张票 #28，打通「skill 提交 → 工作台校验 → 常浩页面确认 → 不可变 revision」。
-- 改了哪些文件：新增 `server/strategy-service.mjs`（事实底稿、提交、预览、确认、拒绝、版本、业务背景卡）；`server/db.mjs` 新增 `strategy_revisions`（触发器禁止修改、删除）、`strategy_submissions` 两张表；`server/agent-tools.mjs` 新增 `strategy_facts`、`strategy_submit`、`strategy_submission`，`server/routes/agent.mjs` 把凭据对应的 agent 传给工具；`server/routes/user.mjs` 新增 `/api/v3/strategy-v2*` 页面接口；`server/routes/workspace.mjs` 把服务交给智能体路由；`AGENTS.md` 新增「AI 接入」一节；`docs/API.md` 补工具与接口；新增 `tests/strategy-service.test.mjs`（8 项，覆盖反例 4、5、17、18、19、20、24 与 I-10）。
-- 测试：`npm test` 原样结果 `ℹ pass 797` / `ℹ fail 0`；`npm run check:style` 通过。
+- 改了哪些文件：新增 `server/strategy-service.mjs`（事实底稿、提交、预览、确认、拒绝、版本、业务背景卡）；`server/db.mjs` 新增 `strategy_revisions`（触发器禁止修改、删除）、`strategy_submissions` 两张表；`server/agent-tools.mjs` 新增 `strategy_facts`、`strategy_submit`、`strategy_submission`，`server/routes/agent.mjs` 把凭据对应的 agent 传给工具；`server/routes/user.mjs` 新增 `/api/v3/strategy-v2*` 页面接口；`server/routes/workspace.mjs` 把服务交给智能体路由；`AGENTS.md` 新增「AI 接入」一节；`docs/API.md` 补工具与接口；新增 `tests/strategy-service.test.mjs`（11 项，覆盖反例 4、5、17、18、19、20、24 与 I-06、I-09、I-10、回退）；`docs/策略规则/README.md` 延期表补记 I-07、I-08、I-14 改到批 2（常浩确认「同意推到批 2」）。
+- 测试：`npm test` 原样结果 `ℹ pass 800` / `ℹ fail 0`；`npm run check:style` 通过。
+- code-review（规范 + 规格两个子 agent）后补改：确认写入改为事务内复核、编号、回读，不一致回滚；同键并发提交撞约束时返回原 submission；skill 不能新建或冒充 `origin=manual`（I-09）；手写内容依据变化时可由常浩 `keepStale` 明确保留（I-06）；正式版本的 `content.inputs` 一律用服务端记录，规则版本与 03 第 4 节对齐（含 baseline，去掉 bizcard）；背景卡条目按 id 定身份；07 第 3 节补「缺用户观察时痛点只能 typical」「续费 unknown 的 route 指向背景卡」；补回退接口；拒绝也要明确确认。
 - 验证：临时数据目录 + 夹具时间线；智能体工具走真实 HTTP 路由与凭据；没有界面改动，没起正式服务。
 - 截图：无。
 - 发布与回读：未发布（页面在 #30 才接入，批 1 合起来再发布）。
-- 与授权不一致之处、遗留问题、范围外发现：① 正式库现有时间线快照没有原格信息，发布后须先同步一次时间线，事实底稿才能生成（接口返回 `409 TIMELINE_RESYNC` 提示）。② 迁移放宽（04 第 6 节）这张票没接：提交接口一律按非迁移数据校验，迁移由 #29 的脚本直接写 revision。③ 确认后同月其余待确认提交统一转 stale（03 第 7 节写的是「常浩改过内容后旧 submission 转 stale」，这里按「出现新版本」处理）。④ 校验不过的提交不入库，只返回 422 和前 8 条原因；完整错误清单在页面预览接口里。⑤ 只读工具 `strategy_facts` 每次现算 Evidence 与覆盖率，没有缓存。
+- 与授权不一致之处、遗留问题、范围外发现：① 正式库现有时间线快照没有原格信息，发布后须先同步一次时间线，事实底稿才能生成（接口返回 `409 TIMELINE_RESYNC` 提示）。② 迁移放宽（04 第 6 节）这张票没接：提交接口一律按非迁移数据校验，迁移由 #29 的脚本直接写 revision。③ 确认后同月其余待确认提交统一转 stale（03 第 7 节写的是「常浩改过内容后旧 submission 转 stale」，这里按「出现新版本」处理）。④ 校验不过的提交不入库，只返回 422 和前 8 条原因；完整错误清单在页面预览接口里。⑤ 只读工具 `strategy_facts` 每次现算 Evidence 与覆盖率，没有缓存。⑥ 反例 17 原场景是「常浩在页面手改后旧提交过期」，页面编辑入口要到 #30 才有；现在用「出现新版本 / 输入变化即过期」覆盖同一条规则。⑦ AGENTS「AI 接入」的「数据对象」一项只写了类别，没有逐个模块列来源，留待熟悉这些模块时补。⑧ 新增的只读工具 `strategy_submission` 不在票面清单里，是为了 skill「结果不明时先查状态」（#24 用户故事 46）。
 - 本轮新坑：无。
 
 ## 月度用户策略批 1·1b-1 月度文档 v2 校验器（2026-11-08，Claude，常浩说「按推荐开工」后按票推进；常浩说「CI 过后合并」，PR #34 squash 合并为 `4a19cb4`；未发布，批 1 合起来再发布）
