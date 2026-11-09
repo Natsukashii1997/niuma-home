@@ -4,6 +4,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 月度策略 v2 迁移切换到正式库（2026-11-09，Claude，常浩看过迁移报告网页后说「同意切换」；只改交接、无代码改动；无需发布）
+
+- 时间：开工 `2026-11-09 21:54`（`date '+%F %H:%M'` 记录）。★ 来由：批 1 已发布（见下一节），常浩看过 `plan-1` 报告（做成网页 https://claude.ai/artifact/BSUA5fko2d9epW2f4Cq8ce，本地副本 `plan-1/月度策略迁移报告.html`）后同意切换。
+- 改了哪些文件：只有 `CURRENT.md`（本节）；正式库 `data/work-desk.db` 写入 12 个迁移版本。
+- 测试：未跑 `npm test`（本节没有改代码，上一节发布前 `ℹ pass 825` / `ℹ fail 0`）；切换脚本自身逐月比对报告指纹、覆盖率与默认优先级全部一致才写入。
+- 验证：`node scripts/migrate-strategy-v2.mjs apply --data data --report "<证据>/2026-11-09-strategy-v2-migration/plan-1" --confirm` 写入 `REV-2026-01-1` … `REV-2026-12-1`（`confirmed_from=migration`、`confirmed_by=migration-script`）；经正式 5280 接口回读 12 个月版本都在，去掉 `inputs` 后与试跑的 `migrated/<月份>.json` 逐字段一致 12/12；内置浏览器打开 `#/user/strategy`（11 月）显示「正式版本 r1 · 已确认 11-09 21:54」、六个地区分档与理由、香港和加拿大标「与默认不同」、其他「待研判」，控制台没有错误。
+- 截图：`~/Library/Application Support/NiumaHome/evidence/2026-11-09-strategy-v2-migration/plan-1/apply-2026-11-09T13-54-00-886Z/after-apply-strategy-2026-11.jpg`。
+- 发布与回读：无需发布（只写数据）。切换前备份 `…/apply-2026-11-09T13-54-00-886Z/work-desk-before-apply.db`，日志 `apply-log.json`。回退见 OPERATIONS「月度策略 v2 迁移」第 4 步（先 `rollback --data data` 预览）。
+- 与授权不一致之处、遗留问题、范围外发现：① 下一步是 #32 的 12 月技术试跑：正式库还没有给 skill 用的智能体凭据（只有 `agumon`），签发要写正式库，须常浩同意。② 业务背景卡仍空，34 条障碍已按规则降为未知，补背景卡后由 skill 下一份提交提回。③ 27 处分档与默认建议不一致留待 #32 校准覆盖率阈值后再看。④ #26、#31 已完成未关 issue。
+- 本轮新坑：无。
+
 ## 月度用户策略批 1 发布到 5280，并用正式库出迁移报告（2026-11-09，Claude，常浩点「发布批 1」；只改交接、无代码改动；已发布 `nm-20261109-213654-48f7758` 回读通过；未切换正式数据）
 
 - 时间：开工 `2026-11-09 21:36`（`date '+%F %H:%M'` 记录）。★ 来由：批 1 的票（#25、#27–#30、#39–#41）都已合进 main，正式服务仍是 `nm-20261107-231835-b8deee5`，v2 接口返回 501。
