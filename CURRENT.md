@@ -4,6 +4,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 批 1 验收 #32：12 月技术试跑、覆盖率阈值校准、反例对照（2026-11-09，Claude，常浩点「照计划开始」；校准结论 PR #44 未合并；无需发布）
+
+- 时间：开工 `2026-11-09 21:59`（签发凭据时刻，命令输出的签发时间）。★ 来由：批 1 验收票 #32 的前三项。
+- 改了哪些文件：本节 `CURRENT.md`；分支 `claude/32-coverage-calibration`（PR #44）改 `docs/策略规则/05-需求生命周期.md`（第 6 节加「校准结论」，变更记录加一行，未改规则）与 `docs/策略规则/README.md`（延期事项注明已处理）。正式库：签发智能体凭据 `claude-skill`（`strategy_facts,strategy_submit,strategy_submission`，凭据在 `~/Library/Application Support/NiumaHome/agent-env/claude-skill.env`，600 权限）。
+- 测试：main `4997cf5` 上 `npm test` 原样结果 `ℹ pass 825` / `ℹ fail 0`；PR #44 分支同样 825/0；skill `node --test tests/*.test.mjs` `ℹ pass 28` / `ℹ fail 0`。
+- 验证：① **12 月试跑**（由子会话「月度策略·12 月技术试跑（#32）」执行，skill 1.2.0）：提交 `SUB-2026-12-252dc948`，服务端校验拦截 0、提示 0；常浩在页面确认，本会话从正式接口回读到 `REV-2026-12-2`（`confirmed_from=page`，`submission_id=SUB-2026-12-252dc948`），提交状态 confirmed。链路技术上通过。试跑记录 `~/Library/Application Support/NiumaHome/evidence/strategy-2026-12-20261109-2200/trial-record.md`，其中「常浩确认」「回读」两节子会话还没补。② **阈值校准**：在迁移试跑隔离副本上只读计算 12 个月 × 6 地区，72 格 69 高 / 2 中 / 1 低，±5 个百分点只改 3 格；口径饱和（统计范围 45 天 + 开学窗口 37 天 + 任一重叠即活跃），不改阈值，三条修订候选待常浩批准。③ **反例对照**：1–5、7–26（含 8a、8b）26 项都有代码测试且通过，#2、#4、#21、#22 另有 skill eval。②③ 证据：`~/Library/Application Support/NiumaHome/evidence/2026-11-09-coverage-calibration/`（`calibrate.mjs`、`result.json`、`校准与反例对照.md`）。
+- 截图：试跑页面截图见试跑证据目录（`page-pending-01-header.jpg`、`page-pending-02-diff.jpg`）。
+- 发布与回读：无需发布；正式库只多了凭据和 12 月 r2。
+- 与授权不一致之处、遗留问题、范围外发现：① **内容质量未达标**：常浩审阅 12 月页面后反馈产出「看不懂、拆得太碎、没有重点和结论、推断太浅」，试跑会话判断根因在产出层设计，已起草产出结构草案与 `docs/策略规则/10-报告内容规格.md`（主工作区未提交），skill 返修在交接会话「【交接】月度用户策略 skill｜按 GPT 审核返修 2.0」等常浩拍板；#24 能否验收由常浩定，本节不判。② 试跑会话记录的其他问题：波士顿大学「出分时间」列被归为「其他」没算出分窗口（列名映射）；`assemble.mjs` 40 字检查口径与 SKILL.md 字面不一致；详见 trial-record「问题」。③ #26、#31 已完成未关 issue。④ 凭据 `claude-skill` 留着供后续生成用，不用时 `node scripts/agent-token.mjs revoke claude-skill`。
+- 本轮新坑：无。
+
 ## 月度策略 v2 迁移切换到正式库（2026-11-09，Claude，常浩看过迁移报告网页后说「同意切换」；只改交接、无代码改动；无需发布）
 
 - 时间：开工 `2026-11-09 21:54`（`date '+%F %H:%M'` 记录）。★ 来由：批 1 已发布（见下一节），常浩看过 `plan-1` 报告（做成网页 https://claude.ai/artifact/BSUA5fko2d9epW2f4Cq8ce，本地副本 `plan-1/月度策略迁移报告.html`）后同意切换。
