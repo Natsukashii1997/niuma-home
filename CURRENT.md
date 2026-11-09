@@ -4,6 +4,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 月度用户策略批 1 发布到 5280，并用正式库出迁移报告（2026-11-09，Claude，常浩点「发布批 1」；只改交接、无代码改动；已发布 `nm-20261109-213654-48f7758` 回读通过；未切换正式数据）
+
+- 时间：开工 `2026-11-09 21:36`（`date '+%F %H:%M'` 记录）。★ 来由：批 1 的票（#25、#27–#30、#39–#41）都已合进 main，正式服务仍是 `nm-20261107-231835-b8deee5`，v2 接口返回 501。
+- 改了哪些文件：只有 `CURRENT.md`（本节）。
+- 测试：发布前在 main（`48f7758`）`npm test` 原样结果 `ℹ pass 825` / `ℹ fail 0`；发布前单独跑 `bash scripts/verify-release.sh` 回读旧快照通过（L-12）。
+- 验证：① 发布后 `curl` 正式 5280：`/api/v3/strategy-v2?month=2026-12`、`…/revisions`、`…/submissions`、`…/evidence` 都返回 200，evidence 没有报 `409 TIMELINE_RESYNC`（新服务启动后 21:37 自动同步过时间线，快照已带原格信息）。② `npm run smoke -- --base http://127.0.0.1:5280` 24 项 0 项有问题，证据 `~/Library/Application Support/NiumaHome/evidence/smoke-20261109-1337`。③ 内置浏览器打开 `#/user/strategy`：顶部是 v2 工具栏（正式版本「v2 尚无正式版本」、业务背景卡「未填写」），下面按设计退回 v1 旧视图，控制台没有错误。④ 迁移试跑（只读正式库，不加 `--refresh-timeline`）：`node scripts/migrate-strategy-v2.mjs plan --data data --out "$HOME/Library/Application Support/NiumaHome/evidence/2026-11-09-strategy-v2-migration/plan-1"`，12 个月全部通过，条目逐月守恒、校验 0 错误 0 提示；`SUMMARY.md` 表格与 11-08 隔离试跑 `plan-2` 逐行一致；各月共 27 处旧分档与覆盖率默认建议不一致（⚠），与 11-08 相同。
+- 截图：无界面改动；冒烟截图见上面证据目录。
+- 发布与回读：`GIT_CONFIG_COUNT=1 … bash scripts/release-app.sh`（忽略他人未跟踪文件），快照 `nm-20261109-213654-48f7758`，自动回读 7 项全 ✓（launchd、进程、只监听 127.0.0.1、首页与 12 个构建文件、166 个源码文件与提交一致、错误日志为空、版本号）；日志 `~/Library/Application Support/NiumaHome/evidence/2026-11-09-batch1-release/release.log`。保留策略清掉旧快照 `nm-20261102-201455-38ea63d`、`nm-20261102-174752-ee743c9` 和两份 10-28 的发布前备份。回滚：`bash scripts/release-app.sh --use nm-20261107-231835-b8deee5`。
+- 与授权不一致之处、遗留问题、范围外发现：① **未切换正式数据**：须常浩看过 `plan-1/SUMMARY.md` 与 `reports/` 并明确同意，再按 OPERATIONS「月度策略 v2 迁移」第 3 步执行 `apply --report plan-1 --confirm`。② OPERATIONS 写「同意后中间不要再同步时间线」，但服务每 10 分钟自动重读飞书；#39 后快照指纹只看内容，飞书内容没变就不影响，变了 `apply` 会拒绝、要求重出报告（安全，但可能要重跑一次试跑）。③ 正式数据目录只有 `agumon` 一个智能体凭据，没有 `strategy_facts` / `strategy_submit` 授权；#32 的 12 月试跑要在正式库签发 skill 用的凭据（写正式库，须常浩同意）。④ 背景卡还是空的，引用业务证据的障碍和购买准备度会被封顶（见 #40 一节）。⑤ #26、#31 的活已经完成，issue 还开着，未关。
+- 本轮新坑：无。
+
 ## 月度策略：购买判断证据口径与 skill 预检对齐，背景卡加适用范围（2026-11-08，Claude，由 #24 交接会话按 issue #40 派出；常浩「按推荐开工」定 5 处细节、页面选样稿 A；分支 `claude/40-evidence-scope`，常浩说「CI 过后合并」，PR #43 squash 合并为 `b8144a8`，关闭 #40；未发布，批 1 合起来再发布）
 
 - 时间：开工 `2026-11-08 20:12`（`date '+%F %H:%M'` 记录，拉分支时）。★ 来由：服务端校验器把管理判断也算行为证据、readiness 不查、不按强度封顶、不查业务证据适用范围，绕过 skill 直接 `strategy_submit` 时拦不住（#40，来源 my-skills PR #76 遗留第 2 条）。
