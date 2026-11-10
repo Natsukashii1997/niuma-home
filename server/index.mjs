@@ -15,7 +15,8 @@ const port = Number(process.env.PORT || 5280);
 const dist = path.resolve("dist");
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json" };
 const db = openDb();
-const routes = [marketing, assistants, workspace, v3, internalVoice].flatMap((m) => m.routes(db));
+// v3 末尾有兜底 /api/v3/*（返回 501 未实现），必须排在最后，否则后面的模块都走不到（#50 发布后发现）
+const routes = [marketing, assistants, workspace, internalVoice, v3].flatMap((m) => m.routes(db));
 // 猛鬼兽推送 Codex 重置：每 10 分钟看一眼开关，开着且满 4 小时才去检查；关着什么都不做。
 const codexPush = createCodexPush(db);
 const pushTick = () => codexPush.tick().catch((error) => console.error("Codex 推送检查失败", error));

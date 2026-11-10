@@ -284,3 +284,14 @@ test('自动拉取遇到 partial：下次 tick 重拉同一周补齐', async t =
   assert.deepEqual([healthy.status().runs[0].trigger, healthy.status().runs[0].state], ['weekly', 'done']);
   assert.ok(db.prepare("SELECT 1 FROM chat_messages WHERE msg_id='m6'").get(), '上次没拉到的会话补上了');
 });
+
+test('服务注册路由时 v3 兜底排在最后：内部原声接口不被 501 抢走', async t => {
+  const { readFileSync } = await import('node:fs');
+  const source = readFileSync(new URL('../server/index.mjs', import.meta.url), 'utf8');
+  const list = /const routes = \[([^\]]+)\]/.exec(source)[1].split(',').map(x => x.trim());
+  assert.equal(list.at(-1), 'v3', 'v3 的兜底 /api/v3/* 必须最后注册');
+  const db = database(t);
+  const { routes: v3Routes } = await import('../server/routes/v3.mjs');
+  const all = [...routes(db, { fetchImpl: fakeApi().fetchImpl, token: () => TOKEN, now: () => NOW }), ...v3Routes(db)];
+  assert.notEqual(match(all, 'GET', '/api/v3/internal-voice/status').handler, match(v3Routes(db), 'GET', '/api/v3/internal-voice/status').handler);
+});

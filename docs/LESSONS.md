@@ -176,3 +176,10 @@
 - 根因：`x.lumiclass.com` 的员工列表接口分页参数是 `limit`（实测 `limit=100` 回 100 条、`total_page` 11），`size`、`per_page`、`pageSize` 都被忽略；会话列表、消息列表才认 `size`。另外 `/api/department/list` 只回 1 个顶级部门，部门名要看员工记录里的 `department_name`。
 - 正确做法：接外部列表接口先核对「本页条数 = 请求的条数」与 `total_page` 再写循环；会话存档员工列表用 `limit`（`server/internal-voice.mjs` 已按此写，`tests/internal-voice.test.mjs` 的假接口也按 `limit` 分页）。按学生走长连接 watch 会带出该学生所在全部群（实测 49 个群、10 天 8132 条），做用户之声只取客户单聊和群里客户本人的发言。
 - 证据：`~/Library/Application Support/NiumaHome/evidence/企微会话存档接入-20261110/`（探测脚本与结果）。
+
+## L-20 新接口发布后回 501「未实现」：注册在 v3 兜底路由后面（2026-11-10）
+
+- 现象：#50 发布到 5280 后，`GET /api/v3/internal-voice/status` 回 `501 {"error":"未实现，见 docs/tasks/V3-接口清单.md"}`；单元测试全过（测试直接调路由模块，没经过 `server/index.mjs` 的注册顺序）。
+- 根因：`server/routes/v3.mjs` 末尾有兜底路由 `/^\/api\/v3\/.+$/` → `pending("V3-接口清单")`；`server/http.mjs` 的 `match` 按注册顺序取第一个匹配。新模块追加在 `v3` 之后，所有请求先被兜底接走。
+- 正确做法：新路由模块加进 `server/index.mjs` 的 `routes` 数组时放在 `v3` 前面（`tests/internal-voice.test.mjs` 断言 `v3` 在最后）；发布回读后实际请求一次本轮新接口，不只看 7 项回读。
+- 证据：本轮 CURRENT.md「内部原声批 1」一节「发布与回读」。
