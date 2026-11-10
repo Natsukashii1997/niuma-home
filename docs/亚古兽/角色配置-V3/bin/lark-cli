@@ -1,0 +1,22 @@
+#!/bin/sh
+# 亚古兽专用 lark-cli（niuma-home #47）：装在 ~/.hermes/profiles/agumon/bin/，该目录排在亚古兽网关 PATH 最前面。
+# lark-cli 看到 HERMES_HOME 等变量会改读 ~/.lark-cli/hermes/（那里绑的是猛鬼兽应用 cli_a96f…），
+# 所以先去掉 HERMES / OPENCLAW / LARK_CHANNEL 开头的变量回到本机默认配置，再固定用亚古兽应用调真正的 lark-cli。
+# 已带 --profile 时不再追加。读常浩的资料加 --as user。
+self_dir=$(cd "$(dirname "$0")" && pwd)
+real=""
+old_ifs=$IFS; IFS=:
+for d in $PATH; do
+  [ -z "$d" ] && continue
+  [ "$(cd "$d" 2>/dev/null && pwd)" = "$self_dir" ] && continue
+  if [ -x "$d/lark-cli" ]; then real="$d/lark-cli"; break; fi
+done
+IFS=$old_ifs
+[ -n "$real" ] || { echo "lark-cli-agumon: PATH 里找不到真正的 lark-cli" >&2; exit 127; }
+for v in $(env | sed -n -E 's/^((HERMES|OPENCLAW|LARK_CHANNEL)[A-Za-z0-9_]*)=.*/\1/p'); do
+  unset "$v"
+done
+case " $* " in
+  *" --profile "*|*" --profile="*) exec "$real" "$@" ;;
+esac
+exec "$real" --profile cli_a965c429ef785bd3 "$@"
