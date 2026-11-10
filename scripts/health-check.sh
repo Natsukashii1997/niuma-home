@@ -100,10 +100,10 @@ if [ -f "$DB" ]; then
   else bad "每日备份失败：$DAILY"; fi
 fi
 
-# 5. 内部原声自动拉取（设置里开着才查）：最近 8 天要有一次成功的每周拉取，不然定时没跑也没人知道
+# 5. 内部原声自动拉取（设置里开着才查）：最近 8 天要有一次完整成功（done）的每周拉取，不然定时没跑、或一直有会话拉不下来也没人知道
 if [ -f "$DB" ] && [ "$(sqlite3 -readonly "$DB" "SELECT value FROM settings WHERE key='internal_voice_auto';" 2>/dev/null)" = "1" ]; then
-  WEEKLY=$(sqlite3 -readonly "$DB" "SELECT range_from || ' 至 ' || range_to || '（' || state || '）' FROM chat_pull_runs WHERE trigger='weekly' AND state IN ('done','partial') AND finished_at >= strftime('%Y-%m-%dT%H:%M:%S','now','-8 days') ORDER BY id DESC LIMIT 1;" 2>/dev/null)
-  [ -n "$WEEKLY" ] && ok "内部原声每周拉取：$WEEKLY" || bad "内部原声 8 天内没有成功的每周拉取，看 /api/v3/internal-voice/status"
+  WEEKLY=$(sqlite3 -readonly "$DB" "SELECT range_from || ' 至 ' || range_to || '（' || state || '）' FROM chat_pull_runs WHERE trigger='weekly' AND state='done' AND finished_at >= strftime('%Y-%m-%dT%H:%M:%S','now','-8 days') ORDER BY id DESC LIMIT 1;" 2>/dev/null)
+  [ -n "$WEEKLY" ] && ok "内部原声每周拉取：$WEEKLY" || bad "内部原声 8 天内没有完整成功的每周拉取（失败或有会话没拉到），看 /api/v3/internal-voice/status"
 fi
 
 # 6. 昨天有没有巡检记录：巡检自己没跑（launchd 停了、路径变了）也得有人知道。首次运行之前没有记录，不查。

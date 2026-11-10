@@ -218,3 +218,69 @@ test('接口：状态、预览、确认走同源路由，错误带 code', async 
   for (let i = 0; i < 100 && (await invoke('GET', '/api/v3/internal-voice/status')).body.runs[0].state === 'running'; i++) await new Promise(r => setTimeout(r, 10));
   assert.equal((await invoke('GET', '/api/v3/internal-voice/status')).body.runs[0].state, 'done');
 });
+
+// 多页场景（#49 审查补测）：员工 130 人（按 limit 分 2 页）、一个销售 150 个客户会话（120 个在范围内，跨页才遇到更早的）、
+// 一个会话 600 条消息（消息 2 页）；可选在第 1 页读过后把第 2 页的一个会话挪到最前（来了新消息）。
+function bigApi({ reorder = false, unauthorizedAfter = Infinity } = {}) {
+  const pad = n => String(n).padStart(3, '0');
+  const many = Array.from({ length: 130 }, (_, i) => ({ userid: `s${pad(i)}`, name: `销售${i}`, department_name: i === 129 ? '大学销售企微-小王组' : '产品运营部', has_conversation: true }));
+  let convs = Array.from({ length: 150 }, (_, i) => ({ id: `cv${pad(i)}`, external_userid: `wm${i}`, external_name: `学生${i}`, staff_remark: '', last_msg_time: i < 120 ? `2026-11-08 ${pad(i).slice(1)}:00:00`.replace(/ (\d\d):/, (m, h) => ` ${String(23 - Math.floor(i / 6)).padStart(2, '0')}:`) : '2026-10-01 00:00:00' }));
+  const msgs = id => id === 'cv000' ? Array.from({ length: 600 }, (_, k) => ({ msg_id: `${id}-${k}`, msg_time: `2026-11-05 10:${String(Math.floor(k / 60)).padStart(2, '0')}:${String(k % 60).padStart(2, '0')}`, msg_type: 'text', from: 'wm', from_role: { value: 1 }, msg_content: `第${k}条` }))
+    : [{ msg_id: `${id}-only`, msg_time: '2026-11-05 09:00:00', msg_type: 'text', from: 'wm', from_role: { value: 1 }, msg_content: '你好' }];
+  let calls = 0, firstPageRead = false;
+  const page = (all, q, key = 'size') => { const size = Number(q.get(key) || 10), p = Number(q.get('page') || 1); return { items: all.slice((p - 1) * size, p * size), total: all.length, total_page: Math.max(1, Math.ceil(all.length / size)) }; };
+  const fetchImpl = async url => {
+    const u = new URL(url), q = u.searchParams, ok = data => ({ status: 200, json: async () => ({ status: 'success', data }) });
+    if (++calls > unauthorizedAfter) return { status: 401, json: async () => ({}) };
+    if (u.pathname === '/api/staff/list') return ok(page(many, q, 'limit'));
+    if (u.pathname.endsWith('/room/conversation/list')) return ok(page([], q));
+    if (u.pathname.endsWith('/customer/conversation/list')) {
+      const result = ok(page(convs, q));
+      if (reorder && q.get('page') === '1' && !firstPageRead) { firstPageRead = true; const moved = { ...convs[110], id: 'cv-moved', last_msg_time: '2026-11-10 09:00:00' }; convs = [moved, ...convs.filter((_, i) => i !== 110)]; }
+      return result;
+    }
+    if (u.pathname === '/api/chats/by/conversation/message/list') return ok(page(msgs(q.get('conversation_id')).reverse(), q));
+    return { status: 404, json: async () => ({}) };
+  };
+  return { fetchImpl, calls: () => calls };
+}
+
+test('多页：员工按 limit 翻页、会话列表跨页遇到更早的才停、消息多页拉全', async t => {
+  const db = database(t), voice = voiceFor(db, bigApi());
+  await voice.start({ from: '2026-11-02', to: '2026-11-08', trigger: 'manual' }).done;
+  const run = voice.status().runs[0];
+  assert.equal(run.state, 'done');
+  assert.equal(run.stats.staff, 1, '第 2 页最后一个员工也筛到');
+  assert.equal(run.stats.singles, 120);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM chat_messages WHERE conversation_id='cv000'").get().n, 600);
+});
+
+test('翻页期间会话来了新消息跳到第 1 页：翻完重读第 1 页补上', async t => {
+  const db = database(t), voice = voiceFor(db, bigApi({ reorder: true }));
+  await voice.start({ from: '2026-11-02', to: '2026-11-08', trigger: 'manual' }).done;
+  assert.ok(db.prepare("SELECT 1 FROM chat_conversations WHERE id='cv-moved'").get(), '挪到最前的会话没有漏');
+});
+
+test('中途 token 失效：整次记 failed 且不被后续进度改回 running，其余任务不再取新会话', async t => {
+  const db = database(t), api = bigApi({ unauthorizedAfter: 20 }), voice = voiceFor(db, api);
+  await voice.start({ from: '2026-11-02', to: '2026-11-08', trigger: 'manual' }).done;
+  const run = voice.status().runs[0];
+  assert.equal(run.state, 'failed');
+  assert.match(run.error, /token/);
+  assert.ok(api.calls() < 30, `失败后很快停下（实际 ${api.calls()} 次请求）`);
+});
+
+test('自动拉取遇到 partial：下次 tick 重拉同一周补齐', async t => {
+  const db = database(t);
+  saveSetting(db, 'internal_voice_auto', '1');
+  const flaky = voiceFor(db, fakeApi({ failAlways: new Set(['c2']) }));
+  await flaky.tick().done;
+  assert.equal(flaky.status().runs[0].state, 'partial');
+  assert.deepEqual(flaky.status().schedule[0].pulled, false);
+  const healthy = voiceFor(db, fakeApi());
+  const next = healthy.tick();
+  assert.ok(next, 'partial 不算拉过');
+  await next.done;
+  assert.deepEqual([healthy.status().runs[0].trigger, healthy.status().runs[0].state], ['weekly', 'done']);
+  assert.ok(db.prepare("SELECT 1 FROM chat_messages WHERE msg_id='m6'").get(), '上次没拉到的会话补上了');
+});

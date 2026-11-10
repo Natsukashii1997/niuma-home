@@ -240,6 +240,7 @@ export function openDb(dir = dataDir) {
   mkdirSync(path.join(dir, "images"), { recursive: true });
   const db = new DatabaseSync(path.join(dir, "work-desk.db"));
   db.exec("PRAGMA foreign_keys = ON;");
+  db.exec("PRAGMA busy_timeout = 5000;"); // 备份或命令行同时读写时等锁 5 秒，不直接报 SQLITE_BUSY（#49 审查）
   db.exec(SCHEMA);
   db.exec("BEGIN IMMEDIATE");
   try {

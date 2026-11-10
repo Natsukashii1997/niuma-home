@@ -69,7 +69,7 @@ test('巡检有项不过：昨天缺记录、备份失败都算，退出码 1，
   assert.deepEqual(r.notify.trim().split('\n').slice(1, 2), ['未通过 5 项：错误日志不为空（1 行）']);
 });
 
-test('内部原声自动拉取开着时查最近 8 天的每周拉取：有就记一行，没有算不过；关着不查', macOnly, t => {
+test('内部原声自动拉取开着时查最近 8 天完整成功（done）的每周拉取：有就记一行，没有算不过；关着不查', macOnly, t => {
   const base = { verifyExit: 0, verifyOut: '✓', sqlite: 'ok', freeKb: 10 * 1024 * 1024 };
   const off = scenario(t, base);
   assert.doesNotMatch(off.stdout, /内部原声/);
@@ -78,5 +78,5 @@ test('内部原声自动拉取开着时查最近 8 天的每周拉取：有就�
   assert.match(pulled.stdout, /✓ 内部原声每周拉取：2026-11-02 至 2026-11-08（done）/);
   const missing = scenario(t, { ...base, voiceAuto: '1' });
   assert.equal(missing.status, 1);
-  assert.match(missing.log, /内部原声 8 天内没有成功的每周拉取/);
+  assert.match(missing.log, /内部原声 8 天内没有完整成功的每周拉取/);
 });

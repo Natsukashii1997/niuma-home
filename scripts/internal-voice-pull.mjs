@@ -8,7 +8,7 @@ import { createInternalVoice } from '../server/internal-voice.mjs';
 const [from, to] = process.argv.slice(2);
 if (!from || !to) { console.error('用法：node scripts/internal-voice-pull.mjs <开始 YYYY-MM-DD> <结束 YYYY-MM-DD>'); process.exit(1); }
 const db = openDb();
-const voice = createInternalVoice(db);
+const voice = createInternalVoice(db, { resetInterrupted: false });
 const started = Date.now();
 try {
   const { runId, done } = voice.start({ from, to, trigger: 'manual' });
