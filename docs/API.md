@@ -484,3 +484,16 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `GET /api/v3/chatgpt-bridge/next`（插件）：长轮询 25 秒，返回 `{ job: { id, type: "send" | "history", url, text? } | null }`。
 - `POST /api/v3/chatgpt-bridge/jobs/:id`（插件）：`{ type: "alive" }` 报平安（20 秒一次）、`{ type: "delta" | "done", text }`（到目前为止的完整回复）、`{ type: "history", messages }`、`{ type: "error", error }`。任务不存在或已结束返回 404。
 - 插件两个接口沿用收藏插件的来源与配对码校验（`x-niuma-collect-code`）。时限：插件不在线时立即失败；15 秒没人取走、取走后 60 秒没有任何回传，都以错误结束，提示到 ChatGPT 页面核对。
+
+## 内部原声 · 企微会话存档（2026-11-10，#49）
+
+从公司企微会话存档（`https://x.lumiclass.com`，只读）拉**大学辅导**（部门 `大学销售企微-*`）和**国际课程**（`国课销售企微-*`）销售的对话，申诉部门不拉。只存两类：客户单聊的全部消息（含销售的话，留上下文）、群聊里客户本人的发言。表：`chat_conversations`、`chat_messages`（按 `msg_id` 去重，`msg_time` 是北京时间原样）、`chat_pull_runs`（每次拉取一行）。
+
+- `GET /api/v3/internal-voice/status`：`{ auto, tokenConfigured, lines, maxDays, schedule: [{ trigger: weekly|monthly, label, from, to, pulled }], stored: { messages, customerMessages, conversations, earliest, latest }, runs: [最近 10 次 { id, trigger, from, to, state, stats, error, startedAt, finishedAt }] }`。token 只回「已配置 / 未配置」。
+- `POST /api/v3/internal-voice/pull/preview` `{ from, to }`（YYYY-MM-DD，结束不晚于今天，最多 31 天）：只核对范围，不连接口、不写数据 → `{ previewId, from, to, days, lines, scope, existing, tokenConfigured, running }`。
+- `POST /api/v3/internal-voice/pull/confirm` `{ previewId }`（10 分钟内、只能用一次）→ `{ runId }`，拉取在后台跑，进度看 `status.runs`。同时只跑一次，再拉回 `409 PULL_RUNNING`。
+- 自动拉取：设置 `internal_voice_auto`（默认 `0`）开着时，服务每小时看一次：上一周（周一至周日）没拉过就拉，再看上个月。只有 `done` 算拉过；`partial` / `failed` 下个小时再拉，重复消息按 `msg_id` 去重。
+- `state`：`running` / `done` / `partial`（个别会话重试 3 次仍失败，可再拉一次补齐）/ `failed`（token 失效、无权限、服务重启中断等）。`stats`：`staff`、`singles`、`groups`、`conversationsDone`、`conversationsFailed`、`messages`（本次新入库）、`customerMessages`、`voice`（语音条数，本期不转写）。
+- 错误码：`RANGE_INVALID`、`RANGE_TOO_LONG`、`PREVIEW_EXPIRED`、`PULL_RUNNING`、`LUMIST_TOKEN_MISSING`（503）；拉取中的 `LUMIST_UNAUTHORIZED` / `LUMIST_FORBIDDEN` / `LUMIST_FAILED` 记在该次 `error`。
+- 会话列表按最近消息倒序：遇到早于开始日期的就停；翻完再重读第 1 页（最多 5 次）补上翻页期间来了新消息、跳到最前的会话。单个请求 60 秒超时，失败（含 429）重试 3 次；token 失效、无权限时整次停下记 `failed`。
+- 接口坑：`/api/staff/list` 分页参数是 `limit`（`size` 不生效，固定 10 条）；消息列表时间筛选 `msg_start_time` / `msg_end_time` 两个都传才生效；`msg_content` 里的文件地址 1 小时失效，只存 `file_url`。

@@ -8,17 +8,23 @@ import * as marketing from "./routes/marketing.mjs";
 import * as assistants from "./routes/assistants.mjs";
 import * as workspace from "./routes/workspace.mjs";
 import * as v3 from "./routes/v3.mjs";
+import * as internalVoice from "./routes/internal-voice.mjs";
+import { internalVoiceFor } from "./internal-voice.mjs";
 
 const port = Number(process.env.PORT || 5280);
 const dist = path.resolve("dist");
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json" };
 const db = openDb();
-const routes = [marketing, assistants, workspace, v3].flatMap((m) => m.routes(db));
+const routes = [marketing, assistants, workspace, v3, internalVoice].flatMap((m) => m.routes(db));
 // 猛鬼兽推送 Codex 重置：每 10 分钟看一眼开关，开着且满 4 小时才去检查；关着什么都不做。
 const codexPush = createCodexPush(db);
 const pushTick = () => codexPush.tick().catch((error) => console.error("Codex 推送检查失败", error));
 setTimeout(pushTick, 5_000).unref();
 setInterval(pushTick, 600_000).unref();
+// 内部原声自动拉取：每小时看一眼开关，开着且上一周 / 上个月还没拉过才拉；关着什么都不做。
+const voiceTick = () => internalVoiceFor(db).tick();
+setTimeout(voiceTick, 60_000).unref();
+setInterval(voiceTick, 3_600_000).unref();
 
 // 带扩展名的路径按 dist 内文件返回，其余一律返回 index.html（前端路由）。
 async function serveStatic(res, urlPath) {

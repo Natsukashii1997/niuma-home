@@ -15,14 +15,14 @@ const monthLog = daysAgo => `${ymd(daysAgo).slice(0, 7)}.log`;
 
 // 在临时 HOME / base 里跑真实的 health-check.sh；只把外部边界换成桩：
 // verify-release.sh、sqlite3、df、osascript。不碰真实服务、数据库，也不弹通知。
-function scenario(t, { verifyExit, verifyOut, sqlite, freeKb, backupFail = false, logLines = [], dailyBackups = 0, launchdLines = 0 }) {
+function scenario(t, { verifyExit, verifyOut, sqlite, freeKb, backupFail = false, logLines = [], dailyBackups = 0, launchdLines = 0, voiceAuto = '', voiceWeekly = '' }) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workdesk-health-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const put = (file, text, mode = 0o644) => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text, { mode }); };
   put('repo/scripts/health-check.sh', fs.readFileSync(new URL('../scripts/health-check.sh', import.meta.url)));
   put('repo/scripts/verify-release.sh', `printf '%s\\n' "${verifyOut}"\nexit ${verifyExit}\n`);
   // .backup 真的落一个文件（或按需失败）；其余查询返回固定文本
-  put('bin/sqlite3', `#!/bin/sh\ncase "$*" in *".backup "*) f=$(printf '%s' "$*" | sed "s/.*\\.backup '\\(.*\\)'.*/\\1/"); ${backupFail ? 'echo "Error: unable to open database file"; exit 1' : 'printf "db" > "$f"'};; *) printf '%s\\n' "${sqlite}";; esac\n`, 0o755);
+  put('bin/sqlite3', `#!/bin/sh\ncase "$*" in *internal_voice_auto*) printf '%s' "${voiceAuto}";; *chat_pull_runs*) printf '%s' "${voiceWeekly}";; *".backup "*) f=$(printf '%s' "$*" | sed "s/.*\\.backup '\\(.*\\)'.*/\\1/"); ${backupFail ? 'echo "Error: unable to open database file"; exit 1' : 'printf "db" > "$f"'};; *) printf '%s\\n' "${sqlite}";; esac\n`, 0o755);
   put('bin/df', `#!/bin/sh\nprintf 'Filesystem 1024-blocks Used Available Capacity Mounted\\n/dev/x 1 1 ${freeKb} 1%% /\\n'\n`, 0o755);
   put('bin/osascript', `#!/bin/sh\ncat > /dev/null\nprintf '%s\\n' "$@" >> "${path.join(root, 'notify.txt')}"\n`, 0o755);
   put('data/work-desk.db', 'db');
@@ -67,4 +67,16 @@ test('巡检有项不过：昨天缺记录、备份失败都算，退出码 1，
   assert.match(r.log, /未通过 5 项/);
   for (const line of ['错误日志不为空', '数据库完整性检查不过', '磁盘只剩 1 GB', '每日备份失败', '没有巡检记录，launchd 可能没跑']) assert.ok(r.log.includes(line), line);
   assert.deepEqual(r.notify.trim().split('\n').slice(1, 2), ['未通过 5 项：错误日志不为空（1 行）']);
+});
+
+test('内部原声自动拉取开着时查最近 8 天完整成功（done）的每周拉取：有就记一行，没有算不过；关着不查', macOnly, t => {
+  const base = { verifyExit: 0, verifyOut: '✓', sqlite: 'ok', freeKb: 10 * 1024 * 1024 };
+  const off = scenario(t, base);
+  assert.doesNotMatch(off.stdout, /内部原声/);
+  const pulled = scenario(t, { ...base, voiceAuto: '1', voiceWeekly: '2026-11-02 至 2026-11-08（done）' });
+  assert.equal(pulled.status, 0);
+  assert.match(pulled.stdout, /✓ 内部原声每周拉取：2026-11-02 至 2026-11-08（done）/);
+  const missing = scenario(t, { ...base, voiceAuto: '1' });
+  assert.equal(missing.status, 1);
+  assert.match(missing.log, /内部原声 8 天内没有完整成功的每周拉取/);
 });

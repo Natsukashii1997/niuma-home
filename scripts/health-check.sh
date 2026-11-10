@@ -1,5 +1,5 @@
 #!/bin/bash
-# 每日巡检（不调用模型）：发布回读 7 项 + 数据库完整性 + 磁盘余量 + 每日数据库备份（写后回读，只保留 7 份）+ 昨天有没有巡检记录。
+# 每日巡检（不调用模型）：发布回读 7 项 + 数据库完整性 + 磁盘余量 + 每日数据库备份（写后回读，只保留 7 份）+ 内部原声每周拉取（开着才查）+ 昨天有没有巡检记录。
 # 不碰数据，只写 <NiumaHome>/backups/ 的每日备份和 evidence/health/ 的日志。
 # 结果每次追加一行到 <NiumaHome>/evidence/health/<年-月>.log；只有未通过时才弹本机通知。
 # 用法：
@@ -100,7 +100,13 @@ if [ -f "$DB" ]; then
   else bad "每日备份失败：$DAILY"; fi
 fi
 
-# 5. 昨天有没有巡检记录：巡检自己没跑（launchd 停了、路径变了）也得有人知道。首次运行之前没有记录，不查。
+# 5. 内部原声自动拉取（设置里开着才查）：最近 8 天要有一次完整成功（done）的每周拉取，不然定时没跑、或一直有会话拉不下来也没人知道
+if [ -f "$DB" ] && [ "$(sqlite3 -readonly "$DB" "SELECT value FROM settings WHERE key='internal_voice_auto';" 2>/dev/null)" = "1" ]; then
+  WEEKLY=$(sqlite3 -readonly "$DB" "SELECT range_from || ' 至 ' || range_to || '（' || state || '）' FROM chat_pull_runs WHERE trigger='weekly' AND state='done' AND finished_at >= strftime('%Y-%m-%dT%H:%M:%S','now','-8 days') ORDER BY id DESC LIMIT 1;" 2>/dev/null)
+  [ -n "$WEEKLY" ] && ok "内部原声每周拉取：$WEEKLY" || bad "内部原声 8 天内没有完整成功的每周拉取（失败或有会话没拉到），看 /api/v3/internal-voice/status"
+fi
+
+# 6. 昨天有没有巡检记录：巡检自己没跑（launchd 停了、路径变了）也得有人知道。首次运行之前没有记录，不查。
 YDAY=$(date -v-1d +%F)
 if grep -qs "^$YDAY " "$LOG_DIR/${YDAY%-??}.log"; then ok "昨天（${YDAY}）有巡检记录"
 elif [ -z "$(cat "$LOG_DIR"/20[0-9][0-9]-[0-9][0-9].log 2>/dev/null | awk -v y="$YDAY" '$1 < y' | head -1)" ]; then ok "首次运行，不查昨天的记录"

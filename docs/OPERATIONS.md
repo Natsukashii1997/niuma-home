@@ -53,6 +53,13 @@
    最后手段（会丢掉切换之后的全部写入，先确认）：停服务 `launchctl bootout gui/$(id -u)/cn.niuma-home.server`，用 `cp "<证据目录>/apply-<时间>/work-desk-before-apply.db" data/work-desk.db` 恢复，再 `bash scripts/release-app.sh --use <当前快照名>` 拉起服务。
 - revision 平时不可删（I-10）：回退命令在同一事务里临时摘掉删除触发器、删完立即恢复，是迁移切换的唯一例外；测试见 `tests/strategy-migrate.test.mjs`。
 
+## 内部原声拉取（#49）
+
+- token：macOS 钥匙串 `niuma-home.lumist` / `lumist-pat`（会话存档 PAT，`lst_` 开头）。换 token：`security add-generic-password -U -s niuma-home.lumist -a lumist-pat -w`（回车后按提示输入，不写在命令行里），再用 `security find-generic-password -s niuma-home.lumist -a lumist-pat -w | head -c 8` 核对前缀。token 不进仓库、日志和页面。
+- 自动拉取：设置 `internal_voice_auto` 走预览 → 确认 → 回读改成 `1`；每日巡检会查最近 8 天有没有成功的每周拉取。
+- 手动拉取：服务在跑时走 `POST /api/v3/internal-voice/pull/preview` → `confirm`。隔离数据目录试拉用命令行：`WORKDESK_DATA_DIR=<目录> node scripts/internal-voice-pull.mjs 2026-11-02 2026-11-08`；**不要**对正在被服务使用的数据目录再开命令行拉。
+- 量：一周两条业务线约 1 万多个会话请求，并发 3，几十分钟；一次最多 31 天。
+
 ## 每日巡检
 
 - 每日巡检：launchd 任务 `cn.niuma-home.health` 每天 08:30 跑 `scripts/health-check.sh`（不调用模型，不碰数据）：发布回读 7 项 + 数据库完整性 + 磁盘余量 + 每日数据库备份（`backups/work-desk-<日期>-daily.db`，写后回读，只留 7 份）+ 昨天有没有巡检记录（巡检自己停了也要有人知道）；结果追加到 `~/Library/Application Support/NiumaHome/evidence/health/<年-月>.log`，未通过才弹本机通知。在主工作区执行 `bash scripts/health-check.sh --install` / `--uninstall` 安装或卸载；任务借服务外壳 `NiumaHomeServer.app` 的 node 启动（[LESSONS](LESSONS.md) L-08）。

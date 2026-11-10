@@ -180,6 +180,52 @@ const SCHEMA = `
     reject_reason TEXT
   );
 
+  -- 内部原声（#49）：公司企微会话存档只读拉取，只存大学辅导、国际课程销售的客户单聊全部消息与群里客户本人的发言。
+  -- 会话：单聊 id 是会话 id，群聊 id 是群 chat_id；群的员工字段是首次发现它的员工。
+  CREATE TABLE IF NOT EXISTS chat_conversations (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    staff_userid TEXT,
+    staff_name TEXT,
+    staff_dept TEXT,
+    customer_id TEXT,
+    customer_name TEXT,
+    customer_remark TEXT,
+    name TEXT,
+    last_msg_time TEXT,
+    updated_at TEXT NOT NULL
+  );
+  -- 消息：msg_time 是北京时间 YYYY-MM-DD HH:MM:SS（接口原样）；from_role 1 客户、2 员工；撤回记一行 revoke，content 是被撤回的 msg_id。
+  CREATE TABLE IF NOT EXISTS chat_messages (
+    msg_id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    msg_time TEXT NOT NULL,
+    msg_type TEXT NOT NULL,
+    from_id TEXT,
+    from_role INTEGER,
+    from_name TEXT,
+    content TEXT NOT NULL DEFAULT '',
+    file_name TEXT,
+    file_url TEXT,
+    run_id INTEGER,
+    fetched_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS chat_messages_time ON chat_messages(msg_time);
+  CREATE INDEX IF NOT EXISTS chat_messages_conversation ON chat_messages(conversation_id, msg_time);
+  -- 拉取记录：trigger 为 weekly / monthly / manual；state 为 running / done / partial / failed；stats 是计数 JSON。
+  CREATE TABLE IF NOT EXISTS chat_pull_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trigger TEXT NOT NULL,
+    range_from TEXT NOT NULL,
+    range_to TEXT NOT NULL,
+    state TEXT NOT NULL,
+    stats TEXT NOT NULL DEFAULT '{}',
+    error TEXT,
+    started_at TEXT NOT NULL,
+    finished_at TEXT
+  );
+
   -- V3：本地业务记录；外部原件只读，用户确认后保存本地版本。
   CREATE TABLE IF NOT EXISTS v3_documents (
     kind TEXT NOT NULL,
@@ -194,6 +240,7 @@ export function openDb(dir = dataDir) {
   mkdirSync(path.join(dir, "images"), { recursive: true });
   const db = new DatabaseSync(path.join(dir, "work-desk.db"));
   db.exec("PRAGMA foreign_keys = ON;");
+  db.exec("PRAGMA busy_timeout = 5000;"); // 备份或命令行同时读写时等锁 5 秒，不直接报 SQLITE_BUSY（#49 审查）
   db.exec(SCHEMA);
   db.exec("BEGIN IMMEDIATE");
   try {

@@ -4,6 +4,18 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 内部原声批 1：企微会话存档拉取（2026-11-10，Claude，常浩「按方案接入」、四项已定改动与三个细节「都按推荐」，后纠正为周 / 月 / 手动拉取且不看申诉；已提交未合并（PR 关联 #50）、未发布）
+
+- 时间：开工 `2026-11-10 16:50`（试拉证据目录 `时间.txt`）。★ 来由：常浩拿到公司企微会话存档接口与 token，要做「用户之声」内部原声；总规格 #49，批 1 拆为 #50。
+- 改了哪些文件：`server/internal-voice.mjs`（拉取：员工按部门筛大学销售企微-* / 国课销售企微-*，会话列表早于开始日期就停，单聊全存、群只留客户发言，按 msg_id 去重，并发 3、失败重试 3 次；周 / 月自动 tick；手动预览 → 确认；token 读钥匙串）；`server/routes/internal-voice.mjs`（status、pull/preview、pull/confirm）；`server/db.mjs`（`chat_conversations`、`chat_messages`、`chat_pull_runs`）；`server/index.mjs`（每小时 tick）；`server/v3-settings.mjs`（`internal_voice_auto` 默认 0）；`scripts/internal-voice-pull.mjs`（命令行试拉）；`scripts/health-check.sh`（开关开着时查 8 天内的每周拉取）；测试 `tests/internal-voice.test.mjs`（新 8 项）、`tests/health-check.test.mjs`（+1 项）；文档 `docs/API.md`「内部原声」、`docs/OPERATIONS.md`「内部原声拉取」、`AGENTS.md`（结构、AI 接入的数据对象）、`REQUIREMENTS.md`（Voice 两个标签）、`docs/LESSONS.md` L-19。
+- 测试：`npm test` 原样结果 `ℹ pass 838` / `ℹ fail 0`（审查修正后）；`npm run check:style` 样式检查通过。
+- 验证：隔离数据目录 `~/Library/Application Support/NiumaHome/evidence/内部原声-试拉-20261110/data`，真实接口拉 2026-11-02 至 11-08：`done（356s）`，37 个销售、6406 个单聊、3504 个群，入库 101837 条（客户 66137、语音 3288），失败 0。对账脚本抽 20 个单聊 + 10 个群比对接口条数，原样结果 `对上 30 / 30`；申诉部门混入 0、群里员工发言混入 0；时间范围 `2026-11-02 00:00:16` 至 `2026-11-08 23:59:52`。日志 `pull.log`、`reconcile.log`。审查修正后用新代码在同一隔离库重拉同一周：`done（430s）`，会话 9915 个（第一次之后又有 5 个会话来了新消息），新增 `messages: 0`，库内总数仍 101837，没有重复入库（`pull-2-修正后重拉.log`）。
+- 代码审查（独立子 agent，只读）：高 1 中 3 已修——自动拉取只认 `done`，`partial` 下个小时重拉、巡检只认 `done`；会话列表翻完重读第 1 页补上翻页期间跳到最前的会话；任一任务让整次失败后各路不再取新会话、结束状态只写一次（`WHERE state='running'`）；拉取 promise 接住收尾错误防止未处理 rejection。低风险一并修：429 重试、单请求 60 秒超时、命令行不重置服务的 running 记录、过期预览清理、范围内没消息的会话不记。补测 4 项（多页、重排、中途 token 失效、partial 重拉）。
+- 截图：无（本批无界面）。
+- 发布与回读：未发布。发布后要常浩同意再把 `internal_voice_auto` 改为 1（设置预览 → 确认 → 回读），并用接口手动拉一次上一周进正式库。
+- 与授权不一致之处、遗留问题、范围外发现：① 群里客户发言 4.8 万条，是单聊客户发言（1.8 万）的 2.6 倍，大群闲聊多，批 3 提炼时要按群类型或发言内容再筛。② 当前 token 属于提需机器人超管账号（`ai:read:all`，2027-01-07 到期），建议管理员给牛马之家单独签 PAT，换时只改钥匙串。③ 语音 3288 条未转写。④ 页面上的手动拉取按钮与开关在批 4 样稿里一起做。⑤ 顺手改动、改变已有行为：`server/db.mjs` 的 `openDb` 加 `PRAGMA busy_timeout = 5000`，所有连接遇到锁会等最多 5 秒再报错（原来立刻报 SQLITE_BUSY），为了每日备份或命令行与服务同时读写时不直接失败。
+- 本轮新坑：L-19。
+
 ## 批 1 验收 #32：12 月技术试跑、覆盖率阈值校准、反例对照（2026-11-09，Claude，常浩点「照计划开始」；校准结论 PR #44 未合并；无需发布）
 
 - 时间：开工 `2026-11-09 21:59`（签发凭据时刻，命令输出的签发时间）。★ 来由：批 1 验收票 #32 的前三项。
