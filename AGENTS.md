@@ -67,6 +67,7 @@ scripts/
   check-style.mjs    样式、监听与时间显示硬规则检查（npm run check:style；npm test 里也跑）
   smoke-pages.mjs    页面冒烟（npm run smoke）：全部路由 + ⌘K + 抽屉，查 JS 异常、console 错误与非 GET 请求，截图；verify-release.sh 加 NIUMA_SMOKE=1 可选调用
   health-check.sh    每日巡检（只读；--install 装成 launchd 任务）
+  internal-voice-pull.mjs  内部原声命令行拉取（隔离数据目录试拉用；服务在跑时走接口）
 docs/
   agents/            Matt Pocock 技能读的约定：issue 看板、分流标签、领域文档
   LESSONS.md         开发实录与坑（排障、发布、改样式或脚本前先搜）
@@ -122,6 +123,7 @@ single-context：根目录 `GLOSSARY.md` 与 `docs/adr/`，用到时再建。见
 - **执行方**：月度用户策略 skill（`my-skills` 的 `monthly-user-strategy`）在 Claude 或 Codex 会话里运行，换执行方不改工作台代码。
 - **留痕**：submission 记 `agent`（来自凭据，服务端认定）、`declared`（AI 自报的执行方、模型、skill 版本，只作声明）、`submitted_at`；revision 记 `submission_id`、`confirmed_by`、`confirmed_from`、`created_at` 和输入（时间线快照指纹、证据版本、规则版本）。
 - **数据对象**：Claude、Codex 的用量、ChatGPT 网页桥等只展示或采集 AI 数据的功能，不算执行方，各自见对应模块。
+- **内部原声的原始数据**（#49）：从公司企微会话存档只读拉取（`server/internal-voice.mjs`），不是 AI 产出、不调用模型；后续由 skill 经 MCP 读取、提炼原声卡（批 2、3）。
 - **安全目标**：在单用户可信本机环境里，阻止默认智能体工具误操作，隔离提交与确认，保留可审计记录；不声称能防御同一用户环境下有任意本地执行权限的恶意进程。
 
 ## 发布
