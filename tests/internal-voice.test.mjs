@@ -270,7 +270,7 @@ test('中途 token 失效：整次记 failed 且不被后续进度改回 running
   assert.ok(api.calls() < 30, `失败后很快停下（实际 ${api.calls()} 次请求）`);
 });
 
-test('自动拉取遇到 partial：下次 tick 重拉同一周补齐', async t => {
+test('自动拉取遇到 partial：先让未尝试的月窗口执行，再重拉同一周补齐', async t => {
   const db = database(t);
   saveSetting(db, 'internal_voice_auto', '1');
   const flaky = voiceFor(db, fakeApi({ failAlways: new Set(['c2']) }));
@@ -278,6 +278,7 @@ test('自动拉取遇到 partial：下次 tick 重拉同一周补齐', async t =
   assert.equal(flaky.status().runs[0].state, 'partial');
   assert.deepEqual(flaky.status().schedule[0].pulled, false);
   const healthy = voiceFor(db, fakeApi());
+  await healthy.tick().done; // 月窗口不能被失败的周窗口饿死
   const next = healthy.tick();
   assert.ok(next, 'partial 不算拉过');
   await next.done;
@@ -294,4 +295,189 @@ test('服务注册路由时 v3 兜底排在最后：内部原声接口不被 501
   const { routes: v3Routes } = await import('../server/routes/v3.mjs');
   const all = [...routes(db, { fetchImpl: fakeApi().fetchImpl, token: () => TOKEN, now: () => NOW }), ...v3Routes(db)];
   assert.notEqual(match(all, 'GET', '/api/v3/internal-voice/status').handler, match(v3Routes(db), 'GET', '/api/v3/internal-voice/status').handler);
+});
+
+test('自动补拉跨周、跨月遗留的 partial / failed，不重拉已有 done 的窗口，不自动重放手动范围', async t => {
+  const db = database(t);
+  saveSetting(db, 'internal_voice_auto', '1');
+  const seed = db.prepare('INSERT INTO chat_pull_runs (trigger,range_from,range_to,state,started_at) VALUES (?,?,?,?,?)');
+  seed.run('weekly', '2026-10-19', '2026-10-25', 'failed', '2026-10-26T00:00:00Z');
+  seed.run('monthly', '2026-10-01', '2026-10-31', 'partial', '2026-11-01T00:00:00Z');
+  seed.run('weekly', '2026-10-12', '2026-10-18', 'failed', '2026-10-19T00:00:00Z');
+  seed.run('weekly', '2026-10-12', '2026-10-18', 'done', '2026-10-20T00:00:00Z');
+  seed.run('manual', '2026-10-02', '2026-10-03', 'failed', '2026-10-04T00:00:00Z');
+  const voice = voiceFor(db, fakeApi(), { now: () => Date.parse('2026-12-01T10:00:00+08:00') });
+  const retried = [];
+  for (let i = 0; i < 5; i++) {
+    const job = voice.tick();
+    if (!job) break;
+    await job.done;
+    const r = voice.status().runs.find(r => r.id === job.runId);
+    retried.push([r.trigger, r.from, r.to, r.state]);
+  }
+  assert.ok(retried.some(r => r.join() === 'weekly,2026-10-19,2026-10-25,done'), JSON.stringify(retried));
+  assert.ok(retried.some(r => r.join() === 'monthly,2026-10-01,2026-10-31,done'), JSON.stringify(retried));
+  assert.equal(retried.length, 4, '两个当前窗口、两个历史失败窗口');
+  assert.equal(voice.tick(), null);
+});
+
+test('周窗口持续失败时月窗口仍能执行，月窗口持续失败时历史周窗口仍能重试', async t => {
+  const db = database(t);
+  saveSetting(db, 'internal_voice_auto', '1');
+  const voice = voiceFor(db, fakeApi({ status: 401 }));
+  const triggers = [];
+  for (let i = 0; i < 4; i++) {
+    const job = voice.tick();
+    assert.ok(job);
+    await job.done;
+    triggers.push(voice.status().runs.find(r => r.id === job.runId).trigger);
+  }
+  assert.deepEqual(triggers, ['weekly', 'monthly', 'weekly', 'monthly']);
+});
+
+test('收尾 done 和 failed 连续写库失败后，同一服务实例在库恢复时核对状态并自动补拉', async t => {
+  const db = database(t);
+  saveSetting(db, 'internal_voice_auto', '1');
+  db.prepare("INSERT INTO chat_pull_runs (trigger,range_from,range_to,state,started_at) VALUES ('monthly','2026-10-01','2026-10-31','done','x')").run();
+  db.exec(`CREATE TABLE fault_switch (enabled INTEGER); INSERT INTO fault_switch VALUES (1);
+    CREATE TRIGGER fail_finish BEFORE UPDATE OF state ON chat_pull_runs
+    WHEN NEW.state != 'running' AND (SELECT enabled FROM fault_switch)=1
+    BEGIN SELECT RAISE(ABORT, 'synthetic finish failure'); END;`);
+  const errors = [];
+  t.mock.method(console, 'error', (...args) => errors.push(args));
+  const voice = voiceFor(db, fakeApi());
+  const job = voice.tick();
+  await job.done;
+  assert.equal(db.prepare('SELECT state FROM chat_pull_runs WHERE id=?').get(job.runId).state, 'running', '两个收尾写入确实均失败');
+  assert.ok(errors.length > 0, '故障有明确日志');
+  assert.equal(voice.status().schedule[0].pulled, false, '已结束但未写回的 running 不算覆盖');
+  const before = voice.status().stored.messages;
+  assert.ok(before > 0, '消息已提交');
+  assert.equal(voice.tick(), null, '库未恢复时不启动新拉取');
+  db.exec('UPDATE fault_switch SET enabled=0');
+  const retry = voice.tick();
+  assert.ok(retry, '无需重启即可补拉');
+  await retry.done;
+  const runs = voice.status().runs;
+  assert.equal(runs.find(r => r.id === job.runId).state, 'failed', '悬空 running 已核对为失败');
+  assert.equal(runs.find(r => r.id === retry.runId).state, 'done');
+  assert.equal(voice.status().stored.messages, before, '已提交消息重拉不重复');
+});
+
+// 在假接口边界篡改单个响应，覆盖所有分页入口（包括会话第一页补扫）。
+function changedApi(change) {
+  const api = fakeApi();
+  return { fetchImpl: async (...args) => {
+    const res = await api.fetchImpl(...args), body = structuredClone(await res.json());
+    change(new URL(args[0]), body);
+    return { ...res, json: async () => body };
+  } };
+}
+
+for (const [name, change] of [
+  ['员工列表缺少 items', (u, b) => { if (u.pathname === '/api/staff/list') delete b.data.items; }],
+  ['会话列表缺少 total_page', (u, b) => { if (u.pathname.endsWith('/customer/conversation/list')) delete b.data.total_page; }],
+  ['消息总数超过当前一页却缺少 total_page', (u, b) => { if (u.searchParams.get('conversation_id') === 'c1') { b.data.total = 501; delete b.data.total_page; } }],
+  ['消息页码不符', (u, b) => { if (u.searchParams.get('conversation_id') === 'c1') b.data.page = 2; }],
+  ['消息总页数不合法', (u, b) => { if (u.searchParams.get('conversation_id') === 'c1') b.data.total_page = -1; }],
+  ['消息总数与页内容不符', (u, b) => { if (u.searchParams.get('conversation_id') === 'c1') b.data.items.pop(); }],
+  ['消息 items 为非数组', (u, b) => { if (u.searchParams.get('conversation_id') === 'c1') b.data.items = {}; }],
+]) {
+  test(`异常分页不能记为完整成功：${name}`, async t => {
+    const db = database(t), voice = voiceFor(db, changedApi(change));
+    await voice.start({ from: '2026-11-02', to: '2026-11-08', trigger: 'manual' }).done;
+    assert.ok(['partial', 'failed'].includes(voice.status().runs[0].state), JSON.stringify(voice.status().runs[0]));
+  });
+}
+
+for (const [name, change] of [
+  ['缺少 msg_id', m => { delete m.msg_id; }],
+  ['缺少 msg_time', m => { delete m.msg_time; }],
+  ['缺少 msg_type', m => { delete m.msg_type; }],
+  ['缺少 from_role', m => { delete m.from_role; }],
+  ['msg_id 为对象', m => { m.msg_id = {}; }],
+  ['日期不存在', m => { m.msg_time = '2026-11-31 10:00:00'; }],
+  ['时间超出 24 小时', m => { m.msg_time = '2026-11-03 25:00:00'; }],
+  ['日期早于预览范围', m => { m.msg_time = '2026-10-01 10:00:00'; }],
+  ['日期晚于预览范围', m => { m.msg_time = '2026-11-09 00:00:00'; }],
+  ['不支持的时区格式', m => { m.msg_time = '2026-11-03T10:00:00Z'; }],
+]) {
+  test(`异常消息不能静默跳过或超范围入库：${name}`, async t => {
+    const db = database(t), voice = voiceFor(db, changedApi((u, b) => {
+      if (u.searchParams.get('conversation_id') === 'c1') change(b.data.items[0]);
+    }));
+    await voice.start({ from: '2026-11-02', to: '2026-11-08', trigger: 'manual' }).done;
+    const status = voice.status();
+    assert.equal(status.runs[0].state, 'partial');
+    assert.equal(status.runs[0].stats.conversationsFailed, 1);
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM chat_messages WHERE conversation_id='c1'").get().n, 0, '整个异常会话待补拉，不存不完整消息');
+    assert.ok(status.stored.earliest >= '2026-11-02 00:00:00');
+    assert.ok(status.stored.latest <= '2026-11-08 23:59:59');
+  });
+}
+
+test('合法空列表允许零页或一页；合法消息接受北京时间小数秒与 T 分隔，保留两端日期边界', async t => {
+  for (const total_page of [0, 1]) {
+    const db = database(t), voice = voiceFor(db, { fetchImpl: async () => ({ status: 200, json: async () => ({ status: 'success', data: { items: [], total: 0, total_page } }) }) });
+    await voice.start({ from: '2026-11-02', to: '2026-11-08', trigger: 'manual' }).done;
+    assert.equal(voice.status().runs[0].state, 'done', `空列表 total_page=${total_page}`);
+    assert.equal(voice.status().stored.messages, 0);
+  }
+  const db = database(t), voice = voiceFor(db, changedApi((u, b) => {
+    if (u.searchParams.get('conversation_id') === 'c1') {
+      b.data.items[0].msg_time = '2026-11-02T00:00:00.001';
+      b.data.items[1].msg_time = '2026-11-08 23:59:59.999';
+    }
+  }));
+  await voice.start({ from: '2026-11-02', to: '2026-11-08', trigger: 'manual' }).done;
+  assert.equal(voice.status().runs[0].state, 'done');
+  assert.equal(voice.status().stored.earliest, '2026-11-02 00:00:00');
+  assert.equal(voice.status().stored.latest, '2026-11-08 23:59:59');
+});
+
+test('会话第一页补扫也校验响应结构，群消息先校验再过滤角色', async t => {
+  let reads = 0;
+  const db = database(t), voice = voiceFor(db, changedApi((u, b) => {
+    if (u.pathname.endsWith('/customer/conversation/list') && u.searchParams.get('staff_userid') === 'u-daxue' && ++reads === 2) delete b.data.items;
+  }));
+  await voice.start({ from: '2026-11-02', to: '2026-11-08', trigger: 'manual' }).done;
+  assert.equal(voice.status().runs[0].state, 'failed');
+  const groupDb = database(t), groupVoice = voiceFor(groupDb, changedApi((u, b) => {
+    if (u.searchParams.get('group_chat_id') === 'g1') delete b.data.items[0].from_role;
+  }));
+  await groupVoice.start({ from: '2026-11-02', to: '2026-11-08', trigger: 'manual' }).done;
+  assert.equal(groupVoice.status().runs[0].state, 'partial');
+  assert.equal(groupDb.prepare("SELECT COUNT(*) n FROM chat_messages WHERE kind='group'").get().n, 0);
+});
+
+test('消息分页第二页缺失或页间总数变化时，会话整体留待补拉', async t => {
+  for (const change of [d => { delete d.items; }, d => { d.total++; }]) {
+    const db = database(t), api = bigApi(), voice = voiceFor(db, { fetchImpl: async (...args) => {
+      const res = await api.fetchImpl(...args), b = await res.json(), u = new URL(args[0]);
+      if (u.searchParams.get('conversation_id') === 'cv000' && u.searchParams.get('page') === '2') change(b.data);
+      return { ...res, json: async () => b };
+    } });
+    await voice.start({ from: '2026-11-02', to: '2026-11-08', trigger: 'manual' }).done;
+    assert.equal(voice.status().runs[0].state, 'partial');
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM chat_messages WHERE conversation_id='cv000'").get().n, 0);
+  }
+});
+
+test('resetInterrupted=false 不回收其他实例的 running；本实例真正运行时 tick 不重入', async t => {
+  const db = database(t);
+  saveSetting(db, 'internal_voice_auto', '1');
+  db.prepare("INSERT INTO chat_pull_runs (trigger,range_from,range_to,state,started_at) VALUES ('weekly','2026-11-02','2026-11-08','running','x')").run();
+  db.prepare("INSERT INTO chat_pull_runs (trigger,range_from,range_to,state,started_at) VALUES ('monthly','2026-10-01','2026-10-31','done','x')").run();
+  const voice = voiceFor(db, fakeApi(), { resetInterrupted: false });
+  assert.equal(voice.tick(), null);
+  assert.equal(voice.status().schedule[0].pulled, true);
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
+  const api = fakeApi(), active = voiceFor(db, { fetchImpl: async (...args) => { await held; return api.fetchImpl(...args); } }, { resetInterrupted: false });
+  const job = active.start({ from: '2026-11-02', to: '2026-11-08', trigger: 'manual' });
+  assert.equal(active.tick(), null);
+  assert.throws(() => active.start({ from: '2026-11-02', to: '2026-11-08', trigger: 'manual' }), e => e.code === 'PULL_RUNNING');
+  release();
+  await job.done;
+  assert.equal(db.prepare('SELECT state FROM chat_pull_runs WHERE id=1').get().state, 'running');
 });

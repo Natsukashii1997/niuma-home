@@ -76,6 +76,10 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
   wait = ms => new Promise(r => setTimeout(r, ms)) } = {}) {
   let running = null;
   const previews = new Map();
+  // 收尾写库失败时保留本实例的待核对写入；下次检查或手动拉取前先补写，不把无人执行的 running 当作覆盖。
+  // 进程退出后的恢复仍由 resetInterrupted 负责，不接管其他实例（如独立 CLI）的运行记录。
+  const unsettled = new Map();
+  const settle = () => { for (const write of unsettled.values()) write(); };
   const iso = () => new Date(now()).toISOString();
   // 服务重启时还标着 running 的，一定是被打断的（命令行试拉传 resetInterrupted=false，不碰服务那边的记录）
   if (resetInterrupted) db.prepare("UPDATE chat_pull_runs SET state='failed', error='服务重启，本次拉取中断', finished_at=? WHERE state='running'").run(iso());
@@ -90,17 +94,42 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
       } catch {}
       if (status === 401) throw fail(502, 'LUMIST_UNAUTHORIZED', '会话存档接口不认这个 token（可能已过期或被吊销），请更新钥匙串里的 token');
       if (status === 403) throw fail(502, 'LUMIST_FORBIDDEN', '这个 token 没有会话存档查看权限');
-      if (body?.status === 'success') return body.data;
+      if (status >= 200 && status < 300 && body?.status === 'success') return body.data;
       if (attempt >= 3 || (status >= 400 && status < 500 && status !== 429)) throw fail(502, 'LUMIST_FAILED', `会话存档接口读取失败（HTTP ${status || '无响应'}）`);
       await wait(attempt * 1000);
     }
   }
-  // 翻页拉完；each 返回 false 时提前停。
+  // 每一页（包括第一页补扫）都校验，缺字段不能解释成空结果或末页。
+  async function readPage(path, size, auth, page) {
+    const d = await api(`${path}${path.includes('?') ? '&' : '?'}page=${page}&${size}`, auth);
+    const limit = Number(size.split('=')[1]);
+    if (!d || !Array.isArray(d.items) || !Number.isSafeInteger(d.total) || d.total < 0 ||
+        !Number.isSafeInteger(d.total_page) || (d.total_page !== Math.ceil(d.total / limit) && !(d.total === 0 && d.total_page === 1)) ||
+        (d.page !== undefined && d.page !== page) || (d.size !== undefined && d.size !== limit) ||
+        page > Math.max(1, d.total_page) || d.items.length !== Math.min(limit, Math.max(0, d.total - (page - 1) * limit)))
+      throw fail(502, 'LUMIST_INVALID_PAGE', '会话存档分页响应不完整或页码、总数不一致，本次不能记为完整拉取');
+    return d;
+  }
+  // 翻页拉完；each 返回 false 时提前停。页间总数变化也不能证明完整，留到下一次补拉。
   async function pages(path, size, auth, each) {
+    let total;
     for (let page = 1; ; page++) {
-      const d = await api(`${path}${path.includes('?') ? '&' : '?'}page=${page}&${size}`, auth);
-      if (each(d.items || []) === false || !d.items?.length || page >= (d.total_page || 1)) return;
+      const d = await readPage(path, size, auth, page);
+      if (total !== undefined && d.total !== total) throw fail(502, 'LUMIST_INVALID_PAGE', '会话存档翻页期间总数变化，请重新拉取');
+      total = d.total;
+      if (each(d.items) === false || page >= d.total_page) return;
     }
+  }
+
+  function messageTime(m, start, end) {
+    if (!m || typeof m.msg_id !== 'string' || !m.msg_id.trim() || typeof m.msg_type !== 'string' || !m.msg_type.trim() ||
+        !Number.isSafeInteger(roleOf(m)) || typeof m.msg_time !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(m.msg_time))
+      throw fail(502, 'LUMIST_INVALID_MESSAGE', '会话存档消息缺少必要字段或时间格式无效');
+    const time = m.msg_time.replace('T', ' ').slice(0, 19);
+    if (!validDate(time.slice(0, 10)) || time.slice(11, 13) > '23' || time.slice(14, 16) > '59' || time.slice(17, 19) > '59' || time < start || time > end)
+      throw fail(502, 'LUMIST_INVALID_MESSAGE', '会话存档消息时间无效或超出已确认的日期范围');
+    return time;
   }
 
   async function execute(runId, from, to, auth) {
@@ -109,8 +138,15 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
     const stats = { staff: 0, singles: 0, groups: 0, conversationsDone: 0, conversationsFailed: 0, messages: 0, customerMessages: 0, voice: 0 };
     let aborted = null; // 第一个让整次失败的错误；记下后各路不再取新任务
     // 只改还在 running 的记录：结束状态只写一次，中途的进度不会把它改回 running
-    const save = (state, error) => db.prepare("UPDATE chat_pull_runs SET state=?, stats=?, error=?, finished_at=? WHERE id=? AND state='running'")
-      .run(state, JSON.stringify(stats), error ?? null, state === 'running' ? null : iso(), runId);
+    const save = (state, error) => {
+      const values = [state, JSON.stringify(stats), error ?? null, state === 'running' ? null : iso(), runId];
+      const write = () => {
+        db.prepare("UPDATE chat_pull_runs SET state=?, stats=?, error=?, finished_at=? WHERE id=? AND state='running'").run(...values);
+        unsettled.delete(runId);
+      };
+      if (state !== 'running') unsettled.set(runId, write);
+      write();
+    };
     const insert = db.prepare(`INSERT OR IGNORE INTO chat_messages (msg_id,conversation_id,kind,msg_time,msg_type,from_id,from_role,from_name,content,file_name,file_url,run_id,fetched_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`);
     const upsert = db.prepare(`INSERT INTO chat_conversations (id,kind,staff_userid,staff_name,staff_dept,customer_id,customer_name,customer_remark,name,last_msg_time,updated_at)
@@ -142,7 +178,7 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
           await pages(path, 'size=100', auth, take);
           for (let round = 0; round < 5; round++) {
             fresh = 0;
-            take((await api(`${path}&page=1&size=100`, auth)).items || []);
+            take((await readPage(path, 'size=100', auth, 1)).items);
             if (!fresh) break;
           }
         }
@@ -157,7 +193,12 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
         const path = kind === 'single' ? `/api/chats/by/conversation/message/list?conversation_id=${encodeURIComponent(id)}&${range}`
           : `/api/chats/by/group/message/list?group_chat_id=${encodeURIComponent(id)}&${range}`;
         try {
-          await pages(path, 'size=500', auth, items => { rows.push(...items.filter(m => kind === 'single' || roleOf(m) === CUSTOMER)); });
+          await pages(path, 'size=500', auth, items => {
+            for (const m of items) {
+              const time = messageTime(m, start, end); // 先核对原始消息，再按群聊角色过滤
+              if (kind === 'single' || roleOf(m) === CUSTOMER) rows.push({ ...m, msg_time: time });
+            }
+          });
         } catch (error) {
           if (error.code === 'LUMIST_UNAUTHORIZED' || error.code === 'LUMIST_FORBIDDEN') throw error;
           stats.conversationsFailed++;
@@ -171,8 +212,7 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
             upsert.run(id, kind, s.userid, s.name, s.department_name, kind === 'single' ? it.external_userid ?? null : null, kind === 'single' ? it.external_name ?? null : null,
               kind === 'single' ? it.staff_remark ?? null : null, kind === 'group' ? it.name ?? null : null, it.last_msg_time ?? null, at);
             for (const m of rows) {
-              if (!m.msg_id || !m.msg_time) continue;
-              const added = insert.run(m.msg_id, id, kind, String(m.msg_time).replace('T', ' ').slice(0, 19), m.msg_type || '', m.from ?? null, roleOf(m), nameOf(m),
+              const added = insert.run(m.msg_id, id, kind, m.msg_time, m.msg_type, m.from ?? null, roleOf(m), nameOf(m),
                 contentOf(m), m.file_name ?? null, m.file_url ?? null, runId, at).changes;
               if (!added) continue;
               stats.messages++;
@@ -186,7 +226,7 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
         if (stats.conversationsDone % 50 === 0) save('running');
       }), () => aborted);
       if (aborted) throw aborted;
-      save(stats.conversationsFailed ? 'partial' : 'done', stats.conversationsFailed ? `${stats.conversationsFailed} 个会话重试 3 次仍读取失败，再拉一次可补齐` : null);
+      save(stats.conversationsFailed ? 'partial' : 'done', stats.conversationsFailed ? `${stats.conversationsFailed} 个会话未完整读取，再拉一次可补齐` : null);
     } catch (error) {
       if (!error.status) console.error('内部原声拉取失败', error);
       save('failed', error.status ? error.message : '拉取失败，详情见服务日志');
@@ -196,6 +236,7 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
   function start({ from, to, trigger }) {
     checkRange(from, to, now());
     if (running) throw fail(409, 'PULL_RUNNING', '已有一次拉取在进行，等它结束再拉');
+    settle();
     const auth = token();
     if (!auth) throw fail(503, 'LUMIST_TOKEN_MISSING', '钥匙串里没有会话存档 token（niuma-home.lumist / lumist-pat）');
     const runId = Number(db.prepare("INSERT INTO chat_pull_runs (trigger,range_from,range_to,state,started_at) VALUES (?,?,?,'running',?)").run(trigger, from, to, iso()).lastInsertRowid);
@@ -205,8 +246,9 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
   }
 
   const runRow = r => r && { id: r.id, trigger: r.trigger, from: r.range_from, to: r.range_to, state: r.state, stats: JSON.parse(r.stats), error: r.error, startedAt: r.started_at, finishedAt: r.finished_at };
-  // 自动拉取只把 done（和正在跑的）算拉过；partial、failed 下个小时再拉，重复消息靠 msg_id 去重
-  const covered = (trigger, { from, to }) => !!db.prepare("SELECT 1 FROM chat_pull_runs WHERE trigger=? AND range_from=? AND range_to=? AND state IN ('done','running')").get(trigger, from, to);
+  // 自动拉取只把 done（和真正正在跑的）算覆盖；partial、failed 留在补拉队列，重复消息靠 msg_id 去重
+  const covered = (trigger, { from, to }) => db.prepare("SELECT id, state FROM chat_pull_runs WHERE trigger=? AND range_from=? AND range_to=? AND state IN ('done','running')").all(trigger, from, to)
+    .some(r => r.state === 'done' || !unsettled.has(r.id));
 
   return {
     // 手动拉取第一步：只核对范围并说明会拉什么，不连接口、不写数据；返回 previewId，10 分钟内确认有效。
@@ -225,12 +267,26 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
       return { runId: start({ from: p.from, to: p.to, trigger: 'manual' }).runId };
     },
     start,
-    // 自动拉取：开关开着、上一周（或上个月）还没拉过就拉；一次只拉一个，先周后月。服务每小时调一次。
+    // 自动拉取：当前周 / 月窗口加历史未完成窗口；按最久未尝试的优先，避免失败的周任务饿死月任务。每小时一次，只拉一个。
     tick() {
-      if (running || getSettings(db)[AUTO_KEY] !== '1') return null;
-      for (const [trigger, range] of [['weekly', lastWeek(now())], ['monthly', lastMonth(now())]]) {
-        if (covered(trigger, range)) continue;
-        try { return start({ ...range, trigger }); }
+      if (running) return null;
+      try { settle(); }
+      catch (error) { console.error('内部原声拉取收尾仍未写入：', error.message); return null; }
+      if (getSettings(db)[AUTO_KEY] !== '1') return null;
+      const pending = db.prepare(`SELECT trigger, range_from AS 'from', range_to AS 'to', MAX(id) AS attempt
+        FROM chat_pull_runs WHERE trigger IN ('weekly','monthly')
+        GROUP BY trigger, range_from, range_to HAVING MAX(state IN ('done','running'))=0`).all();
+      const candidates = [['weekly', lastWeek(now())], ['monthly', lastMonth(now())]]
+        .filter(([trigger, range]) => !covered(trigger, range))
+        .map(([trigger, range]) => ({ trigger, ...range, attempt: 0 }));
+      for (const item of pending) {
+        const current = candidates.find(c => c.trigger === item.trigger && c.from === item.from && c.to === item.to);
+        if (current) current.attempt = item.attempt;
+        else candidates.push(item);
+      }
+      candidates.sort((a, b) => a.attempt - b.attempt);
+      for (const { trigger, from, to } of candidates) {
+        try { return start({ from, to, trigger }); }
         catch (error) { console.error('内部原声自动拉取没有开始：', error.message); return null; }
       }
       return null;
