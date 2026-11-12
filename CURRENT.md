@@ -26,6 +26,17 @@
 - 与授权不一致之处、遗留问题、范围外发现：① 基线 PNG 不入库（常浩 11-19 定，同 10-23 那条），放本机持久目录；换电脑或目录被清掉时发布前检查会因「缺基线」拦下，要在 main 上重拍。骨架（my-skills project-starter）还没有 `baseline` 这个可选项，要不要带回骨架另议。② 业务、知识库、时间线、首页依赖飞书或本机数据，隔离环境没有演示数据，没进基线清单。③ 没接 CI：基线是在 macOS 上拍、常浩在 macOS 上确认的，Ubuntu 的字体渲染不同，CI 里比必然失败；装 Chromium 每次还要多 1～2 分钟。
 - 本轮新坑：L-21。★
 
+## PR #58 交叉审查返修（2026-11-12，Codex，常浩授权逐项核实、先失败后修复；未提交、未推送、未发布）
+
+- 时间：开工 `2026-11-12 16:03`（`date '+%F %H:%M:%S'` 记录；此前只读核对约定、报告与代码）。★ 来由：`evidence/2026-11-12-codex-fix/xreview/report.md` 的 2 项高危、1 项中危同类缺口与 1 项测试缺口，本轮全部核实成立。
+- 改了哪些文件：`server/internal-voice.mjs`（员工 / 单聊 / 群聊记录先校验再筛选、共享合法时间校验、消息页内 / 跨页重复拒绝、角色先验类型与 1/2 枚举）；`tests/internal-voice.test.mjs`（新增 34 项，覆盖失败、补拉、幂等及 HTTP 500/429 防线）；`docs/API.md`（同步必要字段、异常与重试语义）；本节 `CURRENT.md`。指定证据目录 `summary.md` 末尾追加「交叉审查返修」，完整日志在 `rework/`。
+- 测试：最终定向（内部原声、入口、来源校验、交接格式）原样 `ℹ tests 81` / `ℹ pass 81` / `ℹ fail 0`（`rework/13-focused-final.log`）；内部原声 `node --test tests/internal-voice.test.mjs` 原样 `ℹ pass 71` / `ℹ fail 0`（`rework/08-xr4-green.log`）。全量 `npm test` 原样 `ℹ tests 900` / `ℹ pass 822` / `ℹ fail 78` / `ℹ skipped 0`，退出码 1（`rework/09-full-test.log`）：77 项直接报 `listen EPERM: operation not permitted 127.0.0.1`，1 项静态缓存服务子进程因同一监听错误提前退出；全量未通过。`npm run check:style` 通过，`npm run build` 成功（资源块 >500 kB 警告）。★ 项目无独立 Python 测试入口；本轮文件处理、测试日志封装均用 `/usr/bin/python3`，且测试 PATH 的 python3 优先系统版本。
+- 验证：start_head `b3a72e6db3e9ec1dca8732981973ac3f27da7bd7`，分支 `codex/audit-fix-1112`，初始工作区干净；只用合成上游、隔离 SQLite 与 `~/Library/Application Support/NiumaHome/evidence/2026-11-12-codex-fix/rework/test-data/`。XR1 修前 0/19、XR2 修前 0/3、XR3 修前 1/9（8 项异常失败、1 项合法兼容通过）；XR4 仅内存撤掉 HTTP 状态条件时 0/3，磁盘生产文件未撤回。
+- 截图：无（无界面改动；本沙箱浏览器不可用，未执行浏览器冒烟，不称真实 HTTP / 浏览器验证通过）。
+- 发布与回读：未发布、未改运行服务、未提交、未推送、未联网；未访问真实 data/、钥匙串或私人日志。周 / 月 / 手动入口、日期范围、部门筛选、群聊仅客户与预览确认保持原定规则；候选修复尚未进入正式 5280。
+- 与授权不一致之处、遗留问题、范围外发现：无新增授权偏离；本报告无被判不成立或已核实的无关既有缺陷，无需另开 issue，无需确认的可见行为变更。仓库没有本轮须升级版本号 / CHANGELOG 的约定，未臆造版本变更。全量与浏览器验证仍受环境限制。唯一下一步：在允许监听的环境，以本 worktree 和隔离数据重跑 `npm test`，要求 0 失败后再推进 PR；本轮不提交、不联网、不合并。
+- 本轮新坑：无。
+
 ## 独立审计 4 项高危修复（2026-11-12，Codex，常浩授权本 worktree 核实、先失败后修复；未提交、未发布）
 
 - 时间：开工 `2026-11-12 11:31`（`date '+%F %H:%M:%S'` 记录；此前为约定、报告与代码只读核对）。★ 来由：server-core ① 与 #55 高危 1–3；中低危不在本次范围。

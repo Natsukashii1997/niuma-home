@@ -63,8 +63,22 @@ export function contentOf(m) {
   }
   return '';
 }
-const roleOf = m => Number(m.from_role?.value ?? m.from_role) || null;
+const roleOf = m => {
+  const raw = m.from_role;
+  const value = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw.value : raw;
+  // 已有契约：1 客户、2 员工；只兼容明确的数字字符串，不让 Number 把布尔值、数组猜成客户。
+  return value === 1 || value === 2 ? value : value === '1' ? 1 : value === '2' ? 2 : null;
+};
 const nameOf = m => (m.from_detail && !Array.isArray(m.from_detail) && (m.from_detail.external_name || m.from_detail.name)) || null;
+const nonempty = value => typeof value === 'string' && value.trim().length > 0;
+// 列表和消息共用北京时间校验；缺失、非法日期均不是“更早的会话”。
+function localTime(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(value)) return null;
+  const time = value.replace('T', ' ').slice(0, 19);
+  if (!Number.isFinite(dayMs(time.slice(0, 10))) || !validDate(time.slice(0, 10)) ||
+      time.slice(11, 13) > '23' || time.slice(14, 16) > '59' || time.slice(17, 19) > '59') return null;
+  return time;
+}
 
 // 有限并发：一次最多 n 个请求，别压公司服务器。stop() 为真时各路不再取新任务。
 async function pool(items, n, fn, stop = () => false) {
@@ -122,12 +136,11 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
   }
 
   function messageTime(m, start, end) {
+    const time = localTime(m?.msg_time);
     if (!m || typeof m.msg_id !== 'string' || !m.msg_id.trim() || typeof m.msg_type !== 'string' || !m.msg_type.trim() ||
-        !Number.isSafeInteger(roleOf(m)) || typeof m.msg_time !== 'string' ||
-        !/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(m.msg_time))
+        !Number.isSafeInteger(roleOf(m)) || !time)
       throw fail(502, 'LUMIST_INVALID_MESSAGE', '会话存档消息缺少必要字段或时间格式无效');
-    const time = m.msg_time.replace('T', ' ').slice(0, 19);
-    if (!validDate(time.slice(0, 10)) || time.slice(11, 13) > '23' || time.slice(14, 16) > '59' || time.slice(17, 19) > '59' || time < start || time > end)
+    if (time < start || time > end)
       throw fail(502, 'LUMIST_INVALID_MESSAGE', '会话存档消息时间无效或超出已确认的日期范围');
     return time;
   }
@@ -157,7 +170,13 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
       // 1. 员工：只要两条业务线、有会话的
       const staff = [];
       // 这个接口的分页参数是 limit，size 不生效（L-19）
-      await pages('/api/staff/list', 'limit=100', auth, items => { staff.push(...items.filter(s => lineOf(s.department_name) && s.has_conversation)); });
+      await pages('/api/staff/list', 'limit=100', auth, items => {
+        for (const s of items) {
+          if (!s || !nonempty(s.userid) || typeof s.department_name !== 'string' || typeof s.has_conversation !== 'boolean')
+            throw fail(502, 'LUMIST_INVALID_RECORD', '会话存档员工记录缺少必要字段或类型无效');
+          if (lineOf(s.department_name) && s.has_conversation) staff.push(s);
+        }
+      });
       stats.staff = staff.length;
       // 2. 每人在范围内有消息的会话。列表按最近消息倒序：早于开始日期就停；
       //    翻页期间有会话来了新消息会跳回第 1 页，所以翻完再看第 1 页，直到没有没见过的会话（最多 5 次）。
@@ -169,8 +188,11 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
           const take = items => {
             let older = false;
             for (const it of items) {
-              if ((it.last_msg_time || '') < start) { older = true; continue; }
-              const map = kind === 'customer' ? singles : groups, key = kind === 'customer' ? it.id : it.chat_id;
+              const key = kind === 'customer' ? it?.id : it?.chat_id, time = localTime(it?.last_msg_time);
+              if (!nonempty(key) || !time)
+                throw fail(502, 'LUMIST_INVALID_RECORD', '会话存档会话记录缺少必要标识或最近消息时间无效');
+              if (time < start) { older = true; continue; }
+              const map = kind === 'customer' ? singles : groups;
               if (!map.has(key)) { map.set(key, { it, s }); fresh++; }
             }
             return !older;
@@ -189,13 +211,16 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
       // 3. 每个会话按日期范围拉消息；群聊只留客户本人的发言；范围内没有消息的会话不记
       const jobs = [...[...singles.values()].map(x => ({ ...x, kind: 'single' })), ...[...groups.entries()].map(([id, x]) => ({ ...x, id, kind: 'group' }))];
       await pool(jobs, concurrency, guard(async job => {
-        const { it, s, kind } = job, id = kind === 'single' ? it.id : job.id, rows = [];
+        const { it, s, kind } = job, id = kind === 'single' ? it.id : job.id, rows = [], seen = new Set();
         const path = kind === 'single' ? `/api/chats/by/conversation/message/list?conversation_id=${encodeURIComponent(id)}&${range}`
           : `/api/chats/by/group/message/list?group_chat_id=${encodeURIComponent(id)}&${range}`;
         try {
           await pages(path, 'size=500', auth, items => {
             for (const m of items) {
               const time = messageTime(m, start, end); // 先核对原始消息，再按群聊角色过滤
+              // 统计本次响应的唯一 ID，不能以新增入库数判断完整性；正常重复拉取允许全部已存在。
+              if (seen.has(m.msg_id)) throw fail(502, 'LUMIST_INVALID_PAGE', '会话存档消息分页出现重复记录，本会话留待补拉');
+              seen.add(m.msg_id);
               if (kind === 'single' || roleOf(m) === CUSTOMER) rows.push({ ...m, msg_time: time });
             }
           });
