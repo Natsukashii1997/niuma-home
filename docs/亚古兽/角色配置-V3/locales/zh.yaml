@@ -1,0 +1,18 @@
+# 亚古兽的提示语覆盖（安装到 ~/.hermes/profiles/agumon/locales/zh.yaml；Hermes 先读本 profile 的覆盖，再读内置）。
+# 要求（常浩 2026-11-12，及亚古兽记忆里常浩定的口径）：沉淀提示符合企业分身人设——专业克制，说清对象和实质变化，不拟人化、不调侃，不把读取说成升级。
+# 只改措辞，占位符与内置 locales/zh.yaml 保持一致。
+display.skills.summary_callback: '📌 方法沉淀｜{summary}'
+display.skills.created: '新增技能「{name}」{files}'
+display.skills.updated: '修订技能「{name}」{files}'
+display.skills.deleted: '停用技能「{name}」{files}'
+display.skills.partial: '技能「{name}」有文件变化但操作未完成{files}，待核对后才算生效'
+display.review.summary_cli: '  📌 复盘沉淀｜{summary}'
+display.review.summary_callback: '📌 复盘沉淀｜{summary}'
+display.review.skill_result: '技能「{name}」{verb}{path}'
+display.review.skill_patched_verbose: '技能「{name}」修订：「{old}」→「{new}」'
+display.review.skill_changed_verbose: '技能「{name}」{verb}：{description}'
+display.review.skill_message_verbose: '{message}'
+display.review.memory_op_line: '{glyph} {label}：{preview}'
+display.review.label.skill: '技能'
+display.review.label.memory: '工作记忆'
+display.review.label.user: '对常浩的认识'
