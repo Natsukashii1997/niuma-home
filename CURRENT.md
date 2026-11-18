@@ -4,6 +4,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 接入基线截图对比与已定内容登记表（2026-11-19，Claude，常浩批准的复盘提案 P3 一批，由主会话派出；分支 `claude/ui-baseline` 开 PR，基线待常浩确认、确认前不合并；未发布）
+
+- 时间：开工 `2026-11-19 05:05`（`date '+%F %H:%M'` 记录）。★ 来由：月度复盘里「补数据时顺带把定稿版式改掉、再恢复」出现过三次；把起步骨架（my-skills `8a984b4`）的基线截图对比和 `docs/DECIDED.md` 接进来，并拍候选基线给常浩确认。
+- 改了哪些文件：新增 `scripts/ui-baseline.mjs`、`scripts/ui-baseline.spec.mjs`（骨架原件，加了 setup / style / clock / ready 四个可选项、单像素阈值 0.02、减少动态效果、关 LCD 子像素文字）、`scripts/ui-baseline-setup.mjs`（隔离服务：临时数据、假 lark-cli 与 codex、端口 5296，给培养路径写固定演示进度）、`scripts/ui-baseline-preload.mjs`（只给隔离服务：固定服务端时间、断外网）、`docs/design/pages.json`（4 页 × 1280 / 1440）、`docs/design/baseline.css`（截图时藏状态栏和 Agent 页模型列表报错条）、`docs/DECIDED.md`（首批 18 行，待常浩确认）、`tests/ui-baseline.test.mjs`（骨架自测，CI 没有 Chromium 时跳过）、`tests/release-ui-baseline.test.mjs`（发布脚本里对比的位置）；改 `scripts/release-app.sh`（新快照建好后先比基线，不一致删快照、不切换）、`scripts/check-style.mjs`（`ALLOWED_DEPS` 加 `@playwright/test`，理由：只给基线截图用、不进页面代码）、`package.json` / `package-lock.json`（`@playwright/test` 1.64.0，对应本机已缓存的 Chromium 1248）、`AGENTS.md`（导航表加一行指向 `docs/DECIDED.md`）、`docs/OPERATIONS.md`「发布」（加基线对比一条，改正原来写反的「先备份再生成快照」顺序）、`docs/LESSONS.md`（L-21）。
+- 测试：`npm test` 原样结果 `ℹ pass 843` / `ℹ fail 0`（`ℹ skipped 0`，本机有 Chromium，骨架自测真跑了）；`npm run check:style` 样式检查通过；基线对比见「验证」。★
+- 验证：隔离端口 5296 + 临时数据目录，看了策略、促销打法、Agent、培养路径四页的 1280 / 1440；同一版本连比三次都过；用 `git archive` + `vite build` 模拟一份发布快照（不跑 release-app.sh、不碰 launchd），原样对比通过，把 `--panel` 改成米色后 8 张全部失败。日志在 `~/Library/Application Support/NiumaHome/evidence/ui-baseline/verify-20261119/final/`。
+- 截图：基线图在分支的 `docs/design/baseline/`（**没提交**，见下一条）；另存一份 1280 宽给主会话做确认页。
+- 发布与回读：未发布。
+- 与授权不一致之处、遗留问题、范围外发现：① 基线 PNG 要不要进仓库待常浩定：OPERATIONS「交接写法」写着截图不提交进仓库（用户 2026-10-23 确认），仓库又是公开的；骨架约定基线图放 `docs/design/baseline/` 入库。这次图只留在本地 worktree，没提交、没推送；不入库的话发布前检查会因「缺基线」拦下所有发布，所以确认前不能合并。② 业务、知识库、时间线、首页依赖飞书或本机数据，隔离环境没有演示数据，没进基线清单。③ 没接 CI：基线是在 macOS 上拍、常浩在 macOS 上确认的，Ubuntu 的字体渲染不同，CI 里比必然失败；装 Chromium 每次还要多 1～2 分钟。
+- 本轮新坑：L-21。★
+
 ## 亚古兽人设 V4 安装（2026-11-12，Claude，常浩看过改动确认与试答对比后回「合并」；PR #57 已合并 `c201ad0`，已装到亚古兽 profile；牛马之家无需发布）
 
 - 时间：开工 `2026-11-12 10:40`（会话创建时刻）。★ 来由：常浩要亚古兽像企业分身——专业、严谨、干脆、直击本质，思考背后有思维建模，沉淀提示符合人设；改动与试答见 `docs/亚古兽/角色配置-V3/送审说明.md`「V4 人设深化」。

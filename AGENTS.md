@@ -13,6 +13,7 @@
 | 写交接、验收别人的交接 | [docs/templates/handoff.md](docs/templates/handoff.md) 骨架；[OPERATIONS](docs/OPERATIONS.md)「交接写法」「报告与验收」 |
 | 拆派单 | `docs/tasks/T*.md`；[OPERATIONS](docs/OPERATIONS.md)「派单流程」 |
 | 开需求、拆任务、实现、审查 | 下面「Agent skills」一节 |
+| 改界面、交互、文案，或判断某处算不算已定 | [docs/DECIDED.md](docs/DECIDED.md) 已定内容登记表；基线截图对比 `node scripts/ui-baseline.mjs compare`（先 `npm run build`，页面清单 `docs/design/pages.json`；发布脚本切换前自动跑） |
 
 ## 分工（2026-10-23 更新）
 

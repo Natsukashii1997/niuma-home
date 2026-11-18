@@ -2,7 +2,7 @@
 # 发布「牛马之家」本地应用（做法同数码世界）：把当前提交的 server、fixtures + 构建好的 dist 复制成固定快照，
 # 由 launchd 常驻服务运行；之后改开发目录不影响正在用的版本。保留最近 5 份快照和当前运行版本，可回滚。
 #
-#   bash scripts/release-app.sh              在主工作区执行：备份数据库 → 生成新快照 → 切换服务
+#   bash scripts/release-app.sh              在主工作区执行：生成新快照 → 界面基线对比 → 备份数据库 → 切换服务
 #   bash scripts/release-app.sh --use <快照名>   切回已有快照（回滚）
 #
 # 可用环境变量覆盖（验证时用一次性目录，不碰正式服务）：
@@ -43,6 +43,9 @@ else
   git -C "$ROOT" archive HEAD server fixtures package.json docs/用户情况 docs/打法库 src/modules/user/playbook.js | tar -x -C "$REL"
   (cd "$ROOT" && npx vite build --outDir "$REL/dist" --emptyOutDir --logLevel warn)
   [ -f "$REL/dist/index.html" ] || fail "构建没有产出 dist/index.html"
+  # 发布前界面基线对比：用这份新快照起隔离服务（临时数据、假 lark-cli、端口 5296），逐页和 docs/design/baseline/ 比；
+  # 不一致就不切换、删掉这份快照。界面改动经常浩同意的，先重拍基线（node scripts/ui-baseline.mjs shoot）、登记 docs/DECIDED.md、提交，再发布。
+  NIUMA_UI_APP="$REL" "$NODE" "$ROOT/scripts/ui-baseline.mjs" compare || { rm -rf "$REL"; fail "界面和基线不一致或缺基线（差异图在上面打印的证据目录），没有切换服务"; }
 fi
 
 # 切换前备份真实数据库（新代码可能补表结构）

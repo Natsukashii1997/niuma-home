@@ -183,3 +183,11 @@
 - 根因：`server/routes/v3.mjs` 末尾有兜底路由 `/^\/api\/v3\/.+$/` → `pending("V3-接口清单")`；`server/http.mjs` 的 `match` 按注册顺序取第一个匹配。新模块追加在 `v3` 之后，所有请求先被兜底接走。
 - 正确做法：新路由模块加进 `server/index.mjs` 的 `routes` 数组时放在 `v3` 前面（`tests/internal-voice.test.mjs` 断言 `v3` 在最后）；发布回读后实际请求一次本轮新接口，不只看 7 项回读。
 - 证据：本轮 CURRENT.md「内部原声批 1」一节「发布与回读」。
+
+## L-21 基线截图连拍不一致、或改了颜色也比不出来（2026-11-19）
+
+- 现象：接入基线截图对比（`scripts/ui-baseline.mjs`）时：① Agent 页同一版本连拍两次，一次有「模型列表读取失败」报错条、一次没有，对比失败；② 底部状态栏是 `position: fixed`，整页截图里压在页面中间，版本号、数据源状态每次不同；③ 把面板底色 `--panel` 从 `#FBFBFC` 改成米色 `#F3EFE6`，八张图对比全部「一致」。
+- 根因：① 隔离环境用假 codex，模型列表必然读不到，但报错条在数据回来之后才出，截图早晚决定有没有；② 整页截图按视口位置画 fixed 元素；③ Playwright 单像素颜色阈值默认 0.2（YIQ 距离），米色底和原底色只差约 0.05，被当成同一种颜色。
+- 正确做法：环境造成、时有时无的元素在 `docs/design/baseline.css` 里截图时去掉（不要只遮住，遮住了还会撑开版面）；fixed 的状态栏截图时藏掉；阈值收紧到 0.02（`scripts/ui-baseline.mjs` 的 `PIXEL_THRESHOLD`），同机连拍逐像素一致，不误报。新加页面进基线时，同一版本至少连比三次都过、再故意改一处颜色确认会失败，才算接好。
+- 证据：`~/Library/Application Support/NiumaHome/evidence/ui-baseline/verify-20261119/`（同版本连比、改面板底色的对比日志）；本轮 CURRENT.md「接入基线截图对比与已定内容登记表」一节。
+- 升级：已写进 `docs/design/baseline.css`、`scripts/ui-baseline.mjs`（机器判定：对比本身）。

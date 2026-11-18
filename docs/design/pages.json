@@ -1,0 +1,37 @@
+{
+  "evidence": "~/Library/Application Support/NiumaHome/evidence/ui-baseline",
+  "setup": "scripts/ui-baseline-setup.mjs",
+  "style": "docs/design/baseline.css",
+  "clock": "2026-11-19T10:00:00+08:00",
+  "ready": "main.main",
+  "pages": [
+    {
+      "name": "strategy",
+      "url": "http://127.0.0.1:5296/#/user/strategy",
+      "mask": [
+        ".codex-strip"
+      ]
+    },
+    {
+      "name": "playbook",
+      "url": "http://127.0.0.1:5296/#/user/playbook",
+      "mask": [
+        ".codex-strip"
+      ]
+    },
+    {
+      "name": "assistants",
+      "url": "http://127.0.0.1:5296/#/assistants",
+      "mask": [
+        ".codex-strip"
+      ]
+    },
+    {
+      "name": "mentor-path",
+      "url": "http://127.0.0.1:5296/#/mentor/path",
+      "mask": [
+        ".codex-strip"
+      ]
+    }
+  ]
+}
