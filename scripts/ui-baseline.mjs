@@ -43,7 +43,8 @@ export function readPages(root) {
   if (/^\/(private\/)?tmp(\/|$)/.test(dir)) throw new Error(`证据目录不能放 /tmp，会被系统清理（全局坑 G-01）：${dir}`);
   if (baseline !== undefined && (typeof baseline !== 'string' || !baseline)) throw new Error('pages.json 的 baseline 要写成目录路径');
   const base = path.resolve(root, (baseline ?? 'docs/design/baseline').replace(/^~(?=\/|$)/, os.homedir()));
-  if (/^\/(private\/)?tmp(\/|$)/.test(base)) throw new Error(`基线目录不能放 /tmp，会被系统清理（全局坑 G-01）：${base}`);
+  // 只查显式配置的目录：默认目录在仓库里，仓库本身在临时目录（CI、测试）时不该报
+  if (baseline !== undefined && /^\/(private\/)?tmp(\/|$)/.test(base)) throw new Error(`基线目录不能放 /tmp，会被系统清理（全局坑 G-01）：${base}`);
   if (!Array.isArray(pages) || !pages.length) throw new Error('pages.json 的 pages 是空的');
   const names = new Set();
   for (const p of pages) {

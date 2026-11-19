@@ -48,6 +48,14 @@ test('页面清单：缺字段、名字重复、证据目录在 /tmp、可选项
     assert.throws(() => readPages(root), /基线目录不能放 \/tmp/);
     pages({ evidence: '~/e', baseline: '', pages: [{ name: 'home', url: 'a' }] });
     assert.throws(() => readPages(root), /baseline 要写成目录路径/);
+    // 没写 baseline 时用仓库里的默认目录，仓库本身在 /tmp 下（Linux CI 的临时目录）也不报（#59 第一次 CI 在这里挂过）
+    const tmpRoot = tmp('ui-baseline-root-', '/tmp');
+    try {
+      write(tmpRoot, 'docs/design/pages.json', JSON.stringify({ evidence: '~/e', pages: [{ name: 'home', url: 'a' }] }));
+      assert.equal(readPages(tmpRoot).baseline, path.join(tmpRoot, 'docs/design/baseline'));
+    } finally {
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
     // 可选项：setup / style 指向的文件要存在（转成绝对路径），clock 要是合法时间
     pages({ evidence: '~/e', setup: 'no-such.mjs', pages: [{ name: 'home', url: 'a' }] });
     assert.throws(() => readPages(root), /setup 指向的文件不存在/);
