@@ -4,6 +4,16 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## 亚古兽人设：思维内核用法段修改、规程补两条（2026-11-19，Claude，#62，常浩看过改动确认和两轮试跑后回「装」；PR 待合并，已装到亚古兽）
+
+- 时间：开工 `2026-11-19 23:15`（`date` 记录）。★ 来由：常浩 12:27 说亚古兽分析项目纪要「本末倒置」；完整经过和试跑记录见 digital-twin#244 及其 CURRENT。
+- 改了哪些文件：`docs/亚古兽/角色配置-V3/SOUL.md`「思维内核」用法段（去掉「模型在思考里用，不在回答里摆」，加「结果要在回答里看得到」五样和「先定主线，再取证」）；`HERMES.md` 第 2 节加「按能力缺口带教」、第 3 节加「先加载 `thinking-mainline`」。底线逐字未改。
+- 顺带同步：源文件此前比安装副本旧，缺销售侧边栏内容（第 8 节一句、第 9 节，digital-twin 11-19 装的），这次一并补齐；现在两份源文件与 `~/.hermes/profiles/agumon/` 下的安装副本逐字一致。
+- 测试：`npm test` 原样结果 `ℹ pass 844` / `ℹ fail 0`；第一次推送没跑测试，本节缺「开工」「本轮新坑」两行，CI 的交接骨架检查失败，补齐后重跑。
+- 回滚：把 `~/Library/Application Support/DigitalTwin/evidence/agumon-thinking-install-20261119/` 里的 `SOUL.before.md`、`HERMES.before.md` 拷回，`hermes -p agumon curator restore business-analysis-coaching`，重启 `ai.hermes.gateway-agumon`。
+- 遗留：常浩要在飞书发 `/new` 才用上新人设。
+- 本轮新坑：无（只改文档也要跑 `npm test`，交接格式检查在里面；属已有规则 G-03）。
+
 ## 接入基线截图对比与已定内容登记表（2026-11-19，Claude，常浩批准的复盘提案 P3 一批，由主会话派出；分支 `claude/ui-baseline` 开 PR #59；常浩 11-19 确认基线：不入库、策略页先不进基线，登记表都对；未发布）
 
 - 时间：开工 `2026-11-19 05:05`（`date '+%F %H:%M'` 记录）。★ 来由：月度复盘里「补数据时顺带把定稿版式改掉、再恢复」出现过三次；把起步骨架（my-skills `8a984b4`）的基线截图对比和 `docs/DECIDED.md` 接进来，并拍候选基线给常浩确认。
