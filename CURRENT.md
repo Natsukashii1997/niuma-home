@@ -26,6 +26,39 @@
 - 与授权不一致之处、遗留问题、范围外发现：① 基线 PNG 不入库（常浩 11-19 定，同 10-23 那条），放本机持久目录；换电脑或目录被清掉时发布前检查会因「缺基线」拦下，要在 main 上重拍。骨架（my-skills project-starter）还没有 `baseline` 这个可选项，要不要带回骨架另议。② 业务、知识库、时间线、首页依赖飞书或本机数据，隔离环境没有演示数据，没进基线清单。③ 没接 CI：基线是在 macOS 上拍、常浩在 macOS 上确认的，Ubuntu 的字体渲染不同，CI 里比必然失败；装 Chromium 每次还要多 1～2 分钟。
 - 本轮新坑：L-21。★
 
+## 安全审计 PR #58 刷新（2026-11-17，Codex，常浩授权变基、验证与推送；待合并）
+
+- 时间：开工 `2026-11-17 18:00`。
+- 改了哪些文件：本轮只新增本节交接；现有审计实现与 900 项测试逐项复核，无缺失回归需补写。
+- 测试：`npm test` 原样 `ℹ tests 900` / `ℹ pass 900` / `ℹ fail 0`，退出 0；`npm run build` 退出 0。main 原声实现对照回归失败，完整原样日志位于 `~/Library/Application Support/NiumaHome/evidence/2026-11-17-refresh/`。
+- 验证：最新 origin/main `0ad8449`，rebase 无需重放、无冲突；只用隔离数据库与合成上游。结论为可直接合并。
+- 截图：无，未改界面。
+- 发布与回读：本轮更新指定审计分支与 PR #58，目标运行环境尚未采用。
+- 遗留问题：构建已有 >500 kB 警告；没有合并阻断项。
+- 本轮新坑：无。
+
+## PR #58 交叉审查返修（2026-11-12，Codex，常浩授权逐项核实、先失败后修复；未提交、未推送、未发布）
+
+- 时间：开工 `2026-11-12 16:03`（`date '+%F %H:%M:%S'` 记录；此前只读核对约定、报告与代码）。★ 来由：`evidence/2026-11-12-codex-fix/xreview/report.md` 的 2 项高危、1 项中危同类缺口与 1 项测试缺口，本轮全部核实成立。
+- 改了哪些文件：`server/internal-voice.mjs`（员工 / 单聊 / 群聊记录先校验再筛选、共享合法时间校验、消息页内 / 跨页重复拒绝、角色先验类型与 1/2 枚举）；`tests/internal-voice.test.mjs`（新增 34 项，覆盖失败、补拉、幂等及 HTTP 500/429 防线）；`docs/API.md`（同步必要字段、异常与重试语义）；本节 `CURRENT.md`。指定证据目录 `summary.md` 末尾追加「交叉审查返修」，完整日志在 `rework/`。
+- 测试：最终定向（内部原声、入口、来源校验、交接格式）原样 `ℹ tests 81` / `ℹ pass 81` / `ℹ fail 0`（`rework/13-focused-final.log`）；内部原声 `node --test tests/internal-voice.test.mjs` 原样 `ℹ pass 71` / `ℹ fail 0`（`rework/08-xr4-green.log`）。全量 `npm test` 原样 `ℹ tests 900` / `ℹ pass 822` / `ℹ fail 78` / `ℹ skipped 0`，退出码 1（`rework/09-full-test.log`）：77 项直接报 `listen EPERM: operation not permitted 127.0.0.1`，1 项静态缓存服务子进程因同一监听错误提前退出；全量未通过。`npm run check:style` 通过，`npm run build` 成功（资源块 >500 kB 警告）。★ 项目无独立 Python 测试入口；本轮文件处理、测试日志封装均用 `/usr/bin/python3`，且测试 PATH 的 python3 优先系统版本。
+- 验证：start_head `b3a72e6db3e9ec1dca8732981973ac3f27da7bd7`，分支 `codex/audit-fix-1112`，初始工作区干净；只用合成上游、隔离 SQLite 与 `~/Library/Application Support/NiumaHome/evidence/2026-11-12-codex-fix/rework/test-data/`。XR1 修前 0/19、XR2 修前 0/3、XR3 修前 1/9（8 项异常失败、1 项合法兼容通过）；XR4 仅内存撤掉 HTTP 状态条件时 0/3，磁盘生产文件未撤回。
+- 截图：无（无界面改动；本沙箱浏览器不可用，未执行浏览器冒烟，不称真实 HTTP / 浏览器验证通过）。
+- 发布与回读：未发布、未改运行服务、未提交、未推送、未联网；未访问真实 data/、钥匙串或私人日志。周 / 月 / 手动入口、日期范围、部门筛选、群聊仅客户与预览确认保持原定规则；候选修复尚未进入正式 5280。
+- 与授权不一致之处、遗留问题、范围外发现：无新增授权偏离；本报告无被判不成立或已核实的无关既有缺陷，无需另开 issue，无需确认的可见行为变更。仓库没有本轮须升级版本号 / CHANGELOG 的约定，未臆造版本变更。全量与浏览器验证仍受环境限制。唯一下一步：在允许监听的环境，以本 worktree 和隔离数据重跑 `npm test`，要求 0 失败后再推进 PR；本轮不提交、不联网、不合并。
+- 本轮新坑：无。
+
+## 独立审计 4 项高危修复（2026-11-12，Codex，常浩授权本 worktree 核实、先失败后修复；未提交、未发布）
+
+- 时间：开工 `2026-11-12 11:31`（`date '+%F %H:%M:%S'` 记录；此前为约定、报告与代码只读核对）。★ 来由：server-core ① 与 #55 高危 1–3；中低危不在本次范围。
+- 改了哪些文件：`server/index.mjs`（URL / 路由解码纳入异常边界，畸形 URL 回 400）；`server/internal-voice.mjs`（历史失败窗口补拉、公平排队、收尾待核对写入、分页与消息校验）；`tests/server-entry.test.mjs`（真实入口无网络子进程回归）；`tests/internal-voice.test.mjs`（调度、收尾故障、响应校验与边界回归）；`docs/API.md`（同步错误与恢复语义）；本节 `CURRENT.md`。
+- 测试：最终定向回归（含交接格式）原样结果 `ℹ pass 47` / `ℹ fail 0`（`logs/16-focused-final.log`）。最终全量 `npm test` 原样结果 `ℹ tests 866` / `ℹ pass 788` / `ℹ fail 78` / `ℹ skipped 0`，退出码 1（`logs/17-full-test-final.log`）：77 项直接报 `listen EPERM: operation not permitted 127.0.0.1`，1 项静态缓存服务子进程因同一监听错误提前退出；不声称全量通过。`npm run check:style` 通过，`npm run build` 成功（资源块 >500 kB 警告未处理）。★ 所有测试使用合成数据与隔离目录；未执行 Python 测试（项目没有独立 Python 测试入口）。
+- 验证：start_head `0ad844980879844434139a7c777d35cfca455708`，分支 `codex/audit-fix-1112`，初始工作区干净。证据与隔离数据：`~/Library/Application Support/NiumaHome/evidence/2026-11-12-codex-fix/`，总结 `summary.md`。HTTP 入口用监听边界替身发 request 事件，不启动真实服务。
+- 截图：无（无界面改动）。
+- 发布与回读：未发布、未改运行服务、未提交、未推送；未访问外部网络、真实 data/、钥匙串、私人日志。
+- 与授权不一致之处、遗留问题、范围外发现：周 / 月 / 手动方式、日期范围、部门与角色筛选及手动预览确认保留。#55 中低危、server-core 其他项本次未修。真实上游与正式运行未验证；本轮只交付未提交候选修复。唯一下一步：在允许本机监听的执行环境，用同一 worktree 与隔离数据目录重跑 `npm test`，要求 0 失败；当前环境禁止提权，不绕过限制。
+- 本轮新坑：无。
+
 ## 亚古兽人设 V4 安装（2026-11-12，Claude，常浩看过改动确认与试答对比后回「合并」；PR #57 已合并 `c201ad0`，已装到亚古兽 profile；牛马之家无需发布）
 
 - 时间：开工 `2026-11-12 10:40`（会话创建时刻）。★ 来由：常浩要亚古兽像企业分身——专业、严谨、干脆、直击本质，思考背后有思维建模，沉淀提示符合人设；改动与试答见 `docs/亚古兽/角色配置-V3/送审说明.md`「V4 人设深化」。
