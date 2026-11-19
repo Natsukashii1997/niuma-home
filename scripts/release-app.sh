@@ -43,7 +43,7 @@ else
   git -C "$ROOT" archive HEAD server fixtures package.json docs/用户情况 docs/打法库 src/modules/user/playbook.js | tar -x -C "$REL"
   (cd "$ROOT" && npx vite build --outDir "$REL/dist" --emptyOutDir --logLevel warn)
   [ -f "$REL/dist/index.html" ] || fail "构建没有产出 dist/index.html"
-  # 发布前界面基线对比：用这份新快照起隔离服务（临时数据、假 lark-cli、端口 5296），逐页和 docs/design/baseline/ 比；
+  # 发布前界面基线对比：用这份新快照起隔离服务（临时数据、假 lark-cli、端口 5296），逐页和基线比（基线在本机 ~/Library/Application Support/NiumaHome/ui-baseline/，不入库，见 docs/design/pages.json）；
   # 不一致就不切换、删掉这份快照。界面改动经常浩同意的，先重拍基线（node scripts/ui-baseline.mjs shoot）、登记 docs/DECIDED.md、提交，再发布。
   NIUMA_UI_APP="$REL" "$NODE" "$ROOT/scripts/ui-baseline.mjs" compare || { rm -rf "$REL"; fail "界面和基线不一致或缺基线（差异图在上面打印的证据目录），没有切换服务"; }
 fi

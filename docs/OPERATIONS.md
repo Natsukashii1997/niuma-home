@@ -21,7 +21,7 @@
 
 - 正式环境是 launchd 常驻服务 `cn.niuma-home.server`（端口 5280），运行 `~/Library/Application Support/NiumaHome/releases/` 下的固定快照，数据目录是主工作区的 `data/`。
 - 只在用户同意后发布：在主工作区（`main`）执行 `bash scripts/release-app.sh`。脚本会生成快照、做界面基线对比、备份数据库，再切换服务，并按保留策略清理旧快照。
-- 发布前界面基线对比（2026-11-19 起）：新快照建好后、备份数据库之前，脚本用这份快照起隔离服务（临时数据、假 lark-cli、端口 5296，不碰正式服务），把 `docs/design/pages.json` 里的页面和 `docs/design/baseline/` 逐页比；不一致就删掉这份快照、不切换。界面改动经常浩同意的：`npm run build && node scripts/ui-baseline.mjs shoot` 重拍、在 `docs/DECIDED.md` 加一行、提交，再发布。主工作区要先 `npm install`（`@playwright/test`），本机有 Playwright 的 Chromium（没有就 `npx playwright install chromium`）。
+- 发布前界面基线对比（2026-11-19 起）：新快照建好后、备份数据库之前，脚本用这份快照起隔离服务（临时数据、假 lark-cli、端口 5296，不碰正式服务），把 `docs/design/pages.json` 里的页面和基线逐页比。基线图不提交进仓库（同下面「交接写法」10-23 那条，常浩 11-19 再确认），放本机持久目录 `~/Library/Application Support/NiumaHome/ui-baseline/`，换电脑要重拍；月度用户策略页先不进基线（隔离环境没有 v2 演示数据）。不一致就删掉这份快照、不切换。界面改动经常浩同意的：`npm run build && node scripts/ui-baseline.mjs shoot` 重拍、在 `docs/DECIDED.md` 加一行、提交，再发布。主工作区要先 `npm install`（`@playwright/test`），本机有 Playwright 的 Chromium（没有就 `npx playwright install chromium`）。
 - 脚本要求工作区干净。主工作区有别人留下的未跟踪文件时，不要删改它们，只对这一次运行忽略未跟踪文件：`GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=status.showUntrackedFiles GIT_CONFIG_VALUE_0=no bash scripts/release-app.sh`。
 
 ## 发布回读

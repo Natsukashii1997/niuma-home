@@ -40,7 +40,14 @@ test('页面清单：缺字段、名字重复、证据目录在 /tmp、可选项
     pages({ evidence: '~/e', pages: [{ name: 'home', url: 'a' }, { name: 'home', url: 'b' }] });
     assert.throws(() => readPages(root), /name 重复：home/);
     pages({ evidence: '~/e', pages: [{ name: 'home', url: 'a' }] });
-    assert.deepEqual(readPages(root), { evidence: path.join(os.homedir(), 'e'), pages: [{ name: 'home', url: 'a', widths: [1280, 1440], mask: [] }] });
+    assert.deepEqual(readPages(root), { evidence: path.join(os.homedir(), 'e'), baseline: path.join(root, 'docs/design/baseline'), pages: [{ name: 'home', url: 'a', widths: [1280, 1440], mask: [] }] });
+    // baseline：基线目录可放仓库外的本机持久目录（截图不入库的项目），~ 展开；不能在 /tmp
+    pages({ evidence: '~/e', baseline: '~/Library/Application Support/X/ui-baseline', pages: [{ name: 'home', url: 'a' }] });
+    assert.equal(readPages(root).baseline, path.join(os.homedir(), 'Library/Application Support/X/ui-baseline'));
+    pages({ evidence: '~/e', baseline: '/private/tmp/b', pages: [{ name: 'home', url: 'a' }] });
+    assert.throws(() => readPages(root), /基线目录不能放 \/tmp/);
+    pages({ evidence: '~/e', baseline: '', pages: [{ name: 'home', url: 'a' }] });
+    assert.throws(() => readPages(root), /baseline 要写成目录路径/);
     // 可选项：setup / style 指向的文件要存在（转成绝对路径），clock 要是合法时间
     pages({ evidence: '~/e', setup: 'no-such.mjs', pages: [{ name: 'home', url: 'a' }] });
     assert.throws(() => readPages(root), /setup 指向的文件不存在/);

@@ -12,7 +12,9 @@
 //     style：截图时注入的样式表（toHaveScreenshot 的 stylePath），用来展开只滚内容区的页面、藏掉停不住的区域
 //     clock：浏览器里的固定时间（ISO 字符串），页面里 new Date() 显示的时间就不会每次不同
 //     ready：CSS 选择器，等它出现再截（单页应用异步读数据时用）；单页可在 pages 里各写各的 ready
-// 用法：node scripts/ui-baseline.mjs shoot     拍基线到 docs/design/baseline/<name>-<宽>.png，再登记进 docs/DECIDED.md
+//     baseline：基线图放哪（不写默认 docs/design/baseline，提交进仓库）。截图不能进仓库的（仓库公开、或用户定过截图不入库）
+//       写本机持久目录，如 "~/Library/Application Support/<项目>/ui-baseline"；不能在 /tmp。基线就不跟提交留历史，换电脑要重拍
+// 用法：node scripts/ui-baseline.mjs shoot     拍基线到基线目录（pages.json 的 baseline）<name>-<宽>.png，再登记进 docs/DECIDED.md
 //       node scripts/ui-baseline.mjs compare   逐页和基线比；有一页差异超过 MAX_DIFF_RATIO 或缺基线就以非零退出，
 //                                              差异图（-diff / -actual / -expected.png）写到 <evidence>/ui-baseline-<时间>-<随机>/
 // 本文件同时是 Playwright 的配置文件（shoot / compare 用 -c 指向自己），每页怎么截写在 ui-baseline.spec.mjs。
@@ -35,10 +37,13 @@ export const ROOT = path.resolve(process.env.UI_BASELINE_ROOT ?? path.join(path.
 export function readPages(root) {
   const file = path.join(root, 'docs', 'design', 'pages.json');
   if (!fs.existsSync(file)) throw new Error(`没有 ${path.relative(root, file)}，格式见 scripts/ui-baseline.mjs 开头`);
-  const { evidence, pages, setup, style, clock, ready } = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const { evidence, pages, setup, style, clock, ready, baseline } = JSON.parse(fs.readFileSync(file, 'utf8'));
   if (typeof evidence !== 'string' || !evidence) throw new Error('pages.json 缺 evidence（项目约定的证据目录）');
   const dir = path.resolve(root, evidence.replace(/^~(?=\/|$)/, os.homedir()));
   if (/^\/(private\/)?tmp(\/|$)/.test(dir)) throw new Error(`证据目录不能放 /tmp，会被系统清理（全局坑 G-01）：${dir}`);
+  if (baseline !== undefined && (typeof baseline !== 'string' || !baseline)) throw new Error('pages.json 的 baseline 要写成目录路径');
+  const base = path.resolve(root, (baseline ?? 'docs/design/baseline').replace(/^~(?=\/|$)/, os.homedir()));
+  if (/^\/(private\/)?tmp(\/|$)/.test(base)) throw new Error(`基线目录不能放 /tmp，会被系统清理（全局坑 G-01）：${base}`);
   if (!Array.isArray(pages) || !pages.length) throw new Error('pages.json 的 pages 是空的');
   const names = new Set();
   for (const p of pages) {
@@ -57,7 +62,7 @@ export function readPages(root) {
     extra.clock = clock;
   }
   if (ready !== undefined) extra.ready = ready;
-  return { evidence: dir, ...extra, pages: pages.map(p => ({ ...p, widths: p.widths ?? WIDTHS, mask: p.mask ?? [] })) };
+  return { evidence: dir, baseline: base, ...extra, pages: pages.map(p => ({ ...p, widths: p.widths ?? WIDTHS, mask: p.mask ?? [] })) };
 }
 
 // action：shoot 拍基线 / compare 对比。返回 Playwright 的退出码和本次输出目录
@@ -90,7 +95,7 @@ const CFG = (() => { try { return readPages(ROOT); } catch { return {}; } })();
 export default {
   testDir: path.dirname(SELF),
   testMatch: 'ui-baseline.spec.mjs',
-  snapshotPathTemplate: path.join(ROOT, 'docs', 'design', 'baseline', '{arg}{ext}'),
+  snapshotPathTemplate: path.join(CFG.baseline ?? path.join(ROOT, 'docs', 'design', 'baseline'), '{arg}{ext}'),
   reporter: 'list',
   retries: 0,
   workers: 1,
@@ -109,7 +114,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === SELF) {
   }
   let status, out;
   try { ({ status, out } = uiBaseline(ROOT, action)); } catch (e) { console.error(e.message); process.exit(2); }
-  if (action === 'shoot') console.log(status === 0 ? '基线已写到 docs/design/baseline/，记得登记进 docs/DECIDED.md' : `拍基线失败，看上面的报错；输出在 ${out}`);
+  if (action === 'shoot') console.log(status === 0 ? `基线已写到 ${readPages(ROOT).baseline}，记得登记进 docs/DECIDED.md` : `拍基线失败，看上面的报错；输出在 ${out}`);
   else console.log(status === 0 ? '和基线一致' : `和基线不一致或缺基线，差异图在 ${out}`);
   process.exitCode = status;
 }

@@ -18,8 +18,12 @@ test('发布脚本：新快照建好后先做界面基线对比，再备份数�
 });
 
 test('基线页面清单：隔离服务的地址、证据目录和截图选项', () => {
-  const { evidence, pages, setup, clock } = readPages(fileURLToPath(new URL('..', import.meta.url)));
+  const { evidence, baseline, pages, setup, clock } = readPages(fileURLToPath(new URL('..', import.meta.url)));
   assert.match(evidence, /NiumaHome\/evidence\/ui-baseline$/);
+  // 基线图不入库（常浩 10-23 定「截图不提交进仓库」、仓库公开；11-19 再确认）：放本机持久目录
+  assert.match(baseline, /Library\/Application Support\/NiumaHome\/ui-baseline$/);
+  // 月度用户策略页先不进基线：隔离环境没有 v2 演示数据，截到的是 v1 旧视图（常浩 11-19 定）
+  assert.ok(!pages.some(p => p.url.endsWith('#/user/strategy')), '策略页先不进基线');
   assert.ok(setup.endsWith('scripts/ui-baseline-setup.mjs'));
   assert.ok(clock, '要固定时间，培养路径的「今天」才不会每天变');
   for (const p of pages) assert.match(p.url, /^http:\/\/127\.0\.0\.1:5296\/#\//, `${p.name} 要指向隔离服务的端口 5296，不能是正式 5280`);
