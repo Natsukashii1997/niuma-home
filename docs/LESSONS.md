@@ -50,7 +50,7 @@
 - 根因：抽屉和地图是同级子元素，都用了 `key={who}`。
 - 正确做法：同级的不同组件，key 加前缀区分（如 `drawer-${who}`）；改了列表或同级组件，验收时在开发页（`npm run dev`）看一次控制台。
 - 证据：提交 `5d45dce`；CURRENT.md「培养路径接上真实数据 T14」的范围外发现与「常驻提示可关闭」一节。
-- 升级：未升级。
+- 升级：〔提醒〕不升级（2026-11-19，积压清单组 16）：复发代价低，开发页控制台就能看到。原记录：未升级。
 
 ## L-05 硬规矩靠每轮人工核对，各轮范围不一（2026-10-23 升级）
 
@@ -138,6 +138,7 @@
 - 根因：`pickBox` 在候选全被拒时不报错，挑「重叠面积最少」的那个交差。真正把候选全拒掉的是两处小错：① 判引线挡不挡路时，标牌正好在小人头顶、引线是一条竖线，剩下的零长段落在小人框里，把所有「直着下来」的候选都判成了挡路；② 标牌最低一档只看山脊线，没让开山脊上冒出的帐篷，擦边一碰就整档作废。
 - 正确做法：摆位规则改了以后，用节点脚本把各宽度、各状态的候选逐个打出来，看是否落到回退分支（每个候选的「压到谁」都列出来），别只看最后位置；判碰撞前去掉零长段，两头按方向收几 px；新加的规则（引线不穿过别的标牌、营地、另一个小人；小牌离营地远就有竖引线）写成测试，并先改回旧摆法确认测试会失败。
 - 证据：`tests/mentor-path.test.mjs`「当前标牌的引线：不穿过另一张标牌……」；CURRENT.md「培养路径地图改成双脊合峰」一节；证据目录 `~/Library/Application Support/NiumaHome/evidence/培养路径山体优化-20261027/双脊合峰样稿/`。
+- 升级：〔机检〕关闭（2026-11-19，积压清单组 15）：核实坑已被代码消除：`src/modules/projects/mentor-path.js` 第 205 行起量引线时两头各收 4px、去掉零长段；靠 `tests/mentor-path.test.mjs` 第 156、171 行两条用例守住（原记录：改回旧摆法会报红），测试接进 CI（`.github/workflows/ci.yml` 每个 PR 和推 main 都跑 `npm test`；main 没开分支保护，CI 红了不拦合并）。原记录：没有升级行。
 
 ## L-15 换飞书应用时 open_id 跟着变，写死的身份和存下来的 actor 都会失效（2026-10-27）
 
@@ -146,6 +147,8 @@
 - 正确做法：服务端飞书身份只在 `server/lark-identity.mjs` 定义（profile、App ID、本人 open_id），其余模块引用；换应用时先用新应用 `whoami` 拿本人 open_id，对各数据源做只读探测，再用 `npm run migrate:lark-identity` 这类「预览 → 备份 → 确认写 → 回读」的脚本迁存下来的 actor；历史回执不改写。
 - 证据：issue #5；本轮 CURRENT.md「服务端飞书身份迁到猛鬼兽」一节；只读探测与副本演练记录在该节「验证」行。
 - 第 2 次（2026-11-02，issue #8）：默认身份换成亚古兽（常浩下 `ou_6fac…`），猛鬼兽保留自言自语和推送。改成两个身份对象 + 唯一调用入口 `larkRun`，每个模块显式写用哪个身份，`tests/lark-identity.test.mjs` 检查分配；迁移脚本改为猛鬼兽 → 亚古兽，正式库只有 1 条简报绑定要迁。
+- 升级：〔机检〕部分升级（2026-11-19 补写升级行）：`tests/lark-identity.test.mjs` 第 21 行查 `server/` 下各模块只经 `larkRun` 调 lark-cli、身份只用 `server/lark-identity.mjs` 的 `AGUMON` / `MENGGUI`，接进 CI（`npm test`）；不覆盖：模块里另写死的 `ou_…` 字面量、数据库里存下的 actor（换应用时仍靠迁移脚本手动迁）。已批：积压清单组 14，已提升为全局 G-43。原记录：没有升级行。
+- 提升：已提升为全局 G-43（2026-11-19，agent-kit#83）。
 
 ## L-16 Safari 网页应用打开时用磁盘里的旧首页：发布换了哈希就黑屏，刷新才好（2026-10-28）
 
@@ -162,6 +165,8 @@
 - 正确做法：读历史和发送前都先等消息出现（空会话等满 10 秒照常继续）；发送后以「提问多了一条、最后一条是回复」认新回复，不按回复条数下标取。等待用 MutationObserver，不用定时轮询（后台标签页里计时器会被放慢）。
 - 证据：issue #15；`browser-extension/niuma-collect/chatgpt.js`；本轮 CURRENT.md「Agent 接入 ChatGPT 会话」一节「验证」行。
 - 第 2 次（2026-11-07，正式环境）：消息出来了，回复正文还要再晚一点——那一刻回复里只有读屏隐藏标题，页面上显示成「ChatGPT 说：」。隐藏标题的 textContent 是「ChatGPT 说：ChatGPT」，和 innerText 对不上，按 textContent 去不掉。改为按 innerText 去掉隐藏标题，读历史等到每条回复都有正文（最多 10 秒）。
+- 升级：〔提醒〕未升级（2026-11-19 补写升级行：`browser-extension/niuma-collect/chatgpt.js` 的等待逻辑没有测试，`tests/chatgpt-bridge.test.mjs` 只测服务端的桥）。已批：积压清单组 8，已提升为全局 G-36。原记录：没有升级行。
+- 提升：已提升为全局 G-36（2026-11-19，agent-kit#83）。
 
 ## L-18 开发页（Vite）发出的写请求全部被来源校验拦下：代理改写了 Host（2026-11-08）
 
@@ -169,6 +174,8 @@
 - 根因：`vite.config.js` 的代理写成字符串简写 `proxy: { "/api": api }`，Vite 会把它展开成 `{ target, changeOrigin: true }`（`node_modules/vite/dist/node/chunks/dep-*.js`：`opts = { target: opts, changeOrigin: true }`），转发时 Host 被改成服务端口；`server/http.mjs` 的 `checkOrigin` 要求 Origin 等于 `http://${host}`，页面端口和服务端口不同就拒。`http.mjs` 注释「Vite 开发页代理保留页面 Host，所以 5281 的页面也能过」与实际不符。
 - 正确做法：在开发页测写入流程前，先用 `curl -X POST -H 'Origin: http://127.0.0.1:<开发端口>' http://127.0.0.1:<开发端口>/api/…` 确认不被拦；被拦时改用 `npm run build` 后由隔离服务端口直接打开页面（同源）来测写入。修 `vite.config.js`（代理写成对象并 `changeOrigin: false`）属于另一件事，先问常浩。
 - 证据：本轮 CURRENT.md「批 1·1d 策略页」一节「验证」行；`curl` 复现结果见同节。
+- 升级：〔提醒〕未升级（2026-11-19 补写升级行：`vite.config.js` 第 18 行仍是字符串简写，要不要改另问常浩）。已批：积压清单组 13，已并入全局 G-07。原记录：没有升级行。
+- 提升：已提升为全局 G-07（2026-11-19，agent-kit#83）。
 
 ## L-19 会话存档员工列表永远只回 10 条：分页参数是 `limit`，不是文档写的 `size`（2026-11-10）
 
@@ -176,6 +183,7 @@
 - 根因：`x.lumiclass.com` 的员工列表接口分页参数是 `limit`（实测 `limit=100` 回 100 条、`total_page` 11），`size`、`per_page`、`pageSize` 都被忽略；会话列表、消息列表才认 `size`。另外 `/api/department/list` 只回 1 个顶级部门，部门名要看员工记录里的 `department_name`。
 - 正确做法：接外部列表接口先核对「本页条数 = 请求的条数」与 `total_page` 再写循环；会话存档员工列表用 `limit`（`server/internal-voice.mjs` 已按此写，`tests/internal-voice.test.mjs` 的假接口也按 `limit` 分页）。按学生走长连接 watch 会带出该学生所在全部群（实测 49 个群、10 天 8132 条），做用户之声只取客户单聊和群里客户本人的发言。
 - 证据：`~/Library/Application Support/NiumaHome/evidence/企微会话存档接入-20261110/`（探测脚本与结果）。
+- 升级：〔机检〕关闭（2026-11-19，积压清单组 15）：核实坑已被代码消除：`server/internal-voice.mjs` 第 124 行员工列表按 `limit=100` 分页；靠 `tests/internal-voice.test.mjs` 第 58、73 行的假接口只认 `limit` 分页守住，测试接进 CI（`.github/workflows/ci.yml` 每个 PR 和推 main 都跑 `npm test`；main 没开分支保护，CI 红了不拦合并）。原记录：没有升级行。
 
 ## L-20 新接口发布后回 501「未实现」：注册在 v3 兜底路由后面（2026-11-10）
 
@@ -183,6 +191,7 @@
 - 根因：`server/routes/v3.mjs` 末尾有兜底路由 `/^\/api\/v3\/.+$/` → `pending("V3-接口清单")`；`server/http.mjs` 的 `match` 按注册顺序取第一个匹配。新模块追加在 `v3` 之后，所有请求先被兜底接走。
 - 正确做法：新路由模块加进 `server/index.mjs` 的 `routes` 数组时放在 `v3` 前面（`tests/internal-voice.test.mjs` 断言 `v3` 在最后）；发布回读后实际请求一次本轮新接口，不只看 7 项回读。
 - 证据：本轮 CURRENT.md「内部原声批 1」一节「发布与回读」。
+- 升级：〔机检〕关闭（2026-11-19，积压清单组 15）：核实坑已被代码消除：`server/index.mjs` 第 19 行 `v3` 排在 `routes` 最后，第 18 行注释写明原因；靠 `tests/internal-voice.test.mjs` 第 288 行「服务注册路由时 v3 兜底排在最后」守住，测试接进 CI（`.github/workflows/ci.yml` 每个 PR 和推 main 都跑 `npm test`；main 没开分支保护，CI 红了不拦合并）。原记录：没有升级行。
 
 ## L-21 基线截图连拍不一致、或改了颜色也比不出来（2026-11-19）
 
