@@ -148,7 +148,7 @@
 - 证据：issue #5；本轮 CURRENT.md「服务端飞书身份迁到猛鬼兽」一节；只读探测与副本演练记录在该节「验证」行。
 - 第 2 次（2026-11-02，issue #8）：默认身份换成亚古兽（常浩下 `ou_6fac…`），猛鬼兽保留自言自语和推送。改成两个身份对象 + 唯一调用入口 `larkRun`，每个模块显式写用哪个身份，`tests/lark-identity.test.mjs` 检查分配；迁移脚本改为猛鬼兽 → 亚古兽，正式库只有 1 条简报绑定要迁。
 - 升级：〔机检〕部分升级（2026-11-19 补写升级行）：`tests/lark-identity.test.mjs` 第 21 行查 `server/` 下各模块只经 `larkRun` 调 lark-cli、身份只用 `server/lark-identity.mjs` 的 `AGUMON` / `MENGGUI`，接进 CI（`npm test`）；不覆盖：模块里另写死的 `ou_…` 字面量、数据库里存下的 actor（换应用时仍靠迁移脚本手动迁）。已批：积压清单组 14，已提升为全局 G-43。原记录：没有升级行。
-- 提升：已提升为全局 G-43（2026-11-19，agent-kit 第二批）。
+- 提升：已提升为全局 G-43（2026-11-19，agent-kit#83）。
 
 ## L-16 Safari 网页应用打开时用磁盘里的旧首页：发布换了哈希就黑屏，刷新才好（2026-10-28）
 
@@ -166,7 +166,7 @@
 - 证据：issue #15；`browser-extension/niuma-collect/chatgpt.js`；本轮 CURRENT.md「Agent 接入 ChatGPT 会话」一节「验证」行。
 - 第 2 次（2026-11-07，正式环境）：消息出来了，回复正文还要再晚一点——那一刻回复里只有读屏隐藏标题，页面上显示成「ChatGPT 说：」。隐藏标题的 textContent 是「ChatGPT 说：ChatGPT」，和 innerText 对不上，按 textContent 去不掉。改为按 innerText 去掉隐藏标题，读历史等到每条回复都有正文（最多 10 秒）。
 - 升级：〔提醒〕未升级（2026-11-19 补写升级行：`browser-extension/niuma-collect/chatgpt.js` 的等待逻辑没有测试，`tests/chatgpt-bridge.test.mjs` 只测服务端的桥）。已批：积压清单组 8，已提升为全局 G-36。原记录：没有升级行。
-- 提升：已提升为全局 G-36（2026-11-19，agent-kit 第二批）。
+- 提升：已提升为全局 G-36（2026-11-19，agent-kit#83）。
 
 ## L-18 开发页（Vite）发出的写请求全部被来源校验拦下：代理改写了 Host（2026-11-08）
 
@@ -175,7 +175,7 @@
 - 正确做法：在开发页测写入流程前，先用 `curl -X POST -H 'Origin: http://127.0.0.1:<开发端口>' http://127.0.0.1:<开发端口>/api/…` 确认不被拦；被拦时改用 `npm run build` 后由隔离服务端口直接打开页面（同源）来测写入。修 `vite.config.js`（代理写成对象并 `changeOrigin: false`）属于另一件事，先问常浩。
 - 证据：本轮 CURRENT.md「批 1·1d 策略页」一节「验证」行；`curl` 复现结果见同节。
 - 升级：〔提醒〕未升级（2026-11-19 补写升级行：`vite.config.js` 第 18 行仍是字符串简写，要不要改另问常浩）。已批：积压清单组 13，已并入全局 G-07。原记录：没有升级行。
-- 提升：已提升为全局 G-07（2026-11-19，agent-kit 第二批）。
+- 提升：已提升为全局 G-07（2026-11-19，agent-kit#83）。
 
 ## L-19 会话存档员工列表永远只回 10 条：分页参数是 `limit`，不是文档写的 `size`（2026-11-10）
 
