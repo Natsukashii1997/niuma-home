@@ -13,6 +13,7 @@
 - 同类坑第 2 次出现：把正确做法写进 AGENTS.md、docs/OPERATIONS.md 或 docs/STYLE-GUIDE.md（一句话硬约束进 AGENTS.md，操作细节进 OPERATIONS.md），条目的「升级」改成写到了哪里。
 - 能用机器判定的：写成测试或脚本（如 `tests/style-rules.test.mjs`、`scripts/verify-release.sh`），条目注明。
 - 换个项目也成立的（不依赖本项目的业务、页面、发布脚本）：提议提升到全局坑 `/Users/nat/Documents/ChatGPT/个人/work/agent-kit/LESSONS.md`，写成 G-xx；原条目保留，末尾加一行「提升：已提升为全局 G-xx（日期）」。只出提案，用户批准才写。
+- 「升级」一行每条都要有，开头写层级词〔结构〕〔机检〕〔体检〕〔文字〕〔提醒〕之一，再写状态（未升级 / 不升级 / 部分升级 / 已升级 / 关闭）、日期、编号和去处；还没升级的写「〔提醒〕未升级。」。坑本身已被代码消除、不再需要升级的写「〔层级〕关闭（日期，依据）：证据」，层级写现在靠什么守住（回归测试没接进必经检查的写〔提醒〕），原来的记录保留。层级的含义和怎么选，以全局 LESSONS「怎么升级」为准。`scripts/check-style.mjs` 的 lessons 规则会查（`npm test` 里跑）。
 - 条目超过约 30 条时整理一次：已升级、且之后没再犯的，归档到 `docs/history/`。每周五的定时整理提案（见 docs/OPERATIONS.md「每周整理」）会提醒漏记、该升级和该归档的条目。
 
 ---
@@ -23,7 +24,7 @@
 - 根因：把高亮条件从「有新信号」改成「有新信号且等待重置」，连带改掉了已重置状态的样式。
 - 正确做法：只动用户点名的部分；改已有组件前先看清会影响哪些 className、条件、颜色；改完对照改前截图逐项核对颜色与强调。
 - 证据：用户 2026-10-18 当面反馈（原记在 Claude 记忆）；对应提交未核实。
-- 升级：已写进 AGENTS.md「分工」。
+- 升级：〔文字〕已升级（2026-11-19 补层级词）：AGENTS.md「分工」「保留原有风格基调、配色与强调色……改完对照改前截图逐项核对」一句。另：发布前基线对比（L-21）能拦基线页面上的颜色变化，但只覆盖基线截到的页面和状态，所以不标〔机检〕。已提升为全局 G-09。原记录：已写进 AGENTS.md「分工」。
 - 提升：已提升为全局 G-09（2026-10-24）。
 
 ## L-02 验证证据放在 /tmp，被系统清理（2026-10-21 丢失，10-23 发现）
@@ -32,7 +33,7 @@
 - 根因：放在 `/tmp/niuma-*`，macOS 会定期清理 `/tmp`。
 - 正确做法：备份、日志等证据放 `~/Library/Application Support/NiumaHome/evidence/<目录名>/`；会话临时目录只放用完即弃的文件。
 - 证据：`docs/history/CURRENT-through-20261022.md` 开头的 2026-10-23 补注。
-- 升级：已写进 AGENTS.md「规则」。
+- 升级：〔文字〕已升级（2026-11-19 补层级词）：AGENTS.md「规则」证据目录一句。已提升为全局 G-01。原记录：已写进 AGENTS.md「规则」。
 - 提升：已提升为全局 G-01（2026-10-24）。
 
 ## L-03 带教回复时间显示成 UTC（2026-10-23）
@@ -41,7 +42,7 @@
 - 根因：页面直接截取 ISO 字符串里的「月-日 时:分」；后端存的 UTC 本身没错。
 - 正确做法：页面上的时间一律用 `src/constants.js` 的 `beijingTime` 按 `Asia/Shanghai` 格式化，测试覆盖跨日、跨年。
 - 证据：提交 `3200d0e`；`docs/history/CURRENT-through-20261023-am.md`「带教回复北京时间」一节。第 2 次：2026-10-23 每周整理首次试跑发现同一写法还在促销方案「录入」、飞书导出「核对于」、活动「归档于」3 处，正式页面把 10:46 录入的方案显示成 02:46。
-- 升级：已写进 docs/STYLE-GUIDE.md §7；已写成 `scripts/check-style.mjs` 的时间规则（`npm test` 里跑）。
+- 升级：〔机检〕已升级（2026-11-19 补层级词）：`scripts/check-style.mjs` 的 time 规则，由 `tests/style-rules.test.mjs` 在 `npm test` 里跑，接进 CI（`.github/workflows/ci.yml` 每个 PR 和推 main 都跑 `npm test`；main 没开分支保护，CI 红了不拦合并）。范围：`src/` 下截取 `*At` / `*_at` 字段和把 `T` 换成空格两种写法，其他写法变体不覆盖。已提升为全局 G-02。原记录：已写进 docs/STYLE-GUIDE.md §7；已写成 `scripts/check-style.mjs` 的时间规则（`npm test` 里跑）。
 - 提升：已提升为全局 G-02（2026-10-24）。
 
 ## L-04 React 重复 key 只在开发模式报（2026-10-23）
@@ -50,7 +51,7 @@
 - 根因：抽屉和地图是同级子元素，都用了 `key={who}`。
 - 正确做法：同级的不同组件，key 加前缀区分（如 `drawer-${who}`）；改了列表或同级组件，验收时在开发页（`npm run dev`）看一次控制台。
 - 证据：提交 `5d45dce`；CURRENT.md「培养路径接上真实数据 T14」的范围外发现与「常驻提示可关闭」一节。
-- 升级：未升级。
+- 升级：〔提醒〕不升级（2026-11-19，积压清单组 16）：复发代价低，开发页控制台就能看到。原记录：未升级。
 
 ## L-05 硬规矩靠每轮人工核对，各轮范围不一（2026-10-23 升级）
 
@@ -58,7 +59,7 @@
 - 根因：规矩写成提醒，没有变成工具。
 - 正确做法：能机器判定的写成检查，在跑测试或发布时自动执行。
 - 证据：`docs/history/CURRENT-through-20261022.md` 的 T09 测试记录；`docs/history/CURRENT-through-20261023-am.md`「带教回复北京时间」一节的回读记录；提交 `7c85fbf`、`b5c212d`。
-- 升级：已写成 `tests/style-rules.test.mjs`（`npm run check:style`）与 `scripts/verify-release.sh`（`release-app.sh` 末尾自动跑）。
+- 升级：〔机检〕已升级（2026-11-19 补层级词）：`tests/style-rules.test.mjs` 在 `npm test` 里跑，接进 CI（`.github/workflows/ci.yml` 每个 PR 和推 main 都跑 `npm test`；main 没开分支保护，CI 红了不拦合并）；发布回读 `scripts/verify-release.sh` 由 `release-app.sh` 末尾自动跑。原记录：已写成 `tests/style-rules.test.mjs`（`npm run check:style`）与 `scripts/verify-release.sh`（`release-app.sh` 末尾自动跑）。
 
 ## L-06 改了发布脚本只做 bash 验证，没跑全量测试（2026-10-23）
 
@@ -66,7 +67,7 @@
 - 根因：`tests/t10-release-retention.test.mjs` 会截取 `release-app.sh` 从 `launchctl bootout` 起的尾段，给外部命令打桩后真实执行；新增的外部调用没有桩。
 - 正确做法：改 `scripts/` 下任何脚本也要跑 `npm test`；`release-app.sh` 尾段新增外部命令时，在 T10 测试里补桩和事件断言。
 - 证据：提交 `b5c212d` 引入；CURRENT.md「常驻提示可关闭」一节的测试记录；修复是 T10 测试里的 `verify-release.sh` 桩。
-- 升级：未升级。
+- 升级：〔机检〕部分升级（2026-11-19 补层级词）：CI（`.github/workflows/ci.yml`）每个 PR 和推 main 都跑全量 `npm test`，改了脚本只做 bash 验证的，PR 上会报红；不覆盖：main 没开分支保护，CI 红了也能合并；`release-app.sh` 发布前不跑 `npm test`，不经 PR 直接在本机发布时拦不住。已提升为全局 G-03。原记录：未升级。
 - 提升：已提升为全局 G-03（2026-10-24）。
 
 ## L-07 两个会话共用一个工作区，测试结果互相污染（2026-10-23）
@@ -75,7 +76,7 @@
 - 根因：两个会话同时在 `work-desk-ui-bitmap` 里改代码，`npm test` 跑的是整个工作区。
 - 正确做法：并行的会话各开独立 worktree；做不到时，测试记录里写明「工作区含他人未提交改动」，提交时用 `git commit -- <自己的文件>`，不碰别人的改动。
 - 证据：CURRENT.md「常驻提示可关闭」一节与本轮交接的测试记录。
-- 升级：已写进 AGENTS.md「分工」（2026-10-23 每周整理首次试跑提出，用户采纳）。
+- 升级：〔文字〕已升级（2026-11-19 补层级词）：AGENTS.md「分工」并行会话各开独立 worktree 一句。已提升为全局 G-04。原记录：已写进 AGENTS.md「分工」（2026-10-23 每周整理首次试跑提出，用户采纳）。
 - 2026-10-24 再犯：交接会话提交 `359ac18` 时整文件 `git add docs/LESSONS.md`，带上了另一会话在同一文件的 4 处未提交改动（当时 `git status` 刚核过是干净的，几分钟后对方又改了）。补做法：共用目录时每次 `git add` 前都看一遍 `git diff -U0 <文件>` 的分块，有别人的块就把自己的块写成补丁 `git apply --cached`，不整文件暂存；暂存后 `git diff --cached` 再核一遍。
 - 提升：已提升为全局 G-04（2026-10-24）。
 
@@ -85,7 +86,7 @@
 - 根因：macOS 隐私保护拦住了 launchd 直接启动的 `/bin/bash` 读取 `~/Documents`；终端和 Claude 会话有文稿访问权限，所以手动跑看不出来。
 - 正确做法：launchd 任务要读仓库或 `data/` 的，借服务外壳 `NiumaHomeServer.app` 里的 node 启动（它已能读文稿，`release-app.sh` 也是这样跑服务的）；装好后一定用 `launchctl kickstart` 真实触发一次再看日志，不能只在终端里试。
 - 证据：`scripts/health-check.sh` 的 `--install`；`~/Library/Application Support/NiumaHome/evidence/每日巡检-20261023/`。
-- 升级：已写进 `health-check.sh --install`。
+- 升级：〔结构〕部分升级（2026-11-19 补层级词）：本项目的两个 launchd 任务都由脚本生成配置、借服务外壳 `NiumaHomeServer.app` 里的 node 启动：巡检由 `scripts/health-check.sh --install` 安装，服务由 `scripts/release-app.sh` 安装；不覆盖：以后新加的 launchd 任务。已提升为全局 G-05。原记录：已写进 `health-check.sh --install`。
 - 提升：已提升为全局 G-05（2026-10-24）。
 
 ## L-09 PlistBuddy 找不到文件时把提示打到标准输出（2026-10-23）
@@ -94,7 +95,7 @@
 - 根因：`PlistBuddy -c "Print …"` 遇到不存在的文件不报错退出，而是往标准输出打提示，`2>/dev/null` 挡不住。
 - 正确做法：先 `[ -f "$plist" ]` 再读。
 - 证据：`scripts/health-check.sh` 读数据目录那几行；`verify-release.sh` 开头已先判断文件存在。
-- 升级：未升级。
+- 升级：〔提醒〕未升级（2026-11-19 补层级词：`scripts/health-check.sh` 读数据目录前已先 `[ -f ]`，但没有测试或检查守住）。已提升为全局 G-06。原记录：未升级。
 - 提升：已提升为全局 G-06（2026-10-24）。
 
 ## L-10 外部来源的 GET 每次现读，页面每次打开都要等（2026-10-23）
@@ -103,7 +104,7 @@
 - 根因：`mentor.mjs` 建读取器时没开 `staleWhileRevalidate`，有落库快照也不先回；`reports.mjs` 的缓存不落库。
 - 正确做法：接外部只读来源一律用 `createConfiguredReader(db, kind, …, { staleWhileRevalidate: true })`（或同样的「先回落库快照、超时后台刷新、刷新接口现读」），页面用 `useFreshApi` 或照常读，不让用户等现读。
 - 证据：`docs/handoff/UI与功能审核-20261023/审核记录.md` 第 3、4 条；本轮修复见 CURRENT.md「审核后一次性优化」；`tests/mentor-snapshot.test.mjs`、`tests/reports-persist.test.mjs`。
-- 升级：已写进 docs/OPERATIONS.md「写接口与接外部来源」（2026-10-24 从 AGENTS.md「规则」搬来）。
+- 升级：〔文字〕已升级（2026-11-19 补层级词）：docs/OPERATIONS.md「写接口与接外部来源」。已提升为全局 G-10。原记录：已写进 docs/OPERATIONS.md「写接口与接外部来源」（2026-10-24 从 AGENTS.md「规则」搬来）。
 - 提升：已提升为全局 G-10（2026-10-24）。
 
 ## L-11 请求来源校验只做在一组接口上，其余接口裸奔（2026-10-23）
@@ -112,7 +113,7 @@
 - 根因：校验写在模块里，没有放到入口统一做。
 - 正确做法：横切的保护（来源校验、正文大小、统一错误响应）放 `server/index.mjs` / `server/http.mjs` 对全部 `/api/` 生效，模块里只做自己的业务校验（如配对码）。
 - 证据：审核记录第 1 条；`server/http.mjs` `checkOrigin`、`tests/request-guard.test.mjs`。
-- 升级：已写进 docs/OPERATIONS.md「写接口与接外部来源」（2026-10-24 从 AGENTS.md「规则」搬来）。
+- 升级：〔结构〕已升级（2026-11-19 补层级词）：来源校验放在入口，`server/index.mjs` 对全部 `/api/` 请求先调 `server/http.mjs` 的 `checkOrigin`，新模块不用自己挂；`tests/request-guard.test.mjs` 在 `npm test` 里跑，接进 CI（`.github/workflows/ci.yml` 每个 PR 和推 main 都跑 `npm test`；main 没开分支保护，CI 红了不拦合并）。做法写在 docs/OPERATIONS.md「写接口与接外部来源」。已提升为全局 G-07。原记录：已写进 docs/OPERATIONS.md「写接口与接外部来源」（2026-10-24 从 AGENTS.md「规则」搬来）。
 - 提升：已提升为全局 G-07（2026-10-24）。
 
 ## L-12 `set -u` 脚本里可选开关裸引用，变量不设就整段退出（2026-10-24）
@@ -121,6 +122,7 @@
 - 根因：只跑了 `bash -n` 和带 `NIUMA_SMOKE=1` 的那条路径，没跑「变量不设」的默认路径；`bash -n` 只查语法，查不出 `set -u` 下的未定义引用。
 - 正确做法：可选开关一律写 `${VAR:-}`；改带 `set -u` 的脚本后，开关设与不设各跑一遍；发布前先在主工作区单独跑一次 `bash scripts/verify-release.sh`。
 - 证据：`~/Library/Application Support/NiumaHome/evidence/全面优化-20261023/release.log`；修复提交号见 CURRENT.md「审核后一次性优化」的「发布」一行。
+- 升级：〔提醒〕未升级（2026-11-19 补写升级行：`scripts/verify-release.sh` 已改成 `${NIUMA_SMOKE:-}`；本项目没有检查查 `set -u` 下的裸引用，全局 G-08 的机检在起步骨架 `check-rules.mjs` 里，本项目没装）。已提升为全局 G-08。原记录：没有升级行。
 - 提升：已提升为全局 G-08（2026-10-24）。
 
 ## L-13 无头 Chrome 截图与合成事件不可靠：样式没加载完、焦点事件不发（2026-10-24）
@@ -129,7 +131,7 @@
 - 根因：`--virtual-time-budget` 只是给虚拟时间一个上限，不保证 `@import` 链、字体和模块里的异步请求都完成；页面不在前台（`document.hasFocus()` 为假）时，程序调 `focus()` 只改 `activeElement`，不发 focus / focusin 事件，React 的 `onFocus` 收不到。合成事件为什么会落到 1 月，未核实。
 - 正确做法：要等页面画完再截的图，用调试协议（`--remote-debugging-port` + `Runtime.evaluate` 轮询「图已画出 + `document.fonts.status === "loaded"`」，再 `Page.captureScreenshot` 按元素区域截），`scripts/smoke-pages.mjs` 也是这个路子；键盘、鼠标交互一律用真实输入（`Input.dispatchKeyEvent` / `Input.dispatchMouseEvent`，或内置浏览器的真实按键），不拿合成事件的结果当证据。
 - 证据：`~/Library/Application Support/NiumaHome/evidence/折线图数值与悬停-20261024/` 里的 `cdp-shot.mjs`（截图）、`cdp-debug.mjs`（真实按键、鼠标逐步核对）；CURRENT.md「折线图每点数值 + 悬停竖线与数据卡」一节。
-- 升级：第 2 次出现（2026-10-26，培养路径「调整安排」弹窗用无头截图摆状态时，程序调 `blur()` 没触发 `onBlur`，改动没提交，截出「还没有改动」；交互本身已在内置浏览器用真实点击、打字核过）；已写进 docs/OPERATIONS.md「报告与验收」第 6 条。
+- 升级：〔文字〕已升级（2026-11-19 补层级词）：docs/OPERATIONS.md「报告与验收」第 6 条。已提升为全局 G-11。原记录：第 2 次出现（2026-10-26，培养路径「调整安排」弹窗用无头截图摆状态时，程序调 `blur()` 没触发 `onBlur`，改动没提交，截出「还没有改动」；交互本身已在内置浏览器用真实点击、打字核过）；已写进 docs/OPERATIONS.md「报告与验收」第 6 条。
 - 提升：已提升为全局 G-11（2026-10-24）。
 
 ## L-14 摆位候选全被拒时静默回退到「压得最少」，测试和截图都容易放过（2026-10-27）
@@ -138,6 +140,7 @@
 - 根因：`pickBox` 在候选全被拒时不报错，挑「重叠面积最少」的那个交差。真正把候选全拒掉的是两处小错：① 判引线挡不挡路时，标牌正好在小人头顶、引线是一条竖线，剩下的零长段落在小人框里，把所有「直着下来」的候选都判成了挡路；② 标牌最低一档只看山脊线，没让开山脊上冒出的帐篷，擦边一碰就整档作废。
 - 正确做法：摆位规则改了以后，用节点脚本把各宽度、各状态的候选逐个打出来，看是否落到回退分支（每个候选的「压到谁」都列出来），别只看最后位置；判碰撞前去掉零长段，两头按方向收几 px；新加的规则（引线不穿过别的标牌、营地、另一个小人；小牌离营地远就有竖引线）写成测试，并先改回旧摆法确认测试会失败。
 - 证据：`tests/mentor-path.test.mjs`「当前标牌的引线：不穿过另一张标牌……」；CURRENT.md「培养路径地图改成双脊合峰」一节；证据目录 `~/Library/Application Support/NiumaHome/evidence/培养路径山体优化-20261027/双脊合峰样稿/`。
+- 升级：〔机检〕关闭（2026-11-19，积压清单组 15）：核实坑已被代码消除：`src/modules/projects/mentor-path.js` 第 205 行起量引线时两头各收 4px、去掉零长段；靠 `tests/mentor-path.test.mjs` 第 156、171 行两条用例守住（原记录：改回旧摆法会报红），测试接进 CI（`.github/workflows/ci.yml` 每个 PR 和推 main 都跑 `npm test`；main 没开分支保护，CI 红了不拦合并）。原记录：没有升级行。
 
 ## L-15 换飞书应用时 open_id 跟着变，写死的身份和存下来的 actor 都会失效（2026-10-27）
 
@@ -146,6 +149,8 @@
 - 正确做法：服务端飞书身份只在 `server/lark-identity.mjs` 定义（profile、App ID、本人 open_id），其余模块引用；换应用时先用新应用 `whoami` 拿本人 open_id，对各数据源做只读探测，再用 `npm run migrate:lark-identity` 这类「预览 → 备份 → 确认写 → 回读」的脚本迁存下来的 actor；历史回执不改写。
 - 证据：issue #5；本轮 CURRENT.md「服务端飞书身份迁到猛鬼兽」一节；只读探测与副本演练记录在该节「验证」行。
 - 第 2 次（2026-11-02，issue #8）：默认身份换成亚古兽（常浩下 `ou_6fac…`），猛鬼兽保留自言自语和推送。改成两个身份对象 + 唯一调用入口 `larkRun`，每个模块显式写用哪个身份，`tests/lark-identity.test.mjs` 检查分配；迁移脚本改为猛鬼兽 → 亚古兽，正式库只有 1 条简报绑定要迁。
+- 升级：〔机检〕部分升级（2026-11-19 补写升级行）：`tests/lark-identity.test.mjs` 第 21 行查 `server/` 下各模块只经 `larkRun` 调 lark-cli、身份只用 `server/lark-identity.mjs` 的 `AGUMON` / `MENGGUI`，接进 CI（`npm test`）；不覆盖：模块里另写死的 `ou_…` 字面量、数据库里存下的 actor（换应用时仍靠迁移脚本手动迁）。已批：积压清单组 14，已提升为全局 G-43。原记录：没有升级行。
+- 提升：已提升为全局 G-43（2026-11-19，agent-kit#83）。
 
 ## L-16 Safari 网页应用打开时用磁盘里的旧首页：发布换了哈希就黑屏，刷新才好（2026-10-28）
 
@@ -153,6 +158,7 @@
 - 根因：网页应用恢复窗口时直接用磁盘缓存里的旧首页，`no-cache`（以及不写缓存头）拦不住；旧首页引用的带哈希 JS 在发布后已不存在，脚本 404，整页空白。网页应用缓存目录受 macOS 保护读不到，「直接用旧首页」按 WebKit 行为推断，与发布频率、复现条件一致。
 - 正确做法：首页（含前端路由回落的 `index.html`）一律 `cache-control: no-store`；带哈希的构建文件不受影响。修好后第一次打开仍可能黑一次（磁盘里还有改前存下的旧首页），之后再发布打开不黑才算验证。
 - 证据：牛马之家 `tests/static-cache.test.mjs`；数码世界 `wb-20261028-671` 发布记录。
+- 升级：〔机检〕已升级（2026-11-19 补写升级行）：`tests/static-cache.test.mjs` 查首页和前端路由回落都回 `cache-control: no-store`，在 `npm test` 里跑，接进 CI（`.github/workflows/ci.yml` 每个 PR 和推 main 都跑 `npm test`；main 没开分支保护，CI 红了不拦合并）。已提升为全局 G-16。原记录：没有升级行。
 - 提升：已提升为全局 G-16（2026-10-28）。
 
 ## L-17 ChatGPT 新开的会话标签页里输入框先出来、消息后渲染：按「输入框就绪」去读会拿到空历史（2026-11-04）
@@ -162,6 +168,8 @@
 - 正确做法：读历史和发送前都先等消息出现（空会话等满 10 秒照常继续）；发送后以「提问多了一条、最后一条是回复」认新回复，不按回复条数下标取。等待用 MutationObserver，不用定时轮询（后台标签页里计时器会被放慢）。
 - 证据：issue #15；`browser-extension/niuma-collect/chatgpt.js`；本轮 CURRENT.md「Agent 接入 ChatGPT 会话」一节「验证」行。
 - 第 2 次（2026-11-07，正式环境）：消息出来了，回复正文还要再晚一点——那一刻回复里只有读屏隐藏标题，页面上显示成「ChatGPT 说：」。隐藏标题的 textContent 是「ChatGPT 说：ChatGPT」，和 innerText 对不上，按 textContent 去不掉。改为按 innerText 去掉隐藏标题，读历史等到每条回复都有正文（最多 10 秒）。
+- 升级：〔提醒〕未升级（2026-11-19 补写升级行：`browser-extension/niuma-collect/chatgpt.js` 的等待逻辑没有测试，`tests/chatgpt-bridge.test.mjs` 只测服务端的桥）。已批：积压清单组 8，已提升为全局 G-36。原记录：没有升级行。
+- 提升：已提升为全局 G-36（2026-11-19，agent-kit#83）。
 
 ## L-18 开发页（Vite）发出的写请求全部被来源校验拦下：代理改写了 Host（2026-11-08）
 
@@ -169,6 +177,8 @@
 - 根因：`vite.config.js` 的代理写成字符串简写 `proxy: { "/api": api }`，Vite 会把它展开成 `{ target, changeOrigin: true }`（`node_modules/vite/dist/node/chunks/dep-*.js`：`opts = { target: opts, changeOrigin: true }`），转发时 Host 被改成服务端口；`server/http.mjs` 的 `checkOrigin` 要求 Origin 等于 `http://${host}`，页面端口和服务端口不同就拒。`http.mjs` 注释「Vite 开发页代理保留页面 Host，所以 5281 的页面也能过」与实际不符。
 - 正确做法：在开发页测写入流程前，先用 `curl -X POST -H 'Origin: http://127.0.0.1:<开发端口>' http://127.0.0.1:<开发端口>/api/…` 确认不被拦；被拦时改用 `npm run build` 后由隔离服务端口直接打开页面（同源）来测写入。修 `vite.config.js`（代理写成对象并 `changeOrigin: false`）属于另一件事，先问常浩。
 - 证据：本轮 CURRENT.md「批 1·1d 策略页」一节「验证」行；`curl` 复现结果见同节。
+- 升级：〔提醒〕未升级（2026-11-19 补写升级行：`vite.config.js` 第 18 行仍是字符串简写，要不要改另问常浩）。已批：积压清单组 13，已并入全局 G-07。原记录：没有升级行。
+- 提升：已提升为全局 G-07（2026-11-19，agent-kit#83）。
 
 ## L-19 会话存档员工列表永远只回 10 条：分页参数是 `limit`，不是文档写的 `size`（2026-11-10）
 
@@ -176,6 +186,7 @@
 - 根因：`x.lumiclass.com` 的员工列表接口分页参数是 `limit`（实测 `limit=100` 回 100 条、`total_page` 11），`size`、`per_page`、`pageSize` 都被忽略；会话列表、消息列表才认 `size`。另外 `/api/department/list` 只回 1 个顶级部门，部门名要看员工记录里的 `department_name`。
 - 正确做法：接外部列表接口先核对「本页条数 = 请求的条数」与 `total_page` 再写循环；会话存档员工列表用 `limit`（`server/internal-voice.mjs` 已按此写，`tests/internal-voice.test.mjs` 的假接口也按 `limit` 分页）。按学生走长连接 watch 会带出该学生所在全部群（实测 49 个群、10 天 8132 条），做用户之声只取客户单聊和群里客户本人的发言。
 - 证据：`~/Library/Application Support/NiumaHome/evidence/企微会话存档接入-20261110/`（探测脚本与结果）。
+- 升级：〔机检〕关闭（2026-11-19，积压清单组 15）：核实坑已被代码消除：`server/internal-voice.mjs` 第 124 行员工列表按 `limit=100` 分页；靠 `tests/internal-voice.test.mjs` 第 58、73 行的假接口只认 `limit` 分页守住，测试接进 CI（`.github/workflows/ci.yml` 每个 PR 和推 main 都跑 `npm test`；main 没开分支保护，CI 红了不拦合并）。原记录：没有升级行。
 
 ## L-20 新接口发布后回 501「未实现」：注册在 v3 兜底路由后面（2026-11-10）
 
@@ -183,3 +194,12 @@
 - 根因：`server/routes/v3.mjs` 末尾有兜底路由 `/^\/api\/v3\/.+$/` → `pending("V3-接口清单")`；`server/http.mjs` 的 `match` 按注册顺序取第一个匹配。新模块追加在 `v3` 之后，所有请求先被兜底接走。
 - 正确做法：新路由模块加进 `server/index.mjs` 的 `routes` 数组时放在 `v3` 前面（`tests/internal-voice.test.mjs` 断言 `v3` 在最后）；发布回读后实际请求一次本轮新接口，不只看 7 项回读。
 - 证据：本轮 CURRENT.md「内部原声批 1」一节「发布与回读」。
+- 升级：〔机检〕关闭（2026-11-19，积压清单组 15）：核实坑已被代码消除：`server/index.mjs` 第 19 行 `v3` 排在 `routes` 最后，第 18 行注释写明原因；靠 `tests/internal-voice.test.mjs` 第 288 行「服务注册路由时 v3 兜底排在最后」守住，测试接进 CI（`.github/workflows/ci.yml` 每个 PR 和推 main 都跑 `npm test`；main 没开分支保护，CI 红了不拦合并）。原记录：没有升级行。
+
+## L-21 基线截图连拍不一致、或改了颜色也比不出来（2026-11-19）
+
+- 现象：接入基线截图对比（`scripts/ui-baseline.mjs`）时：① Agent 页同一版本连拍两次，一次有「模型列表读取失败」报错条、一次没有，对比失败；② 底部状态栏是 `position: fixed`，整页截图里压在页面中间，版本号、数据源状态每次不同；③ 把面板底色 `--panel` 从 `#FBFBFC` 改成米色 `#F3EFE6`，八张图对比全部「一致」。
+- 根因：① 隔离环境用假 codex，模型列表必然读不到，但报错条在数据回来之后才出，截图早晚决定有没有；② 整页截图按视口位置画 fixed 元素；③ Playwright 单像素颜色阈值默认 0.2（YIQ 距离），米色底和原底色只差约 0.05，被当成同一种颜色。
+- 正确做法：环境造成、时有时无的元素在 `docs/design/baseline.css` 里截图时去掉（不要只遮住，遮住了还会撑开版面）；fixed 的状态栏截图时藏掉；阈值收紧到 0.02（`scripts/ui-baseline.mjs` 的 `PIXEL_THRESHOLD`），同机连拍逐像素一致，不误报。新加页面进基线时，同一版本至少连比三次都过、再故意改一处颜色确认会失败，才算接好。
+- 证据：`~/Library/Application Support/NiumaHome/evidence/ui-baseline/verify-20261119/`（同版本连比、改面板底色的对比日志）；本轮 CURRENT.md「接入基线截图对比与已定内容登记表」一节。
+- 升级：〔机检〕已升级（2026-11-19 补层级词）：`scripts/release-app.sh` 切换服务前必跑 `scripts/ui-baseline.mjs compare`，截图时套 `docs/design/baseline.css`、像素阈值用 `PIXEL_THRESHOLD`；范围：`docs/design/pages.json` 登记的页面。原记录：已写进 `docs/design/baseline.css`、`scripts/ui-baseline.mjs`（机器判定：对比本身）。

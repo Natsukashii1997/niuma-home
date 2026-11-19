@@ -1,0 +1,4 @@
+/* 基线截图时注入（pages.json 的 style）：底部状态栏是 position: fixed，整页截图里会压在页面中间；它显示的是数据源状态和版本号，每次不同，截图时藏掉 */
+.statusbar { visibility: hidden !important; }
+/* Agent 页的「模型列表读取失败」：基线环境用假 codex，模型列表必然读不到，但报错条什么时候出来看时机，有时截到有时截不到；只在截图时去掉这一行 */
+.assistant-page .row:has(> p.error[role="alert"]) { display: none !important; }
