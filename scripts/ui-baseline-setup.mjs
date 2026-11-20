@@ -31,7 +31,7 @@ export default async function setup() {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'niuma-ui-baseline-'));
   const data = path.join(tmp, 'data'), bin = path.join(tmp, 'bin'), digiworld = path.join(tmp, 'digiworld');
   for (const d of [data, bin, digiworld]) mkdirSync(d);
-  for (const cmd of ['lark-cli', 'codex']) { writeFileSync(path.join(bin, cmd), `#!/bin/sh\necho '基线截图环境不调用 ${cmd}' >&2\nexit 1\n`); chmodSync(path.join(bin, cmd), 0o755); }
+  for (const cmd of ['lark-cli', 'codex', 'claude']) { writeFileSync(path.join(bin, cmd), `#!/bin/sh\necho '基线截图环境不调用 ${cmd}' >&2\nexit 1\n`); chmodSync(path.join(bin, cmd), 0o755); }
   const server = spawn(process.execPath, ['--import', path.join(ROOT, 'scripts', 'ui-baseline-preload.mjs'), 'server/index.mjs'], {
     cwd: app, stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, WORKDESK_DATA_DIR: data, WORKDESK_DIGIWORLD_DIR: digiworld, PORT: String(PORT), PATH: `${bin}:${process.env.PATH}`, UI_BASELINE_NOW: clock },
