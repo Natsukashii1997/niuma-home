@@ -57,7 +57,7 @@
 |---|---|---|---|
 | 外部 AI 经 MCP 读写（workdesk MCP） | `routes/agent.mjs` | `mcp-workdesk.mjs`、`agent-access.mjs`、`agent-tools.mjs` | 表 `agent_access`、`agent_calls` |
 | 单条需求策略导出飞书（`/api/v3/needs/:id/strategy/export*`） | `routes/user.mjs` | `feishu-export.mjs`、`needs.mjs` | 表 `v3_needs`；`feishu-export`、`feishu-export-preview`；读 `selftalk-need` |
-| 内部原声（企微会话存档拉取） | `routes/internal-voice.mjs` | `internal-voice.mjs` | 表 `chat_conversations`、`chat_messages`、`chat_pull_runs` |
+| 内部原声（企微会话存档拉取） | `routes/internal-voice.mjs` | `internal-voice.mjs` | 单独的库文件 `internal-voice.db`（表 `chat_conversations`、`chat_messages`、`chat_pull_runs`，结构定义在 `db.mjs` 的 `VOICE_SCHEMA`） |
 | Codex 重置提醒推送 | `routes/workspace.mjs` | `codex-push.mjs`、`codex-reset.mjs` | 表 `codex_push`；`codex-push` |
 | Chrome 收藏插件 | `routes/kb.mjs`（`/api/v3/kb/collect*`） | `kb-collect*.mjs` | `kb-operation`、`kb-collect-pairing` |
 

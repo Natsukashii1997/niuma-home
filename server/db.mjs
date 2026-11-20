@@ -10,6 +10,58 @@ export const dataDir = path.resolve(process.env.WORKDESK_DATA_DIR || "data");
 export const REVISION_NO_DELETE_TRIGGER = "CREATE TRIGGER IF NOT EXISTS strategy_revisions_no_delete BEFORE DELETE ON strategy_revisions BEGIN SELECT RAISE(ABORT, 'revision 写入后不可删除'); END;";
 
 // 全部表结构在此定义；改表结构须先改 docs/API.md 并在派单中说明。
+// 内部原声的会话三张表不在主库里：数据量大（几十万条客户会话原文），放在同一数据目录下的 internal-voice.db，
+// 这样主库的发布前备份、每日备份只有几 MB，不再反复复制会话原文（#82）。结构仍定义在本文件。
+export const VOICE_DB_FILE = "internal-voice.db";
+export const VOICE_TABLES = ["chat_conversations", "chat_messages", "chat_pull_runs"];
+export const VOICE_SCHEMA = `
+  -- 内部原声（#49）：公司企微会话存档只读拉取，只存大学辅导、国际课程销售的客户单聊全部消息与群里客户本人的发言。
+  -- 会话：单聊 id 是会话 id，群聊 id 是群 chat_id；群的员工字段是首次发现它的员工。
+  CREATE TABLE IF NOT EXISTS chat_conversations (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    staff_userid TEXT,
+    staff_name TEXT,
+    staff_dept TEXT,
+    customer_id TEXT,
+    customer_name TEXT,
+    customer_remark TEXT,
+    name TEXT,
+    last_msg_time TEXT,
+    updated_at TEXT NOT NULL
+  );
+  -- 消息：msg_time 是北京时间 YYYY-MM-DD HH:MM:SS（接口原样）；from_role 1 客户、2 员工；撤回记一行 revoke，content 是被撤回的 msg_id。
+  CREATE TABLE IF NOT EXISTS chat_messages (
+    msg_id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    msg_time TEXT NOT NULL,
+    msg_type TEXT NOT NULL,
+    from_id TEXT,
+    from_role INTEGER,
+    from_name TEXT,
+    content TEXT NOT NULL DEFAULT '',
+    file_name TEXT,
+    file_url TEXT,
+    run_id INTEGER,
+    fetched_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS chat_messages_time ON chat_messages(msg_time);
+  CREATE INDEX IF NOT EXISTS chat_messages_conversation ON chat_messages(conversation_id, msg_time);
+  -- 拉取记录：trigger 为 weekly / monthly / manual；state 为 running / done / partial / failed；stats 是计数 JSON。
+  CREATE TABLE IF NOT EXISTS chat_pull_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trigger TEXT NOT NULL,
+    range_from TEXT NOT NULL,
+    range_to TEXT NOT NULL,
+    state TEXT NOT NULL,
+    stats TEXT NOT NULL DEFAULT '{}',
+    error TEXT,
+    started_at TEXT NOT NULL,
+    finished_at TEXT
+  );
+`;
+
 const SCHEMA = `
   -- 促销表：一行 = 某月某业务线的一个 SKU
   CREATE TABLE IF NOT EXISTS promos (
@@ -180,52 +232,6 @@ const SCHEMA = `
     reject_reason TEXT
   );
 
-  -- 内部原声（#49）：公司企微会话存档只读拉取，只存大学辅导、国际课程销售的客户单聊全部消息与群里客户本人的发言。
-  -- 会话：单聊 id 是会话 id，群聊 id 是群 chat_id；群的员工字段是首次发现它的员工。
-  CREATE TABLE IF NOT EXISTS chat_conversations (
-    id TEXT PRIMARY KEY,
-    kind TEXT NOT NULL,
-    staff_userid TEXT,
-    staff_name TEXT,
-    staff_dept TEXT,
-    customer_id TEXT,
-    customer_name TEXT,
-    customer_remark TEXT,
-    name TEXT,
-    last_msg_time TEXT,
-    updated_at TEXT NOT NULL
-  );
-  -- 消息：msg_time 是北京时间 YYYY-MM-DD HH:MM:SS（接口原样）；from_role 1 客户、2 员工；撤回记一行 revoke，content 是被撤回的 msg_id。
-  CREATE TABLE IF NOT EXISTS chat_messages (
-    msg_id TEXT PRIMARY KEY,
-    conversation_id TEXT NOT NULL,
-    kind TEXT NOT NULL,
-    msg_time TEXT NOT NULL,
-    msg_type TEXT NOT NULL,
-    from_id TEXT,
-    from_role INTEGER,
-    from_name TEXT,
-    content TEXT NOT NULL DEFAULT '',
-    file_name TEXT,
-    file_url TEXT,
-    run_id INTEGER,
-    fetched_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS chat_messages_time ON chat_messages(msg_time);
-  CREATE INDEX IF NOT EXISTS chat_messages_conversation ON chat_messages(conversation_id, msg_time);
-  -- 拉取记录：trigger 为 weekly / monthly / manual；state 为 running / done / partial / failed；stats 是计数 JSON。
-  CREATE TABLE IF NOT EXISTS chat_pull_runs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    trigger TEXT NOT NULL,
-    range_from TEXT NOT NULL,
-    range_to TEXT NOT NULL,
-    state TEXT NOT NULL,
-    stats TEXT NOT NULL DEFAULT '{}',
-    error TEXT,
-    started_at TEXT NOT NULL,
-    finished_at TEXT
-  );
-
   -- V3：本地业务记录；外部原件只读，用户确认后保存本地版本。
   CREATE TABLE IF NOT EXISTS v3_documents (
     kind TEXT NOT NULL,
@@ -235,6 +241,26 @@ const SCHEMA = `
     PRIMARY KEY (kind, id)
   );
 `;
+
+export function openVoiceDb(dir = dataDir) {
+  mkdirSync(dir, { recursive: true });
+  const db = new DatabaseSync(path.join(dir, VOICE_DB_FILE));
+  db.exec("PRAGMA busy_timeout = 5000;");
+  db.exec(VOICE_SCHEMA);
+  return db;
+}
+
+// 给定主库连接，返回存会话三张表的连接：和主库同目录的 internal-voice.db，每个主库连接只开一次。
+// 过渡期兼容：主库里还留着 chat_messages 表（迁移脚本 scripts/migrate-voice-db.mjs 还没跑）时，继续用主库，
+// 这样新代码可以先发布、数据后迁移，中间内部原声照常能用；迁移后重启服务即切到新库。
+const voiceDbs = new WeakMap();
+export function voiceDbFor(db) {
+  if (!voiceDbs.has(db)) {
+    const legacy = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='chat_messages'").get();
+    voiceDbs.set(db, legacy ? db : openVoiceDb(path.dirname(db.prepare("PRAGMA database_list").get().file)));
+  }
+  return voiceDbs.get(db);
+}
 
 export function openDb(dir = dataDir) {
   mkdirSync(path.join(dir, "images"), { recursive: true });
