@@ -1,0 +1,15 @@
+#!/bin/sh
+# 推送前的必经检查：跑测试，不过就不推（复盘 P6，常浩 2026-11-20 批）。
+# 装法：在项目根目录 `git config core.hooksPath scripts/hooks`（每个克隆、每台电脑各装一次，AGENTS「运行」写着）。
+# 全量测试超过 3 分钟的项目，把下面的 TESTS 改成只跑快的部分；全量照《工程流程》第 5 节，合并前在干净 worktree 跑。
+# 不用 --no-verify 绕过（agent-kit 的 guard-git 会拦）；检查本身有问题就修检查。
+# 本项目没有 scripts/check-rules.mjs，只跑测试：npm test 已含 npm run check:style（tests/style-rules.test.mjs），用临时数据目录，不碰 data/。
+# 全量 2026-11-20 实测 31 秒～1 分 23 秒（看机器负载），不到 3 分钟，照跑全量；CI 也跑同一条。
+set -e
+cd "$(git rev-parse --show-toplevel)"
+# 从 worktree 推送时，git 把这个仓库的位置（GIT_DIR 等）带进钩子。不清掉的话，测试在临时目录里做的 git 操作
+# （建仓库、提交、推送）会落到这个仓库上：分支多出测试的提交，主目录被改成裸仓库。
+unset $(git rev-parse --local-env-vars)
+TESTS='npm test'
+echo "[pre-push] 测试：$TESTS" >&2
+sh -c "$TESTS"
