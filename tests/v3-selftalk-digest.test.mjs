@@ -199,6 +199,6 @@ test('周汇总HTTP路径优先于消息id预览，预览确认后GET保持原sh
   const confirmed = await request('POST', '/api/v3/selftalk/digest', { week, previewId: p.body.previewId, confirm: true });
   assert.equal(confirmed.status, 200);
   const result = await request('GET', '/api/v3/selftalk');
-  assert.deepEqual(Object.keys(result.body).sort(), ['digest', 'items', 'pulledAt']);
+  assert.deepEqual(Object.keys(result.body).sort(), ['digest', 'digestTrace', 'items', 'pulledAt']);
   assert.equal(result.body.digest, confirmed.body.text); assert.equal(calls, 1);
 });
