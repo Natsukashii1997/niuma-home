@@ -1,4 +1,4 @@
-// 内部原声：命令行按日期范围拉一次（#49）。数据目录同服务（WORKDESK_DATA_DIR，默认 data/）。
+// 内部原声：命令行按日期范围拉一次（#49）。数据目录取 WORKDESK_DATA_DIR，不带时是当前目录下的开发库 data/；操作正式数据要显式指定（docs/OPERATIONS.md「数据目录」）。
 //   node scripts/internal-voice-pull.mjs <开始 YYYY-MM-DD> <结束 YYYY-MM-DD>
 // 服务正在跑时，用页面或 /api/v3/internal-voice/pull/* 拉，别对同一个数据目录再开命令行拉（两边会同时写库）。
 // 用于隔离数据目录试拉、核对；token 读钥匙串，不打印。

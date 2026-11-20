@@ -12,7 +12,7 @@
 
 ## 固定事实
 
-- 真实数据库：`data/work-desk.db`。单测、构建和开发验证使用独立目录与端口，不把隔离通过等同正式采用。
+- 真实数据库：`~/Library/Application Support/NiumaHome/data/work-desk.db`（正式数据目录以服务配置里的 `WORKDESK_DATA_DIR` 为准，查法见 `docs/OPERATIONS.md`「数据目录」；2026-11 从工作区的 `data/` 迁出，#83）。仓库里的 `data/` 只是开发用的本地库。单测、构建和开发验证使用独立目录与端口，不把隔离通过等同正式采用。
 - 飞书默认使用亚古兽 `lark-cli --profile cli_a965c429ef785bd3`（2026-11-02 起）；自言自语与 Codex 重置推送仍用猛鬼兽 `cli_a96f5f9ac63adcd4`；原机械邪龙兽 codex 不再使用。资源访问使用 user，带教评论可选 bot，推送使用 bot。不回退其他机器人。身份常量与调用记录见 `server/lark-identity.mjs`。
 - 真实验证只操作本轮明确标记的临时内容，保留已有数据；未知写入先回读，不重复创建或重发。
 - Chrome 收藏插件安装位置（2026-10-23 起）：`~/Library/Application Support/NiumaHome/extension/niuma-collect/`，内容来自主库 `browser-extension/niuma-collect/`。改主库插件后要手动同步到该目录，再在 `chrome://extensions` 重新加载；不要误认为改主库文件就自动改变已安装插件。此前安装在 `work-desk-t10`（已停用），10-22 改前备份在 `~/Library/Application Support/NiumaHome/evidence/niuma-legacy-20261022/extension-before/`。
