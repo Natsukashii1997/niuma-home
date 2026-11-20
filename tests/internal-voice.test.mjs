@@ -5,7 +5,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { openDb, saveSetting } from '../server/db.mjs';
 import { createInternalVoice, lastWeek, lastMonth, checkRange, contentOf, lineOf } from '../server/internal-voice.mjs';
-import { match } from '../server/http.mjs';
+import { match, unmatched } from '../server/http.mjs';
 import { routes } from '../server/routes/internal-voice.mjs';
 
 // 全部是合成数据；假接口按 x.lumiclass.com 的返回形状造，不连真实接口、不读钥匙串。
@@ -286,15 +286,15 @@ test('自动拉取遇到 partial：先让未尝试的月窗口执行，再重拉
   assert.ok(db.prepare("SELECT 1 FROM chat_messages WHERE msg_id='m6'").get(), '上次没拉到的会话补上了');
 });
 
-test('服务注册路由时 v3 兜底排在最后：内部原声接口不被 501 抢走', async t => {
-  const { readFileSync } = await import('node:fs');
-  const source = readFileSync(new URL('../server/index.mjs', import.meta.url), 'utf8');
-  const list = /const routes = \[([^\]]+)\]/.exec(source)[1].split(',').map(x => x.trim());
-  assert.equal(list.at(-1), 'v3', 'v3 的兜底 /api/v3/* 必须最后注册');
+test('没匹配上的 /api/v3/* 回 501 写在路由表外：内部原声接口不会被抢走，和注册顺序无关（L-20、#73）', async t => {
   const db = database(t);
-  const { routes: v3Routes } = await import('../server/routes/v3.mjs');
-  const all = [...routes(db, { fetchImpl: fakeApi().fetchImpl, token: () => TOKEN, now: () => NOW }), ...v3Routes(db)];
-  assert.notEqual(match(all, 'GET', '/api/v3/internal-voice/status').handler, match(v3Routes(db), 'GET', '/api/v3/internal-voice/status').handler);
+  const all = routes(db, { fetchImpl: fakeApi().fetchImpl, token: () => TOKEN, now: () => NOW });
+  assert.ok(match(all, 'GET', '/api/v3/internal-voice/status'), '内部原声接口在路由表里');
+  const reply = (method, pathname) => { let status, body; unmatched(method, pathname)({}, { writeHead: s => status = s, end: v => body = JSON.parse(v) }); return { status, body }; };
+  assert.deepEqual(reply('GET', '/api/v3/not-implemented-yet'), { status: 501, body: { error: '未实现，见 docs/tasks/V3-接口清单.md', task: 'V3-接口清单' } });
+  assert.equal(reply('GET', '/api/v3/').status, 404);
+  assert.equal(reply('OPTIONS', '/api/v3/not-implemented-yet').status, 404);
+  assert.equal(reply('GET', '/api/plans-typo').status, 404);
 });
 
 test('自动补拉跨周、跨月遗留的 partial / failed，不重拉已有 done 的窗口，不自动重放手动范围', async t => {

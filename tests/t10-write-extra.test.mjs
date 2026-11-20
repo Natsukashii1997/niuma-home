@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import path from 'node:path';
 import { openDb, saveAssistant, saveSetting } from '../server/db.mjs';
-import { match } from '../server/http.mjs';
+import { match, unmatched } from '../server/http.mjs';
 import { createMentorService, mentorView, datedHeadings } from '../server/mentor.mjs';
 import { projectRoutes } from '../server/routes/projects.mjs';
 import { routes as knowledgeRoutes } from '../server/routes/assistant-knowledge.mjs';
@@ -14,7 +14,6 @@ import { userRoutes } from '../server/routes/user.mjs';
 import { referenceDir } from '../server/references.mjs';
 import { parseTimeline, REGION_SHEETS } from '../server/timeline.mjs';
 import { anomalyKey, createRulingService, withRulings } from '../server/timeline-rulings.mjs';
-import { routes as fallbackRoutes } from '../server/routes/v3.mjs';
 import { createProjectService } from '../server/projects.mjs';
 import { createNeedsService } from '../server/needs.mjs';
 import { createStrategyExportService, literalMarkdown } from '../server/feishu-export.mjs';
@@ -210,7 +209,8 @@ test('T10 自言自语 PATCH :id 路由完成预览确认与回读', async t => 
 
 for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
   test(`T10 V3 未实现写接口 ${method} 返回501及派单标识`, async () => {
-    const response = await invoke(fallbackRoutes(), method, '/api/v3/t10-synthetic-unimplemented', { confirm: true });
+    const fallback = [{ method, re: /^\/api\/v3\/t10-synthetic-unimplemented$/, keys: [], handler: unmatched(method, '/api/v3/t10-synthetic-unimplemented') }];
+    const response = await invoke(fallback, method, '/api/v3/t10-synthetic-unimplemented', { confirm: true });
     assert.equal(response.status, 501);
     assert.deepEqual(response.body, { error: '未实现，见 docs/tasks/V3-接口清单.md', task: 'V3-接口清单' });
   });
