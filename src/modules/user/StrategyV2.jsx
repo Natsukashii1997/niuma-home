@@ -312,7 +312,7 @@ function Global({ doc, ctx }) {
       <div className="table-wrap">
         <table className="grid s2-pri">
           <colgroup><col className="is-name" /><col className="is-tag" /><col className="is-tag" /><col /><col className="is-act" /><col className="is-num" /><col className="is-dq" /><col className="is-scn" /></colgroup>
-          <thead><tr><th>地区</th><th>策略优先级</th><th>默认建议</th><th>理由</th><th>需求活跃度</th><th>有效 / 活跃 / 窗口未覆盖 / 数据不足</th><th>日期质量</th><th>情境</th></tr></thead>
+          <thead><tr><th>地区</th><th>策略优先级</th><th>默认建议</th><th>理由</th><th>需求活跃度</th><th title="有效 / 活跃 / 窗口未覆盖 / 数据不足">覆盖明细</th><th>日期质量</th><th>情境</th></tr></thead>
           <tbody>{REGIONS.map(([key, name]) => { const r = byKey[key]; if (!r) return <tr key={key}><td><b>{name}</b></td><td colSpan={7} className="muted">文档里缺这个地区</td></tr>;
             const p = r.priority || {}, a = r.activity || {}, n = coverageCounts(a.coverage);
             return [
@@ -332,7 +332,7 @@ function Global({ doc, ctx }) {
             ]; })}</tbody>
         </table>
       </div>
-      <div className="s2-dq-key"><span><i className="is-v" />官网核实或裁定</span><span><i className="is-s" />原表日期</span><span><i className="is-g" />推测</span></div>
+      <div className="s2-dq-key"><span><i className="is-v" />官网核实或裁定</span><span><i className="is-s" />原表日期</span><span><i className="is-g" />推测</span><span className="s2-key-cov">覆盖明细 = 有效 / 活跃 / 窗口未覆盖 / 数据不足</span></div>
     </Sec>
   );
 }

@@ -72,6 +72,7 @@ details.s2-basis[open] > .s2-basis-grid, details.s2-basis[open] > .s2-lg { margi
 .s2-dq-key { display: inline-flex; gap: var(--s3); margin-top: var(--s2); font-size: 11px; color: var(--muted); }
 .s2-dq-key span { display: inline-flex; align-items: center; gap: 6px; }
 .s2-dq-key i { width: 10px; height: 8px; border: 1px solid var(--line); }
+.s2-dq-key .s2-key-cov { padding-left: var(--s3); border-left: 1px solid var(--line); } /* 表头「覆盖明细」的口径（常浩 11-20 定：表头放不下全称，口径写在图例里） */
 .s2-box-head { display: flex; justify-content: space-between; align-items: center; }
 .s2-box-body { display: flex; flex-direction: column; gap: var(--s3); padding: var(--s3); }
 
