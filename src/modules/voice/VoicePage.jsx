@@ -100,7 +100,7 @@ function VoiceBoard({ v, sample = false }) {
           <ol className="list rising-list">{rising.map((t) => <li key={t.id}><button type="button" className="link-btn" onClick={() => { setWord(""); setScope(""); setKind(""); setSel(t.id); }}>{t.title}</button><span className={`trend ${TREND[t.trend]?.[1] || ""}`}>{TREND[t.trend]?.[0] || t.trend} {delta(t) >= 0 ? "+" : ""}{delta(t).toFixed(0)}</span></li>)}</ol>
         </Card>
       </div>
-      <div className="toolbar">
+      <div className="toolbar voice-filter">
         <span className="label">范围</span>
         <button type="button" className={`chip${!scope ? " is-on" : ""}`} onClick={() => setScope("")}>整体</button>
         {countries.map((c) => <button key={c} type="button" className={`chip${scope === c ? " is-on" : ""}`} onClick={() => setScope(scope === c ? "" : c)}>{c}</button>)}

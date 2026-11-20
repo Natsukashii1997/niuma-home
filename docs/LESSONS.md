@@ -213,3 +213,11 @@
 - 升级：〔机检〕已写进 `tests/ai-access.test.mjs`「Claude 执行方」一项（工作目录不存在时先建好）。
 - 提升：已提升为全局 G-45（2026-11-20）。
 
+
+## L-23 窄卡里的读取失败框把原因挤成一字一行：`flex: 1` 的元素在 flex-wrap 里永远不会换行（2026-11-20）
+
+- 现象：首页「待我处理」「今日日程」两张窄卡（col-4）读取失败时，原因文字只剩 23px 宽，一个字一行，还被卡片裁掉；1280、1440 都有。宽卡（Codex、交付月）里同一个报错框看着正常。
+- 根因：`.state-error` 是横排弹性盒，标题 `nowrap`、按钮固定宽，中间的原因写 `flex: 1; min-width: 0`。`flex: 1` 的基准宽是 0，浏览器算一行放不放得下时它只占 0，所以永远不触发换行，剩多少宽给多少；窗口窄的时候 `60-codex.css` 里加的 `flex-wrap: wrap` 也因此不起作用。
+- 正确做法：要「放不下就换行」的弹性项写成 `flex: 1 1 <最小可读宽度>`（这里 200px）并给容器 `flex-wrap: wrap`；宽容器里照常占满一行，窄容器里原因和按钮各自掉到下一行。卡片固定高度时（`.todo-card` 跟同行 Codex 板块走）报错态另外放开高度，不让报错框被裁。
+- 证据：`~/Library/Application Support/NiumaHome/evidence/ui-preflight-fix-20261120/`（`before/`、`after-all/`、`wkwebview/`）；本轮 CURRENT.md「ui-preflight 扫出的界面问题」一节。
+- 升级：〔提醒〕未升级。ui-preflight 的「截断与折行」能量出这类问题，交付前跑它即可发现。

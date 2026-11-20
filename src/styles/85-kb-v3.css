@@ -87,7 +87,7 @@
 .brand-ver-count { display: flex; align-items: baseline; gap: var(--s2); }
 .brand-ver-count b { font-family: var(--font-pixel); font-weight: 400; font-size: 28px; line-height: 1; }
 .brand-bar { margin-bottom: var(--s2); }
-.brand-page .search-box { flex: 0 1 360px; min-width: 0; } /* 窄屏不撑出横向滚动 */
+.brand-page .search-box { flex: 100 1 240px; max-width: 360px; min-width: 0; } /* 筛选、搜索、只看有变化一行放下（常浩 10-18 点名并到一行，11-20 定 1280 也一行）：剩余宽度先给搜索框，1440 仍 360px，1280 收到约 320px；窄屏不撑出横向滚动 */
 .brand-page .stat { min-height: 0; gap: 0; padding: var(--s2) var(--s4); } /* 统计条比版本条矮（用户 2026-10-18） */
 .brand-page .stat-value { font-size: 18px; }
 .brand-page .stat-foot { min-height: 0; }
