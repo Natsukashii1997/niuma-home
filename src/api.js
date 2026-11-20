@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// 读取接口。接口返回 501（尚未实现）且给了 sample 时，改用示例数据并标记 isSample，页面据此显示「示例」。
-// 接口实现后示例自动消失，页面无需改动。返回的 reload() 用于报错后「重新读取」。
+// 读取接口。返回的 reload() 用于报错后「重新读取」。
 // 后端给演示口径的数据时（价格、营收：数据里 origin 为 "demo"，并带响应头 x-workdesk-data-origin: demo），照常显示，
-// 同时标 isSample，「示例」标识保留，不当成真实业务数据。
+// 同时标 isSample，页面据此显示「示例」，不当成真实业务数据。
+// （早期「接口回 501 就显示前端自带示例」的机制已退役，2026-11-20 #73 删除；没实现的接口现在按普通读取失败显示。）
 const isDemo = (body) => Boolean(body) && (body.origin === "demo" || (Array.isArray(body) && body.some((x) => x?.origin === "demo")));
 
 // 读取共享（2026-10-23 审核第 4 条）：同一路径常被一个页面里的多个组件同时读（首页横条和卡片都读 codex-reset，月度促销页三处读 /api/plans）。
@@ -23,7 +23,7 @@ export function readShared(path, force = false) {
   return promise;
 }
 
-export function useApi(path, sample) {
+export function useApi(path) {
   const [state, setState] = useState({ loading: true });
   const [tick, setTick] = useState(0);
   const force = useRef(false);
@@ -40,7 +40,6 @@ export function useApi(path, sample) {
         const { body } = r;
         const demo = r.demo || isDemo(body);
         if ((r.ok || r.status === 501) && demo && body) setState({ data: body, isSample: true, task: (!Array.isArray(body) && body.task) || "演示数据" });
-        else if (r.status === 501 && sample !== undefined) setState({ data: sample, isSample: true, task: body?.task });
         else if (!r.ok) setState({ error: body?.error || `读取失败（${r.status}）`, status: r.status, code: body?.code });
         else setState({ data: body });
       })
@@ -48,7 +47,7 @@ export function useApi(path, sample) {
     return () => {
       alive = false;
     };
-  }, [path, tick]); // sample 应为模块级常量，不随渲染变化
+  }, [path, tick]);
   return { ...state, reload };
 }
 

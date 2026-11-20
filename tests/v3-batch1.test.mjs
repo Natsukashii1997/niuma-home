@@ -5,8 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { openDb } from '../server/db.mjs';
 import { routes } from '../server/routes/workspace.mjs';
-import * as fallback from '../server/routes/v3.mjs';
-import { match, json } from '../server/http.mjs';
+import { match, json, unmatched } from '../server/http.mjs';
 import { codexResetView, createCodexResetReader } from '../server/codex-reset.mjs';
 import { parseTimelineDate, parseTimeline, parseAnnotatedCsv, readTimelineSheets, REGION_SHEETS } from '../server/timeline.mjs';
 import { deriveNeeds } from '../server/needs.mjs';
@@ -25,10 +24,10 @@ async function setup(t) {
   assert.ok(process.env.WORKDESK_DATA_DIR, '必须隔离');
   const dir = mkdtempSync(path.join(process.env.WORKDESK_DATA_DIR, 'v3-'));
   const db = openDb(dir); let data = sheets(), readError, instant = Date.parse('2026-10-16T14:00:00+08:00'), reads = 0;
-  const all = [...routes(db, undefined, undefined, { timeline: { readSheets: async () => { reads++; if (readError) throw readError; return structuredClone(data); }, now: () => instant }, needs: { now: () => instant }, codex: { fetcher: async () => Response.json(resetSource()) } }), ...fallback.routes()];
+  const all = [...routes(db, undefined, undefined, { timeline: { readSheets: async () => { reads++; if (readError) throw readError; return structuredClone(data); }, now: () => instant }, needs: { now: () => instant }, codex: { fetcher: async () => Response.json(resetSource()) } })];
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost'), found = match(all, req.method, url.pathname);
-    if (!found) return json(res, 404, { error: '接口不存在' });
+    if (!found) return unmatched(req.method, url.pathname)(req, res);
     try { await found.handler(req, res, { params: found.params, url }); } catch { json(res, 500, { error: '异常' }); }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));

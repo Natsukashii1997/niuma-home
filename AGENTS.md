@@ -46,7 +46,7 @@ HANDOFF.md           交接入口（最新一轮范围、固定身份、证据�
 CURRENT.md           当前状态与唯一下一步；旧记录在 docs/history/
 server/
   index.mjs          HTTP 服务：静态文件 + /api 路由分发
-  http.mjs           json / readJson / route / match / pending(task)
+  http.mjs           json / readJson / route / match / pending(task) / unmatched（没匹配上的 /api/v3/* 回 501，其余 404）
   db.mjs             全部表结构与查询；data/work-desk.db、data/images/
   routes/*.mjs       每个模块导出 routes(db) → route(...) 数组
 src/
@@ -54,7 +54,7 @@ src/
   router.js          #/ 路由：useRoute() / href()
   api.js             useApi(path, sample) / apiSend()
   constants.js       业务线、促销字段、月份工具、交付月环节
-  samples.js         示例数据（接口 501 时显示）；另有 Voice 模拟数据 `voiceSample`（来源接通前显示，用户 2026-10-23 要求）
+  samples.js         Voice 模拟数据 `voiceSample`（来源接通前显示，用户 2026-10-23 要求）
   ui/components.jsx  公共组件
   ui/bitmap.jsx      位图风基础件：FlipNumber / DotMatrix / DitherBar / TypeText / StepProgress / PixelIcon / BitAvatar / dissolve
   assets/fonts/      Geist / Geist Mono / Geist Pixel（OFL）

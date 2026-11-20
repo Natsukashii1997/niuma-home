@@ -59,5 +59,13 @@ export function match(routes, method, pathname) {
   return null;
 }
 
-// 尚未实现的接口统一返回 501 + 派单编号；前端据此显示示例数据。实现后替换掉即可。
+// 尚未实现的接口统一返回 501 + 派单编号。
 export const pending = (task) => (req, res) => json(res, 501, { error: `未实现，见 docs/tasks/${task}.md`, task });
+
+// 全部路由都没匹配上时怎么回：/api/v3/* 回 501（v3 页面先做界面、接口后补时的占位），其余回 404。
+// 写在路由表外面，和注册顺序无关：以前是排在表尾的一组兜底路由，新模块注册在它后面就被它抢走（L-20、#73）。
+const V3_FALLBACK_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
+export function unmatched(method, pathname) {
+  if (V3_FALLBACK_METHODS.has(method) && /^\/api\/v3\/.+$/.test(pathname)) return pending("V3-接口清单");
+  return (req, res) => json(res, 404, { error: "接口不存在" });
+}

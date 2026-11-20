@@ -29,6 +29,9 @@ for (const url of ['/api/images/%FF', '/api/images/%', 'http://[invalid']) {
       });
       assert.equal((await request(${JSON.stringify(url)})).status, 400);
       assert.equal((await request('/api/no-such-route')).status, 404);
+      // 没匹配上的 /api/v3/* 仍回 501；已实现的 v3 接口不被它抢走（#73）
+      assert.deepEqual(await request('/api/v3/no-such-route'), { status: 501, body: { error: '未实现，见 docs/tasks/V3-接口清单.md', task: 'V3-接口清单' } });
+      assert.equal((await request('/api/v3/internal-voice/status')).status, 200);
       assert.equal((await request('/api/no-such-route', 'https://outside.invalid')).status, 403);
       assert.equal((await request('/api/images/not-present')).status, 404);
       console.log('400; follow-up 404; process alive');

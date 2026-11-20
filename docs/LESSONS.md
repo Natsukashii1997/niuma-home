@@ -192,9 +192,9 @@
 
 - 现象：#50 发布到 5280 后，`GET /api/v3/internal-voice/status` 回 `501 {"error":"未实现，见 docs/tasks/V3-接口清单.md"}`；单元测试全过（测试直接调路由模块，没经过 `server/index.mjs` 的注册顺序）。
 - 根因：`server/routes/v3.mjs` 末尾有兜底路由 `/^\/api\/v3\/.+$/` → `pending("V3-接口清单")`；`server/http.mjs` 的 `match` 按注册顺序取第一个匹配。新模块追加在 `v3` 之后，所有请求先被兜底接走。
-- 正确做法：新路由模块加进 `server/index.mjs` 的 `routes` 数组时放在 `v3` 前面（`tests/internal-voice.test.mjs` 断言 `v3` 在最后）；发布回读后实际请求一次本轮新接口，不只看 7 项回读。
+- 正确做法：2026-11-20（#73）起兜底不在路由表里：`server/http.mjs` 的 `unmatched` 在全部路由都没匹配时才回 501，新模块加在 `routes` 数组哪里都行。发布回读后仍要实际请求一次本轮新接口，不只看 7 项回读。
 - 证据：本轮 CURRENT.md「内部原声批 1」一节「发布与回读」。
-- 升级：〔机检〕关闭（2026-11-19，积压清单组 15）：核实坑已被代码消除：`server/index.mjs` 第 19 行 `v3` 排在 `routes` 最后，第 18 行注释写明原因；靠 `tests/internal-voice.test.mjs` 第 288 行「服务注册路由时 v3 兜底排在最后」守住，测试接进 CI（`.github/workflows/ci.yml` 每个 PR 和推 main 都跑 `npm test`；main 没开分支保护，CI 红了不拦合并）。原记录：没有升级行。
+- 升级：〔机检〕关闭（2026-11-19，积压清单组 15）：核实坑已被代码消除：`server/index.mjs` 第 19 行 `v3` 排在 `routes` 最后，第 18 行注释写明原因；靠 `tests/internal-voice.test.mjs` 第 288 行「服务注册路由时 v3 兜底排在最后」守住，测试接进 CI（`.github/workflows/ci.yml` 每个 PR 和推 main 都跑 `npm test`；main 没开分支保护，CI 红了不拦合并）。原记录：没有升级行。2026-11-20（#73）改为结构消除：删掉 `server/routes/v3.mjs`，兜底移到 `unmatched`，和注册顺序无关；由 `tests/server-entry.test.mjs`（经真实入口）和 `tests/internal-voice.test.mjs` 守住。
 
 ## L-21 基线截图连拍不一致、或改了颜色也比不出来（2026-11-19）
 
