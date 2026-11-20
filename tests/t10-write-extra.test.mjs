@@ -7,6 +7,7 @@ import { openDb, saveAssistant, saveSetting } from '../server/db.mjs';
 import { match, unmatched } from '../server/http.mjs';
 import { createMentorService, mentorView, datedHeadings } from '../server/mentor.mjs';
 import { projectRoutes } from '../server/routes/projects.mjs';
+import { mentorRoutes } from '../server/routes/mentor.mjs';
 import { routes as knowledgeRoutes } from '../server/routes/assistant-knowledge.mjs';
 import { routes as referenceRoutes } from '../server/routes/references.mjs';
 import { routes as selftalkRoutes } from '../server/routes/selftalk.mjs';
@@ -51,7 +52,7 @@ function mentorFixture(t) {
     generate: noModel,
     readLogs: async person => mentorView(person, datedHeadings('<h1 id="synthetic">10.18 合成日志</h1>', 2026), '<h1 id="synthetic">10.18 合成日志</h1><p id="para0abcd">合成卡点：待确认下一步。</p>', clock.value),
   });
-  return { db, clock, source, routes: projectRoutes({ mentor }), base: `/api/v3/mentor/${encodeURIComponent(source.name)}/records` };
+  return { db, clock, source, routes: mentorRoutes({ mentor }), base: `/api/v3/mentor/${encodeURIComponent(source.name)}/records` };
 }
 
 test('T10 带教记录预览到期后拒绝确认，回读没有新增记录', async t => {

@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { openDb, saveSetting } from '../server/db.mjs';
-import { routes } from '../server/routes/workspace.mjs';
+import { pageRoutes as routes } from '../server/app-routes.mjs';
 import { match } from '../server/http.mjs';
 import { getRecord, putRecord } from '../server/local-records.mjs';
 import { COLLECT_RULES } from '../server/kb-collect-config.mjs';

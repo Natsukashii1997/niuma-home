@@ -1,6 +1,5 @@
-import { route } from '../http.mjs';
+import { route, respond } from '../http.mjs';
 import { beijingText, requireMonth } from '../v3-common.mjs';
-import { handleV3 } from './user.mjs';
 import { getSettings } from '../db.mjs';
 import { getRecord, fingerprint } from '../local-records.mjs';
 import { availablePriceMatrices, priceSettings } from '../price.mjs';
@@ -88,7 +87,7 @@ export function deliveryView(db, month) {
 }
 
 export function deliveryRoutes(db) {
-  return [route('GET', '/api/v3/months/:month', handleV3((req, { params: { month } }) => {
+  return [route('GET', '/api/v3/months/:month', respond((req, { params: { month } }) => {
     requireMonth(month);
     return deliveryView(db, month);
   }))];

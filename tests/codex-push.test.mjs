@@ -5,7 +5,7 @@ import path from 'node:path';
 import { openDb, saveSetting } from '../server/db.mjs';
 import { codexPushStatus, createCodexPush, pushCandidates, resetCard, PUSH_INTERVAL } from '../server/codex-push.mjs';
 import { validateV3Setting } from '../server/v3-settings.mjs';
-import { routes } from '../server/routes/workspace.mjs';
+import { pageRoutes as routes } from '../server/app-routes.mjs';
 import { match } from '../server/http.mjs';
 
 const hour = 3600_000;

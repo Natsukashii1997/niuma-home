@@ -5,7 +5,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { openDb, saveSetting } from '../server/db.mjs';
 import { match } from '../server/http.mjs';
-import { routes } from '../server/routes/workspace.mjs';
+import { pageRoutes as routes } from '../server/app-routes.mjs';
 import { sourceStatus, recordSource } from '../server/source-status.mjs';
 import { TIMELINE_SOURCE } from '../server/timeline.mjs';
 import { createSettingsChanges, validateV3Setting } from '../server/v3-settings.mjs';

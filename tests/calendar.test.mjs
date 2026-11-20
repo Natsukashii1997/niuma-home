@@ -109,7 +109,7 @@ test("隔离HTTP返回约定三字段，缓存与CLI不可用错误不影响首�
   const { mkdtempSync,rmSync }=await import("node:fs");
   const { default:path }=await import("node:path");
   const { openDb }=await import("../server/db.mjs");
-  const { routes }=await import("../server/routes/workspace.mjs");
+  const { pageRoutes: routes }=await import("../server/app-routes.mjs");
   const { match,json }=await import("../server/http.mjs");
   assert.ok(process.env.WORKDESK_DATA_DIR);
   const dir=mkdtempSync(path.join(process.env.WORKDESK_DATA_DIR,"calendar-")),db=openDb(dir);

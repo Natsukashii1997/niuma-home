@@ -1,24 +1,14 @@
-import { json, readJson, route } from "../http.mjs";
+import { json, readJson, route, respond } from "../http.mjs";
 import { getSettings } from "../db.mjs";
 import { createReportReader, reportDocumentUrl } from "../reports.mjs";
 import { createCalendarReader } from "../calendar.mjs";
 import { createCodexResetReader } from "../codex-reset.mjs";
 import { codexPushStatus } from "../codex-push.mjs";
-import { createUserServices, userRoutes, handleV3 } from "./user.mjs";
-import { deliveryRoutes } from "./delivery.mjs";
-import { agentRoutes } from "./agent.mjs";
 import { recordSource, sourceStatus, reportIdentity } from "../source-status.mjs";
 import { createSettingsChanges, V3_SETTING_KEYS, validateV3Setting } from "../v3-settings.mjs";
 import { createAiAccess } from "../ai-executor.mjs";
-import { routes as selftalkRoutes } from "./selftalk.mjs";
-import { routes as referenceRoutes } from "./references.mjs";
-import { createProjectServices, projectRoutes } from "./projects.mjs";
-import { routes as brandRoutes } from "./brand.mjs";
-import { routes as marketingRoutes } from "./v3-marketing.mjs";
-import { createTodoReader } from "../home-todo.mjs";
 import { createRevenueService } from "../revenue.mjs";
 import { createBusinessChartsService } from "../business-charts.mjs";
-import { createVoiceReader } from "../voice.mjs";
 
 const invalid = (message) => { throw Object.assign(new Error(message), { status: 400 }); };
 
@@ -47,8 +37,8 @@ function settingValue(key, value) {
   return link;
 }
 
-// 首页、日报周报、日历、配置
-export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
+// 首页、日报周报、日历、设置、数据源状态。voice（留学之声读取）和 todo（首页待办）和别的路由组共用，由 app-routes.mjs 建好传进来。
+export function workspaceRoutes(db, reportOptions, calendarOptions, v3Options = {}, { voice, todo }) {
   const settingsChanges = createSettingsChanges(db, { ...v3Options.settings,
     validate: (key, value) => V3_SETTING_KEYS.has(key) ? validateV3Setting(key, value) : settingValue(key, value),
   });
@@ -70,12 +60,8 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     reportOptions?.onSource?.(event);
   } });
   const codexReset = createCodexResetReader(v3Options.codex);
-  const voice = createVoiceReader(db, v3Options.voice);
-  const userServices = createUserServices(db, { ...v3Options, voiceReader: voice, timeline: { ...v3Options.timeline, onSource: event => recordSource(db, 'timeline', event) } });
-  const projectServices = createProjectServices(db, v3Options);
   const revenue = createRevenueService(db, v3Options.revenue);
   const businessCharts = createBusinessChartsService(db, v3Options.businessCharts);
-  const todo = createTodoReader(db, { ...userServices, projects: projectServices.projects, ...v3Options.todo });
   const reportHandler = (detail) => async (req, res, { params, url }) => {
     try {
       return json(res, 200, await reports({ refresh: url.searchParams.get("refresh") === "1", withSources: url.searchParams.get("withSources") === "1", ...(detail ? { id: params.id } : {}) }));
@@ -84,7 +70,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     }
   };
   return [
-    route("GET", "/api/v3/status", handleV3(() => sourceStatus(db, { implemented:['daily','weekly','timeline','kb','nas', ...(voice.identity() ? ['voice'] : [])], voiceIdentity:voice.identity() }))),
+    route("GET", "/api/v3/status", respond(() => sourceStatus(db, { implemented:['daily','weekly','timeline','kb','nas', ...(voice.identity() ? ['voice'] : [])], voiceIdentity:voice.identity() }))),
     route('GET', '/api/v3/voice', async (req,res) => {
       try { json(res,200,await voice()); }
       // 来源未接通（503 + VOICE_*）改回 200 + unavailable（2026-10-23 审核第 8 条）：页面照常显示模拟数据并标明，控制台不再有红字。
@@ -93,23 +79,15 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
         json(res,error.status||500,{error:error.status?error.message:'留学之声读取失败',code:error.code||'VOICE_READ_FAILED'});
       }
     }),
-    route("GET", "/api/v3/settings", handleV3(() => settingsChanges.read())),
+    route("GET", "/api/v3/settings", respond(() => settingsChanges.read())),
     // AI 接入（P-13）：只读；可用状态只跑 --version 与登录状态，不调用模型。refresh=1 重新检查。
-    route("GET", "/api/v3/ai-access", handleV3((req, { url }) => aiAccess.read({ refresh: url.searchParams.get("refresh") === "1" }))),
-    route("POST", "/api/settings/:key/preview", handleV3(async (req, { params }) => settingsChanges.preview(params.key, await readJson(req)))),
-    route("GET", "/api/v3/codex-reset", handleV3(() => codexReset())),
-    route("GET", "/api/v3/codex-push", handleV3(() => codexPushStatus(db))),
-    ...userRoutes(userServices),
-    route('GET', '/api/v3/home/todo', handleV3(() => todo())),
-    route('GET', '/api/v3/business/revenue', handleV3((req, { url }) => revenue.get({ refresh: url.searchParams.get('refresh') === '1' }))),
-    route('GET', '/api/v3/business/charts', handleV3((req, { url }) => businessCharts.get({ refresh: url.searchParams.get('refresh') === '1' }))),
-    ...deliveryRoutes(db),
-    ...projectRoutes(projectServices),
-    ...agentRoutes(db, { ...projectServices, userStrategy: userServices.userStrategy, strategy: userServices.strategy }),
-    ...brandRoutes(db, v3Options.brand),
-    ...marketingRoutes(db, v3Options),
-    ...selftalkRoutes(db, v3Options.selftalk),
-    ...referenceRoutes(db, v3Options.refs),
+    route("GET", "/api/v3/ai-access", respond((req, { url }) => aiAccess.read({ refresh: url.searchParams.get("refresh") === "1" }))),
+    route("POST", "/api/settings/:key/preview", respond(async (req, { params }) => settingsChanges.preview(params.key, await readJson(req)))),
+    route("GET", "/api/v3/codex-reset", respond(() => codexReset())),
+    route("GET", "/api/v3/codex-push", respond(() => codexPushStatus(db))),
+    route('GET', '/api/v3/home/todo', respond(() => todo())),
+    route('GET', '/api/v3/business/revenue', respond((req, { url }) => revenue.get({ refresh: url.searchParams.get('refresh') === '1' }))),
+    route('GET', '/api/v3/business/charts', respond((req, { url }) => businessCharts.get({ refresh: url.searchParams.get('refresh') === '1' }))),
     route("GET", "/api/calendar/today", async (req, res) => {
       try { return json(res, 200, await calendar()); }
       catch (error) { return json(res, error.status || 502, { error: error.status ? error.message : "飞书日历读取失败，请稍后重新打开首页" }); }

@@ -1,4 +1,5 @@
-export const failure = (status, message) => Object.assign(new Error(message), { status });
+import { failure } from './http.mjs';
+export { failure }; // 定义在 http.mjs；这里保留导出，服务文件照旧从本文件引用
 export const beijingText = value => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(value));
 export const validMonth = month => typeof month === 'string' && /^20\d{2}-(0[1-9]|1[0-2])$/.test(month);
 export function requireMonth(month) {
