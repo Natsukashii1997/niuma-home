@@ -10,9 +10,9 @@
 .parse-empty .state-loading i:nth-child(2) { width: 80%; }
 .parse-empty .state-loading i:nth-child(3) { width: 55%; }
 /* 报错：哪份数据 + 原因 + 重新读取 */
-.state-error { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); background: var(--panel); border: var(--border) solid var(--line); border-left: 4px solid var(--risk); }
+.state-error { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); background: var(--panel); border: var(--border) solid var(--line); border-left: 4px solid var(--risk); }
 .state-error strong { color: var(--risk); white-space: nowrap; }
-.state-error .small { flex: 1; min-width: 0; color: var(--text-2); }
+.state-error .small { flex: 1 1 200px; min-width: 0; color: var(--text-2); } /* 原因至少留 200px：窄卡（首页 col-4）里放不下就让原因、按钮各占一行，不再被挤成一字一行 */
 .state-error .btn { height: var(--ctl-sm); }
 .placeholder .btn { margin-top: var(--s2); }
 /* 首页 Agent 卡：列表 + 常用开场 + 新对话（新对话贴卡底） */

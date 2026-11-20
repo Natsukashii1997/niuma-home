@@ -37,7 +37,7 @@
 .aia-kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .aia-grid { width: 100%; table-layout: fixed; }
 .aia-grid td { white-space: normal; min-width: 0; overflow-wrap: anywhere; }
-.aia-grid th:nth-child(1) { width: 150px; } .aia-grid th:nth-child(2) { width: 150px; } .aia-grid th:nth-child(3) { width: 80px; } .aia-grid th:nth-child(4) { width: 72px; } .aia-grid th:nth-child(7) { width: 200px; } .aia-grid th:last-child { width: 84px; }
+.aia-grid th:nth-child(1) { width: 150px; } .aia-grid th:nth-child(2) { width: 160px; } .aia-grid th:nth-child(3) { width: 80px; } .aia-grid th:nth-child(4) { width: 72px; } .aia-grid th:nth-child(7) { width: 200px; } .aia-grid th:last-child { width: 84px; }
 .aia-grid td .tag { margin-bottom: 4px; white-space: normal; }
 .aia-grid td .btn { height: 28px; font-size: 12px; }
 .aia-grid tr.is-open td { background: var(--panel-soft); }

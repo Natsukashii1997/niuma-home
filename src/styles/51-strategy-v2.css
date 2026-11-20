@@ -124,6 +124,7 @@ details.s2-basis[open] > .s2-basis-grid, details.s2-basis[open] > .s2-lg { margi
 .s2-reason-input:focus { outline: none; border-color: var(--text); }
 
 /* 附 版本与留痕 */
+.grid.s2-vers td { min-width: 0; } /* 九列各留 96px 下限在 1280 宽会多出 9px 横向滚动；按内容分宽，编号列仍不折行 */
 .grid.s2-vers td.mono { white-space: nowrap; }
 .s2-vers tr.is-cur td { background: var(--panel); }
 .s2-vers tr.is-cur td:first-child { box-shadow: inset 4px 0 0 var(--signal); }
