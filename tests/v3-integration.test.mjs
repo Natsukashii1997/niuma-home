@@ -108,6 +108,13 @@ test('参考图片实际系统压缩为JPEG，拒绝伪造格式',{skip:process.
   await assert.rejects(compressReference('data:image/png;base64,SGVsbG8='),{status:415});
 });
 
+test('首页待办：低于毛利底线的价格方案照常提示，但不再让人去填已经移除的「原因」（#72）',()=>{
+  const base={timeline:{anomalies:[]},projects:[],campaign:null,settings:{costPerHour:440,floorMargin:.25}};
+  const matrices=[{name:'灵活学Lite',tiers:[5],schemes:[{name:'双11',status:'生效中',prices:[6000],gifts:[10],breachReason:'旧数据里残留的原因'}]}];
+  const item=todoView({...base,matrices},Date.parse('2026-11-20T12:00:00+08:00')).find(x=>x.kind==='价格');
+  assert.equal(item.text,'双11 · 5课时低于毛利底线');assert.equal(item.href,'#/marketing/prices');
+});
+
 test('首页待办使用完整年份和异常，空门禁不误报，不再列主线需求，外部失败不返回假空',async t=>{
   const {db}=database(t),input={timeline:{anomalies:[{},{verification:{status:'confirmed'}},{ruling:{decision:'exclude'}}]},needs:{needs:[{status:'草稿'},{status:'待复核'}]},projects:[{name:'项目',nodes:[{t:'明年节点',due:'01-01',dueDate:'2027-01-01',done:false,owner:'人'},{t:'空门禁',gate:true,done:false},{t:'待审',gate:true,gateReady:true}]}],campaign:null,matrices:[],settings:{costPerHour:440,floorMargin:.25}};
   const list=todoView(input,Date.parse('2026-12-31T12:00:00+08:00'));assert.ok(!list.some(x=>x.kind==='需求'));assert.equal(list.filter(x=>x.kind==='审核').length,1);assert.match(list.find(x=>x.kind==='项目').sub,/1天内/);assert.equal(list.find(x=>x.kind==='项目').dueDate,'2027-01-01');

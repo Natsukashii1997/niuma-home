@@ -103,7 +103,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
     route('GET', '/api/v3/home/todo', handleV3(() => todo())),
     route('GET', '/api/v3/business/revenue', handleV3((req, { url }) => revenue.get({ refresh: url.searchParams.get('refresh') === '1' }))),
     route('GET', '/api/v3/business/charts', handleV3((req, { url }) => businessCharts.get({ refresh: url.searchParams.get('refresh') === '1' }))),
-    ...deliveryRoutes(userServices.needs, db),
+    ...deliveryRoutes(db),
     ...projectRoutes(projectServices),
     ...agentRoutes(db, { ...projectServices, userStrategy: userServices.userStrategy, strategy: userServices.strategy }),
     ...brandRoutes(db, v3Options.brand),

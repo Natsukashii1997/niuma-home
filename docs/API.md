@@ -233,6 +233,7 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `POST /api/v3/price/schemes/preview?sku=` body `{ unitOrig, tiers, schemes }` → 预览；`PUT /api/v3/price/schemes?sku=` body `{ previewId, confirm: true }` → 保存，再 GET 回读。整张矩阵一起保存，仍检查原价、严格升序档位、每格正数总价、非负整数赠课；空方案或未填满不能保存。
 - 方案状态新增 `已记录`：表示价格档案，不代表已生效；可同时留空 from/to，也可填完整有效起止期。其余状态继续要求合法日期。2026-10-21用户要求移除「关联需求」「破底线原因」：所有价格方案不再需要这两个输入或必填校验，旧客户端提交的 needId/need/breachReason 在预览时移除；毛利偏低仍可在表格提示，但不阻挡保存。已记录档案不进入月度政策或自动生成的设计 Brief。
 - 图片未给生效期，不沿用演示双11日期。学考无忧Pass 30课时的95折、85折分别保存为34,913、31,238元，按源图取整金额。
+- 首页交付月 `GET /api/v3/months/:month` → `{ month, campaign, steps: [prices, materials, brief, campaign] }`，每步 `{ key, label, state: todo / part / done, meta, href }`。「价格方案」一步（2026-11-20，#72）：当月生效中、结构完整的本地方案算有效；草稿、结构不完整（待复核）会让这一步停在 part；低于毛利底线的方案照样算有效，只在 `meta` 里写「N 套低于毛利底线」；成本或毛利仍是演示口径时最多到 part。不再读关联需求和破底线原因，也不再读需求列表与时间线。
 
 ## 猛鬼兽推送 · Codex 重置（2026-10-19）
 
