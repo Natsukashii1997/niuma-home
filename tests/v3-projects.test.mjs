@@ -7,7 +7,10 @@ import { openDb, saveSetting } from '../server/db.mjs';
 import { createProjectService, matrixRows, projectView, readProjectSource, runLark } from '../server/projects.mjs';
 import { createMentorService, datedHeadings, mentorView, mentorQuestions, readMentorLogs } from '../server/mentor.mjs';
 import { createKnowledgeTreeService, knowledgeView, previewKnowledgeChanges, readKnowledgeSource } from '../server/knowledge-tree.mjs';
-import { createProjectServices, projectRoutes } from '../server/routes/projects.mjs';
+import { projectRoutes } from '../server/routes/projects.mjs';
+import { mentorRoutes } from '../server/routes/mentor.mjs';
+import { kbRoutes } from '../server/routes/kb.mjs';
+import { createProjectServices } from '../server/app-routes.mjs';
 import { match, json } from '../server/http.mjs';
 
 const instant = Date.parse('2026-10-16T14:00:00+08:00');
@@ -233,7 +236,7 @@ test('V3 知识库引用只来自实际本地设置、Agent指令与已登记知
 test('V3 项目带教知识库HTTP读取、同步及各写入预览门禁', async t => {
   const db = dbFor(t); saveSetting(db, 'mentor_sources', JSON.stringify([source]));
   const services = createProjectServices(db, { projects: { readSource: async () => projectSource() }, mentor: { readLogs: async s => mentorView(s, headings(), logXml, instant) }, kb: { readSource: async () => kbSource() } });
-  const routes = projectRoutes(services);
+  const routes = [...projectRoutes(services), ...mentorRoutes(services), ...kbRoutes(services)];
   const server = createServer(async (req, res) => { const url = new URL(req.url, 'http://localhost'), found = match(routes, req.method, url.pathname); if (!found) return json(res, 404, {}); await found.handler(req, res, { params: found.params, url }); });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));

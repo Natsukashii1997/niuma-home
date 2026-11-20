@@ -1,10 +1,10 @@
 import { execFile } from "node:child_process";
+import { failure } from "./http.mjs";
 import { promisify } from "node:util";
 import { parseReportDocument } from "./report-parser.mjs";
 import { AGUMON, larkRun } from './lark-identity.mjs';
 
 const execute = promisify(execFile);
-const failure = (status, message) => Object.assign(new Error(message), { status });
 
 export function reportDocumentUrl(value) {
   if (typeof value !== "string" || !value.trim()) throw failure(400, "尚未配置日报文档链接，请到设置页保存链接后刷新");

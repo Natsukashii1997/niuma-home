@@ -6,7 +6,7 @@ import { Readable } from 'node:stream';
 import { openDb, saveSetting } from '../server/db.mjs';
 import { getRecord, putRecord } from '../server/local-records.mjs';
 import { KB_SPACE, createKnowledgeTreeService } from '../server/knowledge-tree.mjs';
-import { projectRoutes } from '../server/routes/projects.mjs';
+import { kbRoutes } from '../server/routes/kb.mjs';
 import { match } from '../server/http.mjs';
 
 const instant=Date.parse('2026-10-16T14:00:00+08:00');
@@ -48,7 +48,7 @@ function setup(t) {
 }
 const rename={type:'rename',id:'child',name:'新名称'};
 async function invoke(kb,method,endpoint,value) {
-  const routes=projectRoutes({kb,projects:{},mentor:{}}),url=new URL(endpoint,'http://127.0.0.1'),found=match(routes,method,url.pathname);assert.ok(found);
+  const routes=kbRoutes({kb}),url=new URL(endpoint,'http://127.0.0.1'),found=match(routes,method,url.pathname);assert.ok(found);
   const req=Readable.from(value===undefined?[]:[Buffer.from(JSON.stringify(value))]);req.method=method;req.url=endpoint;
   let status,text;const res={setHeader(){},writeHead(code){status=code;},end(body){text=body;}};
   await found.handler(req,res,{params:found.params,url});return{status,body:JSON.parse(text)};

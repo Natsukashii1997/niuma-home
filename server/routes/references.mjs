@@ -1,7 +1,6 @@
 import { fingerprint } from '../local-records.mjs';
-import { route, json } from '../http.mjs';
+import { route, json, respond } from '../http.mjs';
 import { createReferenceService } from '../references.mjs';
-import { handleV3 } from './user.mjs';
 import { failure } from '../v3-common.mjs';
 import { collectionImage, DEFAULT_GROUP, digiworldDir, digiworldSource, readCollection } from '../digiworld.mjs';
 
@@ -18,12 +17,12 @@ export function routes(db,options={}) {
     return { revision, groups, defaultGroup: DEFAULT_GROUP, notes: notes.map(({ images, content, ...n }) => ({ ...n, images: images.length, imported: saved.some(i => i.post?.id === n.id) })) };
   };
   return [
-    route('GET','/api/v3/design-refs/state',handleV3(()=>designs.state())),
-    route('GET','/api/v3/design-refs/operations/:id',handleV3((req,{params})=>designs.operation(params.id))),
-    route('GET','/api/v3/design-refs/saves/:id',handleV3((req,{params})=>designs.receipt(params.id))),
-    route('PUT','/api/v3/design-refs',handleV3(async req=>designs.save(await body(req)))),
-    route('GET','/api/v3/design-refs/source',handleV3(designSource)),
-    route('POST','/api/v3/design-refs/import',handleV3(async req=>{
+    route('GET','/api/v3/design-refs/state',respond(()=>designs.state())),
+    route('GET','/api/v3/design-refs/operations/:id',respond((req,{params})=>designs.operation(params.id))),
+    route('GET','/api/v3/design-refs/saves/:id',respond((req,{params})=>designs.receipt(params.id))),
+    route('PUT','/api/v3/design-refs',respond(async req=>designs.save(await body(req)))),
+    route('GET','/api/v3/design-refs/source',respond(designSource)),
+    route('POST','/api/v3/design-refs/import',respond(async req=>{
       const input=await body(req), importHash=fingerprint({ ids:input.ids, baseRevision:input.baseRevision });
       const previous=designs.importReceipt(input.requestId, importHash); if (previous) return previous;
       const state=designs.state();
@@ -48,19 +47,19 @@ export function routes(db,options={}) {
       try {const bytes=designs.image(params.file);res.writeHead(200,{'content-type':'image/jpeg','x-content-type-options':'nosniff','cache-control':'no-store'});res.end(bytes);}
       catch(error){json(res,error.status||500,{error:error.message});}
     }),
-    route('GET','/api/v3/refs',handleV3(()=>refs.read())),
-    route('GET','/api/v3/refs/state',handleV3(()=>refs.state())),
-    route('GET','/api/v3/refs/operations/:id',handleV3((req,{params})=>refs.operation(params.id))),
-    route('GET','/api/v3/refs/saves/:id',handleV3((req,{params})=>refs.receipt(params.id))),
-    route('PUT','/api/v3/refs',handleV3(async req=>refs.save(await body(req)))),
-    route('POST','/api/v3/refs/preview',handleV3(async req=>refs.preview(await body(req)))),
-    route('POST','/api/v3/refs',handleV3(async req=>refs.confirm(await body(req)))),
+    route('GET','/api/v3/refs',respond(()=>refs.read())),
+    route('GET','/api/v3/refs/state',respond(()=>refs.state())),
+    route('GET','/api/v3/refs/operations/:id',respond((req,{params})=>refs.operation(params.id))),
+    route('GET','/api/v3/refs/saves/:id',respond((req,{params})=>refs.receipt(params.id))),
+    route('PUT','/api/v3/refs',respond(async req=>refs.save(await body(req)))),
+    route('POST','/api/v3/refs/preview',respond(async req=>refs.preview(await body(req)))),
+    route('POST','/api/v3/refs',respond(async req=>refs.confirm(await body(req)))),
     route('GET','/api/v3/refs/images/:file',async(req,res,{params})=>{
       try {const bytes=refs.image(params.file);res.writeHead(200,{'content-type':'image/jpeg','x-content-type-options':'nosniff','cache-control':'no-store'});res.end(bytes);}
       catch(error){json(res,error.status||500,{error:error.message});}
     }),
     // 数码世界收藏：只读列表和图片；「已导入」按画布里已保存参考项的来源判断。导入本身走上面的画布预览保存。
-    route('GET','/api/v3/refs/digiworld',handleV3(()=>{
+    route('GET','/api/v3/refs/digiworld',respond(()=>{
       const { revision, groups, notes }=readCollection(dir()), saved=refs.read().items;
       return { revision, groups, defaultGroup: DEFAULT_GROUP, notes: notes.map(({ images, content, ...n })=>({ ...n, images: images.length, imported: saved.some(i=>i.source?.startsWith(digiworldSource(n.id))) })) };
     })),

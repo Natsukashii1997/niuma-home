@@ -8,7 +8,7 @@ import { match } from '../server/http.mjs';
 import { createProjectService } from '../server/projects.mjs';
 import { projectRoutes } from '../server/routes/projects.mjs';
 import { routes as marketingRoutes } from '../server/routes/v3-marketing.mjs';
-import { routes as workspaceRoutes } from '../server/routes/workspace.mjs';
+import { pageRoutes as workspaceRoutes } from '../server/app-routes.mjs';
 import { createManualNeeds } from '../server/manual-needs.mjs';
 import { createNeedsService } from '../server/needs.mjs';
 import { userRoutes } from '../server/routes/user.mjs';

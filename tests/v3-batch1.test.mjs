@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { mkdtempSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { openDb } from '../server/db.mjs';
-import { routes } from '../server/routes/workspace.mjs';
+import { pageRoutes as routes } from '../server/app-routes.mjs';
 import { match, json, unmatched } from '../server/http.mjs';
 import { codexResetView, createCodexResetReader } from '../server/codex-reset.mjs';
 import { parseTimelineDate, parseTimeline, parseAnnotatedCsv, readTimelineSheets, REGION_SHEETS } from '../server/timeline.mjs';

@@ -10,7 +10,7 @@ import { PATH_KIND, STAGE_KIND, createMentorPathService, derivePath, pathFromPla
 import { mentorConfig } from '../server/mentor.mjs';
 import { validateV3Setting } from '../server/v3-settings.mjs';
 import { dayIndex, isWorkday, missingYears, workdays } from '../server/workdays.mjs';
-import { projectRoutes } from '../server/routes/projects.mjs';
+import { mentorRoutes } from '../server/routes/mentor.mjs';
 import { match } from '../server/http.mjs';
 
 const START = '2026-05-12';
@@ -74,7 +74,7 @@ test('推导：没有记录时两条线第一段在做，按今天算超期；�
 });
 
 test('接口：名单沿用带教来源，没有路径或旧版路径时 path 为 null（旧版标 legacy）；有路径时返回推导结果', async t => {
-  const f = fixture(t), routes = projectRoutes({ mentorPath: f.service });
+  const f = fixture(t), routes = mentorRoutes({ mentorPath: f.service });
   putRecord(f.db, PATH_KIND, '胡贵兰', { season: { start: '2026-09-01', weeks: 24 }, lines: [], links: [] });
   withPath(f);
   const { status, body } = await invoke(routes, 'GET', '/api/v3/mentor/path');
@@ -86,7 +86,7 @@ test('接口：名单沿用带教来源，没有路径或旧版路径时 path �
 });
 
 test('添加带教对象：预览不写；确认时名单和路径一起写入并回读；没有日志链接的人不进带教答疑；重名 409', async t => {
-  const f = fixture(t), routes = projectRoutes({ mentorPath: f.service });
+  const f = fixture(t), routes = mentorRoutes({ mentorPath: f.service });
   const req = { name: '王一', role: '管培生', start: '2026-11-02', plan: 'v2.4' };
   const pv = await invoke(routes, 'POST', '/api/v3/mentor/path/trainees/preview', req);
   assert.equal(pv.status, 200);
@@ -117,7 +117,7 @@ test('设置：带教名单 1–20 人、日志链接可不填', () => {
 });
 
 test('调整安排：改日期列出挪动的段和新结业日；只改文字列在 edited；段落不能增删换序；没改动 400；预览后记录变了 409', async t => {
-  const f = fixture(t), routes = projectRoutes({ mentorPath: f.service }), base = `/api/v3/mentor/path/${encodeURIComponent('林瑶')}/plan`;
+  const f = fixture(t), routes = mentorRoutes({ mentorPath: f.service }), base = `/api/v3/mentor/path/${encodeURIComponent('林瑶')}/plan`;
   withPath(f);
   const cur = structuredClone(getRecord(f.db, PATH_KIND, '林瑶'));
   // P7 晚 3 天结束，后面各段一起顺延 3 天（页面默认这样提交）
@@ -153,7 +153,7 @@ test('调整安排：改日期列出挪动的段和新结业日；只改文字�
 
 test('记录进度：评审段记分数和结论、其余段确认完成；预览不写，确认后回读；列出状态变化；可以撤销；校验不过 400', async t => {
   let at = Date.parse('2026-10-26T02:00:00Z');
-  const f = fixture(t, () => at), routes = projectRoutes({ mentorPath: f.service });
+  const f = fixture(t, () => at), routes = mentorRoutes({ mentorPath: f.service });
   const url = id => `/api/v3/mentor/path/${encodeURIComponent('林瑶')}/stages/${id}/record`;
   withPath(f);
   const pv = await invoke(routes, 'POST', `${url('P1')}/preview`, { kind: 'review', score: 82, result: 'pass', note: '赛道判断清楚', at: '2026-05-13' });
@@ -188,7 +188,7 @@ test('记录进度：评审段记分数和结论、其余段确认完成；预�
 });
 
 test('按方案生成路径：旧版或没有路径的人预览不写、确认后回读；已有新版路径 409；名单里没有 404', async t => {
-  const f = fixture(t), routes = projectRoutes({ mentorPath: f.service });
+  const f = fixture(t), routes = mentorRoutes({ mentorPath: f.service });
   putRecord(f.db, PATH_KIND, '胡贵兰', { season: { start: '2026-09-01', weeks: 24 }, lines: [], links: [] });
   withPath(f);
   const base = `/api/v3/mentor/path/${encodeURIComponent('胡贵兰')}/generate`;

@@ -1,4 +1,5 @@
-// 路由与响应的小工具。每个模块在 server/routes/ 下导出 routes(db) → route(...) 数组。
+// 路由与响应的小工具：json / readJson / readBody / failure / respond / route / match / unmatched / pending。
+// 全部接口在 server/app-routes.mjs 装配；每个路由组在 server/routes/ 下。
 
 export function json(res, status, body) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
@@ -9,22 +10,34 @@ export function json(res, status, body) {
 // （浏览器跨站「简单请求」带的是 text/plain，这里拒掉；真正的防护在 checkOrigin）；curl、脚本、测试桩不带 content-type 的按 JSON 解析。
 // 空正文（如不带参数的 POST …/sync）照旧返回 {}。
 export const MAX_JSON_BYTES = 2 * 1024 * 1024;
-const httpError = (status, message) => Object.assign(new Error(message), { status });
+// 带 HTTP 状态码的错误：路由包装（respond）和服务入口按 status 原样回给页面；没有 status 的一律当内部错误。
+export const failure = (status, message) => Object.assign(new Error(message), { status });
 export async function readJson(req) {
-  if (Number(req.headers?.["content-length"]) > MAX_JSON_BYTES) { req.resume(); throw httpError(413, "请求正文超过 2MB"); }
+  if (Number(req.headers?.["content-length"]) > MAX_JSON_BYTES) { req.resume(); throw failure(413, "请求正文超过 2MB"); }
   const chunks = [];
   let size = 0;
   for await (const c of req) {
     size += c.length;
-    if (size > MAX_JSON_BYTES) { req.resume(); throw httpError(413, "请求正文超过 2MB"); }
+    if (size > MAX_JSON_BYTES) { req.resume(); throw failure(413, "请求正文超过 2MB"); }
     chunks.push(c);
   }
   const text = Buffer.concat(chunks).toString("utf8");
   if (!text) return {};
   const type = String(req.headers?.["content-type"] || "").split(";")[0].trim().toLowerCase();
-  if (type && type !== "application/json") throw httpError(415, "请求正文须为 application/json");
+  if (type && type !== "application/json") throw failure(415, "请求正文须为 application/json");
   return JSON.parse(text);
 }
+
+// 路由里读 JSON 正文：读不出来（不是 JSON、超长、类型不对）统一回 400。
+export async function readBody(req) {
+  try { return await readJson(req); } catch { throw failure(400, '请求内容不是有效 JSON'); }
+}
+
+// 路由处理函数的通用包装：fn(req, context) 的返回值写成 200 JSON；抛出的错误带 status 就原样回（连同 code、receipt），否则回 500 和固定文案。
+export const respond = fn => async (req, res, context) => {
+  try { json(res, 200, await fn(req, context)); }
+  catch (error) { json(res, error.status || 500, { error: error.status ? error.message : '处理失败，请重新读取后再操作', ...(error.code && { code: error.code }), ...(error.receipt && { receipt: error.receipt }) }); }
+};
 
 // 请求来源校验（全部 /api/ 路由都过，见 index.mjs）：只接受本机 Host；浏览器带 Origin 时必须等于页面同源
 // （Vite 开发页代理保留页面 Host，所以 5281 的页面也能过）；chrome-extension:// 来源只在收藏接口和 ChatGPT 桥放行，
@@ -47,7 +60,7 @@ export function checkOrigin(req, { allowExtension = false } = {}) {
 export function route(method, pattern, handler) {
   const keys = [];
   const re = new RegExp(`^${pattern.replace(/:(\w+)/g, (_, k) => (keys.push(k), "([^/]+)"))}$`);
-  return { method, re, keys, handler };
+  return { method, pattern, re, keys, handler };
 }
 
 export function match(routes, method, pathname) {

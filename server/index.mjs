@@ -4,18 +4,15 @@ import path from "node:path";
 import { openDb } from "./db.mjs";
 import { checkOrigin, json, match, unmatched } from "./http.mjs";
 import { createCodexPush } from "./codex-push.mjs";
-import * as marketing from "./routes/marketing.mjs";
-import * as assistants from "./routes/assistants.mjs";
-import * as workspace from "./routes/workspace.mjs";
-import * as internalVoice from "./routes/internal-voice.mjs";
+import { appRoutes } from "./app-routes.mjs";
 import { internalVoiceFor } from "./internal-voice.mjs";
 
 const port = Number(process.env.PORT || 5280);
 const dist = path.resolve("dist");
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json" };
 const db = openDb();
-// 没匹配上的 /api/v3/* 由 http.mjs 的 unmatched 回 501，不在路由表里，这里的顺序不影响它（#73）。
-const routes = [marketing, assistants, workspace, internalVoice].flatMap((m) => m.routes(db));
+// 全部接口在 app-routes.mjs 装配；没匹配上的请求由 http.mjs 的 unmatched 处理（/api/v3/* 回 501，其余 404）。
+const routes = appRoutes(db);
 // 猛鬼兽推送 Codex 重置：每 10 分钟看一眼开关，开着且满 4 小时才去检查；关着什么都不做。
 const codexPush = createCodexPush(db);
 const pushTick = () => codexPush.tick().catch((error) => console.error("Codex 推送检查失败", error));

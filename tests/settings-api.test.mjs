@@ -4,7 +4,7 @@ import { createServer } from "node:http";
 import { mkdtempSync, rmSync } from "node:fs";
 import path from "node:path";
 import { openDb } from "../server/db.mjs";
-import { routes } from "../server/routes/workspace.mjs";
+import { pageRoutes as routes } from "../server/app-routes.mjs";
 import { match, json } from "../server/http.mjs";
 
 async function setup(t) {

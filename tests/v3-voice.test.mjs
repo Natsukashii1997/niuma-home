@@ -7,7 +7,7 @@ import { openDb, saveSetting } from '../server/db.mjs';
 import { voiceView, createVoiceReader } from '../server/voice.mjs';
 import { sourceStatus } from '../server/source-status.mjs';
 import { match } from '../server/http.mjs';
-import { routes } from '../server/routes/workspace.mjs';
+import { pageRoutes as routes } from '../server/app-routes.mjs';
 
 const now=Date.parse('2026-10-16T14:00:00+08:00');
 const sample=()=>({schemaVersion:1,engine:{commit:'c8704e5313e6b051560365226b3919d7e0ada5ea',modelCallsEnabled:false,paidCollectorsEnabled:false,schedulesEnabled:false},checkedAt:new Date(now).toISOString(),checks:{paidRequests:0,modelRequests:0,sourceReads:{attempted:3,successful:3,complete:true,errors:[]}},budget:{used:0,limit:10},data:{updatedAt:'2026-10-16 14:00',nextAt:null,stats:{topics:0,newTopics:0,surge:0,participants:0,filtered:0,sourceCount:0,sources:''},hot:[],cloud:[],daily:''}});

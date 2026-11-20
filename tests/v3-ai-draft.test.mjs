@@ -9,7 +9,7 @@ import { createMentorService, mentorView, datedHeadings, readMentorLogs } from '
 // 日志正文按带段落 ID 的 DocxXML 读取（2026-10-19）：每行一段
 const logXml = text => '<h1 id="first">10.16 日志</h1>' + text.split('\n').map((line, i) => `<p id="para${i}abcd">${line}</p>`).join('');
 import { fingerprint, getRecord } from '../server/local-records.mjs';
-import { projectRoutes } from '../server/routes/projects.mjs';
+import { mentorRoutes } from '../server/routes/mentor.mjs';
 import { json, match } from '../server/http.mjs';
 
 const instant = Date.parse('2026-10-16T12:00:00+08:00');
@@ -80,7 +80,7 @@ test('带教来源变化、配置变化、空日志、过期均不保存草稿',
 test('带教草稿人工预览及确认HTTP接口保留两阶段门禁', async t => {
   const db = database(t); saveSetting(db, 'mentor_sources', JSON.stringify([source]));
   const mentor = createMentorService(db, { now: () => instant, readLogs: async () => person(), generate: async ({ evidence }) => draft(evidence) });
-  const routes = projectRoutes({ mentor }), server = createServer(async (req, res) => {
+  const routes = mentorRoutes({ mentor }), server = createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost'), found = match(routes, req.method, url.pathname);
     if (!found) return json(res, 404, {}); await found.handler(req, res, { params: found.params, url });
   });

@@ -1,63 +1,20 @@
-import { readJson, route } from '../http.mjs';
-import { handleV3 } from './user.mjs';
-import { failure } from '../v3-common.mjs';
-import { createProjectService } from '../projects.mjs';
-import { createMentorService } from '../mentor.mjs';
-import { createMentorPathService } from '../mentor-path.mjs';
-import { createKnowledgeTreeService } from '../knowledge-tree.mjs';
+import { route, readBody, respond } from '../http.mjs';
 
-async function body(req) { try { return await readJson(req); } catch { throw failure(400, '请求内容不是有效 JSON'); } }
-export function createProjectServices(db, options = {}) {
-  return { projects: createProjectService(db, options.projects), mentor: createMentorService(db, options.mentor), mentorPath: createMentorPathService(db, options.mentorPath), kb: createKnowledgeTreeService(db, { staleWhileRevalidate: true, ...options.kb }) };
-}
-export function projectRoutes({ projects, mentor, mentorPath, kb }) {
+// 项目页：项目推进（飞书来源）与本地项目的新建、删除、恢复。带教在 routes/mentor.mjs，知识库在 routes/kb.mjs。
+export function projectRoutes({ projects }) {
   return [
-    route('GET', '/api/v3/projects', handleV3(() => projects.list())),
+    route('GET', '/api/v3/projects', respond(() => projects.list())),
     // 新建本地项目：路径与 /api/v3/projects/:id 分开，避免被当成项目编号。
-    route('POST', '/api/v3/local-projects/preview', handleV3(async req => projects.createPreview(await body(req)))),
-    route('POST', '/api/v3/local-projects/confirm', handleV3(async req => projects.createConfirm(await body(req)))),
-    route('GET', '/api/v3/local-projects', handleV3((req, { url }) => projects.localList({ deleted: url.searchParams.get('deleted') === 'true' }))),
-    route('POST', '/api/v3/local-projects/:id/remove-preview', handleV3(async (req, { params }) => projects.removePreview(params.id, await body(req)))),
-    route('DELETE', '/api/v3/local-projects/:id', handleV3(async (req, { params }) => projects.removeConfirm(params.id, await body(req)))),
-    route('POST', '/api/v3/local-projects/:id/restore-preview', handleV3(async (req, { params }) => projects.restorePreview(params.id, await body(req)))),
-    route('POST', '/api/v3/local-projects/:id/restore', handleV3(async (req, { params }) => projects.restoreConfirm(params.id, await body(req)))),
-    route('POST', '/api/v3/projects/sync', handleV3(() => projects.list({ refresh: true }))),
-    route('POST', '/api/v3/projects/:id/preview', handleV3(async (req, { params }) => projects.preview(params.id, await body(req)))),
-    route('PATCH', '/api/v3/projects/:id', handleV3(async (req, { params }) => projects.confirm(params.id, await body(req)))),
-    route('PATCH', '/api/v3/projects', handleV3(async req => { const value = await body(req); return projects.confirm(value.id, value); })),
-    route('GET', '/api/v3/mentor', handleV3(() => mentor.list())),
-    route('POST', '/api/v3/mentor/refresh', handleV3(() => mentor.list({ refresh: true }))),
-    // 培养路径（按工作日排期，照飞书 V2.4）：加带教对象、调整安排、记录进度，都是预览 → 确认 → 回读，只写工作台本地
-    route('GET', '/api/v3/mentor/path', handleV3(() => mentorPath.get())),
-    route('POST', '/api/v3/mentor/path/trainees/preview', handleV3(async req => mentorPath.addPreview(await body(req)))),
-    route('POST', '/api/v3/mentor/path/trainees', handleV3(async req => mentorPath.addConfirm(await body(req)))),
-    route('POST', '/api/v3/mentor/path/:name/plan/preview', handleV3(async (req, { params }) => mentorPath.planPreview(params.name, await body(req)))),
-    route('POST', '/api/v3/mentor/path/:name/plan', handleV3(async (req, { params }) => mentorPath.planConfirm(params.name, await body(req)))),
-    route('POST', '/api/v3/mentor/path/:name/generate/preview', handleV3(async (req, { params }) => mentorPath.generatePreview(params.name, await body(req)))),
-    route('POST', '/api/v3/mentor/path/:name/generate', handleV3(async (req, { params }) => mentorPath.importConfirm(params.name, (await body(req))?.previewId))),
-    route('POST', '/api/v3/mentor/path/:name/stages/:id/record/preview', handleV3(async (req, { params }) => mentorPath.recordPreview(params.name, params.id, await body(req)))),
-    route('POST', '/api/v3/mentor/path/:name/stages/:id/record', handleV3(async (req, { params }) => mentorPath.recordConfirm(params.name, params.id, await body(req)))),
-    route('POST', '/api/v3/mentor/:name/records/preview', handleV3(async (req, { params }) => mentor.preview(params.name, await body(req)))),
-    route('POST', '/api/v3/mentor/:name/records', handleV3(async (req, { params }) => mentor.confirm(params.name, await body(req)))),
-    route('POST', '/api/v3/mentor/:name/draft/preview', handleV3(async (req, { params }) => mentor.previewDraft(params.name, await body(req)))),
-    route('POST', '/api/v3/mentor/:name/draft', handleV3(async (req, { params }) => mentor.confirmDraft(params.name, await body(req)))),
-    route('POST', '/api/v3/mentor/:name/items/:id/answer', handleV3(async (req, { params }) => mentor.answer(params.name, params.id, await body(req)))),
-    route('POST', '/api/v3/mentor/:name/items/:id/reply/preview', handleV3(async (req, { params }) => mentor.previewReply(params.name, params.id, await body(req)))),
-    route('POST', '/api/v3/mentor/:name/items/:id/reply', handleV3(async (req, { params }) => mentor.confirmReply(params.name, params.id, await body(req)))),
-    route('POST', '/api/v3/mentor/:name/items/:id/reply/reconcile', handleV3((req, { params }) => mentor.reconcileReply(params.name, params.id))),
-    route('POST', '/api/v3/kb/collect', handleV3(async req => { kb.collectPairing.guard(req,{extension:true}); return kb.collect(await body(req)); })),
-    route('GET', '/api/v3/kb/collect/recent', handleV3(req => { kb.collectPairing.guard(req); return kb.recentCollections(); })),
-    route('GET', '/api/v3/kb/collect/pairing', handleV3(req => { kb.collectPairing.guard(req); return kb.collectPairing.read(); })),
-    route('POST', '/api/v3/kb/collect/pairing/preview', handleV3(req => { kb.collectPairing.guard(req); return kb.collectPairing.preview(); })),
-    route('POST', '/api/v3/kb/collect/pairing/rotate', handleV3(async req => { kb.collectPairing.guard(req); return kb.collectPairing.rotate(await body(req)); })),
-    route('GET', '/api/v3/kb/tree', handleV3(() => kb.list())),
-    route('POST', '/api/v3/kb/refresh', handleV3(() => kb.list({ refresh: true }))),
-    route('POST', '/api/v3/kb/preview', handleV3(async req => kb.preview(await body(req)))),
-    route('POST', '/api/v3/kb/confirm', handleV3(async req => kb.confirm(await body(req)))),
-    route('POST', '/api/v3/kb/quick', handleV3(async req => kb.quick(await body(req)))),
-    route('GET', '/api/v3/kb/layout', handleV3(() => kb.layout())),
-    route('PUT', '/api/v3/kb/layout', handleV3(async req => kb.saveLayout(await body(req)))),
-    route('GET', '/api/v3/kb/operations/:id', handleV3((req, { params }) => kb.status(params.id))),
-    route('POST', '/api/v3/kb/operations/:id/reconcile', handleV3(async (req, { params }) => kb.reconcile(params.id, await body(req)))),
+    route('POST', '/api/v3/local-projects/preview', respond(async req => projects.createPreview(await readBody(req)))),
+    route('POST', '/api/v3/local-projects/confirm', respond(async req => projects.createConfirm(await readBody(req)))),
+    route('GET', '/api/v3/local-projects', respond((req, { url }) => projects.localList({ deleted: url.searchParams.get('deleted') === 'true' }))),
+    route('POST', '/api/v3/local-projects/:id/remove-preview', respond(async (req, { params }) => projects.removePreview(params.id, await readBody(req)))),
+    route('DELETE', '/api/v3/local-projects/:id', respond(async (req, { params }) => projects.removeConfirm(params.id, await readBody(req)))),
+    route('POST', '/api/v3/local-projects/:id/restore-preview', respond(async (req, { params }) => projects.restorePreview(params.id, await readBody(req)))),
+    route('POST', '/api/v3/local-projects/:id/restore', respond(async (req, { params }) => projects.restoreConfirm(params.id, await readBody(req)))),
+    route('POST', '/api/v3/projects/sync', respond(() => projects.list({ refresh: true }))),
+    route('POST', '/api/v3/projects/:id/preview', respond(async (req, { params }) => projects.preview(params.id, await readBody(req)))),
+    route('PATCH', '/api/v3/projects/:id', respond(async (req, { params }) => projects.confirm(params.id, await readBody(req)))),
+    route('PATCH', '/api/v3/projects', respond(async req => { const value = await readBody(req); return projects.confirm(value.id, value); })),
   ];
 }

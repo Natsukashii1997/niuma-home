@@ -6,7 +6,7 @@ import { createServer } from "node:http";
 import * as parser from "../server/report-parser.mjs";
 import * as service from "../server/reports.mjs";
 import { openDb, saveSetting, getSettings } from "../server/db.mjs";
-import { routes } from "../server/routes/workspace.mjs";
+import { pageRoutes as routes } from "../server/app-routes.mjs";
 import { json, match } from "../server/http.mjs";
 
 const fixture = name => readFileSync(new URL(`../fixtures/${name}`, import.meta.url), "utf8");

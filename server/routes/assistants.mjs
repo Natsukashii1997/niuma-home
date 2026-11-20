@@ -1,11 +1,10 @@
 import { legacyWrite, legacyReplay, legacyReceipt, assistantVersion, withAssistantVersion } from "../legacy-writes.mjs";
-import { json, route, readJson } from "../http.mjs";
+import { json, route, readJson, readBody, respond } from "../http.mjs";
 import { listAssistants, getAssistant, saveAssistant, importAssistants, bindAssistantThread, assistantDirectory } from "../db.mjs";
 import { assistantConversations, requireConversation, selectAssistantConversation } from "../assistant-conversations.mjs";
 import { codex } from "../codex.mjs";
 import { composeKnowledgeInstructions } from "../assistant-knowledge.mjs";
 import { routes as knowledgeRoutes } from "./assistant-knowledge.mjs";
-import { handleV3 } from "./user.mjs";
 import { failure } from "../v3-common.mjs";
 import { createLocalDeletions, deletionFailure, deletionState } from "../local-deletions.mjs";
 import { createChatgptBridge, normalizeChatgptUrl } from "../chatgpt-bridge.mjs";
@@ -13,7 +12,6 @@ import { createCollectPairing } from "../kb-collect-pairing.mjs";
 
 const guarded = action => async (req, res, context) => { try { return await action(req, res, context); } catch (error) { return json(res, error.status || 500, { error: error.status ? error.message : "助手保存失败，请重新读取核对", ...(error.code && { code: error.code }) }); } };
 
-async function body(req) { try { return await readJson(req); } catch { throw failure(400, "请求内容不是有效 JSON"); } }
 
 export function routes(db, client = codex, bridge = createChatgptBridge()) {
   const sending = new Set();
@@ -88,11 +86,11 @@ export function routes(db, client = codex, bridge = createChatgptBridge()) {
       return receipt ? json(res, 200, receipt) : json(res, 404, { code: "WRITE_RECEIPT_UNKNOWN", error: "尚未找到完成回执，结果仍待核对，请勿另建一次操作" });
     }),
     route("GET", "/api/assistants", (req, res) => json(res, 200, listAssistants(db).filter((a) => !isDeleted(a.id)).map(withAssistantVersion))),
-    route("GET", "/api/v3/local-assistants", handleV3((req, { url }) => localList(url.searchParams.get("deleted") === "true"))),
-    route("POST", "/api/v3/local-assistants/:id/remove-preview", handleV3(async (req, { params }) => deletions.preview(params.id, "remove", await body(req)))),
-    route("DELETE", "/api/v3/local-assistants/:id", handleV3(async (req, { params }) => deletions.confirm(params.id, "remove", await body(req)))),
-    route("POST", "/api/v3/local-assistants/:id/restore-preview", handleV3(async (req, { params }) => deletions.preview(params.id, "restore", await body(req)))),
-    route("POST", "/api/v3/local-assistants/:id/restore", handleV3(async (req, { params }) => deletions.confirm(params.id, "restore", await body(req)))),
+    route("GET", "/api/v3/local-assistants", respond((req, { url }) => localList(url.searchParams.get("deleted") === "true"))),
+    route("POST", "/api/v3/local-assistants/:id/remove-preview", respond(async (req, { params }) => deletions.preview(params.id, "remove", await readBody(req)))),
+    route("DELETE", "/api/v3/local-assistants/:id", respond(async (req, { params }) => deletions.confirm(params.id, "remove", await readBody(req)))),
+    route("POST", "/api/v3/local-assistants/:id/restore-preview", respond(async (req, { params }) => deletions.preview(params.id, "restore", await readBody(req)))),
+    route("POST", "/api/v3/local-assistants/:id/restore", respond(async (req, { params }) => deletions.confirm(params.id, "restore", await readBody(req)))),
     route("POST", "/api/assistants", guarded((req, res) => edit(req, res))),
     route("PATCH", "/api/assistants/:id", guarded((req, res, { params }) => edit(req, res, params.id))),
     route("GET", "/api/codex/models", async (req, res) => json(res, 200, await client.models())),
@@ -102,12 +100,12 @@ export function routes(db, client = codex, bridge = createChatgptBridge()) {
       if (sending.has(value.id)) return json(res, 409, { error: "该助手正在回复，请稍后读取生效值" });
       json(res, 200, value.codexThreadId ? await client.runtime(value.codexThreadId) : null);
     }),
-    route("GET", "/api/assistants/:id/conversations", handleV3((req, { params }) => {
+    route("GET", "/api/assistants/:id/conversations", respond((req, { params }) => {
       if (!live(params.id)) throw failure(404, "助手不存在");
       return assistantConversations(db, params.id);
     })),
-    ...["new", "select"].map(action => route("POST", `/api/assistants/:id/conversations/${action}`, handleV3(async (req, { params }) => {
-      const request = await body(req);
+    ...["new", "select"].map(action => route("POST", `/api/assistants/:id/conversations/${action}`, respond(async (req, { params }) => {
+      const request = await readBody(req);
       const value = live(params.id);
       if (!value) throw failure(404, "助手不存在");
       if (sending.has(value.id)) throw failure(409, "该助手正在回复，请结束后切换会话");
@@ -158,16 +156,16 @@ export function routes(db, client = codex, bridge = createChatgptBridge()) {
       finally { clearInterval(heartbeat); sending.delete(value.id); res.off("close", disconnected); res.end(); }
     }),
     // ChatGPT 桥：status 给页面看；next / jobs 只给带配对码的插件。
-    route("GET", "/api/v3/chatgpt-bridge/status", handleV3((req) => { pairing.guard(req); return bridge.status(); })),
+    route("GET", "/api/v3/chatgpt-bridge/status", respond((req) => { pairing.guard(req); return bridge.status(); })),
     route("GET", "/api/v3/chatgpt-bridge/next", (req, res, context) => {
       // 长轮询：插件断开时撤掉等待，免得任务交给已经不在的连接。
       const controller = new AbortController();
       res.on("close", () => { if (!res.writableEnded) controller.abort(); });
-      return handleV3(async () => { pairing.guard(req, { extension: true }); return { job: await bridge.next(controller.signal) }; })(req, res, context);
+      return respond(async () => { pairing.guard(req, { extension: true }); return { job: await bridge.next(controller.signal) }; })(req, res, context);
     }),
-    route("POST", "/api/v3/chatgpt-bridge/jobs/:id", handleV3(async (req, { params }) => {
+    route("POST", "/api/v3/chatgpt-bridge/jobs/:id", respond(async (req, { params }) => {
       pairing.guard(req, { extension: true });
-      if (!bridge.report(params.id, await body(req))) throw failure(404, "任务不存在或已结束");
+      if (!bridge.report(params.id, await readBody(req))) throw failure(404, "任务不存在或已结束");
       return { ok: true };
     })),
     route("GET", "/api/codex/sessions", async (req, res) => {
@@ -175,7 +173,7 @@ export function routes(db, client = codex, bridge = createChatgptBridge()) {
       json(res, 200, (await client.listSessions()).map((s) => ({ ...s, ...(imported.has(s.threadId) && { imported: true }) })));
     }),
     route("POST", "/api/assistants/import", guarded(async (req, res) => {
-      const payload = await body(req), { threadIds } = payload;
+      const payload = await readBody(req), { threadIds } = payload;
       const scope = "POST /api/assistants/import";
       const replay = legacyReplay(db, req, scope, payload);
       if (replay) return json(res, 200, replay.result);

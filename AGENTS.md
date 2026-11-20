@@ -6,6 +6,7 @@
 
 | 要做的事 | 先读 |
 |---|---|
+| 第一次接手；找某个页面对应哪些文件；看不懂 `v3`、策略、Agent、Voice 这些词指什么 | [GLOSSARY.md](GLOSSARY.md) |
 | 实现接口、改数据、接外部来源 | [docs/API.md](docs/API.md)；[OPERATIONS](docs/OPERATIONS.md)「接口占位机制」「写接口与接外部来源」 |
 | 改样式、改界面 | [docs/STYLE-GUIDE.md](docs/STYLE-GUIDE.md)；下面「分工」里「改现有视觉先问」 |
 | 排障、发布、改样式或脚本 | 先 `grep -n 关键词 docs/LESSONS.md`（[LESSONS](docs/LESSONS.md)） |
@@ -44,15 +45,19 @@ npm run import:mentor-path      # 导入带教培养路径
 ```
 HANDOFF.md           交接入口（最新一轮范围、固定身份、证据位置）
 CURRENT.md           当前状态与唯一下一步；旧记录在 docs/history/
+GLOSSARY.md          词汇表与代码地图：容易读错的词；页面 → 路由文件 → 服务文件 → 存储
 server/
   index.mjs          HTTP 服务：静态文件 + /api 路由分发
-  http.mjs           json / readJson / route / match / pending(task) / unmatched（没匹配上的 /api/v3/* 回 501，其余 404）
-  db.mjs             全部表结构与查询；data/work-desk.db、data/images/
-  routes/*.mjs       每个模块导出 routes(db) → route(...) 数组
+  http.mjs           json / readJson / readBody / failure / respond / route / match / pending(task) / unmatched（没匹配上的 /api/v3/* 回 501，其余 404）
+  app-routes.mjs     全部接口的装配处：每个路由组一行，找接口先看这里
+  routes/*.mjs       各路由组，导出 …Routes(…) → route(...) 数组，由 app-routes.mjs 装配
+  db.mjs             全部表结构，专用表（plans、promos、materials、assistants 等）的查询；data/work-desk.db、data/images/
+  local-records.mjs  通用表 v3_documents 的读写（getRecord / putRecord / listRecords）与本地「预览 → 确认」
+  storage-kinds.mjs  v3_documents、v3_snapshots 两张通用表的 kind 登记表（新增 kind 要在这里加一行，测试会查）
 src/
   App.jsx            左侧导航 + 模块登记（MODULES）
   router.js          #/ 路由：useRoute() / href()
-  api.js             useApi(path, sample) / apiSend()
+  api.js             useApi(path) / apiSend()
   constants.js       业务线、促销字段、月份工具、交付月环节
   samples.js         Voice 模拟数据 `voiceSample`（来源接通前显示，用户 2026-10-23 要求）
   ui/components.jsx  公共组件
@@ -98,7 +103,7 @@ fixtures/            验收样例（飞书复制的方案原文）
 
 ### Domain docs
 
-single-context：根目录 `GLOSSARY.md` 与 `docs/adr/`，用到时再建。见 `docs/agents/domain.md`。
+single-context：根目录 `GLOSSARY.md`（已建，2026-11-20）与 `docs/adr/`（用到时再建）。见 `docs/agents/domain.md`。
 
 旧派单 `docs/tasks/T*.md` 留着不迁，新活开 issue。
 
