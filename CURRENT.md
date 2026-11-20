@@ -4,6 +4,17 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
+## AI 接入写进设置、能切换（2026-11-20，Claude，全局规则 P-13；常浩回「按计划开工」、选设置栏 A 版「一张总表」；分支 `claude/ai-access-settings` 已提交、PR 待开，未发布）
+
+- 时间：开工 `2026-11-20 09:55`（取 worktree 建立时间，开工时没单独用 `date` 记）。★ 来由：常浩 11-07 定 P-13（11-20 补「备用执行方」，agent-kit#93），母会话派本会话给牛马之家补齐。
+- 改了哪些文件：`server/ai-executor.mjs`（新：执行方、功能清单、对外开放、数据对象的唯一出处；Codex / Claude 两个本机 CLI 执行方；可用状态检查；调用日志 `logs/ai-calls.jsonl`；`GET /api/v3/ai-access` 的数据）；`server/ai-draft.mjs`（按设置选执行方，失败没设备用方就报错指向设置，设了只转交一次，返回留痕）；`server/mentor.mjs`、`server/selftalk.mjs`（传功能编号、存与返回留痕 `trace` / `digestTrace` / `feedbackTrace`）；`server/v3-settings.mjs`（设置键 `ai_default_executor`、`ai_features`）；`server/routes/workspace.mjs`（接口）；`src/modules/settings/AiAccessCard.jsx` + `SettingsPage.jsx` + `src/styles/42-settings.css`（设置栏 A 版）；`src/ui/components.jsx` 的 `AiTrace`、`ProjectsPage.jsx`（亚古兽回答下显示留痕、说明文字改成「调用一次 AI」）、`SelfTalk.jsx`（周汇总与预览显示留痕）；`scripts/ui-baseline-setup.mjs`（基线环境也把 `claude` 换成假命令）；`AGENTS.md`「AI 接入」一节按实际改写、`docs/API.md` 补「AI 接入」；两项测试的 selftalk 返回字段断言加 `digestTrace`；新测试 `tests/ai-access.test.mjs`。
+- 测试：`npm test` 原样结果 `ℹ pass 915` / `ℹ fail 0`。★ `npm run check:style` 通过；`npm run smoke` 24 项 0 项有问题（证据 `evidence/smoke-20261120-0229`）；`node scripts/ui-baseline.mjs compare` 6 张「和基线一致」。
+- 验证：worktree 里另起隔离服务 5291（临时数据目录；预览工具起的服务跑的是主工作区代码，所以用命令起），真实 Chrome 面板 1440 与 1280 两个宽度，截图自查两轮：① 设置页把默认执行方切到 Claude（预览→确认→回读一致），带教页点「亚古兽回答」，只读林瑶 10-28 那天的飞书日志，留痕显示「Claude · 本机 CLI · claude-fable-5-2」，设置页「最近一次产出」同步；② PATH 去掉 codex、默认改回 Codex、亚古兽回答备用方设 Claude，设置页标「Codex 未安装」，回答由 Claude 产出，留痕写「原定 Codex，未安装，已转交」；③ 自言自语周汇总行内编辑备用方的预览、确认、回读。都没有发送飞书评论、没有写正式数据。
+- 截图：`~/Library/Application Support/NiumaHome/evidence/ai-access-20261120/`（9 张 + `ai-calls.jsonl` + README，不入库）。三版预览：https://claude.ai/artifact/RfE6TYFH9DUbz9tsHB7CAc
+- 发布与回读：未发布（等常浩同意）。发布后正式服务的 launchd PATH 已含 nvm 的 node 目录（`claude` 在那里），但 launchd 下 `claude` 读钥匙串登录这一点没有实测，发布后先在设置页点「重新检查」看 Claude 是不是「可用」。
+- 与授权不一致之处、遗留问题、范围外发现：① 「带教草稿」在 `ef3fc94` 之后页面已没有入口，只剩接口，功能清单如实写「页面暂无入口」，没补入口。② Agent 页两种助手标「仅支持 Codex / ChatGPT 网页」，没加 Claude 助手（常浩同意另议）。③ 设置页没进基线截图（带检查时间和本机状态），已登记 DECIDED.md 说明原因。④ `codex.mjs` 注释写按 codex-cli 0.160.1 协议，本机已是 0.166.0，没动。⑤ AGENTS.md 旧「AI 接入」说「本身不调用模型」、「Claude、Codex 用量」「ChatGPT 网页桥算数据对象」与现状不符，已按实际改写。已登记 DECIDED.md。
+- 本轮新坑：L-22（spawn 的工作目录不存在也报 ENOENT，被误判「未安装」）。★
+
 ## 05 覆盖率校准：补旧版差异 27 格的逐项原因（2026-11-20，Claude，#32，常浩清 PR 积压时回「按建议」：PR #44 补上逐项原因再合；已提交、PR #44 待合并，无需发布）
 
 - 时间：开工 `2026-11-20 06:21`（取证据目录的创建时间，开工时没有单独用 `date` 记）。★ 来由：PR #44 的 Codex 审查（11-11）「修完再合」，05 第 6 节要求与旧版不一致的月份逐个查原因，原校准只给了 33/60、28/60 两个汇总数。
