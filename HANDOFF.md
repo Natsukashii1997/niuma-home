@@ -1,37 +1,29 @@
 # 牛马之家工作台交接入口
 
-更新：2026-10-23。工作区：`/Users/nat/Documents/ChatGPT/个人/work/niuma-home`，分支 `main`。
+更新：2026-11-20。工作区：`/Users/nat/Documents/ChatGPT/个人/work/niuma-home`，分支 `main`。
 
-先读本文件 → `AGENTS.md` → `CURRENT.md`。当前用户明确授权的范围优先于历史分工与门禁；历史记录不能当成当前状态。
+先读本文件 → `AGENTS.md` → `CURRENT.md`。第一次接手、或看不懂某个词指什么，再看 [GLOSSARY.md](GLOSSARY.md)（词汇表与代码地图）。当前用户明确授权的范围优先于历史分工与门禁；历史记录不能当成当前状态。
+
+本文件只放长期有效的事实。每一轮做了什么、现在停在哪、唯一下一步，都在 CURRENT.md 顶部；改动的交接写在各自的 PR 里。
 
 ## 最新状态
 
 最新一轮范围与发布状态以 CURRENT.md 顶部一节为准；正式快照号见该节「发布」与「回读」行，也可以直接跑 `bash scripts/verify-release.sh` 查看。本文件不写具体快照号，免得过时。
 
-## 上一轮范围
+## 固定事实
 
-2026-10-23 晚：Claude 深度审核 UI 与功能（[审核记录](docs/handoff/UI与功能审核-20261023/审核记录.md)）后，用户授权一次性做完：确认的 8 条问题、月份默认本月、待我处理两行、去掉「转为主线需求草稿」入口、工程项（冒烟脚本、aria-label、CSS 按模块拆分、设置页旧四键并入 WriteBox）；首页优先级不变、长期占位不动。状态与未完成项以 CURRENT.md 顶部「审核后一次性优化」为准；本轮改动未提交、未发布。
-
-更早一轮：
-
-用户授权补齐旧入口防重复提交保护，真实验证 NAS 新月份物料、带教回复、Chrome 收藏自动归类，清理测试内容，整理交接，验证通过后发布正式 5280。保留布局、已核查日期、人工内容；冲突停止由用户选择。其他预留功能不做。
-
-- 本轮开始基线：`4e36dc4`；该轮正式快照更新为 `nm-20261023-102725-0b61cd0`（已由之后的版本接续）。旧入口修复、带教、Chrome 和真实 NAS 新月份验证均已完成，测试内容已清理。
-- 状态、验证结果和唯一下一步以 `CURRENT.md` 顶部为准。
 - 真实数据库：`data/work-desk.db`。单测、构建和开发验证使用独立目录与端口，不把隔离通过等同正式采用。
 - 飞书默认使用亚古兽 `lark-cli --profile cli_a965c429ef785bd3`（2026-11-02 起）；自言自语与 Codex 重置推送仍用猛鬼兽 `cli_a96f5f9ac63adcd4`；原机械邪龙兽 codex 不再使用。资源访问使用 user，带教评论可选 bot，推送使用 bot。不回退其他机器人。身份常量与调用记录见 `server/lark-identity.mjs`。
 - 真实验证只操作本轮明确标记的临时内容，保留已有数据；未知写入先回读，不重复创建或重发。
-- 当前 NAS 已挂载；真实 11 月样本识别、重复同步和清理通过，正式 5280 扫描回读通过。当前授权工作已完成；不自动开展其他预留功能。
 - Chrome 收藏插件安装位置（2026-10-23 起）：`~/Library/Application Support/NiumaHome/extension/niuma-collect/`，内容来自主库 `browser-extension/niuma-collect/`。改主库插件后要手动同步到该目录，再在 `chrome://extensions` 重新加载；不要误认为改主库文件就自动改变已安装插件。此前安装在 `work-desk-t10`（已停用），10-22 改前备份在 `~/Library/Application Support/NiumaHome/evidence/niuma-legacy-20261022/extension-before/`。
 - 验证证据（备份数据库、日志、截图原件）放 `~/Library/Application Support/NiumaHome/evidence/`，不放 `/tmp`；10-21 那批 `/tmp` 证据已被系统清理。
-
-## 已完成事项与证据
-
-- 本轮旧入口与真实流程：[验证记录](docs/handoff/旧入口与真实集成-20261022/验证记录.md)。664 项测试、隔离构建及故障页面验证通过；真实测试内容已清理。NAS 与正式发布补充见 [2026-10-23 验证记录](docs/handoff/NAS新月份验证-20261023/验证记录.md)。
-- 17 项全面核查优化已发布：[验证记录](docs/handoff/全面核查优化-20261022/验证记录.md)。当时尚未做的真实外部流程，不因工程测试通过而视为通过。
-- Brief 双向同步已经发布，原篇真实往返与清理已通过：[原篇验证](docs/handoff/Brief原篇双向闭环-20261022/验证记录.md)。保留七节布局、内部规则生成、同文档更新和冲突选择。
-- 旧 ui-v3 交接已完整归档：[历史 HANDOFF](docs/history/HANDOFF-ui-v3-20261016.md)，其中端口、版本、待办和授权只属于当时。
 
 ## 发布与收尾
 
 运行脚本 `scripts/release-app.sh` 仅在本轮验证满足用户条件后使用。发布前备份与核对业务数据、确认没有未决写入；发布后核对首页与快照、关键接口、运行文件和数据保持一致。对本轮文件明确提交，保留既有无关未跟踪文件。
+
+## 历史
+
+- 2026-10-23 之前这份文件的原文（当时的「上一轮范围」「已完成事项与证据」）：[docs/history/HANDOFF-20261023.md](docs/history/HANDOFF-20261023.md)。
+- 2026-10-15 的两份专题交接：[位图风 UI 改造（T09）](docs/history/HANDOFF-位图风UI.md)、[新增需求梳理](docs/history/HANDOFF-新增需求梳理.md)。里面的路径（`work-desk`）、身份和待办只属于当时。
+- 更早的 ui-v3 交接：[docs/history/HANDOFF-ui-v3-20261016.md](docs/history/HANDOFF-ui-v3-20261016.md)。
