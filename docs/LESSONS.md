@@ -211,4 +211,5 @@
 - 正确做法：起子进程前先 `mkdirSync(cwd, { recursive: true })`；看到 `ENOENT` 别急着下「没装」的结论，先确认是命令找不到还是工作目录不存在。测试里用一个不存在的目录当 `cwd`，断言跑完后目录已建好。
 - 证据：`~/Library/Application Support/NiumaHome/evidence/ai-access-20261120/`（`*ya8umw.jpg` 与 `ai-calls.jsonl` 第一行）；本轮 CURRENT.md「AI 接入」一节。
 - 升级：〔机检〕已写进 `tests/ai-access.test.mjs`「Claude 执行方」一项（工作目录不存在时先建好）。
+- 提升：已提升为全局 G-45（2026-11-20）。
 
