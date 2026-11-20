@@ -181,7 +181,7 @@ test('个人接口GET形状、同步和两阶段写入路径均可经HTTP使用'
     return { status: response.status, body: await response.json() };
   };
   assert.equal((await request('POST', '/api/v3/selftalk/sync')).status, 200);
-  assert.deepEqual(Object.keys((await request('GET', '/api/v3/selftalk')).body).sort(), ['digest', 'items', 'pulledAt']);
+  assert.deepEqual(Object.keys((await request('GET', '/api/v3/selftalk')).body).sort(), ['digest', 'digestTrace', 'items', 'pulledAt']);
   const p = await request('POST', '/api/v3/selftalk/om_personal/preview', { tag: 'archived' });
   assert.equal((await request('PATCH', '/api/v3/selftalk', { id: 'om_personal', previewId: p.body.previewId, confirm: true })).body.tag, 'archived');
   const base = `/api/v3/assistants/${assistant.id}/knowledge`;

@@ -336,7 +336,7 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 
 - `GET /api/v3/mentor` 每人新增 `items: [{ id, kind: "提问", text, date, log, src, reply }]`：`id` 是飞书文档里原话所在段落的 block ID，`src` 是 `文档链接#blockId`；`reply` 为本机回复记录 `{ state: "sent" | "sending" | "unknown", as, text, display, commentId?, at, error? }` 或 null。
 - 只列提问，旧快照中普通卡点陈述不再列出；实际含问句的旧条目保留原文及原段落 ID。兼容字段 `blocks` 返回空数组，`asks` 为提问摘要。完整日志证据、历史回复和周记录不删除。
-- `POST /api/v3/mentor/:name/items/:id/answer` 请求 `{}` → `{ text, generatedAt, model }`：亚古兽（本机 Codex）只读这条所在那天的日志作答；`**…**` 为重点。不保存、不发送。
+- `POST /api/v3/mentor/:name/items/:id/answer` 请求 `{}` → `{ text, generatedAt, model, trace }`：亚古兽只读这条所在那天的日志作答，执行方按「设置 → AI 接入」（功能 `mentor-answer`）；`trace` 是留痕（见下文「AI 接入」）；`**…**` 为重点。不保存、不发送。
 - `POST /api/v3/mentor/:name/items/:id/reply/preview` 请求 `{ text, as: "user" | "bot" }` → `{ previewId, expiresAt, value: { quote, date, log, doc, as, text, display } }`；`text` 去掉 `**` 记号后发送。这一条结果不明时返回 409 `REPLY_UNKNOWN`。
 - `POST /api/v3/mentor/:name/items/:id/reply` 请求 `{ previewId, confirm: true }` → 回复记录（`state: "sent"`）。用 `lark-cli drive +add-comment --block-id <id>` 在原话那一段挂评论（user = 常浩本人，bot = 亚古兽应用；2026-11-02 前为猛鬼兽），只发一次，再按评论编号回读核对；同一预览重复确认返回同一回执。授权被拒（确定没执行）清掉记录；其他失败或回读不一致记为 `unknown` 并返回 502 `REPLY_UNKNOWN`。
 - `POST /api/v3/mentor/:name/items/:id/reply/reconcile` 请求 `{}`：只读翻这篇文档的划词评论，找到同一段、同样内容的评论记为 `sent`；没找到清掉记录（`{ state: "none", checked: true }`），可重新发送。
@@ -498,3 +498,18 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - 列表先校验再筛选（含第一页补扫）：员工须有非空字符串 `userid`、字符串 `department_name`、布尔值 `has_conversation`；单聊须有非空字符串 `id`、群聊须有非空字符串 `chat_id`，两者均须有合法 `last_msg_time`。缺失字段不能当作无会话、不属于目标部门或旧会话。消息角色只认客户 `1`、员工 `2`（可为数字、相应数字字符串或 `{ value: ... }`），先验原始类型与枚举，再按群聊仅保留客户的规则过滤。每个会话本次响应的消息 ID 须页内、跨页唯一，结合分页条数与总数核验完整性；与数据库已有消息重复不影响正常补拉。
 - 会话列表按最近消息倒序：遇到早于开始日期的就停；翻完再重读第 1 页（最多 5 次）补上翻页期间来了新消息、跳到最前的会话。单个请求 60 秒超时，失败（含 429）最多尝试 3 次；HTTP 为 2xx 且正文声明成功才接受响应，500 / 429 即使搭配成功正文也不能直接记成功；token 失效、无权限时整次停下记 `failed`。
 - 接口坑：`/api/staff/list` 分页参数是 `limit`（`size` 不生效，固定 10 条）；消息列表时间筛选 `msg_start_time` / `msg_end_time` 两个都传才生效；`msg_content` 里的文件地址 1 小时失效，只存 `file_url`。
+
+## AI 接入（2026-11-20，全局规则 P-13）
+
+出处是 `server/ai-executor.mjs`，和 AGENTS.md「AI 接入」一节、设置页一致。
+
+- `GET /api/v3/ai-access[?refresh=1]` → `{ defaultExecutor, saved: { ai_default_executor, ai_features }, checkedAt, executors, features, fixed, openings, dataObjects }`。只读；执行方可用状态只跑 `--version` 与登录状态，不调用模型，结果缓存一分钟，`refresh=1` 重新检查。
+  - `executors[]`：`{ id, name, access, state: 可用|未安装|未登录|额度用尽|调用失败, stateAt?, version, login, model, fixed? }`；`chatgpt-web` 一行 `fixed: true`，只服务 Agent 页 ChatGPT 助手。
+  - `features[]`：`{ id, name, where, read, write, executor, executorName, followsDefault, backup, backupName, access, last }`；`last` 是 `ai-calls.jsonl` 里这个功能最近一行（没有为 `null`）。
+  - `fixed[]`：不可切换的功能 `{ id, name, where, executor, access, read, write, only, reason }`；`openings[]`、`dataObjects[]` 见 AGENTS.md。
+- 设置键（经现有 `POST /api/settings/:key/preview` → `PUT /api/settings/:key` 预览确认回读）：
+  - `ai_default_executor`：`codex`（默认）| `claude`。
+  - `ai_features`：JSON 对象 `{ "<功能 id>": { executor: "default"|"codex"|"claude", backup: "none"|"codex"|"claude" } }`，功能 id 为 `mentor-draft`、`mentor-answer`、`selftalk-weekly`；备用方不能和执行方相同；全是默认的功能不落键。
+- 留痕 `trace`：`{ executor, executorName, access, model, at, planned, plannedName, handoff: null | { from, fromName, reason } }`。出现在：亚古兽回答的 `trace`、`GET /api/v3/selftalk` 的 `digestTrace`（已确认周汇总；没有为 `null`）、周汇总预览 `value.trace`、带教列表里 AI 草稿的 `feedbackTrace`。改造前的旧记录只可能来自 Codex，按 Codex 补出。
+- 失败：主执行方失败且没设备用方 → `502`，错误写明哪家、什么原因、没设备用方、未自动换家，并指向「设置 → AI 接入」；设了备用方只转交一次，两家都失败 → `502`，不重试。
+- 调用日志 `<数据目录>/logs/ai-calls.jsonl`：每次调用一行 `{ at, feature, planned, access, attempts: [{ executor, ok, reason?, model?, ms }], ok, executor, model?, handoff? }`，不记内容。

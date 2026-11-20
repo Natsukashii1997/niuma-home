@@ -203,3 +203,12 @@
 - 正确做法：环境造成、时有时无的元素在 `docs/design/baseline.css` 里截图时去掉（不要只遮住，遮住了还会撑开版面）；fixed 的状态栏截图时藏掉；阈值收紧到 0.02（`scripts/ui-baseline.mjs` 的 `PIXEL_THRESHOLD`），同机连拍逐像素一致，不误报。新加页面进基线时，同一版本至少连比三次都过、再故意改一处颜色确认会失败，才算接好。
 - 证据：`~/Library/Application Support/NiumaHome/evidence/ui-baseline/verify-20261119/`（同版本连比、改面板底色的对比日志）；本轮 CURRENT.md「接入基线截图对比与已定内容登记表」一节。
 - 升级：〔机检〕已升级（2026-11-19 补层级词）：`scripts/release-app.sh` 切换服务前必跑 `scripts/ui-baseline.mjs compare`，截图时套 `docs/design/baseline.css`、像素阈值用 `PIXEL_THRESHOLD`；范围：`docs/design/pages.json` 登记的页面。原记录：已写进 `docs/design/baseline.css`、`scripts/ui-baseline.mjs`（机器判定：对比本身）。
+
+## L-22 本机 CLI 明明装了，调用却报「未安装」：spawn 的工作目录不存在（2026-11-20）
+
+- 现象：AI 接入实测，默认执行方切到 Claude 后点「亚古兽回答」，报「Claude 未安装」；`which claude` 有、设置页可用状态也是「可用」。
+- 根因：`spawn('claude', args, { cwd })` 的 `cwd`（`<数据目录>/assistants/v3-drafts`）在新数据目录里还没建，Node 对不存在的工作目录同样报 `ENOENT`，和「命令找不到」是同一个错误码，被归成了「未安装」。Codex 那边不出事，是因为 `codex.mjs` 建线程前先 `mkdir` 了。
+- 正确做法：起子进程前先 `mkdirSync(cwd, { recursive: true })`；看到 `ENOENT` 别急着下「没装」的结论，先确认是命令找不到还是工作目录不存在。测试里用一个不存在的目录当 `cwd`，断言跑完后目录已建好。
+- 证据：`~/Library/Application Support/NiumaHome/evidence/ai-access-20261120/`（`*ya8umw.jpg` 与 `ai-calls.jsonl` 第一行）；本轮 CURRENT.md「AI 接入」一节。
+- 升级：〔机检〕已写进 `tests/ai-access.test.mjs`「Claude 执行方」一项（工作目录不存在时先建好）。
+

@@ -9,6 +9,7 @@ import { deliveryRoutes } from "./delivery.mjs";
 import { agentRoutes } from "./agent.mjs";
 import { recordSource, sourceStatus, reportIdentity } from "../source-status.mjs";
 import { createSettingsChanges, V3_SETTING_KEYS, validateV3Setting } from "../v3-settings.mjs";
+import { createAiAccess } from "../ai-executor.mjs";
 import { routes as selftalkRoutes } from "./selftalk.mjs";
 import { routes as referenceRoutes } from "./references.mjs";
 import { createProjectServices, projectRoutes } from "./projects.mjs";
@@ -51,6 +52,7 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
   const settingsChanges = createSettingsChanges(db, { ...v3Options.settings,
     validate: (key, value) => V3_SETTING_KEYS.has(key) ? validateV3Setting(key, value) : settingValue(key, value),
   });
+  const aiAccess = createAiAccess(db, v3Options.aiAccess);
   const calendar = createCalendarReader(calendarOptions);
   // 日/周报解析结果落库：v3_snapshots 的 kind 为 reports:<文档 URL>，重启后先回旧结果（2026-10-23）
   const reportSnapshots = {
@@ -92,6 +94,8 @@ export function routes(db, reportOptions, calendarOptions, v3Options = {}) {
       }
     }),
     route("GET", "/api/v3/settings", handleV3(() => settingsChanges.read())),
+    // AI 接入（P-13）：只读；可用状态只跑 --version 与登录状态，不调用模型。refresh=1 重新检查。
+    route("GET", "/api/v3/ai-access", handleV3((req, { url }) => aiAccess.read({ refresh: url.searchParams.get("refresh") === "1" }))),
     route("POST", "/api/settings/:key/preview", handleV3(async (req, { params }) => settingsChanges.preview(params.key, await readJson(req)))),
     route("GET", "/api/v3/codex-reset", handleV3(() => codexReset())),
     route("GET", "/api/v3/codex-push", handleV3(() => codexPushStatus(db))),

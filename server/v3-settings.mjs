@@ -6,6 +6,7 @@ import { reportDocumentUrl } from './reports.mjs';
 import { TIMELINE_SOURCE } from './timeline.mjs';
 import { COLLECT_SPACE, COLLECT_RULES, collectRules, validateCollectRuleNodes } from './kb-collect-config.mjs';
 import { AGUMON } from './lark-identity.mjs';
+import { validateAiSetting } from './ai-executor.mjs';
 
 export const V3_DEFAULTS = {
   timeline_source: JSON.stringify(TIMELINE_SOURCE),
@@ -19,6 +20,7 @@ export const V3_DEFAULTS = {
   ]),
   lark_profile: AGUMON.profile, lark_app_id: AGUMON.appId, voice_budget: '10',
   codex_push_enabled: '0', // 猛鬼兽推送 Codex 重置：默认关，开关走预览 → 确认 → 回读
+  ai_default_executor: 'codex', ai_features: '{}', // AI 接入（P-13）：默认执行方与各功能的执行方、备用方；见 ai-executor.mjs
   internal_voice_auto: '0', // 内部原声自动拉取（每周拉上一周、每月拉上个月）：默认关，开关走预览 → 确认 → 回读
   // 用户2026-10-16明确要求先采用演示口径；不是已核验业务成本。
   price_floor_margin: '0.25', price_cost_per_hour: '440',
@@ -32,6 +34,8 @@ export function validateV3Setting(key, raw) {
   const value = raw.trim();
   if (key === 'lark_profile' || key === 'lark_app_id') {
     if (value !== V3_DEFAULTS[key]) bad('飞书默认身份固定为亚古兽，不能在此切换');
+  } else if (key === 'ai_default_executor' || key === 'ai_features') {
+    return validateAiSetting(key, value);
   } else if (key === 'codex_push_enabled') {
     if (value !== '0' && value !== '1') bad('推送开关只能是 0（关）或 1（开）');
   } else if (key === 'internal_voice_auto') {

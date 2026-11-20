@@ -115,15 +115,24 @@ single-context：根目录 `GLOSSARY.md` 与 `docs/adr/`，用到时再建。见
 
 ## AI 接入
 
-牛马之家本身不调用模型。AI 产出只从外部会话经 workdesk MCP 进来（接入方式：MCP 开放），工作台负责校验、留痕和让常浩确认。
+按全局规则 P-13：每个 AI 功能谁来产出、怎么接、读什么、写到哪，都在「设置 → AI 接入」看得到、改设置就能切换。这一节和设置页同一出处：`server/ai-executor.mjs`（`AI_FEATURES`、`FIXED_FEATURES`、`OPENINGS`、`DATA_OBJECTS`）；改 AI 功能时三处一起改。
 
-- **对外开放**：`server/mcp-workdesk.mjs` + `/api/v3/agent/*`（见 [docs/API.md](docs/API.md)「智能体接入」）。每个 agent 一个凭据，按工具授权，所有调用记进 `agent_calls`。
+- **执行方**：Codex、Claude，接入方式都是本机 CLI（用本机登录的订阅，不存密钥）。Codex 经 `codex app-server`（只读沙箱、关掉工具）；Claude 经 `claude -p`（`--tools ""`、不读设置和 MCP、不留会话）。默认 Codex（设置键 `ai_default_executor`）；可用状态只跑 `--version` 和登录状态，不调用模型，最近一小时调用报过额度用尽的标「额度用尽」。
+- **可切换的功能**（设置键 `ai_features`，每个功能可「跟随默认」或单独指定，另可选备用执行方，默认不设）：
+  | 功能 | 读哪些数据 | 产出写到哪里 |
+  |---|---|---|
+  | 带教草稿（页面暂无入口，只有接口） | 管培生近 30 天飞书日志 | 预览确认后存本地「带教草稿」 |
+  | 亚古兽回答提问（带教页） | 这条提问所在那天的日志 | 只显示在回复框；常浩确认后才作为评论发到飞书 |
+  | 自言自语周汇总（顶栏「自言自语」） | 常浩和猛鬼兽一周的私聊文本 | 预览确认后存本地「自言自语周汇总」 |
+- **不可切换的功能**：Agent 页 Codex 助手仅支持 Codex（会话历史、切换会话、换模型都直接读写 Codex 线程）；Agent 页 ChatGPT 助手仅支持 ChatGPT 网页（网页桥，经 Chrome 插件收发）。
+- **不可用时**：切换在下一次调用生效，正在跑的按原执行方跑完。主执行方失败（未安装、未登录、额度用尽、调用失败）时，没设备用方就报错并指向设置，不自动换家；设了备用方才转交，只转一次，两家都失败就报错，不重试。超长输出不转交。
+- **留痕**：每条产出带执行方、接入方式、模型、时间，转交过的另写原定执行方和原因，界面上显示在产出下方；每次调用（含失败）记一行到 `<数据目录>/logs/ai-calls.jsonl`（功能、原定与实际执行方、各次尝试的成败与原因、耗时，不记内容）。改造前存的旧记录只可能来自 Codex，按 Codex 补出留痕。
+- **对外开放**：workdesk MCP，`server/mcp-workdesk.mjs` + `/api/v3/agent/*`（见 [docs/API.md](docs/API.md)「智能体接入」）。每个 agent 一个凭据，按工具授权，所有调用记进 `agent_calls`。
   - 只读：`mentor_trainees`、`mentor_questions`、`project_list`、`strategy_month`、`strategy_facts`（月度用户策略 v2 的事实底稿）、`strategy_submission`（查 submission 状态：按 `id`，或按提交时的 `idempotencyKey` 查本凭据自己的提交）。
   - 写入：只有 `strategy_submit`，只能创建待确认的月度策略 submission，不改正式版本；确认与拒绝只在页面（同源接口），不进智能体工具。
   - 关掉：`node scripts/agent-token.mjs revoke <agent>` 撤销凭据（`WORKDESK_DATA_DIR` 指向正式数据目录），或重新签发时去掉某个工具。
-- **执行方**：月度用户策略 skill（`my-skills` 的 `monthly-user-strategy`）在 Claude 或 Codex 会话里运行，换执行方不改工作台代码。
-- **留痕**：submission 记 `agent`（来自凭据，服务端认定）、`declared`（AI 自报的执行方、模型、skill 版本，只作声明）、`submitted_at`；revision 记 `submission_id`、`confirmed_by`、`confirmed_from`、`created_at` 和输入（时间线快照指纹、证据版本、规则版本）。
-- **数据对象**：Claude、Codex 的用量、ChatGPT 网页桥等只展示或采集 AI 数据的功能，不算执行方，各自见对应模块。
+  - 经 MCP 进来的月度用户策略由 `my-skills` 的 `monthly-user-strategy` 在 Claude 或 Codex 会话里产出，换执行方不改工作台代码；留痕：submission 记 `agent`（来自凭据，服务端认定）、`declared`（AI 自报的执行方、模型、skill 版本，只作声明）、`submitted_at`；revision 记 `submission_id`、`confirmed_by`、`confirmed_from`、`created_at` 和输入（时间线快照指纹、证据版本、规则版本）。
+- **数据对象**（只展示或采集，不参与切换）：Codex 会话导入（Agent 页「导入会话」，读本机 Codex 会话列表）；Codex 重置提醒（aihot.news 公开接口，开关打开后经猛鬼兽推送）。
 - **内部原声的原始数据**（#49）：从公司企微会话存档只读拉取（`server/internal-voice.mjs`），不是 AI 产出、不调用模型；后续由 skill 经 MCP 读取、提炼原声卡（批 2、3）。
 - **安全目标**：在单用户可信本机环境里，阻止默认智能体工具误操作，隔离提交与确认，保留可审计记录；不声称能防御同一用户环境下有任意本地执行权限的恶意进程。
 

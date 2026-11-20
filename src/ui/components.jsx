@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { PixelIcon, StepProgress } from "./bitmap.jsx";
+import { beijingTime } from "../constants.js";
 // 公共组件。新页面优先复用这里的组件，样式见 docs/STYLE-GUIDE.md。
 
 export function PageHeader({ title, subtitle, actions }) {
@@ -98,6 +99,16 @@ export function DateCommit({ value, onCommit, ...rest }) {
   const [v, setV] = useState(value || "");
   const commit = (x) => { setV(x); if ((x === "" || x >= "2000") && x !== (value || "")) onCommit(x); };
   return <DateInput {...rest} value={v} onChange={commit} onKeyDown={(e) => { if (e.key === "Escape") setV(value || ""); }} />;
+}
+
+// AI 产出留痕（P-13）：执行方 · 接入方式 · 模型 · 时间；转交过就写明原定执行方和原因。trace 来自服务端 ai-executor.mjs 的 aiTrace / traceOf。
+export function AiTrace({ trace, prefix = "AI 产出" }) {
+  if (!trace) return null;
+  const parts = [trace.executorName, trace.access, trace.model, beijingTime(trace.at)].filter(Boolean);
+  return <span className="small muted ai-trace" title="执行方 · 接入方式 · 模型 · 生成时间（北京时间）">
+    {prefix} · {parts.join(" · ")}
+    {trace.handoff && <span className="warn-text">（原定 {trace.handoff.fromName}，{trace.handoff.reason}，已转交）</span>}
+  </span>;
 }
 
 export function Tag({ tone = "neutral", children }) {

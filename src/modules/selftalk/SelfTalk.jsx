@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { PixelIcon } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
-import { Button, Segmented } from "../../ui/components.jsx";
+import { AiTrace, Button, Segmented } from "../../ui/components.jsx";
 import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { isoWeek } from "../../constants.js";
 
@@ -92,13 +92,13 @@ function Drawer({ initial, onClose }) {
       </div>
       <div className="st-digest">
         <span className="label"><PixelIcon name="spark" />周汇总 · AI 草稿（人工确认后保存）</span>
-        {data.digest ? <p>{data.digest}</p> : <p className="small muted">还没有确认过的周汇总。</p>}
+        {data.digest ? <><p>{data.digest}</p><AiTrace trace={data.digestTrace} prefix="周汇总" /></> : <p className="small muted">还没有确认过的周汇总。</p>}
         <div className="row st-digest-row">
           <input className="week-input" value={week} onChange={(e) => { setWeek(e.target.value.trim()); digest.reset(); }} aria-label="周次 YYYY-Www" />
           <Button className="btn btn-xs" onClick={previewDigest} disabled={digest.busy || digest.phase === "unknown"}><PixelIcon name="spark" />生成周汇总</Button>
         </div>
         <WriteBox flow={digest} title="周汇总预览（AI 草稿）" confirmLabel="确认保存" savedText="周汇总已保存，回读核对一致" onConfirm={confirmDigest} onRepreview={previewDigest} onReread={async () => { await reload(); digest.resolve(); }}>
-          {(pv) => <><p className="small muted">{pv.value.week} · {pv.value.counts?.total ?? "?"} 条消息 · AI 生成，待你核对</p><pre>{pv.value.text}</pre></>}
+          {(pv) => <><p className="small muted">{pv.value.week} · {pv.value.counts?.total ?? "?"} 条消息 · AI 生成，待你核对</p><AiTrace trace={pv.value.trace} prefix="这次由" /><pre>{pv.value.text}</pre></>}
         </WriteBox>
       </div>
       <div className="st-filter"><Segmented options={[["open", `未处理 ${items.filter((i) => !i.tag).length}`], ["star", "有价值"], ["archived", "已归档"], ["all", "全部"]]} value={filter} onChange={(v) => { setFilter(v); setCur(0); }} /></div>

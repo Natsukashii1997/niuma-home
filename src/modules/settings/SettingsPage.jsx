@@ -4,6 +4,7 @@ import { apiSend, useApi } from "../../api.js";
 import { Button, Card, Loadable, PageHeader, SampleBadge, StatStrip, Tag } from "../../ui/components.jsx";
 import { WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { PixelIcon } from "../../ui/bitmap.jsx";
+import { AiAccessCard } from "./AiAccessCard.jsx";
 
 const fields = [
   { key: "brand_base_url", label: "品牌多维表格链接", hint: "品牌页从这张表只读品牌数据（各版本表），也用于「在飞书打开」；留空读默认品牌表。", placeholder: "https://你的团队.feishu.cn/base/…" },
@@ -98,6 +99,7 @@ export default function SettingsPage() {
           { label: "待你确定", value: todo.length, tone: todo.length ? "signal" : "muted", foot: todo.map((r) => r.label).join("、") || "没有待处理项" },
           { label: "飞书身份", value: "亚古兽", foot: "cli_a965c429ef785bd3 · 固定只读" },
         ]} />
+        <AiAccessCard />
         {cards(groups)}
       </div>;
     }}</Loadable>

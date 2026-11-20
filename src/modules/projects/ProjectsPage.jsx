@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MarkText, MarkType, PixelIcon, StepProgress } from "../../ui/bitmap.jsx";
 import { apiSend, useApi } from "../../api.js";
 import { href } from "../../router.js";
-import { Button, DateCommit, Loadable, NodeCheck, PageHeader, Placeholder, Segmented, StatStrip, Tabs, Tag } from "../../ui/components.jsx";
+import { AiTrace, Button, DateCommit, Loadable, NodeCheck, PageHeader, Placeholder, Segmented, StatStrip, Tabs, Tag } from "../../ui/components.jsx";
 import { SavedNote, WriteBox, useWriteFlow } from "../../ui/write-flow.jsx";
 import { DeletedList, useSoftRemove } from "../../ui/soft-delete.jsx";
 import { localDate } from "../../constants.js";
@@ -354,6 +354,7 @@ function Feedback({ person, item, onReread }) {
   const [typing, setTyping] = useState(false); // 亚古兽的回答正在逐字打出
   const [editing, setEditing] = useState(true);
   const [ai, setAi] = useState({ busy: false, error: "" });
+  const [trace, setTrace] = useState(null); // 这次回答的留痕：哪家执行方、怎么接、模型、时间
   const [check, setCheck] = useState({ busy: false, error: "" });
   const flow = useWriteFlow();
   if (!item) return (
@@ -371,7 +372,7 @@ function Feedback({ person, item, onReread }) {
     flow.reset(); setAi({ busy: true, error: "" });
     try {
       const r = await apiSend("POST", `${base}/answer`, {});
-      setText(r.text); setAs("bot"); setEditing(false); setTyping(true); setAi({ busy: false, error: "" });
+      setText(r.text); setTrace(r.trace ?? null); setAs("bot"); setEditing(false); setTyping(true); setAi({ busy: false, error: "" });
     } catch (e) { setAi({ busy: false, error: e.message }); }
   }
   const preview = () => flow.preview(() => apiSend("POST", `${base}/reply/preview`, { text, as }));
@@ -412,6 +413,7 @@ function Feedback({ person, item, onReread }) {
         {typing || !editing
           ? <div className="ai-box mq-answer">{typing ? <MarkType text={text} onDone={() => setTyping(false)} /> : <MarkText text={text} />}</div>
           : <textarea className="review-box" value={text} disabled={locked || flow.busy} onChange={(e) => change(e.target.value)} placeholder={`写给 ${person.name} 的回复：会作为评论挂在飞书里这句原话旁边。**两个星号**包住的是重点`} />}
+        {trace && !editing && !typing && <AiTrace trace={trace} prefix="亚古兽的回答" />}
         {ai.busy && <StepProgress label="亚古兽正在读这一天的日志" />}
         {ai.error && <p className="risk-text small">没有拿到回答：{ai.error}（不会自动重试）</p>}
         <div className="row">
@@ -421,7 +423,7 @@ function Feedback({ person, item, onReread }) {
           <Segmented options={[["user", "常浩"], ["bot", "亚古兽"]]} value={as} onChange={(v) => { if (!busy) { setAs(v); flow.reset(); } }} />
           <Button variant="primary" disabled={!text.trim() || busy || locked} onClick={preview}><PixelIcon name="eye" />预览发送</Button>
         </div>
-        <p className="small muted">亚古兽点一次调用一次本机 Codex，只读这一天的日志；回答先显示在这里，确认后才发到飞书。</p>
+        <p className="small muted">亚古兽点一次调用一次 AI（执行方见「设置 → AI 接入」），只读这一天的日志；回答先显示在这里，确认后才发到飞书。</p>
       </div>
       <WriteBox flow={flow} title="发送到飞书预览" confirmLabel="确认发送" savedText="已发到飞书，回读核对：评论挂在原话那一段，内容一致" onConfirm={confirm} onRepreview={preview} onReread={reconcile}>
         {(pv) => <dl className="kv">

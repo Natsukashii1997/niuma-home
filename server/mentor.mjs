@@ -1,6 +1,7 @@
 import { getSettings } from './db.mjs';
 import { createLocalChanges, fingerprint, listRecords, getRecord, putRecord } from './local-records.mjs';
 import { createTextDraftGenerator } from './ai-draft.mjs';
+import { aiTrace, traceOf } from './ai-executor.mjs';
 import { beijingText, failure } from './v3-common.mjs';
 import { reportDocumentUrl } from './reports.mjs';
 import { randomUUID } from 'node:crypto';
@@ -170,7 +171,7 @@ export function createMentorService(db, { now = Date.now, readLogs = source => r
         const saved = getRecord(db, 'mentor-draft', fingerprint(sourceFor(person.name)));
         const valid = saved?.sourceFingerprint === fingerprint(evidenceFor(person.name, { evidence }));
         const items = (person.items || []).map(item => ({ ...item, reply: getRecord(db, 'mentor-reply', replyKey(person.name, item.id)) || null }));
-        return { ...person, items, ...(valid ? { feedback: `AI草稿（待人工核对）\n${saved.text}`, feedbackOrigin: 'ai-draft', generatedAt: saved.generatedAt } : { feedbackOrigin: 'rules' }), history: records.filter(r => r.name === person.name && r.sourceIdentity === fingerprint(sourceFor(person.name))).map(r => r.week).sort().reverse() };
+        return { ...person, items, ...(valid ? { feedback: `AI草稿（待人工核对）\n${saved.text}`, feedbackOrigin: 'ai-draft', generatedAt: saved.generatedAt, feedbackTrace: traceOf(saved) } : { feedbackOrigin: 'rules' }), history: records.filter(r => r.name === person.name && r.sourceIdentity === fingerprint(sourceFor(person.name))).map(r => r.week).sort().reverse() };
       });
     },
     async previewDraft(name, body = {}) {
@@ -180,7 +181,7 @@ export function createMentorService(db, { now = Date.now, readLogs = source => r
       if (sourceIdentity !== fingerprint(sourceFor(name))) throw failure(409, '带教来源已变化，请重新读取');
       const evidence = evidenceFor(name, people.find(p => p.name === name)), sourceFingerprint = fingerprint(evidence);
       if (!evidence.logs.length || evidence.logs.some(log => typeof log.text !== 'string' || !log.text.trim() || /<excerpt\b/i.test(log.text) || !log.src || !log.date)) throw failure(409, '近30天完整日志正文尚不可用，不能生成带教草稿');
-      const draft = await generate({ title: `带教草稿 · ${name}`, task: '根据最近30天完整日志生成一份带教草稿：有依据的进展、日志中的提问、需确认的问题、下一次带教可直接问的3至5个问题及建议。每项事实注明日志日期和来源，不把规则提取或建议当成已确认成果。不回写日志、不发消息。', evidence });
+      const draft = await generate({ feature: 'mentor-draft', title: `带教草稿 · ${name}`, task: '根据最近30天完整日志生成一份带教草稿：有依据的进展、日志中的提问、需确认的问题、下一次带教可直接问的3至5个问题及建议。每项事实注明日志日期和来源，不把规则提取或建议当成已确认成果。不回写日志、不发消息。', evidence });
       const validate = () => { if (sourceIdentity !== fingerprint(sourceFor(name)) || sourceFingerprint !== fingerprint(evidenceFor(name))) throw failure(409, '带教日志或来源已变化，请重新生成草稿'); };
       if (draft.sourceFingerprint !== sourceFingerprint || typeof draft.text !== 'string' || !draft.text.trim() || draft.text.length > 20000) throw failure(502, 'AI草稿与来源核验不一致，未保存');
       const value = { ...draft, name, sourceIdentity, draft: true };
@@ -211,11 +212,11 @@ export function createMentorService(db, { now = Date.now, readLogs = source => r
       if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length) throw failure(400, 'AI 回答只使用这条所在的日志，不接受替换来源');
       const { item, log } = itemFor(name, itemId);
       if (!log?.text?.trim()) throw failure(409, '这条所在的日志正文不可用，不能生成回答');
-      const result = await generate({ title: `亚古兽回答 · ${name} · ${item.date}`, instructions: ANSWER_RULES,
+      const result = await generate({ feature: 'mentor-answer', title: `亚古兽回答 · ${name} · ${item.date}`, instructions: ANSWER_RULES,
         task: `管培生 ${name} 在 ${item.date} 的日志里写了一条${item.kind}，原话是：「${item.text}」。请回答这一条。`,
         evidence: { item: { kind: item.kind, text: item.text, date: item.date }, log: { date: log.date, title: log.title, text: log.text } } });
       if (typeof result.text !== 'string' || !result.text.trim()) throw failure(502, '模型没有返回可用回答');
-      return { text: result.text.trim().slice(0, 2000), generatedAt: result.generatedAt, model: result.model };
+      return { text: result.text.trim().slice(0, 2000), generatedAt: result.generatedAt, model: result.model, trace: aiTrace(result) };
     },
     // 回复写回飞书：先预览（哪篇文档、哪句原话、用谁的身份、回复内容），确认后只发一次评论，挂在原话那一段上。
     previewReply(name, itemId, body) {
