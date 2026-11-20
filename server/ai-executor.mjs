@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { dataDir, getSettings } from './db.mjs';
 import { failure } from './v3-common.mjs';
+import { listAgents } from './agent-access.mjs';
 
 export const AI_CALL_LOG = path.join(dataDir, 'logs', 'ai-calls.jsonl');
 const LOCAL_CLI = '本机 CLI';
@@ -112,7 +113,8 @@ export function claudeExecutor({ spawnProcess = (args, cwd) => spawn('claude', a
     ...EXECUTORS.claude,
     run({ cwd, instructions, prompt, signal, onText }) {
       return new Promise((resolve, reject) => {
-        let child; try { child = spawnProcess([...CLAUDE_ARGS, '--system-prompt', instructions], cwd); } catch (e) { reject(new AiExecutorError(classify(e?.code || e?.message))); return; }
+        // 工作目录可能还没建（Codex 那边由 codex.mjs 先建）；不建的话 spawn 报 ENOENT，会被误判成「未安装」。
+        let child; try { mkdirSync(cwd, { recursive: true }); child = spawnProcess([...CLAUDE_ARGS, '--system-prompt', instructions], cwd); } catch (e) { reject(new AiExecutorError(classify(e?.code || e?.message))); return; }
         let out = '', err = '', done = false;
         const finish = (fn) => { if (done) return; done = true; clearTimeout(timer); signal?.removeEventListener?.('abort', abort); fn(); };
         const abort = () => { child.kill('SIGTERM'); finish(() => reject(Object.assign(new Error('已中止'), { name: 'AbortError' }))); };
@@ -200,7 +202,9 @@ export function createAiAccess(db, { probe = probeExecutor, now = Date.now, ttl 
           const r = resolveFeature(db, f.id), last = calls.filter(c => c.feature === f.id).at(-1) || null;
           return { ...f, executor: r.primary, executorName: EXECUTORS[r.primary].name, followsDefault: r.followsDefault, backup: r.backup, backupName: r.backup ? EXECUTORS[r.backup].name : null, access: LOCAL_CLI, last };
         }),
-        fixed: FIXED_FEATURES, openings: OPENINGS, dataObjects: DATA_OBJECTS,
+        fixed: FIXED_FEATURES, dataObjects: DATA_OBJECTS,
+        // 已签发的凭据：只列 agent、授权的工具和最近一次调用，凭据本身只存哈希，不显示。
+        openings: OPENINGS.map(o => ({ ...o, agents: listAgents(db).map(a => ({ agent: a.agent, tools: a.tools, createdAt: a.createdAt, lastCallAt: db.prepare('SELECT MAX(at) AS at FROM agent_calls WHERE agent=?').get(a.agent)?.at ?? null })) })),
       };
     },
   };

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import path from 'node:path';
@@ -97,12 +97,14 @@ test('Claude 执行方：本机 claude -p，关掉全部工具、不读设置和
   let seen;
   const ok = claudeExecutor({ spawnProcess: (args, cwd) => { seen = { args, cwd, child: fakeChild({ stdout: JSON.stringify({ is_error: false, result: '回答正文', modelUsage: { 'claude-x': {} } }) }) }; return seen.child; } });
   let text = '';
-  const out = await ok.run({ cwd: '/tmp/x', instructions: '规则', prompt: '问题', onText: (_id, s) => { text += s; } });
+  const cwd = path.join(process.env.WORKDESK_DATA_DIR, `claude-cwd-${Date.now()}`, 'v3-drafts');
+  const out = await ok.run({ cwd, instructions: '规则', prompt: '问题', onText: (_id, s) => { text += s; } });
+  assert.ok(existsSync(cwd), '工作目录不存在时先建好，不能让 spawn 因 ENOENT 被误判为未安装');
   assert.equal(text, '回答正文'); assert.equal(out.model, 'claude-x');
   assert.deepEqual(seen.args, [...CLAUDE_ARGS, '--system-prompt', '规则']);
   assert.ok(seen.args.includes('--tools') && seen.args[seen.args.indexOf('--tools') + 1] === '');
   assert.equal(seen.child.input(), '问题');
-  const reason = async child => { try { await claudeExecutor({ spawnProcess: () => child }).run({ cwd: '/', instructions: 'r', prompt: 'p', onText: () => {} }); } catch (e) { return e.reason; } };
+  const reason = async child => { try { await claudeExecutor({ spawnProcess: () => child }).run({ cwd, instructions: 'r', prompt: 'p', onText: () => {} }); } catch (e) { return e.reason; } };
   assert.equal(await reason(fakeChild({ error: Object.assign(new Error('spawn claude ENOENT'), { code: 'ENOENT' }) })), '未安装');
   assert.equal(await reason(fakeChild({ stdout: JSON.stringify({ is_error: true, result: 'Not logged in · Please run /login' }), code: 1 })), '未登录');
   assert.equal(await reason(fakeChild({ stdout: JSON.stringify({ is_error: true, result: 'Claude usage limit reached' }), code: 1 })), '额度用尽');

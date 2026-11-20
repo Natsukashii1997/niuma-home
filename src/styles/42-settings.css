@@ -18,3 +18,35 @@
 .set-push-kv { grid-template-columns: 180px minmax(0, 1fr); column-gap: var(--s3); } /* 与行头「名称｜值」两列对齐 */
 .set-pairing-foot .link-btn { margin-left: var(--s2); }
 
+/* AI 接入（P-13，2026-11-20 选定 A 版「一张总表」）：执行方三格 + 功能清单表 + 对外开放 / 数据对象两栏 */
+.aia .card-body { padding: var(--s3) var(--s4) var(--s4); }
+.aia .card-extra .btn { height: 28px; font-size: 12px; }
+.aia-sub { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin: var(--s4) 0 var(--s2); }
+.aia .card-body > .aia-sub:first-child { margin-top: 0; }
+.aia-def { display: inline-flex; align-items: center; gap: var(--s2); }
+.aia-warn { margin: 0 0 var(--s2); }
+.aia .write-box { margin-bottom: var(--s2); }
+.aia-ex3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); }
+.aia-ex { padding: var(--s3); display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
+.aia-ex + .aia-ex { border-left: 1px solid var(--line); }
+.aia-ex.is-def { box-shadow: inset 3px 0 0 var(--text); }
+.aia-ex-top { display: flex; align-items: center; gap: var(--s2); }
+.aia-ex-top b { font-size: 14px; font-weight: 600; margin-right: auto; }
+.aia-kv { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px var(--s2); margin: 0; font-size: 12px; }
+.aia-kv dt { color: var(--muted); padding-top: 1px; }
+.aia-kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.aia-grid { width: 100%; table-layout: fixed; }
+.aia-grid td { white-space: normal; min-width: 0; overflow-wrap: anywhere; }
+.aia-grid th:nth-child(1) { width: 150px; } .aia-grid th:nth-child(2) { width: 150px; } .aia-grid th:nth-child(3) { width: 80px; } .aia-grid th:nth-child(4) { width: 72px; } .aia-grid th:nth-child(7) { width: 200px; } .aia-grid th:last-child { width: 84px; }
+.aia-grid td .tag { margin-bottom: 4px; white-space: normal; }
+.aia-grid td .btn { height: 28px; font-size: 12px; }
+.aia-grid tr.is-open td { background: var(--panel-soft); }
+.aia-edit > td { padding: var(--s3) var(--s3) var(--s3) calc(150px + var(--s3)); background: var(--panel-soft); }
+.aia-pick { display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s2); }
+.aia-pick > .label { width: 80px; color: var(--muted); flex-shrink: 0; }
+.aia-2col { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: var(--s4); }
+.aia-2col .grid { width: 100%; }
+.aia-2col .grid td { white-space: normal; min-width: 0; overflow-wrap: anywhere; }
+.aia-kvt tbody th { width: 76px; position: static; }
+.aia-sub > .small { min-width: 0; text-align: right; }
+.aia-data th:first-child { width: 120px; }
