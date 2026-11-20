@@ -1,12 +1,8 @@
 import { getSettings } from './db.mjs';
 import { getRecord, listRecords, createLocalChanges, fingerprint } from './local-records.mjs';
-import { deriveNeeds } from './needs.mjs';
-import { manualNeedRecords } from './manual-needs.mjs';
-import { withRulings } from './timeline-rulings.mjs';
 import { failure } from './v3-common.mjs';
 import { marketingFailure, isDay } from './campaigns.mjs';
 import { V3_DEFAULTS } from './v3-settings.mjs';
-import { TIMELINE_SOURCE, timelineIdentity } from './timeline.mjs';
 import demo from '../fixtures/v3-demo-price.json' with { type: 'json' };
 import provided from '../fixtures/v3-provided-prices.json' with { type: 'json' };
 
@@ -37,32 +33,6 @@ export function priceSettings(db) {
   const values = { ...V3_DEFAULTS, ...getSettings(db) }, a = values.price_floor_margin, b = values.price_cost_per_hour;
   if (typeof a !== 'string' || !a.trim() || typeof b !== 'string' || !b.trim() || !Number.isFinite(Number(a)) || Number(a) < 0 || Number(a) >= 1 || !Number.isFinite(Number(b)) || Number(b) < 0) throw marketingFailure(503, 'PRICE_SETTINGS_UNCONFIGURED', '请先在设置里确认毛利底线和每课时成本');
   return { floorMargin: Number(a), costPerHour: Number(b) };
-}
-
-// 只使用已采纳且仍对应当前完整时间线快照的需求；来源变更的记录不继续充当价格依据。
-export function acceptedMarketingNeeds(db, month) {
-  const rows = month ? db.prepare('SELECT * FROM v3_needs WHERE month=?').all(month) : db.prepare('SELECT * FROM v3_needs').all();
-  const snapshot = db.prepare("SELECT payload FROM v3_snapshots WHERE kind='timeline'").get();
-  const defaultIdentity = JSON.stringify(TIMELINE_SOURCE), identity = timelineIdentity(getSettings(db));
-  const saved = snapshot ? JSON.parse(snapshot.payload) : null;
-  // 来源必须来自成功快照自身。旧裸快照没有身份，只兼容已知默认来源。
-  const wrapped = saved && (Object.hasOwn(saved, 'identity') || Object.hasOwn(saved, 'value'));
-  const base = wrapped ? saved.identity === identity ? saved.value : null : identity === defaultIdentity ? saved : null;
-  const timeline = base && withRulings(db, base); // 与需求列表一致：叠加人工裁定
-  const manual = new Map(manualNeedRecords(db).filter(item => item.need?.id).map(item => [item.need.id, item]));
-  const derived = new Map();
-  return rows.flatMap(row => {
-    const need = JSON.parse(row.payload);
-    if (need.status !== '已采纳') return [];
-    const local = manual.get(row.id);
-    if (local) {
-      if (local.month !== row.month || fingerprint(local) !== row.source_fingerprint) return [];
-    } else if (timeline && !/^(selftalk|manual)-/.test(row.id)) {
-      if (!derived.has(row.month)) derived.set(row.month, deriveNeeds(timeline, row.month));
-      if (!derived.get(row.month).some(n => n.need.id === row.id && n.fingerprint === row.source_fingerprint)) return [];
-    } else return [];
-    return [{ ...need, month: row.month }];
-  });
 }
 
 export function priceCatalog(db) {

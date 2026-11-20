@@ -8,9 +8,6 @@ import { match, json } from '../server/http.mjs';
 import { routes } from '../server/routes/v3-marketing.mjs';
 import { getRecord, putRecord, fingerprint } from '../server/local-records.mjs';
 import { campaignTemplate, createCampaignService, readMarketingTable, CAMPAIGN_FIELDS, MARKETING_BASE } from '../server/campaigns.mjs';
-import { acceptedMarketingNeeds } from '../server/price.mjs';
-import { deriveNeeds } from '../server/needs.mjs';
-import { saveSnapshot } from '../server/v3-common.mjs';
 import { TIMELINE_SOURCE, REGION_SHEETS, createTimelineReader } from '../server/timeline.mjs';
 import { recordSource } from '../server/source-status.mjs';
 
@@ -261,41 +258,7 @@ test('brief逐字段保护人工编辑，源变更保留已改文字与空框架
   assert.equal((await request('GET', '/api/v3/briefs/2026-11')).body.title, '第二次编辑');
 });
 
-test('已采纳需求在时间线内容变化后不再成为brief的确定事实', async t => {
-  const { db } = await setup(t);
-  const timeline = { stage: '本科', agenda: [{ c: '澳洲', school: '昆士兰大学 UQ', type: 'Final', from: '2026-11-07', to: '2026-11-21', src: '澳洲!B2' }] };
-  const derived = deriveNeeds(timeline, '2026-11')[0];
-  db.prepare('INSERT INTO v3_needs(id,month,source_fingerprint,payload,updated_at) VALUES(?,?,?,?,?)').run(derived.need.id, '2026-11', derived.fingerprint, JSON.stringify({ ...derived.need, status: '已采纳' }), new Date().toISOString());
-  saveSnapshot(db, 'timeline', timeline, new Date().toISOString()); assert.equal(acceptedMarketingNeeds(db).length, 1);
-  timeline.agenda[0].from = '2026-11-08'; saveSnapshot(db, 'timeline', timeline, new Date().toISOString()); assert.equal(acceptedMarketingNeeds(db).length, 0);
-});
-
-test('自言自语派生需求按完整来源指纹核对，支持已采纳项且排除变更与删除', async t => {
-  const { db, request } = await setup(t);
-  saveSnapshot(db, 'timeline', { stage: '本科', agenda: [] }, new Date().toISOString());
-  adopted(db, { id: 'selftalk-message1' });
-  assert.equal(acceptedMarketingNeeds(db, '2026-11').length, 1);
-  assert.equal((await request('GET', '/api/v3/briefs/2026-11')).body.background.text, '');
-  const source = getRecord(db, 'selftalk-need', 'message-selftalk-message1'); source.revision = 2;
-  putRecord(db, 'selftalk-need', source.id, source);
-  assert.equal(acceptedMarketingNeeds(db, '2026-11').length, 0);
-  adopted(db, { id: 'selftalk-message1' }); db.prepare("DELETE FROM v3_documents WHERE kind='selftalk-need'").run();
-  assert.equal(acceptedMarketingNeeds(db, '2026-11').length, 0);
-});
-
-test('时间线来源配置变更不能借旧快照接受需求；已采纳自言自语来源保持独立', async t => {
-  const { db } = await setup(t);
-  const timeline = { stage: '本科', agenda: [{ c: '澳洲', school: '昆士兰大学 UQ', type: 'Final', from: '2026-11-07', to: '2026-11-21', src: '澳洲!B2' }] };
-  const derived = deriveNeeds(timeline, '2026-11')[0];
-  db.prepare('INSERT INTO v3_needs(id,month,source_fingerprint,payload,updated_at) VALUES(?,?,?,?,?)').run(derived.need.id, '2026-11', derived.fingerprint, JSON.stringify({ ...derived.need, status: '已采纳' }), new Date().toISOString());
-  saveSnapshot(db, 'timeline', timeline, new Date().toISOString());
-  recordSource(db, 'timeline', { identity: JSON.stringify(TIMELINE_SOURCE), at: new Date().toISOString() });
-  adopted(db, { id: 'selftalk-stable' }); assert.equal(acceptedMarketingNeeds(db).length, 2);
-  saveSetting(db, 'timeline_source', JSON.stringify({ ...TIMELINE_SOURCE, token: 'DifferentSource' }));
-  assert.deepEqual(acceptedMarketingNeeds(db).map(n => n.id), ['selftalk-stable']);
-});
-
-test('A成功快照在B读取失败后不会被冒认成B，配置切回A可继续核验原采纳需求', async t => {
+test('A成功快照在B读取失败后不会被覆盖或冒认成B，来源状态记的是B', async t => {
   const { db } = await setup(t);
   const sourceA = { ...TIMELINE_SOURCE, token: 'SourceA' }, sourceB = { ...TIMELINE_SOURCE, token: 'SourceB' };
   const identityA = JSON.stringify(sourceA), identityB = JSON.stringify(sourceB);
@@ -309,30 +272,10 @@ test('A成功快照在B读取失败后不会被冒认成B，配置切回A可继�
   assert.ok(Array.isArray(payload.agenda)); assert.equal(Object.hasOwn(payload, 'identity'), false); assert.equal(Object.hasOwn(payload, 'value'), false);
   const before = db.prepare("SELECT * FROM v3_snapshots WHERE kind='timeline'").get();
   assert.deepEqual(JSON.parse(before.payload), { identity: identityA, value: payload });
-  const derived = deriveNeeds(payload, '2026-11')[0];
-  db.prepare('INSERT INTO v3_needs(id,month,source_fingerprint,payload,updated_at) VALUES(?,?,?,?,?)').run(derived.need.id, '2026-11', derived.fingerprint, JSON.stringify({ ...derived.need, status: '已采纳' }), new Date().toISOString());
-  assert.equal(acceptedMarketingNeeds(db).length, 1);
   saveSetting(db, 'timeline_source', identityB);
   await assert.rejects(reader(), /B读取失败/);
   assert.equal(db.prepare("SELECT identity FROM v3_source_status WHERE kind='timeline'").get().identity, identityB);
   assert.deepEqual(db.prepare("SELECT * FROM v3_snapshots WHERE kind='timeline'").get(), before);
-  assert.equal(acceptedMarketingNeeds(db).length, 0);
-  saveSetting(db, 'timeline_source', identityA);
-  assert.equal(acceptedMarketingNeeds(db).length, 1, '不以最近B的失败尝试身份覆盖最后成功快照A的身份');
-});
-
-test('旧裸时间线快照仅兼容默认来源，不以失败尝试身份给自定义来源背书', async t => {
-  const { db } = await setup(t);
-  const timeline = { stage: '本科', agenda: [{ c: '澳洲', school: '昆士兰大学 UQ', type: 'Final', from: '2026-11-07', to: '2026-11-21', src: '澳洲!B2' }] };
-  const derived = deriveNeeds(timeline, '2026-11')[0];
-  db.prepare('INSERT INTO v3_needs(id,month,source_fingerprint,payload,updated_at) VALUES(?,?,?,?,?)').run(derived.need.id, '2026-11', derived.fingerprint, JSON.stringify({ ...derived.need, status: '已采纳' }), new Date().toISOString());
-  saveSnapshot(db, 'timeline', timeline, new Date().toISOString());
-  assert.equal(acceptedMarketingNeeds(db).length, 1);
-  const other = JSON.stringify({ ...TIMELINE_SOURCE, token: 'SourceB' });
-  saveSetting(db, 'timeline_source', other); recordSource(db, 'timeline', { identity: other, error: '来源不可读' });
-  assert.equal(acceptedMarketingNeeds(db).length, 0);
-  saveSetting(db, 'timeline_source', JSON.stringify(TIMELINE_SOURCE));
-  assert.equal(acceptedMarketingNeeds(db).length, 1);
 });
 
 test('新战役预览绑定来源行指纹，同配置的新同步不允许旧预览确认', async t => {

@@ -9,6 +9,7 @@ import { match, json, unmatched } from '../server/http.mjs';
 import { codexResetView, createCodexResetReader } from '../server/codex-reset.mjs';
 import { parseTimelineDate, parseTimeline, parseAnnotatedCsv, readTimelineSheets, REGION_SHEETS } from '../server/timeline.mjs';
 import { deriveNeeds } from '../server/needs.mjs';
+import { createUserServices } from '../server/routes/user.mjs';
 
 const makeSheet = (name, rows) => ({ name, cols: ['A', 'B', 'C', 'D'], rows: rows.map((values, i) => ({ row: i + 1, values })) });
 function sheets() { return [
@@ -34,7 +35,7 @@ async function setup(t) {
   t.after(async () => { await new Promise(resolve => server.close(resolve)); db.close(); rmSync(dir, { recursive: true, force: true }); });
   const base = `http://127.0.0.1:${server.address().port}`;
   const request = async (method, endpoint, body) => { const r = await fetch(base + endpoint, { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) }); return { status: r.status, body: await r.json() }; };
-  return { db, request, base, setData: v => data = v, setError: e => readError = e, advance: n => instant += n, reads: () => reads };
+  return { db, request, base, setError: e => readError = e, reads: () => reads };
 }
 
 test('V3 日期严格补年、跨年、推测与不完整范围，不修来源年份', () => {
@@ -95,12 +96,12 @@ test('V3 Codex 合并并发、ETag 304、失败不伪装成功或推进水位', 
 
 test('V3 新 GET 覆盖501且保持形状，后续批次仍501，月份校验', async t => {
   const { request } = await setup(t);
-  for (const endpoint of ['/api/v3/timeline','/api/v3/codex-reset','/api/v3/needs?month=2026-11','/api/v3/months/2026-11']) assert.equal((await request('GET',endpoint)).status,200);
+  for (const endpoint of ['/api/v3/timeline','/api/v3/codex-reset','/api/v3/months/2026-11']) assert.equal((await request('GET',endpoint)).status,200);
   const tl = (await request('GET','/api/v3/timeline')).body;
   assert.deepEqual(Object.keys(tl).sort(), ['source','syncedAt','stage','countries','terms','nodes','table','agenda','anomalies','rulings','coverage','calendarEntries','verifications','years'].sort());
   const month = (await request('GET','/api/v3/months/2026-11')).body;
   assert.equal(month.steps.length,4); assert.equal(month.campaign,null); assert.ok(month.steps.every(s=>s.key!=='plans')); assert.equal(month.steps.find(s=>s.key==='materials').state,'todo');
-  for (const value of ['', '2026-00','2026-13','26-11']) assert.equal((await request('GET',`/api/v3/needs?month=${value}`)).status,400);
+  assert.equal((await request('GET','/api/v3/needs?month=2026-11')).status,501,'需求列表接口已下线（#84），走 v3 兜底');
   assert.equal((await request('GET','/api/v3/months/2026-13')).status,400);
 });
 
@@ -114,48 +115,30 @@ test('V3 同步仅完整成功替换；失败不覆盖快照或返回旧成功',
   assert.deepEqual(db.prepare('SELECT * FROM v3_snapshots').all(),before);
 });
 
-test('V3 采纳先预览后确认，防篡改、持久化回读、重复确认幂等，策略增改', async t => {
-  const { request, db } = await setup(t);
-  const listing = (await request('GET','/api/v3/needs?month=2026-11')).body, id = listing.needs[0].id;
-  const endpoint = `/api/v3/needs/${id}`;
-  assert.equal((await request('POST',`${endpoint}/adopt`,{confirm:true})).status,400);
-  const preview = (await request('POST',`${endpoint}/preview`,{month:'2026-11'})).body;
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM v3_needs').get().n,0);
-  assert.equal((await request('POST',`${endpoint}/adopt`,{previewId:preview.previewId,confirm:false})).status,400);
-  const body = {previewId:preview.previewId,confirm:true,strategy:{goal:'篡改'}};
-  const saved = await request('POST',`${endpoint}/adopt`,body); assert.equal(saved.status,200); assert.equal(saved.body.strategy.goal,preview.need.strategy.goal); assert.ok(saved.body.strategy.goal.length > 0);
-  assert.deepEqual((await request('POST',`${endpoint}/adopt`,body)).body,saved.body);
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM v3_needs').get().n,1);
-  const strategy = {goal:'安排考试冲刺',actions:{营销:[['通知考试日程','方便倒排复习']],产品:[],运营:[]}};
-  const p2 = (await request('POST',`${endpoint}/preview`,{month:'2026-11',strategy})).body;
-  assert.equal((await request('PATCH',`${endpoint}/strategy`,{previewId:p2.previewId,confirm:true})).status,200);
-  assert.deepEqual((await request('GET','/api/v3/needs?month=2026-11')).body.needs.find(n=>n.id===id).strategy,strategy);
-  assert.equal((await request('POST',`${endpoint}/preview`,{month:'2026-11',strategy:{goal:'x',actions:{营销:[['no why']],产品:[],运营:[]}}})).status,400);
-});
-
-test('V3 来源变化、并发旧预览、过期凭据均拒绝；已采纳来源消失显示待复核', async t => {
-  const { request, setData, advance } = await setup(t);
-  const id = (await request('GET','/api/v3/needs?month=2026-11')).body.needs.find(n=>n.seg.startsWith('澳洲')).id;
-  const endpoint = `/api/v3/needs/${id}`;
-  const preview = async () => (await request('POST',`${endpoint}/preview`,{month:'2026-11'})).body;
-  const confirm = p => request('POST',`${endpoint}/adopt`,{previewId:p.previewId,confirm:true});
-  const p = await preview(), changed = sheets(); changed[2].rows[1].values[2]='11.8-11.21'; setData(changed);
-  assert.equal((await request('POST','/api/v3/timeline/sync')).status,200); // 来源变化经同步进入快照后，旧预览必须被拒绝
-  assert.equal((await confirm(p)).status,409);
-  const p1 = await preview(), p2 = await preview(); assert.equal((await confirm(p1)).status,200); assert.equal((await confirm(p2)).status,409);
-  const p3 = await preview(); advance(600001); assert.equal((await confirm(p3)).status,409);
-  changed[2].rows[1].values[2]='未公开'; setData(changed);
-  await request('POST','/api/v3/timeline/sync');
-  assert.equal((await request('GET','/api/v3/needs?month=2026-11')).body.needs.find(n=>n.id===id).status,'待复核');
-});
-
-test('V3 数据库写入故障回滚，不污染其他需求', async t => {
-  const { request, db } = await setup(t);
-  const id = (await request('GET','/api/v3/needs?month=2026-11')).body.needs[0].id;
-  const p = (await request('POST',`/api/v3/needs/${id}/preview`,{month:'2026-11'})).body;
-  db.exec("CREATE TRIGGER fail_needs BEFORE INSERT ON v3_needs BEGIN SELECT RAISE(ABORT,'test failure'); END;");
-  assert.equal((await request('POST',`/api/v3/needs/${id}/adopt`,{previewId:p.previewId,confirm:true})).status,500);
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM v3_needs').get().n,0);
+// 需求的采纳接口已下线（#84）。策略导出仍靠 needs.list 判断「来源仍有效的已采纳需求」，这里直接测服务（和正式环境同一套装配）。
+test('V3 需求服务：来源变化、并发旧预览、过期预览均拒绝；已采纳需求来源变化或消失后列表标成待复核', async t => {
+  assert.ok(process.env.WORKDESK_DATA_DIR, '必须隔离');
+  const dir = mkdtempSync(path.join(process.env.WORKDESK_DATA_DIR, 'v3-needs-')), db = openDb(dir);
+  t.after(() => { db.close(); rmSync(dir, { recursive: true, force: true }); });
+  let data = sheets(), instant = Date.parse('2026-10-16T14:00:00+08:00');
+  const { needs, timeline } = createUserServices(db, { timeline: { readSheets: async () => structuredClone(data), now: () => instant }, needs: { now: () => instant } });
+  const sync = () => timeline({ refresh: true }), status = async () => (await needs.list('2026-11')).needs.find(n => n.id === id).status;
+  for (const month of ['', '2026-00', '2026-13', '26-11']) await assert.rejects(needs.list(month), e => e.status === 400);
+  const id = (await needs.list('2026-11')).needs.find(n => n.seg.startsWith('澳洲')).id;
+  const preview = () => needs.preview(id, { month: '2026-11' });
+  const confirm = p => needs.confirm(id, { previewId: p.previewId, confirm: true });
+  const p = await preview(), changed = sheets(); changed[2].rows[1].values[2] = '11.8-11.21'; data = changed;
+  await sync(); // 来源变化经同步进入快照后，旧预览必须被拒绝
+  await assert.rejects(confirm(p), e => e.status === 409);
+  const p1 = await preview(), p2 = await preview();
+  assert.equal((await confirm(p1)).status, '已采纳'); await assert.rejects(confirm(p2), e => e.status === 409);
+  const p3 = await preview(); instant += 600001; await assert.rejects(confirm(p3), e => e.status === 409);
+  assert.equal(await status(), '已采纳');
+  changed[2].rows[1].values[2] = '11.9-11.21'; data = structuredClone(changed); await sync();
+  assert.equal(await status(), '待复核', '来源日期变了');
+  changed[2].rows[1].values[2] = '未公开'; data = structuredClone(changed); await sync();
+  assert.equal(await status(), '待复核', '来源事件消失');
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM v3_needs').get().n, 1, '采纳记录保留');
 });
 
 test('V3 飞书读取固定 codex user、四张地区表和十二张月历完整范围', async () => {
@@ -184,21 +167,8 @@ test('V3 Codex 合法空水位/译文、过期预告/推断时间、429退避', 
   instant+=60000; await assert.rejects(read()); assert.equal(calls,2);
 });
 
-test('V3 括号内研究生限定不成为本科确定日期；并发确认保持幂等', async t => {
+test('V3 括号内研究生限定不成为本科确定日期', () => {
   assert.equal(parseTimelineDate('7.10（夏季学期研究生）').flag,'guess');
-  const {request,db}=await setup(t);
-  const id=(await request('GET','/api/v3/needs?month=2026-11')).body.needs[0].id;
-  const endpoint=`/api/v3/needs/${id}`;
-  const p=(await request('POST',`${endpoint}/preview`,{month:'2026-11'})).body;
-  const body={previewId:p.previewId,confirm:true};
-  const results=await Promise.all([request('POST',`${endpoint}/adopt`,body),request('POST',`${endpoint}/adopt`,body)]);
-  assert.deepEqual(results[0],results[1]); assert.equal(results[0].status,200);
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM v3_needs').get().n,1);
-  const edited={goal:'新目标',actions:{营销:[],产品:[],运营:[]}};
-  const p2=(await request('POST',`${endpoint}/preview`,{month:'2026-11',strategy:edited})).body;
-  await request('PATCH',`${endpoint}/strategy`,{previewId:p2.previewId,confirm:true});
-  assert.deepEqual(await request('POST',`${endpoint}/adopt`,body),results[0]);
-  assert.equal((await request('GET','/api/v3/needs?month=2026-11')).body.needs.find(n=>n.id===id).strategy.goal,'新目标');
 });
 
 test('V3 同一显式学期冲突双向标记，不误伤不同学期', () => {

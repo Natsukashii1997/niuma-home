@@ -7,11 +7,11 @@
 | 词 | 在这里指什么 | 不是什么 |
 |---|---|---|
 | `v3` | 2026-10 第三轮界面改版的批次号。出现在接口路径 `/api/v3/…`、表名 `v3_documents`、文件名 `v3-common.mjs`、测试名 `v3-*.test.mjs` 里 | 不是接口版本。没有 `v3` 前缀的老接口（`/api/plans`、`/api/promos`、`/api/materials`、`/api/reports`）仍在用，不是废弃接口 |
-| 策略（strategy） | 代码里有三样：① 月度用户策略 v2（`strategy-service.mjs`，接口 `/api/v3/strategy-v2`，现在页面用的）；② 月度用户策略 v1（`user-strategy.mjs`，接口 `/api/v3/user-strategy`，v2 没有正式版本的月份才显示）；③ 单条需求下的策略（`needs.mjs`，接口 `/api/v3/needs/:id/strategy`，页面入口 2026-10 已去掉） | v2 的校验、迁移仍引用 v1 的函数（`units`、`strategyWindow`），v1 不能直接删 |
+| 策略（strategy） | 代码里有三样：① 月度用户策略 v2（`strategy-service.mjs`，接口 `/api/v3/strategy-v2`，现在页面用的）；② 月度用户策略 v1（`user-strategy.mjs`，接口 `/api/v3/user-strategy`，v2 没有正式版本的月份才显示）；③ 单条需求下的策略（存在需求记录里，`needs.mjs`）：页面入口 2026-10 已去掉，采纳和改策略的接口 2026-11-20 下线（#84），只剩导出飞书的 4 条接口 `/api/v3/needs/:id/strategy/export*`（`feishu-export.mjs`） | v2 的校验、迁移仍引用 v1 的函数（`units`、`strategyWindow`），v1 不能直接删 |
 | Agent | 页面上的「Agent」页是聊天助手，代码里叫 assistants（`routes/assistants.mjs`、`codex.mjs`、`chatgpt-bridge.mjs`）。服务端文件名里的 agent（`routes/agent.mjs`、`agent-access.mjs`、`agent-tools.mjs`）指外部 AI 经 workdesk MCP 连进来 | 两者没有关系 |
 | Voice | 「留学之声」：外部学生讨论的汇总（`voice.mjs`，接口 `/api/v3/voice`），来源没接通时显示模拟数据 | 「内部原声」是另一件事：公司企微会话存档的只读拉取（`internal-voice.mjs`），目前没有页面 |
 | 自言自语（selftalk） | 常浩和猛鬼兽的飞书私聊记录，可标成待办或需求，可做周汇总 | 不属于 Voice |
-| 需求（needs） | 从时间线推导、或手写的「主线需求」。后端和接口还在，页面入口已去掉 | |
+| 需求（needs） | 从时间线推导、或由自言自语标出的「主线需求」，已采纳的存在表 `v3_needs`。页面入口 2026-10 已去掉；需求推导（列表、采纳、改策略）和手写草稿两组接口 2026-11-20 下线（#84）。现在只剩策略导出飞书，以及它依赖的读取：`needs.mjs` 的 `list` 按编号找需求、判断来源是否仍有效 | 不再有手写草稿：`manual-need` 记录不再读取，库里的旧记录和 `v3_needs` 里的数据都保留不动 |
 | 方案（plans）/ 促销表（promos） | 营销页「月度促销」：粘贴的方案原文（plans）和解析出的逐 SKU 促销行（promos） | 不是「价格方案」。价格方案在「价格档案」页签，存储 kind 是 `price-schemes` |
 | 营销战役（campaign） | 页面上放在「项目」页的页签里；服务端和营销的价格、Brief 放在同一个路由文件 `routes/v3-marketing.mjs` | |
 | 交付月（delivery） | 首页那一行四个环节：价格方案、物料、Brief、营销战役（`routes/delivery.mjs`，接口 `/api/v3/months/:month`） | |
@@ -56,6 +56,7 @@
 | 功能 | 路由文件 | 服务文件 | 数据存哪 |
 |---|---|---|---|
 | 外部 AI 经 MCP 读写（workdesk MCP） | `routes/agent.mjs` | `mcp-workdesk.mjs`、`agent-access.mjs`、`agent-tools.mjs` | 表 `agent_access`、`agent_calls` |
+| 单条需求策略导出飞书（`/api/v3/needs/:id/strategy/export*`） | `routes/user.mjs` | `feishu-export.mjs`、`needs.mjs` | 表 `v3_needs`；`feishu-export`、`feishu-export-preview`；读 `selftalk-need` |
 | 内部原声（企微会话存档拉取） | `routes/internal-voice.mjs` | `internal-voice.mjs` | 表 `chat_conversations`、`chat_messages`、`chat_pull_runs` |
 | Codex 重置提醒推送 | `routes/workspace.mjs` | `codex-push.mjs`、`codex-reset.mjs` | 表 `codex_push`；`codex-push` |
 | Chrome 收藏插件 | `routes/kb.mjs`（`/api/v3/kb/collect*`） | `kb-collect*.mjs` | `kb-operation`、`kb-collect-pairing` |

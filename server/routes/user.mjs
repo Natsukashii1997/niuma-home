@@ -2,7 +2,6 @@ import { route, readBody, respond } from '../http.mjs';
 import { createTimelineReader } from '../timeline.mjs';
 import { createNeedsService } from '../needs.mjs';
 import { createStrategyExportService } from '../feishu-export.mjs';
-import { createManualNeeds } from '../manual-needs.mjs';
 import { createRulingService, withRulings } from '../timeline-rulings.mjs';
 import { createStrategyService } from '../strategy-service.mjs';
 import { createUserStrategyService } from '../user-strategy.mjs';
@@ -10,16 +9,16 @@ import { createTimelineYearService } from '../timeline-years.mjs';
 
 export function createUserServices(db, options = {}) {
   const raw = createTimelineReader(db, options.timeline);
-  // 页面、需求推导、首页待办看到的都是叠加了人工裁定的时间线；裁定本身对照原始快照。
+  // 页面、需求推导（现在只供策略导出按编号找需求）、首页待办看到的都是叠加了人工裁定的时间线；裁定本身对照原始快照。
   const timeline = async opts => withRulings(db, await raw(opts));
   const needs = createNeedsService(db, timeline, options.needs);
-  return { timeline, needs, strategyExports: createStrategyExportService(db, needs, options.exports), manualNeeds: createManualNeeds(db, { voice: options.voiceReader, ...options.manualNeeds }), rulings: createRulingService(db, raw, options.rulings), userStrategy: createUserStrategyService(db, options.userStrategy), strategy: createStrategyService(db, { readTimeline: timeline, ...options.strategy }),
+  return { timeline, needs, strategyExports: createStrategyExportService(db, needs, options.exports), rulings: createRulingService(db, raw, options.rulings), userStrategy: createUserStrategyService(db, options.userStrategy), strategy: createStrategyService(db, { readTimeline: timeline, ...options.strategy }),
     timelineYears: createTimelineYearService(db, { ...(options.timeline?.readSheets && { readSheets: options.timeline.readSheets }), ...options.timelineYears, refresh: () => timeline({ refresh: true }) }) };
 }
 // cellIndex 只给月度策略生成 Evidence 用（含全部原格原文），不随时间线接口下发给页面。
 const forPage = ({ cellIndex, ...rest }) => rest;
 export function userRoutes(services) {
-  const { timeline, needs, strategyExports, manualNeeds, rulings, userStrategy, timelineYears, strategy } = services;
+  const { timeline, strategyExports, rulings, userStrategy, timelineYears, strategy } = services;
   return [
     // 月度用户策略 v2（docs/策略规则/）：skill 经 strategy_submit 提交，页面预览、确认后生成不可变 revision；确认与拒绝只在页面。
     route('GET', '/api/v3/strategy-v2', respond((req, { url }) => strategy.get(url.searchParams.get('month')))),
@@ -41,20 +40,12 @@ export function userRoutes(services) {
     route('POST', '/api/v3/user-strategy/:month/confirm', respond(async (req, { params }) => userStrategy.confirm(params.month, await readBody(req)))),
     route('POST', '/api/v3/timeline/anomalies/:key/preview', respond(async (req, { params }) => rulings.preview(params.key, await readBody(req)))),
     route('POST', '/api/v3/timeline/anomalies/confirm', respond(async req => rulings.confirm(await readBody(req)))),
-    // 手写 / Voice 转来的需求草稿：路径与 /api/v3/needs/:id 分开，避免被当成需求编号。
-    route('GET', '/api/v3/manual-needs', respond(() => manualNeeds.list())),
-    route('POST', '/api/v3/manual-needs/preview', respond(async req => manualNeeds.preview(await readBody(req)))),
-    route('POST', '/api/v3/manual-needs/:id/remove-preview', respond((req, { params }) => manualNeeds.removePreview(params.id))),
-    route('POST', '/api/v3/manual-needs/confirm', respond(async req => manualNeeds.confirm(await readBody(req)))),
     route('GET', '/api/v3/timeline', respond(async () => forPage(await timeline()))),
     route('POST', '/api/v3/timeline/sync', respond(async () => forPage(await timeline({ refresh: true })))),
     // 登记新年份的时间表：先预览（只读校验结构），确认后写设置并同步回读。
     route('POST', '/api/v3/timeline/years/preview', respond(async req => timelineYears.preview(await readBody(req)))),
     route('POST', '/api/v3/timeline/years/confirm', respond(async req => timelineYears.confirm(await readBody(req)))),
-    route('GET', '/api/v3/needs', respond((req, { url }) => needs.list(url.searchParams.get('month')))),
-    route('POST', '/api/v3/needs/:id/preview', respond(async (req, { params }) => needs.preview(params.id, await readBody(req)))),
-    route('POST', '/api/v3/needs/:id/adopt', respond(async (req, { params }) => needs.confirm(params.id, await readBody(req)))),
-    route('PATCH', '/api/v3/needs/:id/strategy', respond(async (req, { params }) => needs.confirm(params.id, await readBody(req), true))),
+    // 单条需求策略导出飞书。需求的列表、采纳、改策略和手写草稿接口已于 2026-11-20 下线（#84），只剩这 4 条；需求由 needs.mjs 按编号找。
     route('POST', '/api/v3/needs/:id/strategy/export-preview', respond(async (req, { params }) => strategyExports.preview(params.id, await readBody(req)))),
     route('POST', '/api/v3/needs/:id/strategy/export', respond(async (req, { params }) => strategyExports.confirm(params.id, await readBody(req)))),
     route('GET', '/api/v3/needs/:id/strategy/exports/:operationId', respond((req, { params }) => strategyExports.status(params.id, params.operationId))),

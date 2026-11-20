@@ -1,9 +1,15 @@
+// 单条「主线需求」：从时间线推导，或由自言自语标成需求（selftalk.mjs 写的 selftalk-need 记录）。
+// 页面入口 2026-10 已去掉；需求的列表、采纳、改策略接口和手写草稿（manual-needs.mjs）2026-11-20 下线（#84）。
+// 现在只有两处用：
+//   · list：策略导出飞书（feishu-export.mjs 的 createStrategyExportService）按编号找需求，并判断它是不是「来源仍有效的已采纳需求」；
+//   · preview / confirm：没有接口调用，只有测试用它们造「已采纳需求」（tests/v3-export、t10-write-extra、v3-integration、v3-batch1）。
+// 正式库里已采纳的记录在 v3_needs 表，表和数据都保留。
 import { createHash, randomUUID } from 'node:crypto';
 import { failure, requireMonth } from './v3-common.mjs';
-import { manualNeedRecords } from './manual-needs.mjs';
+import { listRecords } from './local-records.mjs';
 
 // 本批规则来自 V3 派单指定的 SAMPLE_NEEDS.map；ok=false 保留待确认含义。
-export const EVENT_NEED_MAP = [
+const EVENT_NEED_MAP = [
   { type: '选课', lead: 7, need: '选课规划、课程难度评估', pain: '怕选错课拖 GPA；抢课窗口短', todo: '整理学位要求、列备选课表', ok: true },
   { type: '开学', lead: 14, need: '新学期适应、先修课补基础', pain: '进度快、听不懂第一周的课', todo: '领取课程大纲、标出难点周', ok: true },
   { type: 'Final', lead: 14, need: '期末冲刺、薄弱科目集中补', pain: '复习材料多、时间碎', todo: '列考试日程、排冲刺计划', ok: true },
@@ -64,8 +70,9 @@ export function createNeedsService(db, timeline, { now = Date.now } = {}) {
   async function derived(month, refresh = false) {
     requireMonth(month);
     const rows = deriveNeeds(await timeline({ refresh }), month);
-    const manual = manualNeedRecords(db).filter(item => item.month === month && item.need);
-    return [...rows, ...manual.map(item => ({ need: item.need, fingerprint: hash(item) }))];
+    // 标成需求的自言自语仍并进列表：已采纳的那些靠它核对来源有没有变，没变导出才认。
+    const selftalk = listRecords(db, 'selftalk-need').filter(item => item.month === month && item.need);
+    return [...rows, ...selftalk.map(item => ({ need: item.need, fingerprint: hash(item) }))];
   }
   return {
     async list(month) {
@@ -81,7 +88,7 @@ export function createNeedsService(db, timeline, { now = Date.now } = {}) {
         const saved = JSON.parse(old.payload);
         needs.push({ ...saved, status: '待复核', source: `${saved.source} · 当前时间线已无对应确定事件` });
       }
-      return { month, needs, map: EVENT_NEED_MAP };
+      return { month, needs };
     },
     async preview(id, body) {
       cleanup();
