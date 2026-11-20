@@ -43,7 +43,7 @@ npm run import:mentor-path      # 导入带教培养路径
 ## 结构（不要改动骨架）
 
 ```
-HANDOFF.md           交接入口（最新一轮范围、固定身份、证据位置）
+HANDOFF.md           交接入口（长期有效的事实：数据库位置、飞书身份、插件安装位置、证据位置；每轮范围看 CURRENT.md）
 CURRENT.md           当前状态与唯一下一步；旧记录在 docs/history/
 GLOSSARY.md          词汇表与代码地图：容易读错的词；页面 → 路由文件 → 服务文件 → 存储
 server/
