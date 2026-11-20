@@ -31,6 +31,7 @@ npm run build && npm start      # http://127.0.0.1:5280（开发目录直接起�
 npm run dev                     # 开发页 http://127.0.0.1:5281，/api 转给 5280
 npm test                        # 自动使用临时数据目录，不碰 data/
 npm run check:style             # 样式、监听、时间显示与 LESSONS 升级行硬规则（npm test 里也跑）
+git config core.hooksPath scripts/hooks   # 装提交、推送前的必经检查（每个克隆、每台电脑各一次；不用 --no-verify 绕过）
 npm run smoke                   # 页面冒烟：先 npm run build；隔离服务 + 本机 Chrome 只读打开全部路由，截图到证据目录（--base 可指向已在跑的服务）
 npm run import:feishu           # 一次性迁移旧飞书表（已执行过，可重复执行）
 npm run import:mentor-path      # 导入带教培养路径
@@ -69,6 +70,7 @@ scripts/
   smoke-pages.mjs    页面冒烟（npm run smoke）：全部路由 + ⌘K + 抽屉，查 JS 异常、console 错误与非 GET 请求，截图；verify-release.sh 加 NIUMA_SMOKE=1 可选调用
   health-check.sh    每日巡检（只读；--install 装成 launchd 任务）
   internal-voice-pull.mjs  内部原声命令行拉取（隔离数据目录试拉用；服务在跑时走接口）
+  hooks/             git 钩子（装法见「运行」）：commit-msg 查修复类提交的「同类：」一行，pre-push 推送前跑 npm test
 docs/
   agents/            Matt Pocock 技能读的约定：issue 看板、分流标签、领域文档
   LESSONS.md         开发实录与坑（排障、发布、改样式或脚本前先搜）
