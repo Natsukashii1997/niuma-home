@@ -4,7 +4,7 @@
 
 更新：2026-10-23。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)。历史过程已归档，下面是当前执行基线。
 
-## ui-preflight 扫出的界面问题：修掉 3 处显示问题，工具栏折行与策略页表头按常浩选的处理（2026-11-20，Claude，常浩回「牛马修，你另起会话吧」，工具栏回「按推荐办」，表头回「改成『覆盖明细』」；已提交、PR #68 待合并，未发布）
+## ui-preflight 扫出的界面问题：修掉 3 处显示问题，工具栏折行与策略页表头按常浩选的处理（2026-11-20，Claude，常浩回「牛马修，你另起会话吧」，工具栏回「按推荐办」，表头回「改成『覆盖明细』」；PR #68 已合并 `481923b`（常浩回「合」，经 agent-hud 转达），未发布）
 
 - 时间：开工 `2026-11-20 12:24`（取 worktree 里第一条命令的时间，开工时没单独用 `date` 记）。★ 来由：常浩 11-20 用新 skill `ui-preflight` 扫 main `c8452f2` 的 22 页，扫出 5 类问题，母会话派本会话修。
 - 改了哪些文件：`src/styles/80-review-p1.css`（读取失败框 `.state-error` 允许换行，原因至少留 200px：窄卡里原因、按钮各占一行，不再一字一行）；`src/styles/20-home.css`（待我处理卡只在读取失败时放开固定高度，报错框按自身高度放全；有列表时仍跟同行 Codex 板块走）；`src/styles/42-settings.css`（AI 接入表「执行方」列 150→160px，「仅支持 ChatGPT 网页」一行放下）；`src/styles/51-strategy-v2.css`（「版本与留痕」表去掉单元格 96px 下限，1280 宽不再多出 9px 横向滚动）；`docs/LESSONS.md`（L-23）。第二轮（常浩回「按推荐办」）：`src/styles/85-kb-v3.css`（品牌页搜索框 `flex: 100 1 240px; max-width: 360px`，剩余宽度先给它：1280 收到约 320px、筛选条一行，1440 仍 360px）；`src/modules/voice/VoicePage.jsx`（筛选条加类名 `voice-filter`，只给排除用）；`docs/design/pages.json`（顶层 `preflight.ignore` 排除 `.voice-filter`、`.report-toolbar`：这两处允许换行）；`docs/DECIDED.md`（登记这一条）。第三轮（表头改动确认后）：`src/modules/user/StrategyV2.jsx`（第 6 列表头改「覆盖明细」、悬停显示全称；图例加一项口径）；`src/styles/51-strategy-v2.css`（图例这一项左边加一条分隔线）；`docs/DECIDED.md` 再登记一行。
