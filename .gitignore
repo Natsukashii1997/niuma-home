@@ -1,6 +1,8 @@
 node_modules/
 dist/
 data/
+# 正式数据迁出工作区后，原目录改名保留的那一份（scripts/move-data-dir.sh，#83）
+data.migrated-*/
 docs/handoff/**/*.png
 docs/handoff/**/*.jpg
 docs/handoff/**/*.jpeg
