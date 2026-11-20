@@ -19,7 +19,8 @@ export function todoView({ timeline, projects, campaign, matrices, settings, per
   for (const matrix of matrices) for (const scheme of matrix.schemes) {
     if (scheme.status === '历史') continue;
     const broken = matrix.tiers.filter((hours, i) => 1 - settings.costPerHour * (hours + scheme.gifts[i]) / scheme.prices[i] < settings.floorMargin);
-    if (broken.length && !scheme.breachReason?.trim()) items.push({ kind: '价格', text: `${scheme.name} · ${broken.join('/')}课时低于毛利底线，需填原因`, sub: matrix.name, due: '', href: '#/marketing/prices', urgent: true });
+    // 破底线原因 2026-10-21 已从价格方案里移除，这里只提示，不再让人去填（#72）。
+    if (broken.length) items.push({ kind: '价格', text: `${scheme.name} · ${broken.join('/')}课时低于毛利底线`, sub: matrix.name, due: '', href: '#/marketing/prices', urgent: true });
   }
   const open = timeline.anomalies.filter(a => !a.ruling && a.verification?.status !== 'confirmed').length; // 与时间线页面的待确认口径一致
   if (open) items.push({ kind: '时间线', text: `${open} 条 AI 推测`, due: '', href: '#/user/timeline/anomalies' });

@@ -8,7 +8,9 @@ import { createBriefService, generatedBrief } from '../briefs.mjs';
 import { isDay } from '../campaigns.mjs';
 import { NAS_DEFAULT_ROOT, NAS_LINES } from '../nas-materials.mjs';
 
-function priceStep(db, month, needs) {
+// 关联需求、破底线原因 2026-10-21 已从价格方案里移除（price.mjs 保存时清掉这两个字段），这里不再看它们（#72）。
+// 低于毛利底线的方案照样算有效，只在说明里标出套数；结构不完整的才算待复核。
+function priceStep(db, month) {
   const result = { key: 'prices', label: '价格方案', state: 'todo', meta: '尚无已保存的有效方案', href: '#/marketing/prices' };
   if (!db) return result;
   const matrices = availablePriceMatrices(db).filter(m => m.origin !== 'demo');
@@ -17,22 +19,21 @@ function priceStep(db, month, needs) {
   try { costs = priceSettings(db); } catch { return { ...result, meta: '成本或毛利口径待确认' }; }
   const formalCosts = ['price_floor_margin', 'price_cost_per_hour'].every(key => typeof savedSettings[key] === 'string' && savedSettings[key].trim());
   const end = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 0)).toISOString().slice(0, 10);
-  let active = 0, drafts = 0, blocked = 0;
-  const accepted = new Set(needs.filter(n => n.status === '已采纳').map(n => n.id));
+  let active = 0, drafts = 0, blocked = 0, breached = 0;
   for (const matrix of matrices) {
     for (const scheme of matrix.schemes || []) {
       if (scheme.origin === 'demo' || !isDay(scheme.from) || scheme.to && !isDay(scheme.to) || scheme.from > end || scheme.to && scheme.to < `${month}-01` || scheme.status === '历史') continue;
       if (scheme.status === '草稿') { drafts++; continue; }
       if (scheme.status !== '生效中') continue;
       const complete = Array.isArray(matrix.tiers) && matrix.tiers.length > 0 && Array.isArray(scheme.prices) && Array.isArray(scheme.gifts) && scheme.prices.length === matrix.tiers.length && scheme.gifts.length === matrix.tiers.length && matrix.tiers.every(h => Number.isSafeInteger(h) && h > 0) && scheme.prices.every(p => Number.isFinite(p) && p > 0) && scheme.gifts.every(g => Number.isSafeInteger(g) && g >= 0);
-      const needReady = scheme.kind !== '活动' || accepted.has(scheme.needId);
       const breach = complete && scheme.prices.some((p, i) => (p - costs.costPerHour * (matrix.tiers[i] + scheme.gifts[i])) / p < costs.floorMargin);
-      if (!complete || !needReady || breach && !(typeof scheme.breachReason === 'string' && scheme.breachReason.trim())) blocked++;
-      else active++;
+      if (!complete) { blocked++; continue; }
+      active++;
+      if (breach) breached++;
     }
   }
   if (!formalCosts) return { ...result, state: active || drafts || blocked ? 'part' : 'todo', meta: `${active} 套已存有效方案 · 成本/毛利仍为演示口径` };
-  return { ...result, state: active && !blocked ? 'done' : active || drafts || blocked ? 'part' : 'todo', meta: `${active} 套有效方案${drafts ? ` · ${drafts} 套草稿` : ''}${blocked ? ` · ${blocked} 套待复核` : ''}` };
+  return { ...result, state: active && !blocked ? 'done' : active || drafts || blocked ? 'part' : 'todo', meta: `${active} 套有效方案${drafts ? ` · ${drafts} 套草稿` : ''}${blocked ? ` · ${blocked} 套待复核` : ''}${breached ? ` · ${breached} 套低于毛利底线` : ''}` };
 }
 
 // 物料交付（用户 2026-10-23）：只读 NAS 上次扫描的快照，不在这里扫 NAS。交付月各业务线的固定物料都识别到即完成；
@@ -68,7 +69,7 @@ function briefStep(db, month) {
   return { ...result, state: fresh && done === 7 ? 'done' : 'part', meta: `${done}/7 节完成${fresh ? '' : ' · 来源已变化，待复核'}` };
 }
 
-export function deliveryView(db, month, data) {
+export function deliveryView(db, month) {
   requireMonth(month);
   const saved = db && getRecord(db, 'campaign', 'current');
   const instance = saved && saved.origin !== 'demo' && saved.id !== 'template' && isDay(saved.start) && isDay(saved.end) && saved.start <= saved.end && saved.months?.includes(month) ? saved : null;
@@ -79,16 +80,16 @@ export function deliveryView(db, month, data) {
   }
   const completed = [...nodes.values()].filter(Boolean).length;
   return { month, campaign: instance ? { id: instance.id, name: instance.name, start: instance.start, end: instance.end } : null, steps: [
-    priceStep(db, month, data.needs),
+    priceStep(db, month),
     materialsStep(db, month),
     briefStep(db, month),
     { key: 'campaign', label: '营销战役', state: instance && nodes.size && completed === nodes.size ? 'done' : instance ? 'part' : 'todo', meta: instance ? `${completed}/${nodes.size} 节点完成` : '该月尚未创建战役', href: '#/projects/campaign' },
   ] };
 }
 
-export function deliveryRoutes(needs, db) {
-  return [route('GET', '/api/v3/months/:month', handleV3(async (req, { params: { month } }) => {
+export function deliveryRoutes(db) {
+  return [route('GET', '/api/v3/months/:month', handleV3((req, { params: { month } }) => {
     requireMonth(month);
-    return deliveryView(db, month, await needs.list(month));
+    return deliveryView(db, month);
   }))];
 }
