@@ -1,5 +1,5 @@
 // 给带教名单里已有的人按培养方案模板生成培养路径（替换旧版）：npm run import:mentor-path -- <姓名> --start YYYY-MM-DD [--plan v2.4] [--confirm]
-// 默认只预览不写入；加 --confirm 才写进工作台本地（WORKDESK_DATA_DIR，默认 data/），写完回读核对。进度记录不动。
+// 默认只预览不写入；加 --confirm 才写进工作台本地（WORKDESK_DATA_DIR，不带时是当前目录下的开发库 data/；写正式数据要显式指定，见 docs/OPERATIONS.md「数据目录」），写完回读核对。进度记录不动。
 // 名单里没有的人在培养路径页上「添加带教对象」，不走这个脚本。
 import { dataDir, openDb } from '../server/db.mjs';
 import { fingerprint, getRecord } from '../server/local-records.mjs';

@@ -34,11 +34,13 @@ npm test                        # 自动使用临时数据目录，不碰 data/
 npm run check:style             # 样式、监听、时间显示与 LESSONS 升级行硬规则（npm test 里也跑）
 git config core.hooksPath scripts/hooks   # 装提交、推送前的必经检查（每个克隆、每台电脑各一次；不用 --no-verify 绕过）
 npm run smoke                   # 页面冒烟：先 npm run build；隔离服务 + 本机 Chrome 只读打开全部路由，截图到证据目录（--base 可指向已在跑的服务）
-npm run import:feishu           # 一次性迁移旧飞书表（已执行过，可重复执行）
-npm run import:mentor-path      # 导入带教培养路径
+npm run import:feishu           # 一次性迁移旧飞书表（已执行过，可重复执行；写正式数据要带 WORKDESK_DATA_DIR）
+npm run import:mentor-path      # 导入带教培养路径（同上）
 ```
 
-隔离数据：`WORKDESK_DATA_DIR=$(mktemp -d) PORT=5290 npm start`，再 `WORKDESK_API_PORT=5290 npm run dev`。默认数据目录 `data/` 是真实数据，测试不得写入。
+隔离数据：`WORKDESK_DATA_DIR=$(mktemp -d) PORT=5290 npm start`，再 `WORKDESK_API_PORT=5290 npm run dev`。
+
+正式数据不在仓库里（#83）：正式数据目录是 `~/Library/Application Support/NiumaHome/data/`，以服务配置里的 `WORKDESK_DATA_DIR` 为准；测试和开发验证不得写入。仓库里的 `data/` 只是开发用的本地库，不带环境变量直接 `npm start` 读写的是它。命令行脚本要操作正式数据时必须显式带 `WORKDESK_DATA_DIR`，写法见 [OPERATIONS](docs/OPERATIONS.md)「数据目录」。
 
 ## 结构（不要改动骨架）
 
@@ -51,7 +53,7 @@ server/
   http.mjs           json / readJson / readBody / failure / respond / route / match / pending(task) / unmatched（没匹配上的 /api/v3/* 回 501，其余 404）
   app-routes.mjs     全部接口的装配处：每个路由组一行，找接口先看这里
   routes/*.mjs       各路由组，导出 …Routes(…) → route(...) 数组，由 app-routes.mjs 装配
-  db.mjs             全部表结构，专用表（plans、promos、materials、assistants 等）的查询；data/work-desk.db、data/images/；内部原声的会话三张表在同目录的 internal-voice.db（voiceDbFor）
+  db.mjs             全部表结构，专用表（plans、promos、materials、assistants 等）的查询；<数据目录>/work-desk.db、<数据目录>/images/；内部原声的会话三张表在同目录的 internal-voice.db（voiceDbFor）
   local-records.mjs  通用表 v3_documents 的读写（getRecord / putRecord / listRecords）与本地「预览 → 确认」
   storage-kinds.mjs  v3_documents、v3_snapshots 两张通用表的 kind 登记表（新增 kind 要在这里加一行，测试会查）
 src/
@@ -71,6 +73,7 @@ browser-extension/niuma-collect/   Chrome 收藏插件源码（安装位置见 H
 scripts/
   release-app.sh     发布 / 回滚正式 5280（launchd 常驻 + 固定快照）
   verify-release.sh  发布回读（只读；release-app.sh 末尾自动跑，也可单独跑）
+  move-data-dir.sh   一次性：把正式数据目录搬出开发工作区（#83；默认只预览，--confirm 才执行，原目录改名保留）
   check-style.mjs    样式、监听、时间显示与 LESSONS 升级行硬规则检查（npm run check:style；npm test 里也跑）
   smoke-pages.mjs    页面冒烟（npm run smoke）：全部路由 + ⌘K + 抽屉，查 JS 异常、console 错误与非 GET 请求，截图；verify-release.sh 加 NIUMA_SMOKE=1 可选调用
   health-check.sh    每日巡检（只读；--install 装成 launchd 任务）

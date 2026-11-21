@@ -1,4 +1,4 @@
-// 智能体凭据管理（workdesk MCP）：签发 / 轮换、撤销、列出。数据目录同服务（WORKDESK_DATA_DIR，默认 data/）。
+// 智能体凭据管理（workdesk MCP）：签发 / 轮换、撤销、列出。数据目录取 WORKDESK_DATA_DIR，不带时是当前目录下的开发库 data/；操作正式数据要显式指定（docs/OPERATIONS.md「数据目录」）。
 //   node scripts/agent-token.mjs issue <agent> <工具,工具> [--write-env <.env 路径>]
 //   node scripts/agent-token.mjs revoke <agent>
 //   node scripts/agent-token.mjs list

@@ -6,17 +6,20 @@
 #   bash scripts/release-app.sh --use <快照名>   切回已有快照（回滚）
 #
 # 可用环境变量覆盖（验证时用一次性目录，不碰正式服务）：
-#   NIUMA_BASE（默认 ~/Library/Application Support/NiumaHome）、NIUMA_LABEL、PORT、WORKDESK_DATA_DIR
+#   NIUMA_BASE（默认 ~/Library/Application Support/NiumaHome）、NIUMA_LABEL、PORT、WORKDESK_DATA_DIR（默认沿用当前服务配置，全新安装为 $NIUMA_BASE/data）
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 BASE=${NIUMA_BASE:-"$HOME/Library/Application Support/NiumaHome"}
 LABEL=${NIUMA_LABEL:-cn.niuma-home.server}
 PORT=${PORT:-5280}
-DATA_DIR=${WORKDESK_DATA_DIR:-"$ROOT/data"}
 DIGIWORLD_DIR=${WORKDESK_DIGIWORLD_DIR:-"$(dirname "$ROOT")/digiworld/data"}
 NODE=$(command -v node)
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+# 数据目录：显式给了 WORKDESK_DATA_DIR 就用它；否则沿用当前服务配置里的那个（发布不会悄悄换数据目录）；
+# 全新安装才用 $BASE/data。正式数据不放在开发工作区里（#83）；搬目录用 scripts/move-data-dir.sh。
+CURRENT_DATA_DIR=$([ -f "$PLIST" ] && /usr/libexec/PlistBuddy -c "Print :EnvironmentVariables:WORKDESK_DATA_DIR" "$PLIST" 2>/dev/null || true)
+DATA_DIR=${WORKDESK_DATA_DIR:-${CURRENT_DATA_DIR:-"$BASE/data"}}
 SERVER_APP="$BASE/NiumaHomeServer.app"
 URL="http://127.0.0.1:$PORT"
 
