@@ -62,6 +62,9 @@
 - 手动拉取：服务在跑时走 `POST /api/v3/internal-voice/pull/preview` → `confirm`。隔离数据目录试拉用命令行：`WORKDESK_DATA_DIR=<目录> node scripts/internal-voice-pull.mjs 2026-11-02 2026-11-08`；**不要**对正在被服务使用的数据目录再开命令行拉。
 - 量：一周两条业务线约 1 万多个会话请求，并发 3，几十分钟；一次最多 31 天。
 
+- 存在哪（2026-11-20，#82）：会话三张表（`chat_conversations`、`chat_messages`、`chat_pull_runs`）在数据目录下的 `internal-voice.db`，不在主库 `work-desk.db` 里；设置项 `internal_voice_auto` 仍在主库。发布前备份和每日备份只备主库，会话库没有例行备份（来源是企微存档，可以重拉；常浩 2026-11-20 定）。
+- 一次性迁移（主库里还留着旧的会话表时才需要）：先 `node scripts/migrate-voice-db.mjs --data <数据目录>` 预览；停服务后 `node scripts/migrate-voice-db.mjs --data <数据目录> --backup <备份文件> --confirm` 执行（整库备份 → 复制 → 核对行数 → 主库删表并收缩）。还有进程开着主库时脚本会拒绝。没迁移之前新代码照旧读主库里的旧表，不影响使用。回退：停服务，把那份备份放回 `work-desk.db`，删掉 `internal-voice.db`。
+
 ## 每日巡检
 
 - 每日巡检：launchd 任务 `cn.niuma-home.health` 每天 08:30 跑 `scripts/health-check.sh`（不调用模型，不碰数据）：发布回读 7 项 + 数据库完整性 + 磁盘余量 + 每日数据库备份（`backups/work-desk-<日期>-daily.db`，写后回读，只留 7 份）+ 昨天有没有巡检记录（巡检自己停了也要有人知道）；结果追加到 `~/Library/Application Support/NiumaHome/evidence/health/<年-月>.log`，未通过才弹本机通知。在主工作区执行 `bash scripts/health-check.sh --install` / `--uninstall` 安装或卸载；任务借服务外壳 `NiumaHomeServer.app` 的 node 启动（[LESSONS](LESSONS.md) L-08）。

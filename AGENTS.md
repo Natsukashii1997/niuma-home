@@ -51,7 +51,7 @@ server/
   http.mjs           json / readJson / readBody / failure / respond / route / match / pending(task) / unmatched（没匹配上的 /api/v3/* 回 501，其余 404）
   app-routes.mjs     全部接口的装配处：每个路由组一行，找接口先看这里
   routes/*.mjs       各路由组，导出 …Routes(…) → route(...) 数组，由 app-routes.mjs 装配
-  db.mjs             全部表结构，专用表（plans、promos、materials、assistants 等）的查询；data/work-desk.db、data/images/
+  db.mjs             全部表结构，专用表（plans、promos、materials、assistants 等）的查询；data/work-desk.db、data/images/；内部原声的会话三张表在同目录的 internal-voice.db（voiceDbFor）
   local-records.mjs  通用表 v3_documents 的读写（getRecord / putRecord / listRecords）与本地「预览 → 确认」
   storage-kinds.mjs  v3_documents、v3_snapshots 两张通用表的 kind 登记表（新增 kind 要在这里加一行，测试会查）
 src/
@@ -75,6 +75,7 @@ scripts/
   smoke-pages.mjs    页面冒烟（npm run smoke）：全部路由 + ⌘K + 抽屉，查 JS 异常、console 错误与非 GET 请求，截图；verify-release.sh 加 NIUMA_SMOKE=1 可选调用
   health-check.sh    每日巡检（只读；--install 装成 launchd 任务）
   internal-voice-pull.mjs  内部原声命令行拉取（隔离数据目录试拉用；服务在跑时走接口）
+  migrate-voice-db.mjs  一次性迁移：把会话三张表从主库搬到 internal-voice.db（默认只预览，#82）
   hooks/             git 钩子（装法见「运行」）：commit-msg 查修复类提交的「同类：」一行，pre-push 推送前跑 npm test
 docs/
   agents/            Matt Pocock 技能读的约定：issue 看板、分流标签、领域文档
@@ -113,7 +114,7 @@ single-context：根目录 `GLOSSARY.md`（已建，2026-11-20）与 `docs/adr/`
 
 - 未实现的接口在路由里写 `pending("T0x")`，未实现的按钮用 `<PendingButton task="T0x">`；占位与实现的做法见 [OPERATIONS](docs/OPERATIONS.md)「接口占位机制」。
 - 接口路径与数据形状以 [docs/API.md](docs/API.md) 为准；改接口时同步更新文档，并在交接里说明理由。
-- 表结构只在 `server/db.mjs` 的 SCHEMA 里改；已有列不改名、不删。
+- 表结构只在 `server/db.mjs` 的 SCHEMA 里改（内部原声的会话三张表在同文件的 `VOICE_SCHEMA`，存在单独的库文件里）；已有列不改名、不删。
 - 视觉以 [docs/STYLE-GUIDE.md](docs/STYLE-GUIDE.md)（v2 位图风）为准：新样式先用已有变量和类；图标只用 `PixelIcon`；动效只用 `src/ui/bitmap.jsx` 的按帧组件，不写 CSS transition。不引入 UI 框架、CSS-in-JS 或图标库。新增依赖须先改 `scripts/check-style.mjs` 的 `ALLOWED_DEPS` 白名单（否则 `npm test` 不过），并在交接里说明理由。
 - 所有写入真实数据的操作必须「先预览、后确认」。唯一例外：知识库快捷收藏（T12，只新建指向原文的快捷方式）用户 2026-10-18 确认点击即收藏，但仍须只写一次、不自动重试、写后回读、结果不明时锁住核对。
 - 访问飞书一律用本机 `lark-cli`，默认亚古兽应用 `cli_a965c429ef785bd3`；只有自言自语（读常浩与猛鬼兽的私聊）和 Codex 重置推送留在猛鬼兽 `cli_a96f5f9ac63adcd4`（常浩 2026-11-02 定）。读写资源用 user 身份，带教评论可选 bot，推送用 bot；不回退其他机器人，不在代码里写 token。两个身份（profile、App ID、本人 open_id）只在 `server/lark-identity.mjs` 定义，服务端一律经 `larkRun(run, 身份, args)` 调用，每次调用记一行到 `<数据目录>/logs/lark-calls.jsonl`（应用、身份、命令、成败、耗时，不记内容）；换应用时 open_id 会变，见 [LESSONS](docs/LESSONS.md) L-15。

@@ -4,7 +4,7 @@
 // 接口 token 只放 macOS 钥匙串（niuma-home.lumist / lumist-pat），不进仓库、日志和页面。
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { getSettings } from './db.mjs';
+import { getSettings, voiceDbFor } from './db.mjs';
 import { failure } from './v3-common.mjs';
 
 export const LUMIST_BASE = 'https://x.lumiclass.com';
@@ -88,6 +88,8 @@ async function pool(items, n, fn, stop = () => false) {
 
 export function createInternalVoice(db, { fetchImpl = fetch, token = keychainToken, base = LUMIST_BASE, now = Date.now, concurrency = 3, timeoutMs = 60_000, resetInterrupted = true,
   wait = ms => new Promise(r => setTimeout(r, ms)) } = {}) {
+  // 会话三张表在单独的库文件里（db.mjs 的 voiceDbFor）；设置项 internal_voice_auto 仍读主库 db。
+  const store = voiceDbFor(db);
   let running = null;
   const previews = new Map();
   // 收尾写库失败时保留本实例的待核对写入；下次检查或手动拉取前先补写，不把无人执行的 running 当作覆盖。
@@ -96,7 +98,7 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
   const settle = () => { for (const write of unsettled.values()) write(); };
   const iso = () => new Date(now()).toISOString();
   // 服务重启时还标着 running 的，一定是被打断的（命令行试拉传 resetInterrupted=false，不碰服务那边的记录）
-  if (resetInterrupted) db.prepare("UPDATE chat_pull_runs SET state='failed', error='服务重启，本次拉取中断', finished_at=? WHERE state='running'").run(iso());
+  if (resetInterrupted) store.prepare("UPDATE chat_pull_runs SET state='failed', error='服务重启，本次拉取中断', finished_at=? WHERE state='running'").run(iso());
 
   async function api(path, auth) {
     for (let attempt = 1; ; attempt++) {
@@ -154,15 +156,15 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
     const save = (state, error) => {
       const values = [state, JSON.stringify(stats), error ?? null, state === 'running' ? null : iso(), runId];
       const write = () => {
-        db.prepare("UPDATE chat_pull_runs SET state=?, stats=?, error=?, finished_at=? WHERE id=? AND state='running'").run(...values);
+        store.prepare("UPDATE chat_pull_runs SET state=?, stats=?, error=?, finished_at=? WHERE id=? AND state='running'").run(...values);
         unsettled.delete(runId);
       };
       if (state !== 'running') unsettled.set(runId, write);
       write();
     };
-    const insert = db.prepare(`INSERT OR IGNORE INTO chat_messages (msg_id,conversation_id,kind,msg_time,msg_type,from_id,from_role,from_name,content,file_name,file_url,run_id,fetched_at)
+    const insert = store.prepare(`INSERT OR IGNORE INTO chat_messages (msg_id,conversation_id,kind,msg_time,msg_type,from_id,from_role,from_name,content,file_name,file_url,run_id,fetched_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`);
-    const upsert = db.prepare(`INSERT INTO chat_conversations (id,kind,staff_userid,staff_name,staff_dept,customer_id,customer_name,customer_remark,name,last_msg_time,updated_at)
+    const upsert = store.prepare(`INSERT INTO chat_conversations (id,kind,staff_userid,staff_name,staff_dept,customer_id,customer_name,customer_remark,name,last_msg_time,updated_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET last_msg_time=NULLIF(MAX(COALESCE(last_msg_time,''),COALESCE(excluded.last_msg_time,'')),''),
       customer_name=COALESCE(excluded.customer_name,customer_name), customer_remark=COALESCE(excluded.customer_remark,customer_remark), name=COALESCE(excluded.name,name), updated_at=excluded.updated_at`);
     const guard = fn => async item => { try { await fn(item); } catch (error) { aborted ??= error; } };
@@ -232,7 +234,7 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
         if (aborted) return;
         if (rows.length) {
           const at = iso();
-          db.exec('BEGIN IMMEDIATE');
+          store.exec('BEGIN IMMEDIATE');
           try {
             upsert.run(id, kind, s.userid, s.name, s.department_name, kind === 'single' ? it.external_userid ?? null : null, kind === 'single' ? it.external_name ?? null : null,
               kind === 'single' ? it.staff_remark ?? null : null, kind === 'group' ? it.name ?? null : null, it.last_msg_time ?? null, at);
@@ -244,8 +246,8 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
               if (roleOf(m) === CUSTOMER) stats.customerMessages++;
               if (m.msg_type === 'voice') stats.voice++;
             }
-            db.exec('COMMIT');
-          } catch (error) { db.exec('ROLLBACK'); throw error; }
+            store.exec('COMMIT');
+          } catch (error) { store.exec('ROLLBACK'); throw error; }
         }
         stats.conversationsDone++;
         if (stats.conversationsDone % 50 === 0) save('running');
@@ -264,7 +266,7 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
     settle();
     const auth = token();
     if (!auth) throw fail(503, 'LUMIST_TOKEN_MISSING', '钥匙串里没有会话存档 token（niuma-home.lumist / lumist-pat）');
-    const runId = Number(db.prepare("INSERT INTO chat_pull_runs (trigger,range_from,range_to,state,started_at) VALUES (?,?,?,'running',?)").run(trigger, from, to, iso()).lastInsertRowid);
+    const runId = Number(store.prepare("INSERT INTO chat_pull_runs (trigger,range_from,range_to,state,started_at) VALUES (?,?,?,'running',?)").run(trigger, from, to, iso()).lastInsertRowid);
     // 连记失败都写不进库（库被锁、磁盘满）时也只打日志，不让未处理的 rejection 拖垮服务
     running = execute(runId, from, to, auth).catch(error => console.error('内部原声拉取收尾失败', error)).finally(() => { running = null; });
     return { runId, done: running };
@@ -272,14 +274,14 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
 
   const runRow = r => r && { id: r.id, trigger: r.trigger, from: r.range_from, to: r.range_to, state: r.state, stats: JSON.parse(r.stats), error: r.error, startedAt: r.started_at, finishedAt: r.finished_at };
   // 自动拉取只把 done（和真正正在跑的）算覆盖；partial、failed 留在补拉队列，重复消息靠 msg_id 去重
-  const covered = (trigger, { from, to }) => db.prepare("SELECT id, state FROM chat_pull_runs WHERE trigger=? AND range_from=? AND range_to=? AND state IN ('done','running')").all(trigger, from, to)
+  const covered = (trigger, { from, to }) => store.prepare("SELECT id, state FROM chat_pull_runs WHERE trigger=? AND range_from=? AND range_to=? AND state IN ('done','running')").all(trigger, from, to)
     .some(r => r.state === 'done' || !unsettled.has(r.id));
 
   return {
     // 手动拉取第一步：只核对范围并说明会拉什么，不连接口、不写数据；返回 previewId，10 分钟内确认有效。
     preview({ from, to } = {}) {
       const days = checkRange(from, to, now());
-      const existing = db.prepare("SELECT COUNT(*) n FROM chat_messages WHERE msg_time BETWEEN ? AND ?").get(`${from} 00:00:00`, `${to} 23:59:59`).n;
+      const existing = store.prepare("SELECT COUNT(*) n FROM chat_messages WHERE msg_time BETWEEN ? AND ?").get(`${from} 00:00:00`, `${to} 23:59:59`).n;
       const previewId = randomUUID();
       for (const [id, p] of previews) if (now() - p.at > 600_000) previews.delete(id);
       previews.set(previewId, { from, to, at: now() });
@@ -298,7 +300,7 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
       try { settle(); }
       catch (error) { console.error('内部原声拉取收尾仍未写入：', error.message); return null; }
       if (getSettings(db)[AUTO_KEY] !== '1') return null;
-      const pending = db.prepare(`SELECT trigger, range_from AS 'from', range_to AS 'to', MAX(id) AS attempt
+      const pending = store.prepare(`SELECT trigger, range_from AS 'from', range_to AS 'to', MAX(id) AS attempt
         FROM chat_pull_runs WHERE trigger IN ('weekly','monthly')
         GROUP BY trigger, range_from, range_to HAVING MAX(state IN ('done','running'))=0`).all();
       const candidates = [['weekly', lastWeek(now())], ['monthly', lastMonth(now())]]
@@ -317,12 +319,12 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
       return null;
     },
     status() {
-      const count = db.prepare("SELECT COUNT(*) messages, SUM(from_role=1) customerMessages, COUNT(DISTINCT conversation_id) conversations, MIN(msg_time) earliest, MAX(msg_time) latest FROM chat_messages").get();
+      const count = store.prepare("SELECT COUNT(*) messages, SUM(from_role=1) customerMessages, COUNT(DISTINCT conversation_id) conversations, MIN(msg_time) earliest, MAX(msg_time) latest FROM chat_messages").get();
       return {
         auto: getSettings(db)[AUTO_KEY] === '1', tokenConfigured: !!token(), lines: LINES.map(l => l.name), maxDays: MAX_DAYS,
         schedule: [['weekly', '每周拉上一周', lastWeek(now())], ['monthly', '每月拉上个月', lastMonth(now())]].map(([trigger, label, range]) => ({ trigger, label, ...range, pulled: covered(trigger, range) })),
         stored: { messages: count.messages, customerMessages: count.customerMessages ?? 0, conversations: count.conversations, earliest: count.earliest, latest: count.latest },
-        runs: db.prepare('SELECT * FROM chat_pull_runs ORDER BY id DESC LIMIT 10').all().map(runRow),
+        runs: store.prepare('SELECT * FROM chat_pull_runs ORDER BY id DESC LIMIT 10').all().map(runRow),
       };
     },
   };
