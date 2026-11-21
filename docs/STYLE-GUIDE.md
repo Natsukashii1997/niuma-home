@@ -144,5 +144,5 @@
 - 按钮用动词短语，如「确认入库」「新建物料」。
 - 标签和英文小标题用全大写等宽，如 `WK 42`、`DONE`；中文标题不加修饰。
 - 没有回读验证，就不写「成功」。写入结果要写明具体做了什么。
-- 时间一律按北京时间显示（用户 2026-10-23）：后端给的带时区 ISO 时间用 `src/constants.js` 的 `beijingTime` 转换，不直接截取字符串（`npm run check:style` 会查）。
+- 时间一律按北京时间显示（用户 2026-10-23）：后端给的带时区 ISO 时间用 `src/constants.js` 的 `beijingTime` 转换，不直接截取字符串（`npm run check:style` 会查）。`mentorReplyTime`（`src/modules/projects/mentor-view.js`，只显示「月-日 时:分」，无效时显示「—」）和 `briefSyncTime`（`src/modules/marketing/BriefSync.jsx`，zh-CN 格式「月/日 时:分」）是早于 `beijingTime` 的两处写法，显示格式不同；新代码不要再加第四个北京时间函数，动到这两处时再合并进 `beijingTime`（加一个「只要月-日」的参数）。
 - 状态提示不常驻（用户 2026-10-23）：一般提示推送后自动消失；只有必须一直看到的关键信息才常驻，且要能点 × 关掉（`src/ui/dismissible.jsx`）。不展示「来源单元格」这类溯源信息。

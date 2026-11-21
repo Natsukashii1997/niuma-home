@@ -5,6 +5,7 @@
 更新：2026-11-21。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)，第一次接手先看 [GLOSSARY.md](GLOSSARY.md)。
 
 **现在停在哪（2026-11-21 上午）**
+- 两条每周提案已落实、待合并：W2026-10-23-12（STYLE-GUIDE §7 补北京时间函数约定，只改文档）、W2026-10-30-2（check-style 加 shellvar 规则，连带补 LESSONS L-24、8 行 shell 改成 `${NAME}`），分支 `hermes/D20261121-3`，PR 等常浩回「合并」；脚本只改了输出文字的变量写法，不发布也不影响正式 5280。
 - 策略页时间线异常的说明文字已改：常浩回「文案也改」，PR #91（#90，`e99f1f4`）把「参与主线需求推导」改成「参与日程和月度用户策略」（同类 2 处一并改），回「合并并发布」后已发布 `nm-20261121-114904-e99f1f4`，回读通过，正式页面上核对过。第三批整改到此全部完成。
 - 导出那组需求接口也下线了：常浩 11-21 看过改动确认回「改」，PR #89（#88，`b5a494b`）删掉 4 条 `/api/v3/needs/:id/strategy/export*` 和 `server/needs.mjs`，回「合并并发布」后已发布 `nm-20261121-103831-b5a494b`，回读通过；需求的后端代码全部移除，`v3_needs` 等数据不动。
 - 第三批整改做完：常浩 2026-11-21 经驿窗回「都按推荐」，PR #85（#84，下线需求推导与手写草稿两组接口，`75d8c5e`）、#86（#82，内部原声三张表拆到 `internal-voice.db`，`eeb75c4`）、#87（#83，正式数据目录迁出工作区，`e805e4c`）已合并。
@@ -17,6 +18,17 @@
 **唯一下一步**：回到阶段目标（批 1：#24、#32）。异机备份、毛利底线待办常浩 2026-11-20 说先不做 / 先不管，挂起。
 
 下面各节按时间倒序，是每一轮的交接原文。标题里的「待合并 / 未提交 / 未发布」是写那一节时的状态，现状以上面这段和 git 为准：PR #44、#58、#59、#63、#68 都已合并。2026-11-12 及更早的各节在 [docs/history/CURRENT-through-20261112.md](docs/history/CURRENT-through-20261112.md)。
+
+## 落实两条每周提案：STYLE-GUIDE 北京时间函数约定、check-style 加 shell 变量规则（2026-11-21，Claude（Hermes 派单），常浩 11-19 日报第 4 件回「按推荐」；已提交、PR 待合并；未发布，无需发布）
+
+- 时间：开工 `2026-11-21 12:55`（派单到达时间，补记；`date` 在收尾时为 13:07）。★ 来由：常浩采纳 W2026-10-23-12、W2026-10-30-2，派 Claude 照提案改并开 PR。
+- 改了哪些文件：`docs/STYLE-GUIDE.md`（§7 北京时间那条末尾补 `mentorReplyTime`、`briefSyncTime` 的约定，两处函数位置与显示格式按现状核对过，不合并代码）；`scripts/check-style.mjs`（RULES 加 `shellvar`，扫描范围加 `scripts/*.sh`）；`tests/style-rules.test.mjs`（shellvar 正反样本，坏样本取自修复前的真实写法）；`docs/LESSONS.md`（新增 L-24 bash 3.2 变量名坑，即前置提案 W2026-10-30-1 的内容，原提案编号 L-17 已被占用）；`scripts/verify-release.sh`、`scripts/build-mac-app.sh`、`scripts/move-data-dir.sh`（8 行 `$NAME` 后紧跟中文或全角标点的改成 `${NAME}`）；`AGENTS.md`（check-style 说明加「shell 变量写法」）。
+- 测试：`npm test` 原样结果 `ℹ pass 919` / `ℹ fail 0`，退出码 0；`npm run check:style` 输出「样式检查通过」，退出码 0；改前 check-style 抓到 8 处（提案列的 4 处 + move-data-dir.sh 4 处）；5 个 `.sh` 都过 `bash -n`；`LANG=zh_CN.UTF-8 /bin/bash -uc` 复测：旧写法 `回读 $LABEL → $NAME（$URL）` 报 `NAME�: unbound variable` 退出 127，新写法输出正常退出 0。★
+- 验证：只改文档、检查脚本和 shell 输出文字，没有起服务；完整测试日志在 `~/Library/Application Support/NiumaHome/evidence/weekly-proposals-20261121/npm-test.log`。
+- 截图：无（无界面改动）。
+- 发布与回读：未发布（不需要；PR 合并后脚本随下次发布生效）。
+- 与授权不一致之处、遗留问题、范围外发现：W2026-10-30-1 11-07 已采纳但没落地，LESSONS 里没有这条坑，本轮补成 L-24 供 shellvar 规则引用；提案只列了 4 处，实际多出 move-data-dir.sh 4 行（#83 后加的），一起改了。`scripts/hooks/` 下没有 `.sh` 文件，未纳入扫描。
+- 本轮新坑：L-24。★
 
 ## 策略页时间线异常的说明文字去掉「主线需求推导」（2026-11-21，Claude，常浩回「文案也改」「合并并发布」；PR #91 已合并；已发布 nm-20261121-114904-e99f1f4 回读通过）
 

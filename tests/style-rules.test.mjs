@@ -38,6 +38,15 @@ test('每条规则都能抓到违规样本，合规写法不误报', t => {
     'http.createServer(handler).listen(port, "127.0.0.1", () => {});',
     'other.listen(port, () => {});',
   ].join('\n'));
+  // 坏样本取自本仓库修复前的真实写法（verify-release.sh:27、move-data-dir.sh:47）
+  put('scripts/a.sh', [
+    'echo "回读 $LABEL → $NAME（$URL）"',
+    'echo "服务：$LABEL（端口 $PORT）"',
+    'echo "回读 $LABEL → ${NAME}（${URL}）"',
+    'bad "不是要求的 $1，请检查"; echo "迁移中止：$*"',
+    'echo "path $HOME/x"',
+  ].join('\n'));
+  put('scripts/b.mjs', 'console.log("$NAME（不是 shell 脚本）");');
   put('package.json', JSON.stringify({
     scripts: { dev: 'vite --host 127.0.0.1', preview: 'vite preview', build: 'vite build' },
     dependencies: { react: '19.2.0', 'styled-components': '6.1.0', dayjs: '1.11.0' },
@@ -46,6 +55,8 @@ test('每条规则都能抓到违规样本，合规写法不误报', t => {
     'package.json:10 deps',
     'package.json:4 listen',
     'package.json:9 deps',
+    'scripts/a.sh:1 shellvar',
+    'scripts/a.sh:2 shellvar',
     'server/index.mjs:2 listen',
     'src/a.css:3 motion',
     'src/a.css:4 motion',
