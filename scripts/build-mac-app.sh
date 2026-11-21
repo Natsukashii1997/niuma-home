@@ -48,4 +48,4 @@ mkdir -p "$DEST"
 rm -rf "$APP"
 mv "$WORK/牛马之家.app" "$APP"
 touch "$APP"   # 让访达和程序坞刷新图标
-echo "已生成 $APP（加载 $URL）"
+echo "已生成 ${APP}（加载 ${URL}）"
