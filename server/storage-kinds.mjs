@@ -14,7 +14,7 @@ export const DOCUMENT_KINDS = {
   'brief-feishu-link': { owner: 'brief-sync.mjs', what: 'Brief 和飞书文档的绑定，以及上次同步时两边的基线' },
   'brief-sync-backup': { owner: 'briefs.mjs', what: '从飞书导入覆盖本地前留的备份（id = 操作编号）' },
   'brief-sync-recovery': { owner: 'brief-sync.mjs', what: 'Brief 同步中断后的恢复记录' },
-  'feishu-export': { owner: 'feishu-export.mjs、brief-sync.mjs', what: '写飞书文档的操作回执（策略导出、Brief 同步共用）' },
+  'feishu-export': { owner: 'feishu-export.mjs、brief-sync.mjs', what: '写飞书文档的操作回执（Brief 同步用；单条需求策略导出 2026-11-21 下线，#88，旧回执保留）' },
   'feishu-export-preview': { owner: 'feishu-export.mjs、brief-sync.mjs', what: '写飞书前的预览（要跨进程重启保留，所以落库而不是放内存）' },
   'campaign': { owner: 'campaigns.mjs', what: '当前营销战役（id = current）' },
   'campaign-archive': { owner: 'campaigns.mjs', what: '历史战役' },
@@ -42,7 +42,7 @@ export const DOCUMENT_KINDS = {
   // 自言自语
   'selftalk-tag': { owner: 'selftalk.mjs', what: '给自言自语条目打的普通标签' },
   'selftalk-todo': { owner: 'selftalk.mjs', what: '标成待办的自言自语（首页待办会读）' },
-  'selftalk-need': { owner: 'selftalk.mjs（写）、needs.mjs（读）', what: '标成需求的自言自语；needs.mjs 把它并进需求列表，供策略导出核对来源' },
+  'selftalk-need': { owner: 'selftalk.mjs', what: '标成需求的自言自语（抽屉里显示「已转主线需求」标签）；需求的代码 2026-11 已下线（#84、#88），没有别处读它' },
   'selftalk-digest': { owner: 'selftalk.mjs', what: '自言自语周汇总（AI 产出，确认后保存）' },
   // 公共机制
   'local-deletion': { owner: 'local-deletions.mjs', what: '软删除状态（本地项目、历史战役、自建助手），id = 对象种类:编号' },

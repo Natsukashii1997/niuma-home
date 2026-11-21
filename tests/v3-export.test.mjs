@@ -4,14 +4,12 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import path from 'node:path';
 import { openDb, saveSetting } from '../server/db.mjs';
-import { getRecord, listRecords, putRecord, fingerprint } from '../server/local-records.mjs';
-import { createFeishuExporter, createStrategyExportService, canonicalMarkdown, literalMarkdown } from '../server/feishu-export.mjs';
+import { listRecords } from '../server/local-records.mjs';
+import { createFeishuExporter, canonicalMarkdown, literalMarkdown } from '../server/feishu-export.mjs';
 import { createBriefService } from '../server/briefs.mjs';
 import { BRIEF_DESTINATION as WIKI } from '../server/brief-destination.mjs';
 import { syncBriefMaterials } from '../server/brief-template.mjs';
-import { createNeedsService } from '../server/needs.mjs';
 import { routes as marketingRoutes } from '../server/routes/v3-marketing.mjs';
-import { userRoutes } from '../server/routes/user.mjs';
 import { match } from '../server/http.mjs';
 
 const FOLDER = 'https://example.feishu.cn/drive/folder/Folder123', APP = 'cli_a965c429ef785bd3';
@@ -175,29 +173,6 @@ test('brief导出路由用已保存七节全文，用户文字不能形成附件
   assert.ok(canonicalMarkdown(result.body.markdown).includes(text));
   const saved = await request(routes, 'POST', '/api/v3/briefs/2026-11/export', confirmBody(result.body));
   assert.equal(saved.status, 200); assert.equal(saved.body.status, 'success'); assert.equal(state.creates, 1);
-});
-
-test('策略导出路由只接受当前有效已采纳需求，绑定月份和策略内容并回读', async t => {
-  const { db, options, state } = setup(t), timeline = async () => ({ stage: '本科', agenda: [] });
-  const need = { id: 'need1', seg: '澳洲 · 本科', node: 'Final', need: '复习', source: '已确认自言自语', status: '草稿' };
-  const source = { id: 'self1', month: '2026-11', need };
-  putRecord(db, 'selftalk-need', source.id, source);
-  const needs = createNeedsService(db, timeline, { now: options.now });
-  const strategyExports = createStrategyExportService(db, needs, options), routes = userRoutes({ timeline, needs, strategyExports });
-  const endpoint = '/api/v3/needs/need1/strategy/export-preview';
-  assert.equal((await request(routes, 'POST', endpoint, { month: '2026-11', targetUrl: FOLDER })).status, 409);
-  const strategy = { goal: '核对真实考试日程', actions: { 营销: [['发复习提示', '避免错过复习窗口']], 产品: [], 运营: [] } };
-  const adoption = await needs.preview('need1', { month: '2026-11', strategy }); await needs.confirm('need1', confirmBody(adoption));
-  const p = await request(routes, 'POST', endpoint, { month: '2026-11', targetUrl: FOLDER }); assert.equal(p.status, 200); assert.match(p.body.markdown, /发复习提示/);
-  source.need.need = '需求发生变化'; putRecord(db, 'selftalk-need', source.id, source);
-  assert.equal((await request(routes, 'POST', '/api/v3/needs/need1/strategy/export', confirmBody(p.body))).status, 409); assert.equal(state.creates, 0);
-  source.need.need = '复习'; putRecord(db, 'selftalk-need', source.id, source);
-  const receipt = await request(routes, 'POST', '/api/v3/needs/need1/strategy/export', confirmBody(p.body));
-  assert.equal(receipt.status, 200); assert.equal(receipt.body.status, 'success'); assert.equal(state.creates, 1);
-  assert.equal(getRecord(db, 'feishu-export', receipt.body.operationId).fingerprint, fingerprint({ title: p.body.title, sections: p.body.sections, markdown: p.body.markdown }));
-  const statusPath = `/api/v3/needs/need1/strategy/exports/${receipt.body.operationId}`;
-  assert.equal((await request(routes, 'GET', statusPath)).body.status, 'success');
-  assert.equal((await request(routes, 'POST', `${statusPath}/reconcile`)).body.status, 'success'); assert.equal(state.creates, 1);
 });
 
 test('创建成功但首次回读失败可只读恢复，来源已变仍核对原预览，确认重放不再创建', async t => {

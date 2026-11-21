@@ -5,7 +5,6 @@ import path from 'node:path';
 import { openDb } from '../server/db.mjs';
 import { getRecord, listRecords } from '../server/local-records.mjs';
 import { parseTimeline, REGION_SHEETS } from '../server/timeline.mjs';
-import { deriveNeeds } from '../server/needs.mjs';
 import { applyRulings, createRulingService, RULING_KIND, withRulings } from '../server/timeline-rulings.mjs';
 import { createProjectService } from '../server/projects.mjs';
 import { createCampaignService } from '../server/campaigns.mjs';
@@ -30,11 +29,12 @@ test('日期类异常带单元格定位；校名类异常没有', () => {
   assert.equal(names.anomalies[0].cell, undefined);
 });
 
-test('裁定先预览后确认；采用后这一格参与需求推导，原格一改自动失效', async t => {
+test('裁定先预览后确认；采用后这一格作为确定日期进日程，原格一改自动失效', async t => {
   const db = database(t); let data = parseTimeline(sheets(), '2026-10-17 10:00');
   const rulings = createRulingService(db, async () => data, { now: () => instant });
-  const needsOf = () => deriveNeeds(withRulings(db, data), '2026-11').map(n => n.need.node);
-  assert.deepEqual(needsOf(), [], '推测日期不参与推导');
+  // 叠加裁定后的时间线是页面、月度用户策略、首页待办共同的来源（原来还用于需求推导，#88 下线）。
+  const datedC2 = () => withRulings(db, data).agenda.filter(e => e.src.endsWith('C2') && !e.flag).map(e => e.type); // 带 flag 的是推测 / 冲突，不算确定日期
+  assert.deepEqual(datedC2(), [], '推测日期不作为确定日期进日程');
   const key = withRulings(db, data).anomalies.find(a => a.src.endsWith('C2')).key;
   await assert.rejects(async () => rulings.preview('missing', { decision: 'exclude' }), e => e.status === 404);
   await assert.rejects(async () => rulings.preview(key, { decision: 'guess' }), e => e.status === 400);
@@ -49,13 +49,13 @@ test('裁定先预览后确认；采用后这一格参与需求推导，原格�
   assert.deepEqual(ruled.table.AU[0].cells[1], ['11-07', '11-21', `${REGION_SHEETS[2]}!C2`, 'ruled']);
   assert.equal(finalOf(ruled).ruling.decision, 'adopt');
   assert.deepEqual(ruled.rulings, { applied: 1, stale: 0 });
-  assert.deepEqual(needsOf(), ['Final'], '裁定后参与推导');
+  assert.deepEqual(datedC2(), ['Final'], '裁定后作为确定日期进日程');
   // 飞书原格改了：旧裁定不再生效，回到待确认
   data = parseTimeline(sheets('11.8-11.22（预估）'), '2026-10-17 11:00');
   const changed = withRulings(db, data);
   assert.equal(finalOf(changed).ruling, undefined);
   assert.deepEqual(changed.rulings, { applied: 0, stale: 1 });
-  assert.deepEqual(needsOf(), []);
+  assert.deepEqual(datedC2(), []);
 });
 
 test('手填日期补上不能解析的格子；不采用不参与；撤销裁定；同步后旧预览被拒', async t => {

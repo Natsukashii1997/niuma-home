@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { getSettings } from './db.mjs';
 import { V3_DEFAULTS } from './v3-settings.mjs';
 import { fingerprint, getRecord, listRecords, putRecord } from './local-records.mjs';
-import { failure, requireMonth } from './v3-common.mjs';
+import { failure } from './v3-common.mjs';
 import { AGUMON, larkRun } from './lark-identity.mjs';
 
 const APP_ID = AGUMON.appId;
@@ -307,30 +307,5 @@ export function createFeishuExporter(db, { now = Date.now, run = runFeishuComman
         return unknown(receipt);
       }
     },
-  };
-}
-
-export function createStrategyExportService(db, needs, options = {}) {
-  const exporter = createFeishuExporter(db, options);
-  const load = id => async ({ month }) => {
-    requireMonth(month);
-    const value = (await needs.list(month)).needs.find(n => n.id === id);
-    if (!value || value.status !== '已采纳' || value.origin === 'demo') throw error(409, 'EXPORT_NEED_NOT_ADOPTED', '仅能导出当前来源仍有效的已采纳需求策略');
-    const strategy = value.strategy;
-    if (!strategy?.goal?.trim() || !plain(strategy.actions) || ['营销', '产品', '运营'].some(k => !Array.isArray(strategy.actions[k]) || strategy.actions[k].some(r => !Array.isArray(r) || r.length !== 2 || r.some(v => typeof v !== 'string')))) throw error(409, 'EXPORT_STRATEGY_INCOMPLETE', '已采纳需求尚无完整策略，请先完善并确认保存');
-    const title = `${month} ${value.seg} · ${value.node} 用户策略`;
-    const sections = ['需求与来源', '策略目标', '营销行动', '产品行动', '运营行动'];
-    const markdown = `# ${literalMarkdown(title)}\n\n## 1. 需求与来源\n\n${['seg', 'node', 'when', 'need', 'pain', 'todo', 'source'].map(k => literalMarkdown(value[k] || '')).filter(Boolean).join('\n\n')}\n\n## 2. 策略目标\n\n${literalMarkdown(strategy.goal)}\n\n${['营销', '产品', '运营'].map((k, i) => `## ${i + 3}. ${k}行动\n\n${markdownTable(['做什么', '为什么'], strategy.actions[k])}`).join('\n\n')}\n`;
-    return { title, sections, markdown };
-  };
-  return {
-    preview(id, body) {
-      if (!plain(body) || Object.keys(body).some(k => !['month', 'targetUrl'].includes(k))) throw error(400, 'EXPORT_CONTENT_INVALID', '请提供策略月份和目标文件夹');
-      requireMonth(body.month);
-      return exporter.preview('need-strategy', id, { month: body.month }, { targetUrl: body.targetUrl }, load(id));
-    },
-    confirm: (id, body) => exporter.confirm('need-strategy', id, body, load(id)),
-    status: (id, operationId) => exporter.status('need-strategy', id, operationId),
-    reconcile: (id, operationId) => exporter.reconcile('need-strategy', id, operationId),
   };
 }

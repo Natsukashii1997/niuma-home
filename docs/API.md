@@ -410,7 +410,7 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - `GET /api/v3/briefs/:month`：七节模板，新增 `materials:[{id,name}]` 主表。`audience/timeline/items` 与主表同序、同名，以稳定编号保留改名后的人工内容。新建不再自动从旧需求或价格方案拼物料；旧记录按精确名称迁移，未配对项独立保留。
 - `POST /api/v3/briefs/:month/generate {patch,overwrite?:false}`：只读草稿建议，不写数据库、不调用 Codex 或大模型；读取同月用户策略，补背景/目标和受众表空白；`overwrite:true` 明确重写第一、二节，其余节不变。缺少同月策略返回409。返回 `value,warnings,source`，页面自动保存生成结果；旧preview/confirm接口兼容保留。
 - 新物料 `kind:'framework',blocks:[]`；第四节每个物料一个小节和三列表头「涉及板块/内容/说明/示例」。第五节两列「交付物/规格建议」；第六节固定需求对接/内容确认/设计对接；附件可空。
-- Brief 的 export-preview/export 采用原生XML标题和表格（旧收据和需求策略导出仍兼容Markdown）。界面“双向同步”连续调用预检、单次确认及回读；Brief 预检提交 `{baseVersion}`（旧客户端 `{}` 兼容），服务端检查当前版本并固定到路觅策略知识库 / 营销对接Brief（space `7672588453183261977`，node `KiDLwRP8eixgJfkNHvDcGwpQnog`），拒绝前端改目的地。点击创建先flush串行自动保存、回读当前版本，再提交预检；保存失败或版本冲突不导出。完全空白物料占位跳过，未命名且已填内容仍须补名。创建后额外核对 Wiki 空间、父节点、文档身份和标题。需求策略仍使用指定文件夹。按月绑定原文档：首次创建，后续按内容单元更新同一Docx；无变化不写飞书。未知状态只核对原文档，不重建。
+- Brief 的 export-preview/export 采用原生XML标题和表格（旧收据仍兼容Markdown；需求策略导出 2026-11-21 下线，#88）。界面“双向同步”连续调用预检、单次确认及回读；Brief 预检提交 `{baseVersion}`（旧客户端 `{}` 兼容），服务端检查当前版本并固定到路觅策略知识库 / 营销对接Brief（space `7672588453183261977`，node `KiDLwRP8eixgJfkNHvDcGwpQnog`），拒绝前端改目的地。点击创建先flush串行自动保存、回读当前版本，再提交预检；保存失败或版本冲突不导出。完全空白物料占位跳过，未命名且已填内容仍须补名。创建后额外核对 Wiki 空间、父节点、文档身份和标题。需求策略仍使用指定文件夹。按月绑定原文档：首次创建，后续按内容单元更新同一Docx；无变化不写飞书。未知状态只核对原文档，不重建。
 - XML回读保留章节、表头/表体、行列、空格子、合并信息和段落换行，忽略自动ID及默认样式；差异进入unknown。附件仅列文件名，不自动上传本机文件。
 
 - `POST /api/v3/briefs/:month/autosave {baseVersion,requestId,patch}`：只写本地。事务内比较版本、校验全稿、写后回读；成功返回 Brief（含version/editedAt/saveRequestId）。重复同一请求回放，不重复增版；同编号不同内容拒绝400，旧基线409 `BRIEF_SAVE_CONFLICT`。旧preview/confirm仍保留兼容。
@@ -515,15 +515,15 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - 失败：主执行方失败且没设备用方 → `502`，错误写明哪家、什么原因、没设备用方、未自动换家，并指向「设置 → AI 接入」；设了备用方只转交一次，两家都失败 → `502`，不重试。
 - 调用日志 `<数据目录>/logs/ai-calls.jsonl`：每次调用一行 `{ at, feature, planned, access, attempts: [{ executor, ok, reason?, model?, ms }], ok, executor, model?, handoff? }`，不记内容。
 
-## 需求接口下线（2026-11-20，#84）
+## 需求接口下线（2026-11-20 #84，2026-11-21 #88）
 
 「主线需求」页面 2026-10 已去掉，没有调用方的两组接口下线，请求会走 v3 兜底回 `501`：
 
 - 需求推导：`GET /api/v3/needs`、`POST /api/v3/needs/:id/preview`、`POST /api/v3/needs/:id/adopt`、`PATCH /api/v3/needs/:id/strategy`。
 - 手写需求草稿：`GET /api/v3/manual-needs`、`POST /api/v3/manual-needs/preview`、`POST /api/v3/manual-needs/:id/remove-preview`、`POST /api/v3/manual-needs/confirm`。
 
-保留、行为不变的是单条需求策略导出飞书（同样没有页面入口）：
+2026-11-21 单条需求策略导出飞书那组也下线（#88），同样回 `501`：
 
-- `POST /api/v3/needs/:id/strategy/export-preview`：`{ month, targetUrl }`；`POST /api/v3/needs/:id/strategy/export`：`{ previewId, confirm: true }`；`GET /api/v3/needs/:id/strategy/exports/:operationId`；`POST /api/v3/needs/:id/strategy/exports/:operationId/reconcile`。
-- 只能导出「来源仍有效的已采纳需求」，否则 `409 EXPORT_NEED_NOT_ADOPTED`。需求按编号从 `server/needs.mjs` 的列表里找：时间线推导的，加上自言自语标成需求的（`selftalk-need`）；手写草稿（`manual-need`）不再读取，所以由手写草稿采纳来的需求会显示为待复核、不能再导出。
-- 数据不动：`v3_needs` 表和已有记录、`v3_documents` 里的 `manual-need` 旧记录都保留；没有接口能再新增采纳。
+- `POST /api/v3/needs/:id/strategy/export-preview`、`POST /api/v3/needs/:id/strategy/export`、`GET /api/v3/needs/:id/strategy/exports/:operationId`、`POST /api/v3/needs/:id/strategy/exports/:operationId/reconcile`。
+- `server/needs.mjs` 一并删除；写飞书的通用能力（`feishu-export.mjs` 的 `createFeishuExporter`、`createFeishuClient`）Brief 同步仍在用，不受影响。
+- 数据不动：`v3_needs` 表和已有记录、`v3_documents` 里的 `manual-need`、`selftalk-need`、`feishu-export` 旧记录都保留，没有代码再读写需求。
