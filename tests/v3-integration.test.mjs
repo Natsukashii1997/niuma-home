@@ -12,7 +12,6 @@ import { createSettingsChanges, validateV3Setting } from '../server/v3-settings.
 import { createLocalChanges, getRecord, putRecord } from '../server/local-records.mjs';
 import { createReferenceService, compressReference, referenceDir } from '../server/references.mjs';
 import { todoView, createTodoReader } from '../server/home-todo.mjs';
-import { createNeedsService } from '../server/needs.mjs';
 
 const instant = Date.parse('2026-10-16T12:00:00+08:00'), link = 'https://example.feishu.cn/docx/test';
 function database(t) {
@@ -121,13 +120,6 @@ test('首页待办使用完整年份和异常，空门禁不误报，不再列�
   assert.equal(list.find(x=>x.kind==='时间线').text,'1 条 AI 推测');
   const read=createTodoReader(db,{timeline:async()=>input.timeline,projects:{list:async()=>input.projects},now:()=>Date.parse('2026-12-31T12:00:00+08:00')});assert.equal((await read()).find(x=>x.kind==='项目').dueDate,'2027-01-01');
   await assert.rejects(createTodoReader(db,{timeline:async()=>{throw Error('source failed');},projects:{list:async()=>[]}})(),/source failed/);
-});
-
-test('自言自语转需求进入采纳流程，消息草稿变动会撤销原采纳有效性',async t=>{
-  const {db}=database(t),manual={id:'message',month:'2026-11',text:'请求',need:{id:'selftalk-message',seg:'待确认',node:'自言自语',when:'2026-11',schools:0,need:'请求',pain:'',todo:'梳理',source:'本人消息',status:'草稿',links:''}};
-  putRecord(db,'selftalk-need','message',manual);const service=createNeedsService(db,async()=>({agenda:[],stage:'本科'}));
-  assert.equal((await service.list('2026-11')).needs.length,1);const p=await service.preview(manual.need.id,{month:'2026-11'});await service.confirm(manual.need.id,{previewId:p.previewId,confirm:true});assert.equal((await service.list('2026-11')).needs[0].status,'已采纳');
-  putRecord(db,'selftalk-need','message',{...manual,text:'更改'});assert.equal((await service.list('2026-11')).needs[0].status,'待复核');
 });
 
 test('营收读飞书仪表盘，200 且不再带演示标记',async t=>{

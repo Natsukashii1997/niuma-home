@@ -16,9 +16,7 @@ import { referenceDir } from '../server/references.mjs';
 import { parseTimeline, REGION_SHEETS } from '../server/timeline.mjs';
 import { anomalyKey, createRulingService, withRulings } from '../server/timeline-rulings.mjs';
 import { createProjectService } from '../server/projects.mjs';
-import { createNeedsService } from '../server/needs.mjs';
-import { createStrategyExportService, literalMarkdown } from '../server/feishu-export.mjs';
-import { listRecords, putRecord } from '../server/local-records.mjs';
+import { listRecords } from '../server/local-records.mjs';
 
 const instant = Date.parse('2026-10-18T10:00:00+08:00');
 const noModel = async () => assert.fail('T10 写入核查不得调用模型');
@@ -216,98 +214,6 @@ for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
     assert.deepEqual(response.body, { error: '未实现，见 docs/tasks/V3-接口清单.md', task: 'V3-接口清单' });
   });
 }
-
-async function strategyExportFixture(t) {
-  const db = database(t), clock = { value: instant }, state = { creates: 0, calls: 0 };
-  const folder = 'https://example.feishu.cn/drive/folder/T10Folder', appId = 'cli_a965c429ef785bd3';
-  const docs = new Map();
-  const run = async (command, args, options) => {
-    state.calls++;
-    assert.equal(command, 'lark-cli');
-    assert.deepEqual(args.slice(0, 2), ['--profile', 'cli_a965c429ef785bd3']);
-    assert.deepEqual(args.slice(-2), ['--as', 'user']);
-    assert.equal(options.shell, false);
-    const arg = flag => args[args.indexOf(flag) + 1];
-    const result = data => ({ stdout: JSON.stringify({ ok: true, identity: 'user', data }) });
-    if (args.includes('whoami')) return { stdout: JSON.stringify({ profile: 'cli_a965c429ef785bd3', appId, identity: 'user', available: true, tokenStatus: 'ready', onBehalfOf: { openId: 'ou_t10_synthetic' } }) };
-    if (args.includes('+inspect')) {
-      const url = arg('--url');
-      if (url === folder) return result({ type: 'folder', token: 'T10Folder', title: '合成导出目录', url });
-      const id = url.split('/').at(-1);
-      assert.ok(docs.has(id), '只能回读替身实际创建的文档');
-      return result({ type: 'docx', token: id, title: docs.get(id).title, url });
-    }
-    if (args.includes('+create')) {
-      assert.equal(arg('--parent-token'), 'T10Folder');
-      assert.equal(arg('--content'), '-');
-      if (args.includes('--dry-run')) return { stdout: JSON.stringify({ ok: true, identity: 'user', dry_run: true, data: {
-        context: { app_id: appId, user_open_id: 'ou_t10_synthetic' },
-        api: [{ method: 'POST', url: '/open-apis/docs_ai/v1/documents', body: { parent_token: 'T10Folder', format: 'markdown', content: `<title>${arg('--title')}</title>\n${options.input}` } }],
-      } }) };
-      state.creates++;
-      const id = `T10Doc${state.creates}`;
-      const title = arg('--title').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
-      docs.set(id, { title, content: `# ${literalMarkdown(title)}\n\n${options.input}` });
-      return result({ document: { document_id: id, url: `https://example.feishu.cn/docx/${id}`, revision_id: 1 } });
-    }
-    if (args.includes('+fetch')) {
-      const id = arg('--doc');
-      assert.equal(arg('--scope'), 'full');
-      assert.ok(docs.has(id));
-      return result({ document: { document_id: id, content: docs.get(id).content, revision_id: 1 } });
-    }
-    assert.fail('不得执行替身未定义的外部操作');
-  };
-  const timeline = async () => ({ stage: '本科', agenda: [] });
-  putRecord(db, 'selftalk-need', 't10syntheticsource', { id: 't10syntheticsource', month: '2026-11', need: {
-    id: 't10syntheticneed', seg: '澳洲 · 本科', node: 'Final', need: '合成复习需求', source: '合成自言自语', status: '草稿',
-  } });
-  const needs = createNeedsService(db, timeline, { now: () => clock.value });
-  const strategyExports = createStrategyExportService(db, needs, { run, now: () => clock.value });
-  const routes = userRoutes({ timeline, needs, strategyExports });
-  // 采纳接口已下线（#84），夹具直接用服务造一条已采纳需求。
-  const preview = await needs.preview('t10syntheticneed', { month: '2026-11', strategy: {
-    goal: '合成策略目标', actions: { 营销: [['核对日程', '避免遗漏']], 产品: [], 运营: [] },
-  } });
-  assert.equal((await needs.confirm('t10syntheticneed', { previewId: preview.previewId, confirm: true })).status, '已采纳');
-  return { db, clock, state, routes, folder, base: '/api/v3/needs/t10syntheticneed/strategy' };
-}
-
-test('T10 策略导出路由预览到期后拒绝确认，不调用创建或写收据', async t => {
-  const { db, clock, state, routes, folder, base } = await strategyExportFixture(t);
-  const preview = await invoke(routes, 'POST', `${base}/export-preview`, { month: '2026-11', targetUrl: folder });
-  assert.equal(preview.status, 200);
-  assert.equal(state.creates, 0);
-  const callsBefore = state.calls;
-  clock.value = Date.parse(preview.body.expiresAt);
-  const denied = await invoke(routes, 'POST', `${base}/export`, { previewId: preview.body.previewId, confirm: true });
-  assert.equal(denied.status, 409);
-  assert.equal(denied.body.code, 'EXPORT_PREVIEW_EXPIRED');
-  assert.equal(state.creates, 0);
-  assert.equal(state.calls, callsBefore, '到期确认无需再调用外部替身');
-  assert.deepEqual(listRecords(db, 'feishu-export'), []);
-});
-
-test('T10 策略导出路由重复确认只创建一次，过期后仍回放成功收据', async t => {
-  const { clock, state, routes, folder, base } = await strategyExportFixture(t);
-  const preview = await invoke(routes, 'POST', `${base}/export-preview`, { month: '2026-11', targetUrl: folder });
-  assert.equal(preview.status, 200);
-  const body = { previewId: preview.body.previewId, confirm: true };
-  const first = await invoke(routes, 'POST', `${base}/export`, body);
-  assert.equal(first.status, 200);
-  assert.equal(first.body.status, 'success');
-  assert.equal(state.creates, 1);
-  const callsBefore = state.calls;
-  assert.deepEqual(await invoke(routes, 'POST', `${base}/export`, body), first);
-  clock.value = Date.parse(preview.body.expiresAt) + 1;
-  assert.deepEqual(await invoke(routes, 'POST', `${base}/export`, body), first);
-  assert.equal(state.creates, 1);
-  assert.equal(state.calls, callsBefore, '重复确认只回放持久化收据');
-  const readback = await invoke(routes, 'GET', `${base}/exports/${first.body.operationId}`);
-  assert.equal(readback.status, 200);
-  assert.equal(readback.body.status, 'success');
-  assert.deepEqual(readback.body.document, first.body.document);
-});
 
 function projectEditFixture(t) {
   const db = database(t);

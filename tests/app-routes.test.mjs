@@ -19,8 +19,8 @@ test('完整路由表：没有重复的「方法 + 路径」，每条路由都�
   assert.deepEqual(shadowed, [], '被前面的路由抢走');
 });
 
-// #84（2026-11-20）：需求推导与手写草稿两组接口下线，策略导出那组保留。
-test('完整路由表：下线的 8 条需求接口匹配不到并回 501，4 条策略导出接口仍在', t => {
+// #84（2026-11-20）需求推导与手写草稿两组接口下线；#88（2026-11-21）策略导出那组也下线。
+test('完整路由表：下线的 12 条需求接口匹配不到并回 501', t => {
   assert.ok(process.env.WORKDESK_DATA_DIR, '必须使用隔离数据');
   const dir = mkdtempSync(path.join(process.env.WORKDESK_DATA_DIR, 'app-routes-needs-')), db = openDb(dir);
   t.after(() => { db.close(); rmSync(dir, { recursive: true, force: true }); });
@@ -28,16 +28,12 @@ test('完整路由表：下线的 8 条需求接口匹配不到并回 501，4 �
   const removed = [
     ['GET', '/api/v3/needs'], ['POST', '/api/v3/needs/n1/preview'], ['POST', '/api/v3/needs/n1/adopt'], ['PATCH', '/api/v3/needs/n1/strategy'],
     ['GET', '/api/v3/manual-needs'], ['POST', '/api/v3/manual-needs/preview'], ['POST', '/api/v3/manual-needs/m1/remove-preview'], ['POST', '/api/v3/manual-needs/confirm'],
+    ['POST', '/api/v3/needs/n1/strategy/export-preview'], ['POST', '/api/v3/needs/n1/strategy/export'],
+    ['GET', '/api/v3/needs/n1/strategy/exports/op1'], ['POST', '/api/v3/needs/n1/strategy/exports/op1/reconcile'],
   ];
   for (const [method, pathname] of removed) {
     assert.equal(match(all, method, pathname), null, `${method} ${pathname} 应已下线`);
     let status; unmatched(method, pathname)({}, { writeHead: code => { status = code; }, end() {} });
     assert.equal(status, 501, `${method} ${pathname} 走 v3 兜底`);
   }
-  const kept = [
-    ['POST', '/api/v3/needs/n1/strategy/export-preview'], ['POST', '/api/v3/needs/n1/strategy/export'],
-    ['GET', '/api/v3/needs/n1/strategy/exports/op1'], ['POST', '/api/v3/needs/n1/strategy/exports/op1/reconcile'],
-  ];
-  for (const [method, pathname] of kept) assert.deepEqual(match(all, method, pathname)?.params.id, 'n1', `${method} ${pathname} 应保留`);
-  assert.equal(match(all, 'GET', '/api/v3/needs/n1/strategy/exports/op1').params.operationId, 'op1');
 });

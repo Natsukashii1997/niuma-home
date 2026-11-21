@@ -37,7 +37,7 @@ export function pageRoutes(db, reportOptions, calendarOptions, options = {}) {
   const todo = createTodoReader(db, { ...userServices, projects: projectServices.projects, ...options.todo });
   return [
     ...workspaceRoutes(db, reportOptions, calendarOptions, options, { voice, todo }), // 首页、日报周报、日历、设置、AI 接入、业务页、数据源状态
-    ...userRoutes(userServices),                                 // 策略页：时间线、月度用户策略 v1 / v2、需求策略导出
+    ...userRoutes(userServices),                                 // 策略页：时间线、月度用户策略 v1 / v2、时间线裁定
     ...deliveryRoutes(db),                                       // 首页交付月四环节
     ...projectRoutes(projectServices),                           // 项目页
     ...mentorRoutes(projectServices),                            // 带教页

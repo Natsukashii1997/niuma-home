@@ -8,8 +8,6 @@ import { pageRoutes as routes } from '../server/app-routes.mjs';
 import { match, json, unmatched } from '../server/http.mjs';
 import { codexResetView, createCodexResetReader } from '../server/codex-reset.mjs';
 import { parseTimelineDate, parseTimeline, parseAnnotatedCsv, readTimelineSheets, REGION_SHEETS } from '../server/timeline.mjs';
-import { deriveNeeds } from '../server/needs.mjs';
-import { createUserServices } from '../server/routes/user.mjs';
 
 const makeSheet = (name, rows) => ({ name, cols: ['A', 'B', 'C', 'D'], rows: rows.map((values, i) => ({ row: i + 1, values })) });
 function sheets() { return [
@@ -52,17 +50,16 @@ test('V3 日期严格补年、跨年、推测与不完整范围，不修来源�
   assert.equal(parseTimelineDate('1.16\nhttps://x.edu/2025/12/31').from, '2026-01-16');
 });
 
-test('V3 时间线重复表头不串列、完整起止与来源、推测不得生成需求', () => {
+test('V3 时间线重复表头不串列、完整起止与来源、推测只带标记不当确定日期', () => {
   const tl = parseTimeline(sheets(), '2026-10-16 14:00');
   assert.equal(tl.agenda.find(e => e.school === '昆士兰大学 UQ' && e.type === 'Final').from, '2026-11-07');
   assert.ok(tl.agenda.every(e => /^\d{4}-\d{2}-\d{2}$/.test(e.from) && /^\d{4}-\d{2}-\d{2}$/.test(e.to) && e.src.includes('!')));
   assert.ok(tl.anomalies.some(a => a.issue.includes('列标题缺失')));
   assert.ok(tl.anomalies.some(a => a.a === '2026.5.11-2025.6.12'));
-  const needs = deriveNeeds(tl, '2026-11');
-  assert.ok(needs.some(n => n.need.seg === '澳洲 · 本科'));
-  assert.ok(!needs.some(n => n.need.seg === '香港 · 本科'));
-  assert.ok(deriveNeeds(tl, '2026-10').some(n => n.need.seg === '澳洲 · 本科' && n.need.node === 'Final'), '提前14天跨月');
-  assert.deepEqual(deriveNeeds(tl, '2026-11').map(n => n.need.id), needs.map(n => n.need.id));
+  // 原来用需求推导核对「推测不当确定日期」（#88 下线）；现在直接看日程：推测的格子都带 flag，确定日期不带。
+  assert.ok(tl.agenda.some(e => e.c === '澳洲' && e.type === 'Final' && !e.flag));
+  const guessed = tl.agenda.filter(e => e.c === '香港');
+  assert.ok(guessed.length > 0 && guessed.every(e => e.flag), '香港的 AI 推测日期都带 flag');
 });
 
 test('V3 CSV 多行/引号保留真实行号，截断/少列不当成功', () => {
@@ -113,32 +110,6 @@ test('V3 同步仅完整成功替换；失败不覆盖快照或返回旧成功',
   assert.equal((await request('POST','/api/v3/timeline/sync')).status,502);
   assert.equal((await request('GET','/api/v3/timeline')).status,502);
   assert.deepEqual(db.prepare('SELECT * FROM v3_snapshots').all(),before);
-});
-
-// 需求的采纳接口已下线（#84）。策略导出仍靠 needs.list 判断「来源仍有效的已采纳需求」，这里直接测服务（和正式环境同一套装配）。
-test('V3 需求服务：来源变化、并发旧预览、过期预览均拒绝；已采纳需求来源变化或消失后列表标成待复核', async t => {
-  assert.ok(process.env.WORKDESK_DATA_DIR, '必须隔离');
-  const dir = mkdtempSync(path.join(process.env.WORKDESK_DATA_DIR, 'v3-needs-')), db = openDb(dir);
-  t.after(() => { db.close(); rmSync(dir, { recursive: true, force: true }); });
-  let data = sheets(), instant = Date.parse('2026-10-16T14:00:00+08:00');
-  const { needs, timeline } = createUserServices(db, { timeline: { readSheets: async () => structuredClone(data), now: () => instant }, needs: { now: () => instant } });
-  const sync = () => timeline({ refresh: true }), status = async () => (await needs.list('2026-11')).needs.find(n => n.id === id).status;
-  for (const month of ['', '2026-00', '2026-13', '26-11']) await assert.rejects(needs.list(month), e => e.status === 400);
-  const id = (await needs.list('2026-11')).needs.find(n => n.seg.startsWith('澳洲')).id;
-  const preview = () => needs.preview(id, { month: '2026-11' });
-  const confirm = p => needs.confirm(id, { previewId: p.previewId, confirm: true });
-  const p = await preview(), changed = sheets(); changed[2].rows[1].values[2] = '11.8-11.21'; data = changed;
-  await sync(); // 来源变化经同步进入快照后，旧预览必须被拒绝
-  await assert.rejects(confirm(p), e => e.status === 409);
-  const p1 = await preview(), p2 = await preview();
-  assert.equal((await confirm(p1)).status, '已采纳'); await assert.rejects(confirm(p2), e => e.status === 409);
-  const p3 = await preview(); instant += 600001; await assert.rejects(confirm(p3), e => e.status === 409);
-  assert.equal(await status(), '已采纳');
-  changed[2].rows[1].values[2] = '11.9-11.21'; data = structuredClone(changed); await sync();
-  assert.equal(await status(), '待复核', '来源日期变了');
-  changed[2].rows[1].values[2] = '未公开'; data = structuredClone(changed); await sync();
-  assert.equal(await status(), '待复核', '来源事件消失');
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM v3_needs').get().n, 1, '采纳记录保留');
 });
 
 test('V3 飞书读取固定 codex user、四张地区表和十二张月历完整范围', async () => {
