@@ -26,7 +26,6 @@ export const DOCUMENT_KINDS = {
   'user-strategy': { owner: 'user-strategy.mjs', what: '月度用户策略 v1：某月改过之后的整月记录（id = 月份）；v2 在专用表 strategy_revisions / strategy_submissions' },
   'strategy-bizcard': { owner: 'strategy-service.mjs', what: '月度用户策略 v2 的业务背景卡（id = 月份）' },
   'timeline-ruling': { owner: 'timeline-rulings.mjs', what: '对时间线异常项的人工裁定' },
-  'manual-need': { owner: 'manual-needs.mjs', what: '手写或 Voice 话题转来的需求草稿（页面入口已于 2026-10-23 去掉）' },
   // 项目、带教
   'local-project': { owner: 'projects.mjs', what: '只存在工作台本地的项目' },
   'project-state': { owner: 'projects.mjs', what: '项目节点的本地状态（勾选、日期等），不回写飞书' },
@@ -43,7 +42,7 @@ export const DOCUMENT_KINDS = {
   // 自言自语
   'selftalk-tag': { owner: 'selftalk.mjs', what: '给自言自语条目打的普通标签' },
   'selftalk-todo': { owner: 'selftalk.mjs', what: '标成待办的自言自语（首页待办会读）' },
-  'selftalk-need': { owner: 'selftalk.mjs、manual-needs.mjs', what: '标成需求的自言自语' },
+  'selftalk-need': { owner: 'selftalk.mjs（写）、needs.mjs（读）', what: '标成需求的自言自语；needs.mjs 把它并进需求列表，供策略导出核对来源' },
   'selftalk-digest': { owner: 'selftalk.mjs', what: '自言自语周汇总（AI 产出，确认后保存）' },
   // 公共机制
   'local-deletion': { owner: 'local-deletions.mjs', what: '软删除状态（本地项目、历史战役、自建助手），id = 对象种类:编号' },

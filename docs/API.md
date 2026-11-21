@@ -514,3 +514,16 @@ ID：日报来源及单文档模式沿用 T05 算法（无前缀）；周报来�
 - 留痕 `trace`：`{ executor, executorName, access, model, at, planned, plannedName, handoff: null | { from, fromName, reason } }`。出现在：亚古兽回答的 `trace`、`GET /api/v3/selftalk` 的 `digestTrace`（已确认周汇总；没有为 `null`）、周汇总预览 `value.trace`、带教列表里 AI 草稿的 `feedbackTrace`。改造前的旧记录只可能来自 Codex，按 Codex 补出。
 - 失败：主执行方失败且没设备用方 → `502`，错误写明哪家、什么原因、没设备用方、未自动换家，并指向「设置 → AI 接入」；设了备用方只转交一次，两家都失败 → `502`，不重试。
 - 调用日志 `<数据目录>/logs/ai-calls.jsonl`：每次调用一行 `{ at, feature, planned, access, attempts: [{ executor, ok, reason?, model?, ms }], ok, executor, model?, handoff? }`，不记内容。
+
+## 需求接口下线（2026-11-20，#84）
+
+「主线需求」页面 2026-10 已去掉，没有调用方的两组接口下线，请求会走 v3 兜底回 `501`：
+
+- 需求推导：`GET /api/v3/needs`、`POST /api/v3/needs/:id/preview`、`POST /api/v3/needs/:id/adopt`、`PATCH /api/v3/needs/:id/strategy`。
+- 手写需求草稿：`GET /api/v3/manual-needs`、`POST /api/v3/manual-needs/preview`、`POST /api/v3/manual-needs/:id/remove-preview`、`POST /api/v3/manual-needs/confirm`。
+
+保留、行为不变的是单条需求策略导出飞书（同样没有页面入口）：
+
+- `POST /api/v3/needs/:id/strategy/export-preview`：`{ month, targetUrl }`；`POST /api/v3/needs/:id/strategy/export`：`{ previewId, confirm: true }`；`GET /api/v3/needs/:id/strategy/exports/:operationId`；`POST /api/v3/needs/:id/strategy/exports/:operationId/reconcile`。
+- 只能导出「来源仍有效的已采纳需求」，否则 `409 EXPORT_NEED_NOT_ADOPTED`。需求按编号从 `server/needs.mjs` 的列表里找：时间线推导的，加上自言自语标成需求的（`selftalk-need`）；手写草稿（`manual-need`）不再读取，所以由手写草稿采纳来的需求会显示为待复核、不能再导出。
+- 数据不动：`v3_needs` 表和已有记录、`v3_documents` 里的 `manual-need` 旧记录都保留；没有接口能再新增采纳。

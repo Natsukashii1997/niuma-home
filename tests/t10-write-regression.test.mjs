@@ -9,9 +9,6 @@ import { createProjectService } from '../server/projects.mjs';
 import { projectRoutes } from '../server/routes/projects.mjs';
 import { routes as marketingRoutes } from '../server/routes/v3-marketing.mjs';
 import { pageRoutes as workspaceRoutes } from '../server/app-routes.mjs';
-import { createManualNeeds } from '../server/manual-needs.mjs';
-import { createNeedsService } from '../server/needs.mjs';
-import { userRoutes } from '../server/routes/user.mjs';
 
 // T10 的公共边界是路由处理器：真实解析请求、预览、确认，再经 GET 回读。
 // 时钟与飞书来源使用合成数据；数据库和附件文件均在每例独立目录。
@@ -265,59 +262,6 @@ test('T10 附件删除文件失败后重试不得返回文件仍遗留的成功�
   assert.equal(observations.recordsAfterRetry, 0);
   assert.equal(observations.fileExistsAfterRetry, false);
   assert.equal(observations.fileEndpointAfterRetry, 404);
-});
-
-function needsFor(t) {
-  const context = database(t);
-  const timeline = async () => ({ stage: '本科', agenda: [] });
-  const needs = createNeedsService(context.db, timeline, { now: context.now });
-  const manualNeeds = createManualNeeds(context.db, { now: context.now });
-  return { ...context, routes: userRoutes({ timeline, needs, manualNeeds }) };
-}
-async function addManualNeed(routes, need = '合成需求') {
-  const preview = await invoke(routes, 'POST', '/api/v3/manual-needs/preview', { month: '2026-11', need });
-  assert.equal(preview.status, 200);
-  const receipt = await invoke(routes, 'POST', '/api/v3/manual-needs/confirm', confirmed(preview));
-  assert.equal(receipt.status, 200);
-  return receipt.body;
-}
-
-test('T10 手写需求 HTTP 删除过期拒绝、并发旧预览拒绝、重复确认后两处列表均无草稿', async t => {
-  const { routes, expire } = needsFor(t), need = await addManualNeed(routes);
-  const endpoint = `/api/v3/manual-needs/${need.id}/remove-preview`;
-  const expired = await invoke(routes, 'POST', endpoint);
-  expire();
-  assert.equal((await invoke(routes, 'POST', '/api/v3/manual-needs/confirm', confirmed(expired))).status, 409);
-  assert.equal((await invoke(routes, 'GET', '/api/v3/manual-needs')).body.records.length, 1);
-  const a = await invoke(routes, 'POST', endpoint), b = await invoke(routes, 'POST', endpoint);
-  assert.equal((await invoke(routes, 'POST', '/api/v3/manual-needs/confirm', { previewId: a.body.previewId })).status, 400);
-  const receipt = await invoke(routes, 'POST', '/api/v3/manual-needs/confirm', confirmed(a));
-  assert.equal(receipt.status, 200);
-  assert.equal((await invoke(routes, 'POST', '/api/v3/manual-needs/confirm', confirmed(b))).status, 409);
-  assert.deepEqual((await invoke(routes, 'POST', '/api/v3/manual-needs/confirm', confirmed(a))).body, receipt.body);
-  assert.deepEqual((await invoke(routes, 'GET', '/api/v3/manual-needs')).body.records, []);
-  assert.deepEqual((await invoke(routes, 'GET', '/api/v3/needs?month=2026-11')).body.needs, []);
-});
-
-test('T10 需求策略 HTTP PATCH 拒绝过期和并发旧预览、重复确认不覆盖较新策略', async t => {
-  const { routes, expire } = needsFor(t), need = await addManualNeed(routes);
-  const endpoint = `/api/v3/needs/${need.need.id}`;
-  const adoption = await invoke(routes, 'POST', `${endpoint}/preview`, { month: '2026-11' });
-  assert.equal((await invoke(routes, 'POST', `${endpoint}/adopt`, confirmed(adoption))).status, 200);
-  const strategy = goal => ({ month: '2026-11', strategy: { goal, actions: { 营销: [['核实需求', '避免错误转化']], 产品: [], 运营: [] } } });
-  const expired = await invoke(routes, 'POST', `${endpoint}/preview`, strategy('过期策略'));
-  assert.equal(expired.status, 200); expire();
-  assert.equal((await invoke(routes, 'PATCH', `${endpoint}/strategy`, confirmed(expired))).status, 409);
-  const a = await invoke(routes, 'POST', `${endpoint}/preview`, strategy('第一版策略'));
-  const stale = await invoke(routes, 'POST', `${endpoint}/preview`, strategy('并发旧策略'));
-  const receipt = await invoke(routes, 'PATCH', `${endpoint}/strategy`, confirmed(a));
-  assert.equal(receipt.status, 200);
-  assert.equal((await invoke(routes, 'PATCH', `${endpoint}/strategy`, confirmed(stale))).status, 409);
-  const b = await invoke(routes, 'POST', `${endpoint}/preview`, strategy('第二版策略'));
-  assert.equal((await invoke(routes, 'PATCH', `${endpoint}/strategy`, confirmed(b))).status, 200);
-  assert.deepEqual((await invoke(routes, 'PATCH', `${endpoint}/strategy`, confirmed(a))).body, receipt.body);
-  const back = (await invoke(routes, 'GET', '/api/v3/needs?month=2026-11')).body.needs;
-  assert.equal(back.length, 1); assert.equal(back[0].strategy.goal, '第二版策略');
 });
 
 function settingsFor(t) {

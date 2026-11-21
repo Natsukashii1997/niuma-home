@@ -265,11 +265,11 @@ async function strategyExportFixture(t) {
   const needs = createNeedsService(db, timeline, { now: () => clock.value });
   const strategyExports = createStrategyExportService(db, needs, { run, now: () => clock.value });
   const routes = userRoutes({ timeline, needs, strategyExports });
-  const preview = await invoke(routes, 'POST', '/api/v3/needs/t10syntheticneed/preview', { month: '2026-11', strategy: {
+  // 采纳接口已下线（#84），夹具直接用服务造一条已采纳需求。
+  const preview = await needs.preview('t10syntheticneed', { month: '2026-11', strategy: {
     goal: '合成策略目标', actions: { 营销: [['核对日程', '避免遗漏']], 产品: [], 运营: [] },
   } });
-  assert.equal(preview.status, 200);
-  assert.equal((await invoke(routes, 'POST', '/api/v3/needs/t10syntheticneed/adopt', { previewId: preview.body.previewId, confirm: true })).status, 200);
+  assert.equal((await needs.confirm('t10syntheticneed', { previewId: preview.previewId, confirm: true })).status, '已采纳');
   return { db, clock, state, routes, folder, base: '/api/v3/needs/t10syntheticneed/strategy' };
 }
 
