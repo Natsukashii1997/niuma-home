@@ -22,7 +22,7 @@ DOMAIN="gui/$(id -u)"
 fail() { echo "迁移中止：$*" >&2; exit 1; }
 plist() { /usr/libexec/PlistBuddy -c "Print :$1" "$PLIST" 2>/dev/null; }
 
-[ -f "$PLIST" ] || fail "找不到服务配置 $PLIST，不知道现在的数据目录在哪"
+[ -f "$PLIST" ] || fail "找不到服务配置 ${PLIST}，不知道现在的数据目录在哪"
 FROM=$(plist EnvironmentVariables:WORKDESK_DATA_DIR) || fail "服务配置里没有 WORKDESK_DATA_DIR"
 SNAPSHOT=$(basename "$(plist WorkingDirectory)")
 [ -f "$FROM/work-desk.db" ] || fail "现在的数据目录里没有主库：$FROM/work-desk.db"
@@ -44,7 +44,7 @@ rows() {
   done
 }
 
-echo "服务：$LABEL（端口 $PORT，当前快照 $SNAPSHOT）"
+echo "服务：${LABEL}（端口 ${PORT}，当前快照 ${SNAPSHOT}）"
 echo "从：$FROM"
 echo "到：$TO"
 echo "现状：$(summary "$FROM")"
@@ -74,7 +74,7 @@ restore_service() {
   echo "服务没能自动起回来；配置没改，手动执行：launchctl bootstrap $DOMAIN \"$PLIST\"" >&2
   return 1
 }
-abort() { echo "迁移中止：$*" >&2; rm -rf "$TO"; restore_service || true; echo "原目录没有改动：$FROM；服务仍用它。" >&2; exit 1; }
+abort() { echo "迁移中止：$*" >&2; rm -rf "$TO"; restore_service || true; echo "原目录没有改动：${FROM}；服务仍用它。" >&2; exit 1; }
 
 echo "1/5 停服务"
 stop_service || fail "服务没有停下来（端口 $PORT 仍被占用或任务仍在），没有做任何改动"
@@ -104,7 +104,7 @@ if ! NIUMA_BASE="$BASE" NIUMA_LABEL="$LABEL" PORT="$PORT" WORKDESK_DATA_DIR="$TO
   echo "切换到新目录失败（日志 $EVIDENCE/switch.log），改回原目录" >&2
   if NIUMA_BASE="$BASE" NIUMA_LABEL="$LABEL" PORT="$PORT" WORKDESK_DATA_DIR="$FROM" bash "$ROOT/scripts/release-app.sh" --use "$SNAPSHOT" > "$EVIDENCE/rollback.log" 2>&1; then
     rm -rf "$TO"
-    echo "服务已改回原目录：$FROM；新目录已删掉，原目录没有改动。" >&2
+    echo "服务已改回原目录：${FROM}；新目录已删掉，原目录没有改动。" >&2
   else
     # 服务这时可能正跑在任何一边，新目录先留着不删，免得把正在用的数据目录删掉
     echo "改回原目录也失败了（日志 $EVIDENCE/rollback.log）。数据都在：原目录 $FROM 没有改动，新目录 $TO 留着没删。" >&2
