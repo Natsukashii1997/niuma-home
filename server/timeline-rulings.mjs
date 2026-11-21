@@ -6,7 +6,7 @@ import { timelineSources } from './timeline.mjs';
 
 // 时间线异常的人工裁定：只存工作台，不改飞书原表。
 // 裁定按「来源单元格 + 原文 + 问题」的指纹对应异常；飞书原格一改，指纹变了，旧裁定自动不再生效，这条重新回到待确认。
-// 采用 / 手填日期的格子以无标记事件参与主线需求推导（ruled: true）；「不采用」的格子仍不参与。
+// 采用 / 手填日期的格子以无标记事件进入日程，月度用户策略按确定日期使用（ruled: true）；「不采用」的格子仍不参与。
 export const RULING_KIND = 'timeline-ruling';
 export const anomalyKey = a => fingerprint([a.src, a.a, a.b, a.issue]).slice(0, 24);
 const DECISIONS = ['adopt', 'manual', 'exclude', 'clear'];

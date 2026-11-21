@@ -389,7 +389,7 @@ function TimelineCellDetails({ detail, onClose }) {
 }
 
 // 异常待确认：原文、来源单元格、标记都完整保留；长原文在框内换行、超长时框内滚动，不撑破页面。
-// 日期类异常可以人工裁定（采用解析出的日期 / 手填 / 不采用），只存工作台、不改飞书；裁定后这一格按裁定值参与主线需求推导。
+// 日期类异常可以人工裁定（采用解析出的日期 / 手填 / 不采用），只存工作台、不改飞书；裁定后这一格按裁定值参与日程和月度用户策略（需求推导已下线，#84、#88）。
 // 飞书原格一改（重新同步后原文变了），旧裁定自动失效，这条回到待确认。校名类异常没有日期格，仍请改飞书原表。
 const RULE_SHOW = [["open", "AI推测"], ["ruled", "已核实 / 裁定"], ["all", "全部"]];
 function Anomalies({ tl, q, onSaved }) {
@@ -402,7 +402,7 @@ function Anomalies({ tl, q, onSaved }) {
   const reread = async () => { const back = await apiSend("GET", "/api/v3/timeline"); onSaved(back); return back; };
   return (
     <>
-      <p className="small muted">导入时发现日期不完整、多个时段、含限定条件或互相冲突的格子，共 {anomalies.length} 条，{open} 条标为 AI推测{q ? `，筛出 ${list.length} 条` : ""}。尚未核实或裁定的格子不作为确定日期推导主线需求。日期类异常可以在这里人工裁定（只存工作台，不改飞书）；也可以改飞书原表后点「同步」。</p>
+      <p className="small muted">导入时发现日期不完整、多个时段、含限定条件或互相冲突的格子，共 {anomalies.length} 条，{open} 条标为 AI推测{q ? `，筛出 ${list.length} 条` : ""}。尚未核实或裁定的格子不作为确定日期进入日程和月度用户策略。日期类异常可以在这里人工裁定（只存工作台，不改飞书）；也可以改飞书原表后点「同步」。</p>
       {oldSnapshot && <DismissibleNote id="timeline-old-snapshot" stamp="old" className="small warn-text">当前快照是旧格式，没有记录单元格位置；点上面的「同步」重新读取（只读）后才能裁定。</DismissibleNote>}
       {tl.rulings?.stale > 0 && <DismissibleNote id="timeline-rulings-stale" stamp={tl.rulings.stale} className="small warn-text">有 {tl.rulings.stale} 条裁定对应的飞书原格已经改过，已自动失效，这些格子重新标为 AI推测。</DismissibleNote>}
       <div className="toolbar">
@@ -421,7 +421,7 @@ function Anomalies({ tl, q, onSaved }) {
 const DECISION_TEXT = { adopt: "采用", manual: "手填日期", exclude: "不采用" };
 const cellName = (a, i) => (a.cell?.cells.length > 1 ? (i ? "B" : "A") : "原文");
 function rulingText(a, r) {
-  if (r.decision === "exclude") return "不采用：这一格不参与推导";
+  if (r.decision === "exclude") return "不采用：这一格不参与日程和月度用户策略";
   if (r.segments?.length) return `采用原格全部 ${r.segments.length} 个时段：${r.segments.map(p => `${p.label || ""} ${p.from} → ${p.to}`).join("；")}`;
   return `${r.decision === "adopt" ? `采用${cellName(a, r.cell)}` : `手填（写在${cellName(a, r.cell)}格）`}：${r.from} → ${r.to}`;
 }
@@ -495,7 +495,7 @@ function AnomalyCard({ a, reread }) {
               <Button variant="primary" className="btn btn-xs" disabled={!ready || locked || pick === "clear"} onClick={() => preview()}><PixelIcon name="eye" />预览裁定</Button>
             </div>
             {pick === "manual" && cells.some(c => c.segments?.length > 1) && <p className="small warn-text">手填会将这一格的全部时段替换为你填写的单一区间；要保留各时段，请选择“采用原文全部时段”。</p>}
-            {pick === "manual" && cells.length > 1 && <p className="small muted">手填的日期写在 A 格；B 格仍不参与推导。</p>}
+            {pick === "manual" && cells.length > 1 && <p className="small muted">手填的日期写在 A 格；B 格仍不参与日程和月度用户策略。</p>}
           </>
         )}
         <WriteBox flow={flow} title={pick === "clear" ? "撤销裁定预览" : "裁定预览"} confirmLabel={pick === "clear" ? "确认撤销" : "确认裁定"} savedText={pick === "clear" ? `已撤销裁定，回读核对一致；${restored}` : "已裁定，回读核对一致"} onConfirm={confirm} onRepreview={() => preview(pick === "clear" ? { decision: "clear" } : body())} onReread={resolve}>
@@ -503,7 +503,7 @@ function AnomalyCard({ a, reread }) {
             <dt>格子</dt><dd>{a.school} · {a.cell?.header || a.issue.split("：")[0]} · <span className="tnum">{a.src}</span></dd>
             <dt>裁定</dt><dd>{pv.value.decision === "clear" ? <><span className="diff-old">{a.ruling && rulingText(a, a.ruling)}</span> → <span className="diff-new">撤销，{restored}</span></> : <span className="diff-new">{rulingText(a, pv.value)}</span>}</dd>
             {pv.value.note && <><dt>备注</dt><dd>{pv.value.note}</dd></>}
-            <dt>影响</dt><dd>{pv.value.decision === "clear" ? (a.verification?.status === "confirmed" ? "恢复官网核实日期与适用范围" : "这一格不作为确定日期参与主线需求推导") : pv.value.decision === "exclude" ? "这一格不参与主线需求推导" : "这一格按裁定日期参与主线需求推导；已采纳的相关需求会变成「待复核」"}</dd>
+            <dt>影响</dt><dd>{pv.value.decision === "clear" ? (a.verification?.status === "confirmed" ? "恢复官网核实日期与适用范围" : "这一格不作为确定日期参与日程和月度用户策略") : pv.value.decision === "exclude" ? "这一格不参与日程和月度用户策略" : "这一格按裁定日期参与日程和月度用户策略"}</dd>
             <dt>写到哪里</dt><dd>工作台本地，不改飞书原表；原格内容变了裁定自动失效</dd>
           </dl>}
         </WriteBox>
