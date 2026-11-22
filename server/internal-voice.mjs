@@ -86,6 +86,14 @@ async function pool(items, n, fn, stop = () => false) {
   await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length && !stop()) await fn(items[i++]); }));
 }
 
+// 状态里的入库统计：每项一个子查询，都走 chat_messages 上的覆盖索引；合成一句会整表扫描（68 万行约 8 秒，#97）。
+export const STORED_SQL = `SELECT
+  (SELECT COUNT(*) FROM chat_messages) messages,
+  (SELECT COUNT(*) FROM chat_messages WHERE from_role=1) customerMessages,
+  (SELECT COUNT(DISTINCT conversation_id) FROM chat_messages) conversations,
+  (SELECT MIN(msg_time) FROM chat_messages) earliest,
+  (SELECT MAX(msg_time) FROM chat_messages) latest`;
+
 export function createInternalVoice(db, { fetchImpl = fetch, token = keychainToken, base = LUMIST_BASE, now = Date.now, concurrency = 3, timeoutMs = 60_000, resetInterrupted = true,
   wait = ms => new Promise(r => setTimeout(r, ms)) } = {}) {
   // 会话三张表在单独的库文件里（db.mjs 的 voiceDbFor）；设置项 internal_voice_auto 仍读主库 db。
@@ -319,11 +327,11 @@ export function createInternalVoice(db, { fetchImpl = fetch, token = keychainTok
       return null;
     },
     status() {
-      const count = store.prepare("SELECT COUNT(*) messages, SUM(from_role=1) customerMessages, COUNT(DISTINCT conversation_id) conversations, MIN(msg_time) earliest, MAX(msg_time) latest FROM chat_messages").get();
+      const count = store.prepare(STORED_SQL).get();
       return {
         auto: getSettings(db)[AUTO_KEY] === '1', tokenConfigured: !!token(), lines: LINES.map(l => l.name), maxDays: MAX_DAYS,
         schedule: [['weekly', '每周拉上一周', lastWeek(now())], ['monthly', '每月拉上个月', lastMonth(now())]].map(([trigger, label, range]) => ({ trigger, label, ...range, pulled: covered(trigger, range) })),
-        stored: { messages: count.messages, customerMessages: count.customerMessages ?? 0, conversations: count.conversations, earliest: count.earliest, latest: count.latest },
+        stored: { messages: count.messages, customerMessages: count.customerMessages, conversations: count.conversations, earliest: count.earliest, latest: count.latest },
         runs: store.prepare('SELECT * FROM chat_pull_runs ORDER BY id DESC LIMIT 10').all().map(runRow),
       };
     },
