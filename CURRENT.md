@@ -5,7 +5,7 @@
 更新：2026-11-22。工作区 main；进入顺序见 [HANDOFF.md](HANDOFF.md)，第一次接手先看 [GLOSSARY.md](GLOSSARY.md)。
 
 **现在停在哪（2026-11-21 上午）**
-- 数码世界收藏的默认读取路径改到它的应用目录 `~/Library/Application Support/PersonalAIWorkbench/data`（#95，PR 待常浩说「合并」）：数码世界 2026-11-21 定把数据目录迁出代码仓库。合并后**先不发布**：等数码世界会话搬完目录、同时改这边服务配置的 `WORKDESK_DIGIWORLD_DIR`，再按常规发布；在那之前正式服务仍读旧路径，照常可用。
+- 数码世界收藏的默认读取路径改到它的应用目录 `~/Library/Application Support/PersonalAIWorkbench/data`（#95）：PR #96 已合并（`488ab53`），还没发布。数码世界搬目录时，真实服务配置的 `WORKDESK_DIGIWORLD_DIR` 已改成新路径（plist 修改于 11-22 12:23，服务 12:24 重启），`GET /api/v3/refs/digiworld` 回读 200（11-22 晚上实测）。下次发布时 `release-app.sh` 会按新默认值重写服务配置，结果一致。
 - 策略页时间线异常的说明文字已改：常浩回「文案也改」，PR #91（#90，`e99f1f4`）把「参与主线需求推导」改成「参与日程和月度用户策略」（同类 2 处一并改），回「合并并发布」后已发布 `nm-20261121-114904-e99f1f4`，回读通过，正式页面上核对过。第三批整改到此全部完成。
 - 导出那组需求接口也下线了：常浩 11-21 看过改动确认回「改」，PR #89（#88，`b5a494b`）删掉 4 条 `/api/v3/needs/:id/strategy/export*` 和 `server/needs.mjs`，回「合并并发布」后已发布 `nm-20261121-103831-b5a494b`，回读通过；需求的后端代码全部移除，`v3_needs` 等数据不动。
 - 第三批整改做完：常浩 2026-11-21 经驿窗回「都按推荐」，PR #85（#84，下线需求推导与手写草稿两组接口，`75d8c5e`）、#86（#82，内部原声三张表拆到 `internal-voice.db`，`eeb75c4`）、#87（#83，正式数据目录迁出工作区，`e805e4c`）已合并。
@@ -29,14 +29,14 @@
 - 与授权不一致之处、遗留问题、范围外发现：废纸篓清空才真正释放约 340MB，这一步留给常浩；会话没有权限列出 `~/.Trash`，只能以 `trash` 命令返回 0、原位置已不存在为准。下面 11-21 那节「回退数据目录」的命令要用到这份旧目录，现在已不能用（新目录有每日备份和发布前备份）。
 - 本轮新坑：无。★
 
-## 数码世界收藏的默认读取路径改到应用目录（2026-11-22，Claude，数码世界会话派单，常浩 11-21 对搬迁回「按方案做」；PR 待合并；未发布）
+## 数码世界收藏的默认读取路径改到应用目录（2026-11-22，Claude，数码世界会话派单，常浩 11-21 对搬迁回「按方案做」；PR #96 已合并 `488ab53`；未发布，服务配置已由数码世界搬迁时改好）
 
 - 时间：开工 `2026-11-22 10:58`（取 issue #95 的创建时间）。★ 来由：数码世界数据目录迁出代码仓库（数码世界 `docs/DECIDED.md` 已登记，数码世界侧 PR digiworld#122）；`release-app.sh` 每次发布都用默认值重写服务配置，不改默认值的话搬迁后下次发布会指回旧路径，收藏导入报「读不到」。
 - 改了哪些文件：`server/digiworld.mjs`（`digiworldDir()` 默认改为 `~/Library/Application Support/PersonalAIWorkbench/data`，环境变量照旧优先；新导出 `DEFAULT_DIGIWORLD_DIR`；注释和「读不到」报错改成写出实际读的路径）、`scripts/release-app.sh`（`DIGIWORLD_DIR` 默认同上，头部注释补这个变量）、`tests/v3-digiworld.test.mjs`（新增 2 项：`digiworldDir()` 默认与环境变量；在临时 HOME 里渲染发布脚本的服务配置模板，查默认值和环境变量）、`docs/OPERATIONS.md`（发布一节补「数码世界数据目录不沿用服务配置」）、`docs/tasks/V3-接口清单.md`、`GLOSSARY.md`（默认路径）。
 - 测试：`npm test`（C locale）原样结果 `ℹ pass 919` / `ℹ fail 3`，3 项都是本机高负载（load 约 225）下的超时（`server-entry` 两项、`markdown-parser` 一项），单独重跑 `ℹ pass 7` / `ℹ fail 0`；`LANG=zh_CN.UTF-8` 下另有 `move-data-dir` 5 项失败，干净的 origin/main 同样失败，和本次无关（见 PR 范围外发现）；`tests/v3-digiworld.test.mjs` `ℹ pass 4` / `ℹ fail 0`；`npm run check:style` 通过。★
 - 验证：发布脚本的默认值行和服务配置模板单独取出，在证据目录渲染两份（不设 / 设环境变量），`plutil -lint` 都是 OK，`WORKDESK_DIGIWORLD_DIR` 分别为新应用目录和给定值；真实 `~/Library/LaunchAgents/cn.niuma-home.server.plist` 没动（修改时间仍是 11-21 11:49）。证据：`~/Library/Application Support/NiumaHome/evidence/95-digiworld-dir-20261122/`。
 - 截图：无界面改动。
-- 发布与回读：未发布。合并后要等数码世界会话搬完目录并改这边服务配置，再发布。
+- 发布与回读：未发布。#96 已合并（`488ab53`）；数码世界搬迁时，真实 plist 的 `WORKDESK_DIGIWORLD_DIR` 已改成 `~/Library/Application Support/PersonalAIWorkbench/data`，`GET /api/v3/refs/digiworld` 回读 200（11-22 晚上实测，2026-11-22 21:37 复核仍是 200）。下次发布时 `release-app.sh` 会按新的默认值重写 plist，值不变。
 - 与授权不一致之处、遗留问题、范围外发现：「读不到」的报错原来写死 `digiworld/data/...`，改成显示实际读的路径（页面上能看到）。`docs/handoff/T10/发布回滚演练.md` 是历史记录，没改。
 - 本轮新坑：无。★
 
