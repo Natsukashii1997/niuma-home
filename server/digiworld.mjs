@@ -1,12 +1,15 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { failure } from './v3-common.mjs';
 
-// 只读数码世界（digiworld）的收藏：data/collection/state.json 和本地图片，不调用它的接口、不写它的任何文件。
+// 只读数码世界（digiworld）的收藏：<数码世界数据目录>/collection/state.json 和本地图片，不调用它的接口、不写它的任何文件。
+// 数码世界数据目录：环境变量 WORKDESK_DIGIWORLD_DIR 优先，没设时是数码世界的应用目录（2026-11-21 迁出代码仓库，#95）。
 // state.json 是 { sha256, state }，sha256 = sha256(JSON.stringify(state))；校验不一致（可能正在写）或 schema 不是 1 时拒绝，不猜。
 // 图文笔记取全部图片，视频笔记只取封面；本机画布/帖子库按用户选择复制，源收藏始终只读。
-export const digiworldDir = () => process.env.WORKDESK_DIGIWORLD_DIR || path.resolve('..', 'digiworld', 'data');
+export const DEFAULT_DIGIWORLD_DIR = path.join(os.homedir(), 'Library', 'Application Support', 'PersonalAIWorkbench', 'data');
+export const digiworldDir = () => process.env.WORKDESK_DIGIWORLD_DIR || DEFAULT_DIGIWORLD_DIR;
 export const digiworldSource = id => `数码世界笔记 ${id}`;
 export const DEFAULT_GROUP = '设计参考'; // 用户 10-17 约定：数码世界里这个分组的收藏默认导入
 const unavailable = message => Object.assign(failure(503, message), { code: 'DIGIWORLD_UNAVAILABLE' });
@@ -26,7 +29,7 @@ function readNoFollow(file, max) {
 export function readCollection(dir = digiworldDir()) {
   if (!path.isAbsolute(dir)) throw unavailable('数码世界数据目录须为绝对路径');
   const root = path.join(dir, 'collection'), raw = readNoFollow(path.join(root, 'state.json'), 20 * 1024 * 1024);
-  if (!raw) throw unavailable('读不到数码世界收藏数据（digiworld/data/collection/state.json）');
+  if (!raw) throw unavailable(`读不到数码世界收藏数据（${path.join(root, 'state.json')}）`);
   let envelope;
   try { envelope = JSON.parse(raw.toString('utf8')); } catch { throw unavailable('数码世界收藏数据不是有效 JSON，可能正在写入，请稍后重试'); }
   if (typeof envelope?.sha256 !== 'string' || createHash('sha256').update(JSON.stringify(envelope.state)).digest('hex') !== envelope.sha256) throw unavailable('数码世界收藏数据校验失败（可能正在写入），请稍后重试');

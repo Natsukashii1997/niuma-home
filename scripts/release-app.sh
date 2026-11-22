@@ -6,14 +6,15 @@
 #   bash scripts/release-app.sh --use <快照名>   切回已有快照（回滚）
 #
 # 可用环境变量覆盖（验证时用一次性目录，不碰正式服务）：
-#   NIUMA_BASE（默认 ~/Library/Application Support/NiumaHome）、NIUMA_LABEL、PORT、WORKDESK_DATA_DIR（默认沿用当前服务配置，全新安装为 $NIUMA_BASE/data）
+#   NIUMA_BASE（默认 ~/Library/Application Support/NiumaHome）、NIUMA_LABEL、PORT、WORKDESK_DATA_DIR（默认沿用当前服务配置，全新安装为 $NIUMA_BASE/data）、
+#   WORKDESK_DIGIWORLD_DIR（默认 ~/Library/Application Support/PersonalAIWorkbench/data）
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 BASE=${NIUMA_BASE:-"$HOME/Library/Application Support/NiumaHome"}
 LABEL=${NIUMA_LABEL:-cn.niuma-home.server}
 PORT=${PORT:-5280}
-DIGIWORLD_DIR=${WORKDESK_DIGIWORLD_DIR:-"$(dirname "$ROOT")/digiworld/data"}
+DIGIWORLD_DIR=${WORKDESK_DIGIWORLD_DIR:-"$HOME/Library/Application Support/PersonalAIWorkbench/data"}   # 数码世界数据目录（只读它的收藏，#95）
 NODE=$(command -v node)
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 # 数据目录：显式给了 WORKDESK_DATA_DIR 就用它；否则沿用当前服务配置里的那个（发布不会悄悄换数据目录）；
