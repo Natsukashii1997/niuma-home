@@ -18,7 +18,7 @@
 | 示例 / 演示 | 页面上的「示例」标识来自后端的演示口径：数据里带 `origin: "demo"`（价格、营收） | 早期「接口回 501 就显示前端自带示例」的机制已退役 |
 | 亚古兽 | 默认的飞书应用身份（读写飞书都用它）；另指带教页回答提问的 AI 人设（`docs/亚古兽/`） | |
 | 猛鬼兽 | 另一个飞书应用身份，只用于读自言自语的私聊和推送 Codex 重置提醒 | 两个身份只在 `server/lark-identity.mjs` 定义 |
-| digiworld | 另一个项目「数码世界」。这里只读它的收藏数据，用来导入设计参考（`server/digiworld.mjs`），不调它的接口、不写它的文件 | |
+| digiworld | 另一个项目「数码世界」。这里只读它的收藏数据，用来导入设计参考（`server/digiworld.mjs`），不调它的接口、不写它的文件。数据目录默认 `~/Library/Application Support/PersonalAIWorkbench/data`，服务配置里的 `WORKDESK_DIGIWORLD_DIR` 优先 | |
 | T01 … T14、V3-6 | 旧派单编号，正文在 `docs/tasks/`。代码注释和测试名（`t10-*`、`t12-*`）里会出现 | 新活不再开派单，开 GitHub issue |
 | `#30` 这类编号 | GitHub issue 或 PR 号，`gh issue view 30` 能查 | |
 | 预览 → 确认 → 回读 | 写操作的固定流程：先 `…/preview` 拿到 `previewId` 和将要写入的内容，再带 `previewId` 确认，写完重新读一次核对 | 老写接口（方案、物料、助手）是另一套：请求头带请求编号和版本号的直接保存（`legacy-writes.mjs`） |

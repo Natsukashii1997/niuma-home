@@ -1,12 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, symlinkSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { Readable } from 'node:stream';
 import { openDb } from '../server/db.mjs';
 import { match } from '../server/http.mjs';
-import { collectionImage, readCollection } from '../server/digiworld.mjs';
+import { collectionImage, digiworldDir, readCollection } from '../server/digiworld.mjs';
 import { routes as referenceRoutes } from '../server/routes/references.mjs';
 
 const PNG = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010806000000', 'hex');
@@ -71,4 +73,39 @@ test('收藏列表经 HTTP 只读返回；保存进画布后标「已导入」�
   assert.deepEqual((await invoke(all, 'GET', '/api/v3/refs/digiworld')).body.notes.map(n => n.imported), [true, false, false]);
   const failed = await invoke(referenceRoutes(db, { digiworldDir: path.join(dir, 'missing') }), 'GET', '/api/v3/refs/digiworld');
   assert.equal(failed.status, 503); assert.match(failed.body.error, /读不到数码世界收藏数据/);
+});
+
+// #95：数码世界数据目录 2026-11-21 迁出代码仓库，默认读它的应用目录；环境变量照旧优先。
+const APP_DIR = home => path.join(home, 'Library', 'Application Support', 'PersonalAIWorkbench', 'data');
+
+test('数码世界数据目录：没设环境变量用应用目录，设了用设的', t => {
+  const saved = process.env.WORKDESK_DIGIWORLD_DIR;
+  t.after(() => { if (saved === undefined) delete process.env.WORKDESK_DIGIWORLD_DIR; else process.env.WORKDESK_DIGIWORLD_DIR = saved; });
+  delete process.env.WORKDESK_DIGIWORLD_DIR;
+  assert.equal(digiworldDir(), APP_DIR(os.homedir()));
+  const custom = mkdtempSync(path.join(process.env.WORKDESK_DATA_DIR, 'digiworld-env-'));
+  t.after(() => rmSync(custom, { recursive: true, force: true }));
+  process.env.WORKDESK_DIGIWORLD_DIR = custom;
+  assert.equal(digiworldDir(), custom);
+});
+
+// 只取发布脚本里的默认值一行和写服务配置的一段，在临时 HOME 里渲染，不跑发布、不碰真实 LaunchAgents。
+test('发布脚本写进服务配置的数码世界目录：默认应用目录（含空格），环境变量优先', t => {
+  const script = readFileSync(new URL('../scripts/release-app.sh', import.meta.url), 'utf8');
+  const assign = script.match(/^DIGIWORLD_DIR=.*$/m)?.[0];
+  const block = script.match(/^cat > "\$PLIST" <<EOF\n[\s\S]*?\nEOF$/m)?.[0];
+  assert.ok(assign && block, '发布脚本里找不到 DIGIWORLD_DIR 默认值或服务配置模板');
+  const home = mkdtempSync(path.join(process.env.WORKDESK_DATA_DIR, 'release-home-'));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const render = extra => {
+    const plist = path.join(home, `out-${Math.random().toString(36).slice(2)}.plist`);
+    const vars = 'LABEL=test.label SERVER_APP=/x/App.app REL=/x/rel PORT=5999 DATA_DIR=/x/data NODE=/x/bin/node';
+    const env = { PATH: process.env.PATH, HOME: home, PLIST: plist, ...extra };
+    const r = spawnSync('bash', ['-c', `set -euo pipefail; ${vars}; ${assign}\n${block}`], { env, encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    const xml = readFileSync(plist, 'utf8');
+    return xml.match(/<key>WORKDESK_DIGIWORLD_DIR<\/key><string>(.*?)<\/string>/)?.[1];
+  };
+  assert.equal(render({}), APP_DIR(home));
+  assert.equal(render({ WORKDESK_DIGIWORLD_DIR: '/x/digiworld' }), '/x/digiworld');
 });
