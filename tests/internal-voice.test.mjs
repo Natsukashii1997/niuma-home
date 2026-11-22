@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { openDb, saveSetting, voiceDbFor } from '../server/db.mjs';
-import { createInternalVoice, lastWeek, lastMonth, checkRange, contentOf, lineOf } from '../server/internal-voice.mjs';
+import { createInternalVoice, lastWeek, lastMonth, checkRange, contentOf, lineOf, STORED_SQL } from '../server/internal-voice.mjs';
 import { match, unmatched } from '../server/http.mjs';
 import { routes } from '../server/routes/internal-voice.mjs';
 
@@ -668,4 +668,25 @@ test('[XR4] HTTP 429 搭配 success 正文不能提前成功，有限重试后 2
   assert.deepEqual(waits, [1000, 2000]);
   assert.equal(voice.status().runs[0].state, 'done');
   assert.equal(voice.status().stored.messages, 7);
+});
+
+test('状态里的入库统计和原来合成一句的结果一致，且每项都走索引、不扫整表（#97）', async t => {
+  const db = database(t), store = voiceDbFor(db);
+  const ORIGINAL = 'SELECT COUNT(*) messages, SUM(from_role=1) customerMessages, COUNT(DISTINCT conversation_id) conversations, MIN(msg_time) earliest, MAX(msg_time) latest FROM chat_messages';
+  const none = createInternalVoice(db, { token: () => TOKEN, now: () => NOW });
+  assert.deepEqual(none.status().stored, { messages: 0, customerMessages: 0, conversations: 0, earliest: null, latest: null }, '空库');
+  const voice = voiceFor(db, fakeApi());
+  await voice.start({ from: '2026-11-02', to: '2026-11-08', trigger: 'manual' }).done;
+  // 再插几条边界行：角色为空、员工消息、数字字符串角色，和原写法逐项对照
+  const insert = store.prepare("INSERT INTO chat_messages (msg_id, conversation_id, kind, msg_time, msg_type, from_role, fetched_at) VALUES (?, ?, 'single', ?, 'text', ?, '2026-11-10 10:00:00')");
+  insert.run('x-null', 'c9', '2026-10-30 08:00:00', null);
+  insert.run('x-staff', 'c9', '2026-11-09 08:00:00', 2);
+  insert.run('x-str', 'c8', '2026-11-01 08:00:00', '1');
+  const original = { ...store.prepare(ORIGINAL).get() };
+  assert.deepEqual(voice.status().stored, original);
+  assert.deepEqual(voice.status().stored, { messages: 10, customerMessages: 7, conversations: 5, earliest: '2026-10-30 08:00:00', latest: '2026-11-09 08:00:00' });
+  assert.ok(store.prepare("SELECT 1 FROM sqlite_master WHERE type='index' AND name='chat_messages_role'").get(), '会话库建了 from_role 索引');
+  const plan = store.prepare(`EXPLAIN QUERY PLAN ${STORED_SQL}`).all().map(r => r.detail).filter(d => d.includes('chat_messages'));
+  assert.equal(plan.length, 5);
+  for (const detail of plan) assert.match(detail, /USING COVERING INDEX/, detail);
 });

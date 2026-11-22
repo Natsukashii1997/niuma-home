@@ -48,6 +48,7 @@ export const VOICE_SCHEMA = `
   );
   CREATE INDEX IF NOT EXISTS chat_messages_time ON chat_messages(msg_time);
   CREATE INDEX IF NOT EXISTS chat_messages_conversation ON chat_messages(conversation_id, msg_time);
+  CREATE INDEX IF NOT EXISTS chat_messages_role ON chat_messages(from_role); -- 状态统计「客户消息数」走索引，不扫整表（#97）
   -- 拉取记录：trigger 为 weekly / monthly / manual；state 为 running / done / partial / failed；stats 是计数 JSON。
   CREATE TABLE IF NOT EXISTS chat_pull_runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
