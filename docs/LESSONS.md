@@ -221,3 +221,12 @@
 - 正确做法：要「放不下就换行」的弹性项写成 `flex: 1 1 <最小可读宽度>`（这里 200px）并给容器 `flex-wrap: wrap`；宽容器里照常占满一行，窄容器里原因和按钮各自掉到下一行。卡片固定高度时（`.todo-card` 跟同行 Codex 板块走）报错态另外放开高度，不让报错框被裁。
 - 证据：`~/Library/Application Support/NiumaHome/evidence/ui-preflight-fix-20261120/`（`before/`、`after-all/`、`wkwebview/`）；本轮 CURRENT.md「ui-preflight 扫出的界面问题」一节。
 - 升级：〔提醒〕未升级。ui-preflight 的「截断与折行」能量出这类问题，交付前跑它即可发现。
+
+
+## L-24 /bin/bash 3.2 在 UTF-8 区域把紧跟变量的中文、全角标点并进变量名（2026-10-26 修，2026-11-21 记）
+
+- 现象：health-check.sh 在 C.UTF-8 环境里报 `unbound variable`，出错的是「昨天（$YDAY）」这类写法；Claude 会话里 LANG 为空，跑起来正常，launchd 里也一直「通过」，所以没人发现。同样的写法当时还留在 verify-release.sh（第 27、30、73 行）、build-mac-app.sh（第 51 行）和后来加的 move-data-dir.sh（4 行）：在「终端」（LANG 通常是 UTF-8）或 Codex（C.UTF-8）里单独跑 `bash scripts/verify-release.sh`，会在第 27 行退出。
+- 根因：macOS 自带的 bash 3.2 在 UTF-8 区域设置下，会把 `$NAME` 后面紧挨的多字节字符（如「（」「，」）当成变量名的一部分；脚本开了 `set -u`，就当作未定义变量直接退出。LANG 为空或为 C 时不会出现。
+- 正确做法：shell 脚本里，变量后面紧跟非 ASCII 字符时一律写成 `${NAME}`；改完在 `LANG=zh_CN.UTF-8` 下也跑一遍。`$1`、`$*` 这类特殊参数不受影响。
+- 证据：提交 `3d37dba`（health-check.sh）；复现 `LANG=zh_CN.UTF-8 /bin/bash -uc 'U=1; echo "a$U）b"'` 输出 `U�: unbound variable`、退出码 127，LANG 为空时输出 `a1）b`（每周整理 2026-10-30 提案 W2026-10-30-1 实测，2026-11-21 本机 bash 3.2.57 复测一致）。
+- 升级：〔机检〕已升级（2026-11-21，提案 W2026-10-30-2）：scripts/check-style.mjs 的 shellvar 规则，扫 `scripts/*.sh`。

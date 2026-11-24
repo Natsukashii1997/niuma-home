@@ -24,10 +24,10 @@ DATA_DIR=$(get EnvironmentVariables:WORKDESK_DATA_DIR)
 URL="http://127.0.0.1:$PORT"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
-echo "回读 $LABEL → $NAME（$URL）"
+echo "回读 $LABEL → ${NAME}（${URL}）"
 
 # 1. launchd 指向这份快照，且正在跑的进程就是它
-if [ -n "${1:-}" ] && [ "$1" != "$NAME" ]; then bad "launchd 指向 $NAME，不是要求的 $1"; else ok "launchd 指向 $NAME"; fi
+if [ -n "${1:-}" ] && [ "$1" != "$NAME" ]; then bad "launchd 指向 ${NAME}，不是要求的 $1"; else ok "launchd 指向 $NAME"; fi
 [ -f "$ENTRY" ] && [ -f "$REL/dist/index.html" ] || bad "快照不完整：$REL"
 PID=$(launchctl list | awk -v l="$LABEL" '$3 == l { print $1 }')
 if [ -z "$PID" ] || [ "$PID" = "-" ]; then
@@ -70,7 +70,7 @@ grep -qF "\"$SHA\"" "$REL"/dist/assets/*.js 2>/dev/null && ok "版本号 $SHA �
 # 7（可选）. 页面冒烟：NIUMA_SMOKE=1 时用本机 Chrome 只读打开全部路由（不点任何写操作），截图到证据目录
 if [ -n "${NIUMA_SMOKE:-}" ]; then
   SMOKE_OUT="${NIUMA_SMOKE_OUT:-$HOME/Library/Application Support/NiumaHome/evidence/smoke-$NAME}"
-  if node "$(dirname "$0")/smoke-pages.mjs" --base "$URL" --out "$SMOKE_OUT"; then ok "页面冒烟通过（$SMOKE_OUT）"; else bad "页面冒烟未通过（$SMOKE_OUT）"; fi
+  if node "$(dirname "$0")/smoke-pages.mjs" --base "$URL" --out "$SMOKE_OUT"; then ok "页面冒烟通过（${SMOKE_OUT}）"; else bad "页面冒烟未通过（${SMOKE_OUT}）"; fi
 fi
 
 echo "· 人工：本轮相关接口与页面仍须实看（NIUMA_SMOKE=1 可先跑一遍只读冒烟）"
