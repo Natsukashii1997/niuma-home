@@ -1,0 +1,9 @@
+{
+  "说明": [
+    "推送前检查的实现在 agent-kit git-hooks/（写法见那里的 config.mjs），本仓库只写和默认值不同的地方。",
+    "本项目不跑通用规则检查：npm test 已含 npm run check:style（tests/style-rules.test.mjs，监听、时间显示、LESSONS 升级行等本项目的硬规则），用临时数据目录，不碰 data/。",
+    "全量 2026-11-20 实测 31 秒～1 分 23 秒（看机器负载），不到 3 分钟，照跑全量；CI 也跑同一条。"
+  ],
+  "prePushTests": "npm test",
+  "checkRules": false
+}
