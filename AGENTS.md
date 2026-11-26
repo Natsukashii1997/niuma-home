@@ -32,7 +32,7 @@ npm run build && npm start      # http://127.0.0.1:5280（开发目录直接起�
 npm run dev                     # 开发页 http://127.0.0.1:5281，/api 转给 5280
 npm test                        # 自动使用临时数据目录，不碰 data/
 npm run check:style             # 样式、监听、时间显示与 LESSONS 升级行硬规则（npm test 里也跑）
-git config core.hooksPath scripts/hooks   # 装提交、推送前的必经检查（每个克隆、每台电脑各一次；不用 --no-verify 绕过）
+git config core.hooksPath scripts/hooks   # 装提交、推送前的必经检查（每个克隆、每台电脑各一次；不用 --no-verify 绕过）；钩子只转发到 agent-kit 共用实现，本机先在 agent-kit 跑 node tools/install.mjs --apply
 npm run smoke                   # 页面冒烟：先 npm run build；隔离服务 + 本机 Chrome 只读打开全部路由，截图到证据目录（--base 可指向已在跑的服务）
 npm run import:feishu           # 一次性迁移旧飞书表（已执行过，可重复执行；写正式数据要带 WORKDESK_DATA_DIR）
 npm run import:mentor-path      # 导入带教培养路径（同上）
